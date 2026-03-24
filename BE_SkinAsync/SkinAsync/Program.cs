@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using SkinAsync.Data;
@@ -17,7 +18,27 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "SkinAsync";
 var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "SkinAsync.Client";
-var jwtSigningKey = builder.Configuration["Jwt:SigningKey"] ?? "SkinAsync.SuperSecretSigningKey.ChangeMe1234567890";
+var jwtSigningKey = builder.Configuration["Jwt:SigningKey"];
+
+if (string.IsNullOrWhiteSpace(jwtSigningKey))
+{
+    throw new InvalidOperationException("Missing Jwt:SigningKey configuration.");
+}
+
+if (!builder.Environment.IsDevelopment() && jwtSigningKey.Contains("ChangeMe", StringComparison.OrdinalIgnoreCase))
+{
+    throw new InvalidOperationException("Jwt:SigningKey must be replaced with a secure value in non-development environments.");
+}
+
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+    ?? (builder.Environment.IsDevelopment()
+        ? ["http://localhost:5173", "http://localhost:3000"]
+        : []);
+
+if (!builder.Environment.IsDevelopment() && allowedOrigins.Length == 0)
+{
+    throw new InvalidOperationException("Configure at least one CORS origin in Cors:AllowedOrigins for non-development environments.");
+}
 
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -46,11 +67,17 @@ builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<IAiAnalysisService, AiAnalysisService>();
 builder.Services.AddScoped<IRegimenBuilderService, RegimenBuilderService>();
 builder.Services.AddHttpClient<ISupabaseAuthService, SupabaseAuthService>();
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+});
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins("http://localhost:5173", "http://localhost:3000")
+        policy.WithOrigins(allowedOrigins)
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();
@@ -66,8 +93,10 @@ builder.Services.AddSwaggerGen(options =>
 
 var app = builder.Build();
 
-using (var scope = app.Services.CreateScope())
+var shouldSeedOnStartup = builder.Configuration.GetValue<bool>("Startup:SeedOnStartup");
+if (app.Environment.IsDevelopment() || shouldSeedOnStartup)
 {
+    using var scope = app.Services.CreateScope();
     var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     await DbSeeder.SeedAsync(dbContext);
 }
@@ -80,6 +109,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors("AllowFrontend");
+app.UseForwardedHeaders();
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 
