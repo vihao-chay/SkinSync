@@ -8,9 +8,31 @@ function createEmailAvatar(email: string, name?: string) {
   return `https://api.dicebear.com/9.x/initials/svg?seed=${seed}&backgroundType=gradientLinear`;
 }
 
+function normalizeAvatarUrl(rawUrl: string) {
+  const trimmed = rawUrl.trim();
+  if (!trimmed) {
+    return trimmed;
+  }
+
+  if (trimmed.startsWith("/uploads/")) {
+    return trimmed;
+  }
+
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.pathname.startsWith("/uploads/")) {
+      return parsed.pathname;
+    }
+  } catch {
+    return trimmed;
+  }
+
+  return trimmed;
+}
+
 export function resolveUserAvatar(user: AuthUser | null | undefined) {
   if (user?.avatarUrl && user.avatarUrl.trim()) {
-    return user.avatarUrl;
+    return normalizeAvatarUrl(user.avatarUrl);
   }
 
   if (user?.email && user.email.trim()) {

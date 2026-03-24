@@ -321,7 +321,7 @@ public class AuthController : ControllerBase
             await request.Avatar.CopyToAsync(stream, cancellationToken);
         }
 
-        var avatarUrl = $"{Request.Scheme}://{Request.Host}/uploads/avatars/{fileName}";
+        var avatarUrl = $"/uploads/avatars/{fileName}";
         user.AvatarUrl = avatarUrl;
 
         await _userRepository.UpdateAsync(user, cancellationToken);
