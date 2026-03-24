@@ -6,6 +6,10 @@
   "outputDirectory": "FE_skinsync/dist",
   "rewrites": [
     {
+      "source": "/api/(.*)",
+      "destination": "http://skinsync.somee.com/api/$1"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
