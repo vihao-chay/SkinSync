@@ -1,6 +1,8 @@
 # build results
 bin/
 obj/
+build_tmp/
+build_tmp_verify/
 
 # user-specific files
 *.user

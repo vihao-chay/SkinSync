@@ -15,6 +15,7 @@ public static class UserMapper
             FullName = user.FullName,
             Email = user.Email,
             Phone = user.Phone,
+            AvatarUrl = user.AvatarUrl,
             Role = user.Role,
             Status = user.Status
         };

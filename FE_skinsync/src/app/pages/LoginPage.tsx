@@ -1,11 +1,26 @@
 import { useState } from "react";
-import { Link } from "react-router";
-import { Eye, EyeOff, Mail, Lock, ArrowRight, Sparkles, User, Phone } from "lucide-react";
+import { Link, useNavigate } from "react-router";
+import { Eye, EyeOff, Mail, Lock, ArrowRight, Sparkles, User, Phone, CheckCircle, AlertCircle } from "lucide-react";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
+import {
+  registerApi,
+  getGoogleLoginUrl,
+} from "../services/authService";
+import { useAuth } from "../contexts/AuthContext";
 
 type AuthMode = "login" | "register";
 
+interface FormErrors {
+  name?: string;
+  email?: string;
+  phone?: string;
+  password?: string;
+  confirmPassword?: string;
+}
+
 export function LoginPage() {
+  const navigate = useNavigate();
+  const { login } = useAuth();
   const [mode, setMode] = useState<AuthMode>("login");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -15,12 +30,142 @@ export function LoginPage() {
   const [phone, setPhone] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [formErrors, setFormErrors] = useState<FormErrors>({});
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // ─── Validation ─────────────────────────────────────────────────────
+  function validateForm(): boolean {
+    const errors: FormErrors = {};
+
+    if (mode === "register") {
+      if (!name.trim()) errors.name = "Vui lòng nhập họ và tên";
+      if (name.trim().length > 120) errors.name = "Họ tên không quá 120 ký tự";
+    }
+
+    if (!email.trim()) {
+      errors.email = "Vui lòng nhập email";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      errors.email = "Email không hợp lệ";
+    }
+
+    if (!password) {
+      errors.password = "Vui lòng nhập mật khẩu";
+    } else if (mode === "register" && password.length < 8) {
+      errors.password = "Mật khẩu phải có ít nhất 8 ký tự";
+    }
+
+    if (mode === "register") {
+      if (!confirmPassword) {
+        errors.confirmPassword = "Vui lòng xác nhận mật khẩu";
+      } else if (password !== confirmPassword) {
+        errors.confirmPassword = "Mật khẩu xác nhận không khớp";
+      }
+    }
+
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  }
+
+  // ─── Login Handler ──────────────────────────────────────────────────
+  async function handleLogin() {
+    try {
+      const result = await login(email.trim(), password);
+
+      if (result.success) {
+        setSuccessMessage("Đăng nhập thành công! Đang chuyển hướng...");
+        setApiError(null);
+
+        setTimeout(() => {
+          if (result.user?.role === "admin") {
+            navigate("/admin", { replace: true });
+          } else {
+            navigate("/", { replace: true });
+          }
+        }, 800);
+      } else {
+        setApiError(result.message || "Email hoặc mật khẩu không đúng.");
+      }
+    } catch {
+      setApiError("Không thể kết nối đến server. Vui lòng thử lại sau.");
+    }
+  }
+
+  // ─── Register Handler ───────────────────────────────────────────────
+  async function handleRegister() {
+    try {
+      const result = await registerApi(
+        name.trim(),
+        email.trim(),
+        phone.trim(),
+        password
+      );
+
+      if (result.success) {
+        setSuccessMessage("Đăng ký thành công! Vui lòng đăng nhập.");
+        setApiError(null);
+
+        // Auto-switch to login mode after short delay
+        setTimeout(() => {
+          setMode("login");
+          setSuccessMessage(null);
+          setPassword("");
+          setConfirmPassword("");
+        }, 1500);
+      } else {
+        setApiError(result.message || "Đăng ký thất bại. Vui lòng thử lại.");
+      }
+    } catch {
+      setApiError("Không thể kết nối đến server. Vui lòng thử lại sau.");
+    }
+  }
+
+  // ─── Form Submit ────────────────────────────────────────────────────
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setApiError(null);
+    setSuccessMessage(null);
+
+    if (!validateForm()) return;
+
     setIsLoading(true);
-    setTimeout(() => setIsLoading(false), 1500);
-  };
+
+    if (mode === "login") {
+      await handleLogin();
+    } else {
+      await handleRegister();
+    }
+
+    setIsLoading(false);
+  }
+
+  // ─── Google Login Handler ───────────────────────────────────────────
+  async function handleGoogleLogin() {
+    setIsGoogleLoading(true);
+    setApiError(null);
+
+    try {
+      // The redirect_to should be the AuthCallback page on the frontend
+      const redirectTo = `${window.location.origin}/auth/callback`;
+      const googleUrl = await getGoogleLoginUrl(redirectTo);
+      // Redirect browser to Google OAuth via Supabase
+      window.location.href = googleUrl;
+    } catch (err: any) {
+      setApiError(err?.message || "Không thể kết nối Google. Vui lòng thử lại.");
+      setIsGoogleLoading(false);
+    }
+  }
+
+  // ─── Mode Switch ────────────────────────────────────────────────────
+  function switchMode(newMode: AuthMode) {
+    setMode(newMode);
+    setApiError(null);
+    setSuccessMessage(null);
+    setFormErrors({});
+    setPassword("");
+    setConfirmPassword("");
+  }
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -66,8 +211,8 @@ export function LoginPage() {
                   {i < 8 && (
                     <line
                       x1={x} y1={y}
-                      x2={[100,300,500,200,450,150,380,520,80,320][i + 1] ?? x + 80}
-                      y2={[150,200,100,350,380,500,550,450,680,700][i + 1] ?? y + 60}
+                      x2={[100, 300, 500, 200, 450, 150, 380, 520, 80, 320][i + 1] ?? x + 80}
+                      y2={[150, 200, 100, 350, 380, 500, 550, 450, 680, 700][i + 1] ?? y + 60}
                       stroke="#6ee7f7" strokeWidth="0.5" opacity="0.4"
                     />
                   )}
@@ -136,12 +281,11 @@ export function LoginPage() {
               {(["login", "register"] as AuthMode[]).map((m) => (
                 <button
                   key={m}
-                  onClick={() => setMode(m)}
-                  className={`flex-1 py-3 rounded-xl text-sm transition-all duration-300 ${
-                    mode === m
-                      ? "bg-white shadow-sm text-[#8c6e52]"
-                      : "text-[#6b7280] hover:text-[#2a2a2a]"
-                  }`}
+                  onClick={() => switchMode(m)}
+                  className={`flex-1 py-3 rounded-xl text-sm transition-all duration-300 ${mode === m
+                    ? "bg-white shadow-sm text-[#8c6e52]"
+                    : "text-[#6b7280] hover:text-[#2a2a2a]"
+                    }`}
                 >
                   {m === "login" ? "Đăng Nhập" : "Đăng Ký"}
                 </button>
@@ -160,6 +304,22 @@ export function LoginPage() {
               </p>
             </div>
 
+            {/* Success Message */}
+            {successMessage && (
+              <div className="mb-4 flex items-center gap-2 px-4 py-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm animate-in fade-in duration-300">
+                <CheckCircle className="w-4 h-4 shrink-0" />
+                <span>{successMessage}</span>
+              </div>
+            )}
+
+            {/* Error Message */}
+            {apiError && (
+              <div className="mb-4 flex items-center gap-2 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm animate-in fade-in duration-300">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{apiError}</span>
+              </div>
+            )}
+
             {/* Form */}
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Name field (register only) */}
@@ -171,11 +331,12 @@ export function LoginPage() {
                     <input
                       type="text"
                       value={name}
-                      onChange={(e) => setName(e.target.value)}
+                      onChange={(e) => { setName(e.target.value); setFormErrors((p) => ({ ...p, name: undefined })); }}
                       placeholder="Nguyễn Thị Lan"
-                      className="w-full pl-11 pr-4 py-3.5 rounded-xl border border-[#e5e7eb] bg-[#fafafa] text-[#2a2a2a] placeholder-[#d1d5db] focus:outline-none focus:border-[#c4a882] focus:ring-2 focus:ring-[#c4a882]/10 transition-all"
+                      className={`w-full pl-11 pr-4 py-3.5 rounded-xl border ${formErrors.name ? "border-red-400 focus:border-red-400 focus:ring-red-400/10" : "border-[#e5e7eb] focus:border-[#c4a882] focus:ring-[#c4a882]/10"} bg-[#fafafa] text-[#2a2a2a] placeholder-[#d1d5db] focus:outline-none focus:ring-2 transition-all`}
                     />
                   </div>
+                  {formErrors.name && <p className="text-xs text-red-500 mt-0.5">{formErrors.name}</p>}
                 </div>
               )}
 
@@ -187,11 +348,12 @@ export function LoginPage() {
                   <input
                     type="email"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => { setEmail(e.target.value); setFormErrors((p) => ({ ...p, email: undefined })); }}
                     placeholder="hello@example.com"
-                    className="w-full pl-11 pr-4 py-3.5 rounded-xl border border-[#e5e7eb] bg-[#fafafa] text-[#2a2a2a] placeholder-[#d1d5db] focus:outline-none focus:border-[#c4a882] focus:ring-2 focus:ring-[#c4a882]/10 transition-all"
+                    className={`w-full pl-11 pr-4 py-3.5 rounded-xl border ${formErrors.email ? "border-red-400 focus:border-red-400 focus:ring-red-400/10" : "border-[#e5e7eb] focus:border-[#c4a882] focus:ring-[#c4a882]/10"} bg-[#fafafa] text-[#2a2a2a] placeholder-[#d1d5db] focus:outline-none focus:ring-2 transition-all`}
                   />
                 </div>
+                {formErrors.email && <p className="text-xs text-red-500 mt-0.5">{formErrors.email}</p>}
               </div>
 
               {/* Phone (register only) */}
@@ -219,9 +381,9 @@ export function LoginPage() {
                   <input
                     type={showPassword ? "text" : "password"}
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={(e) => { setPassword(e.target.value); setFormErrors((p) => ({ ...p, password: undefined })); }}
                     placeholder="••••••••"
-                    className="w-full pl-11 pr-11 py-3.5 rounded-xl border border-[#e5e7eb] bg-[#fafafa] text-[#2a2a2a] placeholder-[#d1d5db] focus:outline-none focus:border-[#c4a882] focus:ring-2 focus:ring-[#c4a882]/10 transition-all"
+                    className={`w-full pl-11 pr-11 py-3.5 rounded-xl border ${formErrors.password ? "border-red-400 focus:border-red-400 focus:ring-red-400/10" : "border-[#e5e7eb] focus:border-[#c4a882] focus:ring-[#c4a882]/10"} bg-[#fafafa] text-[#2a2a2a] placeholder-[#d1d5db] focus:outline-none focus:ring-2 transition-all`}
                   />
                   <button
                     type="button"
@@ -231,11 +393,12 @@ export function LoginPage() {
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
+                {formErrors.password && <p className="text-xs text-red-500 mt-0.5">{formErrors.password}</p>}
                 {mode === "login" && (
                   <div className="text-right">
-                    <a href="#" className="text-xs text-[#c4a882] hover:text-[#8c6e52] transition-colors">
+                    <Link to="/forgot-password" className="text-xs text-[#c4a882] hover:text-[#8c6e52] transition-colors">
                       Quên mật khẩu?
-                    </a>
+                    </Link>
                   </div>
                 )}
               </div>
@@ -249,9 +412,9 @@ export function LoginPage() {
                     <input
                       type={showConfirmPassword ? "text" : "password"}
                       value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      onChange={(e) => { setConfirmPassword(e.target.value); setFormErrors((p) => ({ ...p, confirmPassword: undefined })); }}
                       placeholder="••••••••"
-                      className="w-full pl-11 pr-11 py-3.5 rounded-xl border border-[#e5e7eb] bg-[#fafafa] text-[#2a2a2a] placeholder-[#d1d5db] focus:outline-none focus:border-[#c4a882] focus:ring-2 focus:ring-[#c4a882]/10 transition-all"
+                      className={`w-full pl-11 pr-11 py-3.5 rounded-xl border ${formErrors.confirmPassword ? "border-red-400 focus:border-red-400 focus:ring-red-400/10" : "border-[#e5e7eb] focus:border-[#c4a882] focus:ring-[#c4a882]/10"} bg-[#fafafa] text-[#2a2a2a] placeholder-[#d1d5db] focus:outline-none focus:ring-2 transition-all`}
                     />
                     <button
                       type="button"
@@ -261,6 +424,7 @@ export function LoginPage() {
                       {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
+                  {formErrors.confirmPassword && <p className="text-xs text-red-500 mt-0.5">{formErrors.confirmPassword}</p>}
                 </div>
               )}
 
@@ -309,18 +473,29 @@ export function LoginPage() {
               <div className="flex-1 h-px bg-[#e5e7eb]" />
             </div>
 
-            {/* Social Login */}
+            {/* Social Login - Google */}
             <div className="space-y-3">
-              <button className="w-full py-3 rounded-xl border border-[#e5e7eb] bg-white hover:bg-[#fafafa] hover:border-[#d1d5db] flex items-center justify-center gap-3 transition-all group shadow-sm">
-                <svg className="w-5 h-5" viewBox="0 0 24 24">
-                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                </svg>
-                <span className="text-sm text-[#4b5563] group-hover:text-[#2a2a2a] transition-colors">
-                  Tiếp tục với Google
-                </span>
+              <button
+                type="button"
+                onClick={handleGoogleLogin}
+                disabled={isGoogleLoading}
+                className="w-full py-3 rounded-xl border border-[#e5e7eb] bg-white hover:bg-[#fafafa] hover:border-[#d1d5db] flex items-center justify-center gap-3 transition-all group shadow-sm disabled:opacity-70"
+              >
+                {isGoogleLoading ? (
+                  <div className="w-5 h-5 border-2 border-[#c4a882]/30 border-t-[#c4a882] rounded-full animate-spin" />
+                ) : (
+                  <>
+                    <svg className="w-5 h-5" viewBox="0 0 24 24">
+                      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+                      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+                    </svg>
+                    <span className="text-sm text-[#4b5563] group-hover:text-[#2a2a2a] transition-colors">
+                      Tiếp tục với Google
+                    </span>
+                  </>
+                )}
               </button>
             </div>
 
@@ -328,7 +503,7 @@ export function LoginPage() {
             <p className="text-center text-sm text-[#6b7280] mt-6">
               {mode === "login" ? "Chưa có tài khoản?" : "Đã có tài khoản?"}{" "}
               <button
-                onClick={() => setMode(mode === "login" ? "register" : "login")}
+                onClick={() => switchMode(mode === "login" ? "register" : "login")}
                 className="text-[#c4a882] hover:text-[#8c6e52] transition-colors"
               >
                 {mode === "login" ? "Đăng ký ngay" : "Đăng nhập"}

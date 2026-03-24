@@ -1,4 +1,4 @@
-import { createBrowserRouter, Navigate, Outlet, useRouteError } from "react-router";
+import { createBrowserRouter, Navigate, Outlet, useLocation, useRouteError } from "react-router";
 import { LandingPage } from "./pages/LandingPage";
 import { QuizPage } from "./pages/QuizPage";
 import { UploadPage } from "./pages/UploadPage";
@@ -13,7 +13,12 @@ import { AdminProductsPage } from "./pages/admin/AdminProductsPage";
 import { AdminAIConfigPage } from "./pages/admin/AdminAIConfigPage";
 import { AdminUsersPage } from "./pages/admin/AdminUsersPage";
 import { AdminProfilePage } from "./pages/admin/AdminProfilePage";
+import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
+import { ResetPasswordPage } from "./pages/ResetPasswordPage";
+import { SecuritySettingsPage } from "./pages/SecuritySettingsPage";
 import { Navigation } from "./components/Navigation";
+import { AuthCallbackPage } from "./pages/AuthCallbackPage";
+import { useAuth } from "./contexts/AuthContext";
 
 function MainLayout() {
   return (
@@ -26,6 +31,92 @@ function MainLayout() {
 
 function AdminLayout() {
   return <Outlet />;
+}
+
+function FullPageLoader() {
+  return (
+    <div className="min-h-screen bg-[#f5f5f0] flex items-center justify-center">
+      <div className="w-8 h-8 border-2 border-[#c4a882]/30 border-t-[#c4a882] rounded-full animate-spin" />
+    </div>
+  );
+}
+
+function getRecoveryHash() {
+  const hash = window.location.hash;
+  if (!hash) {
+    return null;
+  }
+
+  const hashParams = new URLSearchParams(hash.replace(/^#/, ""));
+  const recoveryType = hashParams.get("type");
+  const accessToken = hashParams.get("access_token");
+
+  if (recoveryType === "recovery" && accessToken) {
+    return hash;
+  }
+
+  return null;
+}
+
+function RequireAuth({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, isInitializing } = useAuth();
+  const recoveryHash = getRecoveryHash();
+
+  if (recoveryHash) {
+    return <Navigate to={{ pathname: "/reset-password", hash: recoveryHash }} replace />;
+  }
+
+  if (isInitializing) {
+    return <FullPageLoader />;
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return <>{children}</>;
+}
+
+function GuestOnly({ children }: { children: React.ReactNode }) {
+  const location = useLocation();
+  const { isAuthenticated, isInitializing, user } = useAuth();
+  const recoveryHash = getRecoveryHash();
+
+  if (recoveryHash && location.pathname !== "/reset-password") {
+    return <Navigate to={{ pathname: "/reset-password", hash: recoveryHash }} replace />;
+  }
+
+  if (isInitializing) {
+    return <FullPageLoader />;
+  }
+
+  if (isAuthenticated) {
+    if (user?.role === "admin") {
+      return <Navigate to="/admin" replace />;
+    }
+
+    return <Navigate to="/" replace />;
+  }
+
+  return <>{children}</>;
+}
+
+function AdminOnly({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, isInitializing, user } = useAuth();
+
+  if (isInitializing) {
+    return <FullPageLoader />;
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (user?.role !== "admin") {
+    return <Navigate to="/" replace />;
+  }
+
+  return <>{children}</>;
 }
 
 function ErrorBoundary() {
@@ -63,7 +154,11 @@ export const router = createBrowserRouter([
   {
     // Main layout with Navigation
     path: "/",
-    Component: MainLayout,
+    element: (
+      <RequireAuth>
+        <MainLayout />
+      </RequireAuth>
+    ),
     errorElement: <ErrorBoundary />,
     children: [
       { index: true, element: <LandingPage /> },
@@ -74,19 +169,51 @@ export const router = createBrowserRouter([
       { path: "progress", element: <ProgressPage /> },
       { path: "checkin", element: <CheckInPage /> },
       { path: "profile", element: <ProfilePage /> },
+      { path: "settings/security", element: <SecuritySettingsPage /> },
       { path: "dashboard", element: <Navigate to="/analysis" replace /> },
     ],
   },
   {
     // Standalone pages (no nav)
     path: "/login",
-    element: <LoginPage />,
+    element: (
+      <GuestOnly>
+        <LoginPage />
+      </GuestOnly>
+    ),
+    errorElement: <ErrorBoundary />,
+  },
+  {
+    path: "/auth/callback",
+    element: <AuthCallbackPage />,
+    errorElement: <ErrorBoundary />,
+  },
+  {
+    path: "/forgot-password",
+    element: (
+      <GuestOnly>
+        <ForgotPasswordPage />
+      </GuestOnly>
+    ),
+    errorElement: <ErrorBoundary />,
+  },
+  {
+    path: "/reset-password",
+    element: (
+      <GuestOnly>
+        <ResetPasswordPage />
+      </GuestOnly>
+    ),
     errorElement: <ErrorBoundary />,
   },
   {
     // Admin section
     path: "/admin",
-    Component: AdminLayout,
+    element: (
+      <AdminOnly>
+        <AdminLayout />
+      </AdminOnly>
+    ),
     errorElement: <ErrorBoundary />,
     children: [
       { index: true, element: <AdminDashboardPage /> },

@@ -11,6 +11,8 @@ public interface ISupabaseAuthService
     Task<SupabaseAuthResult> SignInWithEmailPasswordAsync(string email, string password, CancellationToken cancellationToken);
     Task<SupabaseUserProfile?> GetUserByAccessTokenAsync(string accessToken, CancellationToken cancellationToken);
     string BuildGoogleOAuthUrl(string redirectTo, string? state);
+    Task<SupabaseAuthResult> SendResetPasswordEmailAsync(string email, string? redirectTo, CancellationToken cancellationToken);
+    Task<SupabaseAuthResult> UpdateUserPasswordAsync(string accessToken, string newPassword, CancellationToken cancellationToken);
 }
 
 public class SupabaseAuthService : ISupabaseAuthService
@@ -35,7 +37,7 @@ public class SupabaseAuthService : ISupabaseAuthService
     {
         if (!HasValidConfig())
         {
-            return SupabaseAuthResult.Fail("Supabase is not configured. Please set Supabase:Url and Supabase:AnonKey.");
+            return SupabaseAuthResult.Fail("Hệ thống chưa cấu hình Supabase (Url hoặc AnonKey bị thiếu).");
         }
 
         try
@@ -57,21 +59,21 @@ public class SupabaseAuthService : ISupabaseAuthService
 
             if (!response.IsSuccessStatusCode)
             {
-                return SupabaseAuthResult.Fail(ParseError(body) ?? "Supabase sign-up failed.", (int)response.StatusCode);
+                return SupabaseAuthResult.Fail(ParseError(body) ?? "Đăng ký thất bại.", (int)response.StatusCode);
             }
 
             var dto = JsonSerializer.Deserialize<SupabaseSessionDto>(body, JsonOptions);
             var user = dto?.User ?? ParseSignUpUserFromBody(body);
             if (user is null)
             {
-                return SupabaseAuthResult.Fail("Supabase sign-up succeeded but no user profile was returned.");
+                return SupabaseAuthResult.Fail("Đăng ký thành công nhưng không lấy được thông tin hồ sơ người dùng từ máy chủ.");
             }
 
             return SupabaseAuthResult.Ok(user, dto?.AccessToken, dto?.RefreshToken, dto?.ExpiresIn);
         }
         catch (HttpRequestException ex)
         {
-            return SupabaseAuthResult.Fail($"Cannot connect to Supabase auth service: {ex.Message}", ex.StatusCode is null ? 503 : (int)ex.StatusCode.Value);
+            return SupabaseAuthResult.Fail($"Không thể kết nối đến máy chủ đăng nhập: {ex.Message}", ex.StatusCode is null ? 503 : (int)ex.StatusCode.Value);
         }
     }
 
@@ -79,7 +81,7 @@ public class SupabaseAuthService : ISupabaseAuthService
     {
         if (!HasValidConfig())
         {
-            return SupabaseAuthResult.Fail("Supabase is not configured. Please set Supabase:Url and Supabase:AnonKey.");
+            return SupabaseAuthResult.Fail("Hệ thống chưa cấu hình Supabase (Url hoặc AnonKey bị thiếu).");
         }
 
         try
@@ -91,20 +93,20 @@ public class SupabaseAuthService : ISupabaseAuthService
 
             if (!response.IsSuccessStatusCode)
             {
-                return SupabaseAuthResult.Fail(ParseError(body) ?? "Invalid email or password.", (int)response.StatusCode);
+                return SupabaseAuthResult.Fail(ParseError(body) ?? "Email hoặc mật khẩu không chính xác.", (int)response.StatusCode);
             }
 
             var dto = JsonSerializer.Deserialize<SupabaseSessionDto>(body, JsonOptions);
             if (dto?.User is null || string.IsNullOrWhiteSpace(dto.AccessToken))
             {
-                return SupabaseAuthResult.Fail("Supabase login succeeded but no active session was returned.");
+                return SupabaseAuthResult.Fail("Đăng nhập thành công nhưng không lấy được phiên hoạt động từ máy chủ.");
             }
 
             return SupabaseAuthResult.Ok(dto.User, dto.AccessToken, dto.RefreshToken, dto.ExpiresIn);
         }
         catch (HttpRequestException ex)
         {
-            return SupabaseAuthResult.Fail($"Cannot connect to Supabase auth service: {ex.Message}", ex.StatusCode is null ? 503 : (int)ex.StatusCode.Value);
+            return SupabaseAuthResult.Fail($"Không thể kết nối đến máy chủ đăng nhập: {ex.Message}", ex.StatusCode is null ? 503 : (int)ex.StatusCode.Value);
         }
     }
 
@@ -146,6 +148,66 @@ public class SupabaseAuthService : ISupabaseAuthService
         return url;
     }
 
+    public async Task<SupabaseAuthResult> SendResetPasswordEmailAsync(string email, string? redirectTo, CancellationToken cancellationToken)
+    {
+        if (!HasValidConfig())
+        {
+            return SupabaseAuthResult.Fail("Hệ thống chưa cấu hình Supabase (Url hoặc AnonKey bị thiếu).");
+        }
+
+        try
+        {
+            var payload = string.IsNullOrWhiteSpace(redirectTo) 
+                ? (object)new { email } 
+                : new { email, redirect_to = redirectTo };
+
+            var request = BuildRequest(HttpMethod.Post, $"{_supabaseUrl}/auth/v1/recover", payload);
+            var response = await _httpClient.SendAsync(request, cancellationToken);
+            
+            if (!response.IsSuccessStatusCode)
+            {
+                var body = await response.Content.ReadAsStringAsync(cancellationToken);
+                return SupabaseAuthResult.Fail(ParseError(body) ?? "Không thể gửi email khôi phục.", (int)response.StatusCode);
+            }
+
+            // We return a dummy user profile just to flag IsSuccess
+            return SupabaseAuthResult.Ok(new SupabaseUserProfile(), null, null, null);
+        }
+        catch (HttpRequestException ex)
+        {
+            return SupabaseAuthResult.Fail($"Không thể kết nối đến máy chủ đăng nhập: {ex.Message}", ex.StatusCode is null ? 503 : (int)ex.StatusCode.Value);
+        }
+    }
+
+    public async Task<SupabaseAuthResult> UpdateUserPasswordAsync(string accessToken, string newPassword, CancellationToken cancellationToken)
+    {
+        if (!HasValidConfig())
+        {
+            return SupabaseAuthResult.Fail("Hệ thống chưa cấu hình Supabase (Url hoặc AnonKey bị thiếu).");
+        }
+
+        try
+        {
+            var payload = new { password = newPassword };
+            var request = BuildRequest(HttpMethod.Put, $"{_supabaseUrl}/auth/v1/user", payload);
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+            
+            var response = await _httpClient.SendAsync(request, cancellationToken);
+            var body = await response.Content.ReadAsStringAsync(cancellationToken);
+            
+            if (!response.IsSuccessStatusCode)
+            {
+                return SupabaseAuthResult.Fail(ParseError(body) ?? "Cập nhật mật khẩu thất bại.", (int)response.StatusCode);
+            }
+
+            return SupabaseAuthResult.Ok(new SupabaseUserProfile(), null, null, null);
+        }
+        catch (HttpRequestException ex)
+        {
+            return SupabaseAuthResult.Fail($"Không thể kết nối đến máy chủ đăng nhập: {ex.Message}", ex.StatusCode is null ? 503 : (int)ex.StatusCode.Value);
+        }
+    }
+
     private bool HasValidConfig()
     {
         return !string.IsNullOrWhiteSpace(_supabaseUrl) && !string.IsNullOrWhiteSpace(_anonKey);
@@ -166,6 +228,7 @@ public class SupabaseAuthService : ISupabaseAuthService
             return null;
         }
 
+        string? errorMsg = null;
         try
         {
             using var doc = JsonDocument.Parse(raw);
@@ -173,22 +236,19 @@ public class SupabaseAuthService : ISupabaseAuthService
 
             if (root.TryGetProperty("msg", out var msgProp))
             {
-                return msgProp.GetString();
+                errorMsg = msgProp.GetString();
             }
-
-            if (root.TryGetProperty("message", out var messageProp))
+            else if (root.TryGetProperty("message", out var messageProp))
             {
-                return messageProp.GetString();
+                errorMsg = messageProp.GetString();
             }
-
-            if (root.TryGetProperty("error_description", out var errorDescriptionProp))
+            else if (root.TryGetProperty("error_description", out var errorDescriptionProp))
             {
-                return errorDescriptionProp.GetString();
+                errorMsg = errorDescriptionProp.GetString();
             }
-
-            if (root.TryGetProperty("error", out var errorProp))
+            else if (root.TryGetProperty("error", out var errorProp))
             {
-                return errorProp.GetString();
+                errorMsg = errorProp.GetString();
             }
         }
         catch
@@ -196,7 +256,37 @@ public class SupabaseAuthService : ISupabaseAuthService
             return null;
         }
 
-        return null;
+        return string.IsNullOrWhiteSpace(errorMsg) ? null : TranslateErrorMessage(errorMsg);
+    }
+
+    private static string TranslateErrorMessage(string? englishMsg)
+    {
+        if (string.IsNullOrWhiteSpace(englishMsg)) return string.Empty;
+        
+        var msg = englishMsg.Trim().ToLowerInvariant();
+        
+        if (msg.Contains("invalid login credentials") || msg.Contains("invalid email or password"))
+            return "Email hoặc mật khẩu không chính xác.";
+            
+        if (msg.Contains("user already registered"))
+            return "Email này đã được đăng ký.";
+            
+        if (msg.Contains("password should be at least 6 characters") || msg.Contains("weak_password"))
+            return "Mật khẩu phải có ít nhất 6 ký tự.";
+            
+        if (msg.Contains("email not confirmed"))
+            return "Tài khoản chưa được xác thực email.";
+            
+        if (msg.Contains("rate limit"))
+            return "Bạn thao tác quá nhanh, vui lòng thử lại sau.";
+            
+        if (msg.Contains("token expired"))
+            return "Phiên đăng nhập đã hết hạn.";
+            
+        if (msg.Contains("connection"))
+            return "Lỗi kết nối đến máy chủ đăng nhập.";
+            
+        return englishMsg;
     }
 
     private static SupabaseUserProfile? ParseSignUpUserFromBody(string raw)

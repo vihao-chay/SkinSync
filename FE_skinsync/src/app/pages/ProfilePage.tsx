@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Link } from "react-router";
 import {
   Flame,
@@ -15,13 +15,6 @@ import {
   Activity,
   Edit3,
   Camera,
-  X,
-  Mail,
-  Phone,
-  Lock,
-  Eye,
-  EyeOff,
-  Save,
 } from "lucide-react";
 import {
   AreaChart,
@@ -33,6 +26,9 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
+import { useAuth } from "../contexts/AuthContext";
+import { updateAvatarApi } from "../services/authService";
+import { resolveUserAvatar } from "../utils/avatar";
 
 type TabType = "overview" | "products" | "history";
 
@@ -109,34 +105,14 @@ const CustomTooltip = ({ active, payload }: any) => {
 };
 
 export function ProfilePage() {
+  const { user, setCurrentUser } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>("overview");
   const [routineChecks, setRoutineChecks] = useState(
     todayRoutine.map((t) => t.done)
   );
-  const [avatarUrl, setAvatarUrl] = useState(
-    "https://images.unsplash.com/photo-1630228462324-e29eec6e3f26?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx3b21hbiUyMGF2YXRhciUyMHByb2ZpbGUlMjBiZWF1dHklMjBza2luY2FyZSUyMGNsb3NlJTIwcG9ydHJhaXR8ZW58MXx8fHwxNzc0MDEzMDIyfDA&ixlib=rb-4.1.0&q=80&w=400"
-  );
+  const [avatarUrl, setAvatarUrl] = useState(resolveUserAvatar(user));
+  const [avatarUploading, setAvatarUploading] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
-
-  // Edit modal state
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [editEmail, setEditEmail] = useState("lan.anh@email.com");
-  const [editPhone, setEditPhone] = useState("0901 234 567");
-  const [editCurrentPw, setEditCurrentPw] = useState("");
-  const [editNewPw, setEditNewPw] = useState("");
-  const [editConfirmPw, setEditConfirmPw] = useState("");
-  const [showCurrentPw, setShowCurrentPw] = useState(false);
-  const [showNewPw, setShowNewPw] = useState(false);
-  const [showConfirmPw, setShowConfirmPw] = useState(false);
-  const [savedOk, setSavedOk] = useState(false);
-
-  const pwMatch = editNewPw && editConfirmPw && editNewPw === editConfirmPw;
-
-  const handleSaveEdit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setSavedOk(true);
-    setTimeout(() => { setSavedOk(false); setShowEditModal(false); }, 1500);
-  };
 
   const completedToday = routineChecks.filter(Boolean).length;
 
@@ -144,156 +120,35 @@ export function ProfilePage() {
     setRoutineChecks((prev) => prev.map((v, idx) => (idx === i ? !v : v)));
   };
 
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const url = URL.createObjectURL(file);
-      setAvatarUrl(url);
+    if (!file) {
+      return;
+    }
+
+    setAvatarUploading(true);
+
+    try {
+      const result = await updateAvatarApi(file);
+      if (result.success && result.content) {
+        setCurrentUser(result.content);
+        setAvatarUrl(resolveUserAvatar(result.content));
+      }
+    } finally {
+      setAvatarUploading(false);
+      e.target.value = "";
     }
   };
 
+  const displayName = user?.fullName ?? "Bạn";
+  const displayEmail = user?.email ?? "";
+
+  useEffect(() => {
+    setAvatarUrl(resolveUserAvatar(user));
+  }, [user]);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#f5f5f0] via-[#d4f4f4]/10 to-white pt-20">
-
-      {/* ── EDIT MODAL ── */}
-      {showEditModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-          {/* Backdrop */}
-          <div
-            className="absolute inset-0 bg-black/30 backdrop-blur-sm"
-            onClick={() => setShowEditModal(false)}
-          />
-          {/* Modal */}
-          <form
-            onSubmit={handleSaveEdit}
-            className="relative bg-white rounded-3xl shadow-2xl border border-[#ede8e0] w-full max-w-md p-6 flex flex-col gap-5 z-10"
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between">
-              <h2 className="text-[#2a2a2a]">Chỉnh Sửa Thông Tin</h2>
-              <button
-                type="button"
-                onClick={() => setShowEditModal(false)}
-                className="p-1.5 rounded-full hover:bg-[#f5f5f0] transition-colors text-[#9ca3af] hover:text-[#6b7280]"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Email */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs text-[#6b7280] flex items-center gap-1.5">
-                <Mail className="w-3.5 h-3.5" /> Email
-              </label>
-              <input
-                type="email"
-                value={editEmail}
-                onChange={(e) => setEditEmail(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl border border-[#e8d5b7] bg-[#fdf8f2] text-sm text-[#2a2a2a] focus:outline-none focus:ring-2 focus:ring-[#c4a882]/40 focus:border-[#c4a882] transition-all"
-              />
-            </div>
-
-            {/* Phone */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs text-[#6b7280] flex items-center gap-1.5">
-                <Phone className="w-3.5 h-3.5" /> Số Điện Thoại
-              </label>
-              <input
-                type="tel"
-                value={editPhone}
-                onChange={(e) => setEditPhone(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl border border-[#e8d5b7] bg-[#fdf8f2] text-sm text-[#2a2a2a] focus:outline-none focus:ring-2 focus:ring-[#c4a882]/40 focus:border-[#c4a882] transition-all"
-              />
-            </div>
-
-            {/* Divider */}
-            <div className="flex items-center gap-3">
-              <div className="flex-1 h-px bg-[#f0ebe3]" />
-              <span className="text-xs text-[#9ca3af] flex items-center gap-1"><Lock className="w-3 h-3" /> Đổi Mật Khẩu</span>
-              <div className="flex-1 h-px bg-[#f0ebe3]" />
-            </div>
-
-            {/* Current password */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs text-[#6b7280]">Mật Khẩu Hiện Tại</label>
-              <div className="relative">
-                <input
-                  type={showCurrentPw ? "text" : "password"}
-                  value={editCurrentPw}
-                  onChange={(e) => setEditCurrentPw(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full px-4 py-2.5 pr-10 rounded-xl border border-[#e8d5b7] bg-[#fdf8f2] text-sm text-[#2a2a2a] focus:outline-none focus:ring-2 focus:ring-[#c4a882]/40 focus:border-[#c4a882] transition-all"
-                />
-                <button type="button" onClick={() => setShowCurrentPw(!showCurrentPw)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9ca3af] hover:text-[#6b7280]">
-                  {showCurrentPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
-
-            {/* New password */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs text-[#6b7280]">Mật Khẩu Mới</label>
-              <div className="relative">
-                <input
-                  type={showNewPw ? "text" : "password"}
-                  value={editNewPw}
-                  onChange={(e) => setEditNewPw(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full px-4 py-2.5 pr-10 rounded-xl border border-[#e8d5b7] bg-[#fdf8f2] text-sm text-[#2a2a2a] focus:outline-none focus:ring-2 focus:ring-[#c4a882]/40 focus:border-[#c4a882] transition-all"
-                />
-                <button type="button" onClick={() => setShowNewPw(!showNewPw)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9ca3af] hover:text-[#6b7280]">
-                  {showNewPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
-
-            {/* Confirm password */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs text-[#6b7280]">Xác Nhận Mật Khẩu Mới</label>
-              <div className="relative">
-                <input
-                  type={showConfirmPw ? "text" : "password"}
-                  value={editConfirmPw}
-                  onChange={(e) => setEditConfirmPw(e.target.value)}
-                  placeholder="••••••••"
-                  className={`w-full px-4 py-2.5 pr-10 rounded-xl border bg-[#fdf8f2] text-sm text-[#2a2a2a] focus:outline-none focus:ring-2 transition-all ${
-                    editConfirmPw && !pwMatch
-                      ? "border-red-300 focus:ring-red-200"
-                      : pwMatch
-                      ? "border-emerald-300 focus:ring-emerald-200"
-                      : "border-[#e8d5b7] focus:ring-[#c4a882]/40 focus:border-[#c4a882]"
-                  }`}
-                />
-                <button type="button" onClick={() => setShowConfirmPw(!showConfirmPw)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9ca3af] hover:text-[#6b7280]">
-                  {showConfirmPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-              {editConfirmPw && !pwMatch && (
-                <p className="text-xs text-red-500">Mật khẩu xác nhận không khớp.</p>
-              )}
-            </div>
-
-            {/* Save button */}
-            <button
-              type="submit"
-              className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm transition-all ${
-                savedOk
-                  ? "bg-emerald-500 text-white"
-                  : "bg-gradient-to-r from-[#c4a882] to-[#8c6e52] text-white hover:opacity-90 shadow-sm"
-              }`}
-            >
-              {savedOk ? (
-                <><CheckCircle2 className="w-4 h-4" /> Đã lưu!</>
-              ) : (
-                <><Save className="w-4 h-4" /> Lưu Thay Đổi</>
-              )}
-            </button>
-          </form>
-        </div>
-      )}
 
       {/* Profile Header */}
       <div className="relative overflow-hidden bg-gradient-to-br from-white via-[#fce7f3]/30 to-[#d4f4f4]/20 border-b border-white/60">
@@ -315,6 +170,7 @@ export function ProfilePage() {
               />
               <button
                 onClick={() => avatarInputRef.current?.click()}
+                disabled={avatarUploading}
                 className="relative w-24 h-24 rounded-full overflow-hidden border-4 border-white shadow-xl group cursor-pointer"
               >
                 <ImageWithFallback
@@ -323,7 +179,11 @@ export function ProfilePage() {
                   className="w-full h-full object-cover object-top"
                 />
                 <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                  <Camera className="w-5 h-5 text-white" />
+                  {avatarUploading ? (
+                    <div className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <Camera className="w-5 h-5 text-white" />
+                  )}
                 </div>
               </button>
             </div>
@@ -333,16 +193,16 @@ export function ProfilePage() {
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <div className="flex items-center gap-2 mb-1">
-                    <h1 className="text-2xl text-[#2a2a2a]">Xin chào, Nguyễn Lan Anh 👋</h1>
-                    <button
-                      onClick={() => setShowEditModal(true)}
+                    <h1 className="text-2xl text-[#2a2a2a]">Xin chào, {displayName} 👋</h1>
+                    <Link
+                      to="/settings/security"
                       className="p-1.5 rounded-full hover:bg-[#c4a882]/10 text-[#9ca3af] hover:text-[#c4a882] transition-colors"
-                      title="Chỉnh sửa thông tin"
+                      title="Chỉnh sửa thông tin tài khoản"
                     >
                       <Edit3 className="w-4 h-4" />
-                    </button>
+                    </Link>
                   </div>
-                  <p className="text-[#6b7280] text-sm">lan.anh@email.com · Thành viên từ 01/2026</p>
+                  <p className="text-[#6b7280] text-sm">{displayName} · {displayEmail}</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <button className="p-2 rounded-full hover:bg-white/70 transition-colors">
@@ -401,11 +261,10 @@ export function ProfilePage() {
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`px-5 py-3 rounded-t-xl text-sm transition-all relative ${
-                  activeTab === tab
-                    ? "text-[#c4a882] bg-white shadow-sm"
-                    : "text-[#6b7280] hover:text-[#2a2a2a]"
-                }`}
+                className={`px-5 py-3 rounded-t-xl text-sm transition-all relative ${activeTab === tab
+                  ? "text-[#c4a882] bg-white shadow-sm"
+                  : "text-[#6b7280] hover:text-[#2a2a2a]"
+                  }`}
               >
                 {labels[tab]}
                 {activeTab === tab && (
@@ -521,11 +380,10 @@ export function ProfilePage() {
                     <button
                       key={i}
                       onClick={() => toggleCheck(i)}
-                      className={`flex items-center gap-3 p-2.5 rounded-xl text-left transition-all ${
-                        routineChecks[i]
-                          ? "bg-[#c4a882]/5 border border-[#c4a882]/15"
-                          : "hover:bg-[#f9fafb] border border-transparent"
-                      }`}
+                      className={`flex items-center gap-3 p-2.5 rounded-xl text-left transition-all ${routineChecks[i]
+                        ? "bg-[#c4a882]/5 border border-[#c4a882]/15"
+                        : "hover:bg-[#f9fafb] border border-transparent"
+                        }`}
                     >
                       {routineChecks[i] ? (
                         <CheckCircle2 className="w-4 h-4 text-[#c4a882] flex-shrink-0" />
@@ -533,11 +391,10 @@ export function ProfilePage() {
                         <Circle className="w-4 h-4 text-[#d1d5db] flex-shrink-0" />
                       )}
                       <span
-                        className={`text-sm transition-colors ${
-                          routineChecks[i]
-                            ? "text-[#9ca3af] line-through"
-                            : "text-[#2a2a2a]"
-                        }`}
+                        className={`text-sm transition-colors ${routineChecks[i]
+                          ? "text-[#9ca3af] line-through"
+                          : "text-[#2a2a2a]"
+                          }`}
                       >
                         {item.name}
                       </span>

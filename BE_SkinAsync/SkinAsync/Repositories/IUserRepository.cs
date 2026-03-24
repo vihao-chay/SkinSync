@@ -11,6 +11,7 @@ public interface IUserRepository
     Task<User?> GetByIdWithProfileAsync(Guid id, CancellationToken cancellationToken);
     Task<bool> EmailExistsAsync(string email, CancellationToken cancellationToken);
     Task AddAsync(User user, CancellationToken cancellationToken);
+    Task UpdateAsync(User user, CancellationToken cancellationToken);
     Task UpsertProfileAsync(UserProfile profile, CancellationToken cancellationToken);
     Task<IReadOnlyCollection<User>> GetAllAsync(CancellationToken cancellationToken);
     Task<PagingResult<User>> GetPagedAsync(AdminUsersQueryDto query, CancellationToken cancellationToken);

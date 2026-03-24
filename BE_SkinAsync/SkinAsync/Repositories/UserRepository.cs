@@ -41,6 +41,12 @@ public class UserRepository : IUserRepository
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
+    public async Task UpdateAsync(User user, CancellationToken cancellationToken)
+    {
+        _dbContext.Users.Update(user);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+    }
+
     public async Task UpsertProfileAsync(UserProfile profile, CancellationToken cancellationToken)
     {
         var existing = await _dbContext.UserProfiles.FirstOrDefaultAsync(x => x.UserId == profile.UserId, cancellationToken);

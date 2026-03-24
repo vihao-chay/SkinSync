@@ -2,10 +2,13 @@ import { Link, useLocation, useNavigate } from "react-router";
 import { User, Bell, ChevronDown, LogOut, ChevronRight, Sparkles } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
+import { useAuth } from "../contexts/AuthContext";
+import { resolveUserAvatar } from "../utils/avatar";
 
 export function Navigation() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
   const [resultsOpen, setResultsOpen] = useState(false);
   const [avatarOpen, setAvatarOpen] = useState(false);
   const avatarRef = useRef<HTMLDivElement>(null);
@@ -40,6 +43,10 @@ export function Navigation() {
     },
     { label: "Tiến Trình", to: "/progress" },
   ];
+
+  const displayName = user?.fullName ?? "Người dùng";
+  const displayEmail = user?.email ?? "";
+  const avatarSrc = resolveUserAvatar(user);
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-white/85 backdrop-blur-xl border-b border-[#e8d5b7]/60 shadow-sm shadow-black/[0.04]">
@@ -130,7 +137,7 @@ export function Navigation() {
               >
                 <div className="relative w-8 h-8 rounded-full overflow-hidden ring-2 ring-white shadow-sm flex-shrink-0">
                   <ImageWithFallback
-                    src="https://images.unsplash.com/photo-1739208885492-6e202b6f86f0?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx3b21hbiUyMHBvcnRyYWl0JTIwYXZhdGFyJTIwcHJvZmlsZSUyMHBob3RvJTIwYmVhdXR5fGVufDF8fHx8MTc3NDAxNjIwOHww&ixlib=rb-4.1.0&q=80&w=1080"
+                    src={avatarSrc}
                     alt="Avatar"
                     className="w-full h-full object-cover object-top"
                   />
@@ -154,16 +161,16 @@ export function Navigation() {
                     <div className="flex items-center gap-3 px-4 pt-4 pb-3.5 border-b border-[#f5f0e8]">
                       <div className="w-10 h-10 rounded-xl overflow-hidden ring-2 ring-[#c4a882]/20 flex-shrink-0">
                         <ImageWithFallback
-                          src="https://images.unsplash.com/photo-1739208885492-6e202b6f86f0?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx3b21hbiUyMHBvcnRyYWl0JTIwYXZhdGFyJTIwcHJvZmlsZSUyMHBob3RvJTIwYmVhdXR5fGVufDF8fHx8MTc3NDAxNjIwOHww&ixlib=rb-4.1.0&q=80&w=1080"
+                          src={avatarSrc}
                           alt="Avatar"
                           className="w-full h-full object-cover object-top"
                         />
                       </div>
                       <div className="min-w-0">
                         <p className="text-sm text-[#1c1008] truncate" style={{ fontWeight: 600 }}>
-                          Nguyễn Lan Anh
+                          {displayName}
                         </p>
-                        <p className="text-xs text-[#9ca3af] truncate">lananh@gmail.com</p>
+                        <p className="text-xs text-[#9ca3af] truncate">{displayEmail}</p>
                       </div>
                     </div>
 
@@ -182,7 +189,11 @@ export function Navigation() {
                       <div className="mx-4 my-1 h-px bg-[#f5f0e8]" />
 
                       <button
-                        onClick={() => { setAvatarOpen(false); navigate("/login"); }}
+                        onClick={async () => {
+                          setAvatarOpen(false);
+                          await logout();
+                          navigate("/login", { replace: true });
+                        }}
                         className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-[#f43f5e]/80 hover:text-[#f43f5e] hover:bg-[#f43f5e]/5 transition-colors"
                       >
                         <div className="w-8 h-8 rounded-xl bg-[#fef2f4] flex items-center justify-center flex-shrink-0">
