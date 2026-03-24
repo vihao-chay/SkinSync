@@ -1,0 +1,13 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "vite",
+  "installCommand": "cd FE_skinsync && npm install",
+  "buildCommand": "cd FE_skinsync && npm run build",
+  "outputDirectory": "FE_skinsync/dist",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
