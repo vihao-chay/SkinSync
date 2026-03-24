@@ -1,0 +1,24 @@
+using SkinAsync.Models.Dtos.Products;
+using SkinAsync.Models.Entities;
+
+namespace SkinAsync.Mappers;
+
+public static class ProductMapper
+{
+    public static ProductResponseDto ToDto(this Product product)
+    {
+        return new ProductResponseDto
+        {
+            Id = product.Id,
+            Name = product.Name,
+            Brand = product.Brand,
+            Category = product.Category,
+            Price = product.Price,
+            SuitableSkinTypes = product.SuitableSkinTypes,
+            ImageUrl = product.ImageUrl,
+            Rating = product.Rating,
+            Status = product.Status,
+            CreatedAt = product.CreatedAt
+        };
+    }
+}

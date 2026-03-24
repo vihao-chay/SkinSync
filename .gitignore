@@ -1,0 +1,27 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# logs
+*.log
+
+# env (nếu có ở root)
+.env
+
+# node (phòng trường hợp chạy ở root)
+node_modules/
+
+# build tổng
+dist/
+build/
+
+# docker (nếu dùng)
+docker-compose.override.yml
+
+# misc
+*.tmp
+*.swp
