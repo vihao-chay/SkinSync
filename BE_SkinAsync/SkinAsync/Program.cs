@@ -94,6 +94,7 @@ builder.Services.AddSwaggerGen(options =>
 var app = builder.Build();
 
 var shouldSeedOnStartup = builder.Configuration.GetValue<bool>("Startup:SeedOnStartup");
+var shouldEnableSwagger = builder.Configuration.GetValue<bool>("Swagger:Enabled");
 if (app.Environment.IsDevelopment() || shouldSeedOnStartup)
 {
     using var scope = app.Services.CreateScope();
@@ -102,7 +103,7 @@ if (app.Environment.IsDevelopment() || shouldSeedOnStartup)
 }
 
 // Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+if (app.Environment.IsDevelopment() || shouldEnableSwagger)
 {
     app.UseSwagger();
     app.UseSwaggerUI();
