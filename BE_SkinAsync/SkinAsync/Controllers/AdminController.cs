@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SkinAsync.Base;
@@ -12,6 +13,7 @@ namespace SkinAsync.Controllers;
 
 [ApiController]
 [Route("api/admin")]
+[Authorize(Roles = "admin")]
 public class AdminController : ControllerBase
 {
     private readonly AppDbContext _dbContext;
@@ -152,5 +154,45 @@ public class AdminController : ControllerBase
 
         await _productRepository.DeleteAsync(product, cancellationToken);
         return NoContent();
+    }
+
+    [HttpPatch("users/{id:guid}/status")]
+    public async Task<IActionResult> UpdateUserStatus(Guid id, [FromBody] UpdateUserStatusRequestDto request, CancellationToken cancellationToken)
+    {
+        var user = await _userRepository.GetByIdAsync(id, cancellationToken);
+        if (user is null)
+        {
+            return NotFound("User not found.");
+        }
+
+        var status = request.Status.Trim().ToLowerInvariant();
+        if (status is not ("active" or "banned"))
+        {
+            return BadRequest("Status must be either 'active' or 'banned'.");
+        }
+
+        user.Status = status;
+        await _userRepository.UpdateAsync(user, cancellationToken);
+        return Ok(user.ToAdminUserDto());
+    }
+
+    [HttpPatch("users/{id:guid}/role")]
+    public async Task<IActionResult> UpdateUserRole(Guid id, [FromBody] UpdateUserRoleRequestDto request, CancellationToken cancellationToken)
+    {
+        var user = await _userRepository.GetByIdAsync(id, cancellationToken);
+        if (user is null)
+        {
+            return NotFound("User not found.");
+        }
+
+        var role = request.Role.Trim().ToLowerInvariant();
+        if (role is not ("user" or "admin"))
+        {
+            return BadRequest("Role must be either 'user' or 'admin'.");
+        }
+
+        user.Role = role;
+        await _userRepository.UpdateAsync(user, cancellationToken);
+        return Ok(user.ToAdminUserDto());
     }
 }

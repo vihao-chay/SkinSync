@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import {
   Sun,
@@ -12,6 +12,28 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
+import { getCurrentRegimenApi } from "../services/regimenService";
+
+interface StepItem {
+  step: number;
+  name: string;
+  product: string;
+  brand: string;
+  price: string;
+  aiReason: string;
+  duration: string;
+  image: string;
+  tag: string;
+  tagColor: string;
+}
+
+interface ProductItem {
+  name: string;
+  price: string;
+  cat: string;
+  stars: number;
+  img: string;
+}
 
 const morningSteps = [
   {
@@ -123,7 +145,7 @@ const products = [
   { name: "Klairs Night Cream", price: "520.000đ", cat: "Dưỡng Đêm", stars: 4.8, img: "https://images.unsplash.com/photo-1767360963892-3353defd6584?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxza2luY2FyZSUyMG5pZ2h0JTIwY3JlYW0lMjBtb2lzdHVyaXplciUyMGx1eHVyeSUyMGphcnxlbnwxfHx8fDE3NzQwMTMwMjF8MA&ixlib=rb-4.1.0&q=80&w=200" },
 ];
 
-function StepCard({ item, index }: { item: (typeof morningSteps)[0]; index: number }) {
+function StepCard({ item, index }: { item: StepItem; index: number }) {
   const [showReason, setShowReason] = useState(false);
 
   return (
@@ -195,10 +217,52 @@ function StepCard({ item, index }: { item: (typeof morningSteps)[0]; index: numb
 export function RoutinePage() {
   const navigate = useNavigate();
   const [started, setStarted] = useState(false);
+  const [displayMorning, setDisplayMorning] = useState<StepItem[]>(morningSteps);
+  const [displayEvening, setDisplayEvening] = useState<StepItem[]>(eveningSteps);
+  const [displayProducts, setDisplayProducts] = useState<ProductItem[]>(products);
+  const [apiTotalCost, setApiTotalCost] = useState<number | null>(null);
+  const [regimenMessage, setRegimenMessage] = useState<string | null>(null);
 
-  const totalCost = products.reduce((sum, p) => {
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadRegimen = async () => {
+      const result = await getCurrentRegimenApi();
+      if (!isMounted || !result.success || !result.content) {
+        if (isMounted && result.message) {
+          setRegimenMessage(result.message);
+        }
+
+        return;
+      }
+
+      const mappedMorning = result.content.morning.map((item, index) => mapRegimenToStepItem(item, index));
+      const mappedEvening = result.content.evening.map((item, index) => mapRegimenToStepItem(item, index));
+      const productMap = [...result.content.morning, ...result.content.evening].map((item) => ({
+        name: item.name,
+        price: formatCurrency(item.price),
+        cat: item.category,
+        stars: 4.7,
+        img: resolveMediaUrl(item.imageUrl),
+      }));
+
+      setDisplayMorning(mappedMorning.length > 0 ? mappedMorning : morningSteps);
+      setDisplayEvening(mappedEvening.length > 0 ? mappedEvening : eveningSteps);
+      setDisplayProducts(productMap.length > 0 ? productMap : products);
+      setApiTotalCost(result.content.totalEstimatedCost);
+    };
+
+    void loadRegimen();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const fallbackTotalCost = displayProducts.reduce((sum, p) => {
     return sum + parseInt(p.price.replace(/\./g, "").replace("đ", ""));
   }, 0);
+  const totalCost = apiTotalCost !== null ? apiTotalCost : fallbackTotalCost;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#f5f5f0] via-white to-[#fce7f3]/20 pt-20">
@@ -259,7 +323,7 @@ export function RoutinePage() {
               </div>
 
               <div className="p-5 flex flex-col gap-3">
-                {morningSteps.map((item, index) => (
+                {displayMorning.map((item, index) => (
                   <StepCard key={item.step} item={item} index={index} />
                 ))}
               </div>
@@ -281,7 +345,7 @@ export function RoutinePage() {
               </div>
 
               <div className="p-5 flex flex-col gap-3">
-                {eveningSteps.map((item, index) => (
+                {displayEvening.map((item, index) => (
                   <StepCard key={item.step} item={item} index={index} />
                 ))}
               </div>
@@ -318,7 +382,7 @@ export function RoutinePage() {
               </p>
 
               <div className="flex flex-col gap-3">
-                {products.map((p) => (
+                {displayProducts.map((p) => (
                   <div
                     key={p.name}
                     className="flex items-center gap-3 p-3 rounded-xl hover:bg-[#f9fafb] transition-colors border border-transparent hover:border-gray-100 cursor-pointer group"
@@ -345,6 +409,10 @@ export function RoutinePage() {
                   </div>
                 ))}
               </div>
+
+              {regimenMessage && (
+                <p className="text-xs text-amber-600 mt-3">{regimenMessage}</p>
+              )}
 
               {/* Total */}
               <div className="mt-4 pt-4 border-t border-gray-100">
@@ -422,4 +490,40 @@ export function RoutinePage() {
       </div>
     </div>
   );
+}
+
+function mapRegimenToStepItem(
+  item: { name: string; category: string; price: number; imageUrl?: string | null },
+  index: number
+): StepItem {
+  return {
+    step: index + 1,
+    name: item.category,
+    product: item.name,
+    brand: "AI Selected",
+    price: formatCurrency(item.price),
+    aiReason: `Sản phẩm được gợi ý cho bước ${item.category.toLowerCase()} trong lộ trình cá nhân hóa.`,
+    duration: "Theo hướng dẫn",
+    image: resolveMediaUrl(item.imageUrl),
+    tag: "AI Đề Xuất",
+    tagColor: "#8c6e52",
+  };
+}
+
+function formatCurrency(value: number): string {
+  const rounded = Math.round(value).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  return `${rounded}đ`;
+}
+
+function resolveMediaUrl(url?: string | null): string {
+  if (!url) {
+    return "https://images.unsplash.com/photo-1685052388326-b6383ec2d524?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=400";
+  }
+
+  if (/^https?:\/\//i.test(url)) {
+    return url;
+  }
+
+  const base = (import.meta.env.VITE_API_BASE_URL ?? "/api").replace(/\/api\/?$/i, "");
+  return `${base}${url}`;
 }

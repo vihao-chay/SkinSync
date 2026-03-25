@@ -26,6 +26,15 @@ public class AnalysisRepository : IAnalysisRepository
         return _dbContext.AiAnalyses.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
     }
 
+    public Task<AiAnalysis?> GetLatestByUserIdAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        return _dbContext.AiAnalyses
+            .AsNoTracking()
+            .Where(x => x.UserId == userId)
+            .OrderByDescending(x => x.CreatedAt)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
     public async Task<IReadOnlyCollection<AiAnalysis>> GetHistoryByUserIdAsync(Guid userId, CancellationToken cancellationToken)
     {
         return await _dbContext.AiAnalyses

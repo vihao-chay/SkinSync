@@ -33,6 +33,7 @@ const TOKEN_KEY = "skinsync_access_token";
 const REFRESH_TOKEN_KEY = "skinsync_refresh_token";
 const USER_KEY = "skinsync_user";
 const AUTH_PROVIDER_KEY = "skinsync_auth_provider";
+export const AUTH_STATE_CHANGED_EVENT = "skinsync-auth-changed";
 
 let refreshPromise: Promise<boolean> | null = null;
 
@@ -67,12 +68,11 @@ function getAuthHeaders(baseHeaders?: HeadersInit): Headers {
     headers.set("Authorization", `Bearer ${accessToken}`);
   }
 
-  const user = getSavedUser();
-  if (user?.id) {
-    headers.set("Id", user.id);
-  }
-
   return headers;
+}
+
+function notifyAuthStateChanged() {
+  window.dispatchEvent(new Event(AUTH_STATE_CHANGED_EVENT));
 }
 
 async function performRefreshToken(): Promise<boolean> {
@@ -136,6 +136,8 @@ async function requestApi<T>(
       if (refreshed) {
         return requestApi<T>(path, init, { requiresAuth: true, retryOnUnauthorized: false });
       }
+
+      return buildFailureResponse<T>("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.", 401);
     }
 
     return parseApiResponse<T>(response);
@@ -148,6 +150,7 @@ export function saveAuthData(loginResponse: LoginResponse) {
   localStorage.setItem(TOKEN_KEY, loginResponse.accessToken);
   localStorage.setItem(REFRESH_TOKEN_KEY, loginResponse.refreshToken);
   localStorage.setItem(USER_KEY, JSON.stringify(loginResponse.user));
+  notifyAuthStateChanged();
 }
 
 export function getAccessToken(): string | null {
@@ -173,6 +176,7 @@ export function getSavedUser(): AuthUser | null {
 
 export function setSavedUser(user: AuthUser) {
   localStorage.setItem(USER_KEY, JSON.stringify(user));
+  notifyAuthStateChanged();
 }
 
 export function clearAuthData() {
@@ -180,10 +184,12 @@ export function clearAuthData() {
   localStorage.removeItem(REFRESH_TOKEN_KEY);
   localStorage.removeItem(USER_KEY);
   localStorage.removeItem(AUTH_PROVIDER_KEY);
+  notifyAuthStateChanged();
 }
 
 export function setAuthProvider(provider: AuthProvider) {
   localStorage.setItem(AUTH_PROVIDER_KEY, provider);
+  notifyAuthStateChanged();
 }
 
 export function getAuthProvider(): AuthProvider | null {

@@ -77,7 +77,9 @@ public class JwtService : IJwtAuthService
                 return false;
             }
 
-            var sub = principal.FindFirstValue(JwtRegisteredClaimNames.Sub);
+            var sub = principal.FindFirstValue(JwtRegisteredClaimNames.Sub)
+                ?? principal.FindFirstValue(ClaimTypes.NameIdentifier)
+                ?? principal.FindFirstValue("sub");
             var roleClaim = principal.FindFirstValue(ClaimTypes.Role) ?? string.Empty;
             if (!Guid.TryParse(sub, out userId) || userId == Guid.Empty)
             {

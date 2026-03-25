@@ -15,6 +15,7 @@ import {
   Sun,
   Leaf,
 } from "lucide-react";
+import { saveSurveyApi } from "../services/surveyService";
 
 type Step = 1 | 2 | 3 | 4;
 
@@ -118,6 +119,8 @@ export function QuizPage() {
   const [selectedConcerns, setSelectedConcerns] = useState<string[]>([]);
   const [budget, setBudget] = useState("");
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const toggleConcern = (id: string) => {
     setSelectedConcerns((prev) =>
@@ -137,9 +140,29 @@ export function QuizPage() {
     return true;
   };
 
-  const handleNext = () => {
-    if (currentStep < 4) setCurrentStep((currentStep + 1) as Step);
-    else navigate("/analysis");
+  const handleNext = async () => {
+    if (currentStep < 4) {
+      setCurrentStep((currentStep + 1) as Step);
+      return;
+    }
+
+    setSubmitError(null);
+    setIsSubmitting(true);
+
+    const result = await saveSurveyApi({
+      skinType,
+      skinConcerns: selectedConcerns,
+      monthlyBudget: budget,
+    });
+
+    setIsSubmitting(false);
+
+    if (!result.success) {
+      setSubmitError(result.message || "Không thể lưu thông tin quiz. Vui lòng thử lại.");
+      return;
+    }
+
+    navigate("/analysis");
   };
 
   const handleBack = () => {
@@ -541,9 +564,9 @@ export function QuizPage() {
 
             <button
               onClick={handleNext}
-              disabled={currentStep < 4 && !canNext()}
+              disabled={(currentStep < 4 && !canNext()) || isSubmitting}
               className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl transition-all duration-300 ${
-                canNext()
+                (canNext() || currentStep === 4) && !isSubmitting
                   ? "bg-gradient-to-r from-[#c4a882] to-[#8c6e52] text-white shadow-lg shadow-[#c4a882]/20 hover:shadow-[#c4a882]/35 hover:scale-[1.01]"
                   : "bg-[#e5e7eb] text-[#9ca3af] cursor-not-allowed"
               }`}
@@ -551,7 +574,7 @@ export function QuizPage() {
               {currentStep === 4 ? (
                 <>
                   <Sparkles className="w-5 h-5" />
-                  Phân Tích Ngay
+                  {isSubmitting ? "Đang Lưu..." : "Phân Tích Ngay"}
                 </>
               ) : (
                 <>
@@ -561,6 +584,10 @@ export function QuizPage() {
               )}
             </button>
           </div>
+
+          {submitError && (
+            <p className="text-sm text-red-500 mt-3 text-center">{submitError}</p>
+          )}
         </div>
 
         {/* Bottom summary (steps 2+) */}

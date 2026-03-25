@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SkinAsync.Base;
 using SkinAsync.Helpers;
@@ -11,6 +12,7 @@ namespace SkinAsync.Controllers;
 
 [ApiController]
 [Route("api/auth")]
+[Authorize]
 public class AuthController : ControllerBase
 {
     private readonly IUserRepository _userRepository;
@@ -26,6 +28,7 @@ public class AuthController : ControllerBase
         _environment = environment;
     }
 
+    [AllowAnonymous]
     [HttpPost("register")]
     public async Task<ResponseEntity<AuthUserResponseDto>> Register([FromBody] RegisterRequestDto request, CancellationToken cancellationToken)
     {
@@ -64,6 +67,7 @@ public class AuthController : ControllerBase
         return ResponseEntity<AuthUserResponseDto>.Ok(user.ToAuthUserDto(), "Đăng ký thành công.");
     }
 
+    [AllowAnonymous]
     [HttpPost("login")]
     public async Task<ResponseEntity<LoginResponseDto>> Login([FromBody] LoginRequestDto request, CancellationToken cancellationToken)
     {
@@ -88,6 +92,7 @@ public class AuthController : ControllerBase
         }, "Đăng nhập thành công.");
     }
 
+    [AllowAnonymous]
     [HttpGet("google/url")]
     public ResponseEntity<GoogleOAuthUrlResponseDto> GetGoogleLoginUrl([FromQuery] string redirectTo, [FromQuery] string? state = null)
     {
@@ -108,6 +113,7 @@ public class AuthController : ControllerBase
         }, "Tạo URL đăng nhập Google thành công.");
     }
 
+    [AllowAnonymous]
     [HttpPost("login/google")]
     public async Task<ResponseEntity<LoginResponseDto>> LoginWithGoogle([FromBody] GoogleLoginRequestDto request, CancellationToken cancellationToken)
     {
@@ -130,6 +136,7 @@ public class AuthController : ControllerBase
         }, "Đăng nhập Google thành công.");
     }
 
+    [AllowAnonymous]
     [HttpPost("refresh")]
     public async Task<ResponseEntity<LoginResponseDto>> Refresh([FromBody] RefreshTokenRequestDto request, CancellationToken cancellationToken)
     {
@@ -181,6 +188,7 @@ public class AuthController : ControllerBase
         return ResponseEntity<object>.Ok(null, "Đăng xuất thành công.");
     }
 
+    [AllowAnonymous]
     [HttpPost("forgot-password")]
     public async Task<ResponseEntity<object>> ForgotPassword([FromBody] ForgotPasswordRequestDto request, CancellationToken cancellationToken)
     {
@@ -207,6 +215,7 @@ public class AuthController : ControllerBase
         return ResponseEntity<object>.Ok(null, "Nếu email hợp lệ, hệ thống sẽ gửi liên kết khôi phục mật khẩu.");
     }
 
+    [AllowAnonymous]
     [HttpPost("reset-password")]
     public async Task<ResponseEntity<object>> ResetPassword([FromBody] ResetPasswordRequestDto request, CancellationToken cancellationToken)
     {

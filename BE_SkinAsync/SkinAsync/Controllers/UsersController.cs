@@ -1,4 +1,6 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SkinAsync.Helpers;
 using SkinAsync.Mappers;
 using SkinAsync.Models.Dtos.Users;
 using SkinAsync.Models.Entities;
@@ -8,6 +10,7 @@ namespace SkinAsync.Controllers;
 
 [ApiController]
 [Route("api/users")]
+[Authorize]
 public class UsersController : ControllerBase
 {
     private readonly IUserRepository _userRepository;
@@ -17,12 +20,29 @@ public class UsersController : ControllerBase
         _userRepository = userRepository;
     }
 
-    [HttpPost("survey")]
-    public async Task<IActionResult> SaveSurvey([FromHeader(Name = "Id")] Guid id, [FromBody] SurveyRequestDto request, CancellationToken cancellationToken)
+    [HttpGet("survey")]
+    public async Task<IActionResult> GetSurvey(CancellationToken cancellationToken)
     {
-        if (id == Guid.Empty)
+        if (!HttpContext.TryGetUserId(out var id))
         {
-            return BadRequest("Missing Id header.");
+            return Unauthorized("Missing authenticated user.");
+        }
+
+        var user = await _userRepository.GetByIdWithProfileAsync(id, cancellationToken);
+        if (user?.Profile is null)
+        {
+            return NotFound("Survey not found.");
+        }
+
+        return Ok(user.Profile.ToSurveyDto());
+    }
+
+    [HttpPost("survey")]
+    public async Task<IActionResult> SaveSurvey([FromBody] SurveyRequestDto request, CancellationToken cancellationToken)
+    {
+        if (!HttpContext.TryGetUserId(out var id))
+        {
+            return Unauthorized("Missing authenticated user.");
         }
 
         var user = await _userRepository.GetByIdAsync(id, cancellationToken);

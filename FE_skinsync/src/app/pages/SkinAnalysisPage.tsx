@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import {
   Sparkles,
@@ -10,6 +11,8 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
+import { getLatestAnalysisApi } from "../services/analysisService";
+import { getSurveyApi } from "../services/surveyService";
 
 const skinMetrics = [
   { label: "Độ Ẩm", value: 68, color: "#c4a882", icon: <Droplets className="w-3.5 h-3.5" /> },
@@ -28,6 +31,38 @@ const issuePoints = [
 
 export function SkinAnalysisPage() {
   const navigate = useNavigate();
+  const [score, setScore] = useState(85);
+  const [skinType, setSkinType] = useState("Da Hon Hop");
+  const [analysisImage, setAnalysisImage] = useState(
+    "https://images.unsplash.com/photo-1759334509972-53f70f5f2a69?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080"
+  );
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const load = async () => {
+      const [analysisResult, surveyResult] = await Promise.all([getLatestAnalysisApi(), getSurveyApi()]);
+      if (!isMounted) {
+        return;
+      }
+
+      if (analysisResult.success && analysisResult.content) {
+        setScore(analysisResult.content.overallScore);
+        if (analysisResult.content.imageUrl) {
+          setAnalysisImage(resolveMediaUrl(analysisResult.content.imageUrl));
+        }
+      }
+
+      if (surveyResult.success && surveyResult.content?.skinType) {
+        setSkinType(surveyResult.content.skinType);
+      }
+    };
+
+    void load();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#f5f5f0] via-white to-[#d4f4f4]/20 pt-20">
@@ -64,7 +99,7 @@ export function SkinAnalysisPage() {
                 {/* Face Image Container */}
                 <div className="relative aspect-[3/4]">
                   <ImageWithFallback
-                    src="https://images.unsplash.com/photo-1759334509972-53f70f5f2a69?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxmYWNlJTIwc2tpbiUyMGFuYWx5c2lzJTIwZ2xvdyUyMG5lb24lMjBibHVlJTIwc2NpZW5jZSUyMGJlYXV0eXxlbnwxfHx8fDE3NzQwMTMwMTZ8MA&ixlib=rb-4.1.0&q=80&w=1080"
+                    src={analysisImage}
                     alt="AI Face Analysis"
                     className="w-full h-full object-cover object-top opacity-85 mix-blend-luminosity"
                   />
@@ -120,7 +155,7 @@ export function SkinAnalysisPage() {
                     <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl px-6 py-3 text-center shadow-xl">
                       <div className="text-[#d4f4f4] text-xs mb-1">Điểm Tổng Quan</div>
                       <div className="text-4xl text-white">
-                        85
+                        {score}
                         <span className="text-xl text-white/50">/100</span>
                       </div>
                     </div>
@@ -159,7 +194,7 @@ export function SkinAnalysisPage() {
               <div className="col-span-2 sm:col-span-1 bg-gradient-to-br from-[#c4a882] to-[#8c6e52] rounded-3xl p-5 text-white shadow-lg shadow-[#c4a882]/20">
                 <div className="text-white/70 text-xs mb-2">Điểm Tổng Quan</div>
                 <div className="text-5xl mb-2">
-                  85
+                  {score}
                   <span className="text-2xl text-white/60">/100</span>
                 </div>
                 <div className="flex items-center gap-1.5">
@@ -168,7 +203,7 @@ export function SkinAnalysisPage() {
                 </div>
                 {/* Score arc visual */}
                 <div className="mt-3 h-1.5 bg-white/20 rounded-full overflow-hidden">
-                  <div className="h-full w-[85%] bg-white/80 rounded-full" />
+                  <div className="h-full bg-white/80 rounded-full" style={{ width: `${score}%` }} />
                 </div>
               </div>
 
@@ -176,7 +211,7 @@ export function SkinAnalysisPage() {
               <div className="col-span-2 sm:col-span-1 bg-white/80 backdrop-blur-md rounded-3xl p-5 border border-white/80 shadow-sm">
                 <div className="text-[#6b7280] text-xs mb-2">Loại Da Được Xác Định</div>
                 <div className="text-2xl text-[#2a2a2a] mb-3">
-                  Da Hỗn Hợp
+                  {skinType}
                 </div>
                 <div className="flex gap-2 flex-wrap">
                   {["Vùng T Dầu", "Má Khô", "Nhạy Cảm Nhẹ"].map((tag) => (
@@ -325,4 +360,13 @@ export function SkinAnalysisPage() {
       `}</style>
     </div>
   );
+}
+
+function resolveMediaUrl(url: string): string {
+  if (/^https?:\/\//i.test(url)) {
+    return url;
+  }
+
+  const base = (import.meta.env.VITE_API_BASE_URL ?? "/api").replace(/\/api\/?$/i, "");
+  return `${base}${url}`;
 }

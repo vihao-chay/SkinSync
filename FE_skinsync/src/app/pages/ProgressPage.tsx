@@ -1,3 +1,4 @@
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import {
   AreaChart,
@@ -24,8 +25,13 @@ import {
   Droplets,
 } from "lucide-react";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
+import {
+  getProgressChartApi,
+  getProgressOverviewApi,
+  getProgressStreakApi,
+} from "../services/progressService";
 
-const skinScoreData = [
+const fallbackSkinScoreData = [
   { label: "T1 W1", score: 52, hydration: 45 },
   { label: "T1 W2", score: 60, hydration: 55 },
   { label: "T2 W1", score: 63, hydration: 60 },
@@ -65,7 +71,65 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 
 export function ProgressPage() {
   const navigate = useNavigate();
-  const improvementPercent = Math.round(((87 - 52) / 52) * 100);
+  const [overview, setOverview] = useState({
+    startScore: 52,
+    currentScore: 87,
+    improvementPercent: 67,
+    completedDaysLast28: 28,
+    currentStreak: 13,
+  });
+  const [chartData, setChartData] = useState(fallbackSkinScoreData);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const load = async () => {
+      const [overviewResult, chartResult, streakResult] = await Promise.all([
+        getProgressOverviewApi(),
+        getProgressChartApi(30),
+        getProgressStreakApi(30),
+      ]);
+
+      if (!isMounted) {
+        return;
+      }
+
+      if (overviewResult.success && overviewResult.content) {
+        setOverview((prev) => ({
+          ...prev,
+          startScore: overviewResult.content.startScore ?? prev.startScore,
+          currentScore: overviewResult.content.currentScore ?? prev.currentScore,
+          improvementPercent: Math.round(overviewResult.content.improvementPercent),
+          completedDaysLast28: overviewResult.content.completedDaysLast28,
+          currentStreak: overviewResult.content.currentStreak,
+        }));
+      }
+
+      if (streakResult.success && streakResult.content) {
+        setOverview((prev) => ({
+          ...prev,
+          currentStreak: streakResult.content.currentStreak,
+        }));
+      }
+
+      if (chartResult.success && chartResult.content && chartResult.content.length > 0) {
+        const mapped = chartResult.content.map((item) => ({
+          label: item.date,
+          score: item.overallScore,
+          hydration: item.hydrationScore ?? item.overallScore,
+        }));
+
+        setChartData(mapped);
+      }
+    };
+
+    void load();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const improvementPercent = useMemo(() => overview.improvementPercent, [overview.improvementPercent]);
 
   return (
     <div className="min-h-screen bg-[#faf7f2] pt-20">
@@ -80,7 +144,7 @@ export function ProgressPage() {
                   ✦ Báo Cáo 4 Tuần
                 </span>
                 <span className="px-3 py-1 rounded-full bg-orange-50 border border-orange-100 text-orange-600 text-xs flex items-center gap-1">
-                  <Flame className="w-3 h-3" /> 13 ngày streak
+                  <Flame className="w-3 h-3" /> {overview.currentStreak} ngày streak
                 </span>
               </div>
               <h1 className="text-3xl text-[#2a2a2a] mb-1">Tiến Độ Của Bạn</h1>
@@ -114,10 +178,10 @@ export function ProgressPage() {
         {/* ── STATS ROW ── */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {[
-            { label: "Điểm Da Hiện Tại",  value: "87",              unit: "/100",   color: "#c4a882", bg: "#fdf8f2", icon: <Star className="w-4 h-4" /> },
+            { label: "Điểm Da Hiện Tại",  value: `${overview.currentScore}`, unit: "/100", color: "#c4a882", bg: "#fdf8f2", icon: <Star className="w-4 h-4" /> },
             { label: "Cải Thiện",          value: `+${improvementPercent}`, unit: "%", color: "#10b981", bg: "#f0fdf4", icon: <TrendingUp className="w-4 h-4" /> },
-            { label: "Ngày Duy Trì",       value: "28",              unit: " ngày",  color: "#8c6e52", bg: "#fdf8f2", icon: <CheckCircle2 className="w-4 h-4" /> },
-            { label: "Streak Hiện Tại",    value: "13",              unit: " ngày",  color: "#f97316", bg: "#fff7ed", icon: <Flame className="w-4 h-4" /> },
+            { label: "Ngày Duy Trì",       value: `${overview.completedDaysLast28}`, unit: " ngày", color: "#8c6e52", bg: "#fdf8f2", icon: <CheckCircle2 className="w-4 h-4" /> },
+            { label: "Streak Hiện Tại",    value: `${overview.currentStreak}`, unit: " ngày", color: "#f97316", bg: "#fff7ed", icon: <Flame className="w-4 h-4" /> },
           ].map((s) => (
             <div
               key={s.label}
@@ -144,7 +208,7 @@ export function ProgressPage() {
             <div className="flex items-start justify-between mb-5 gap-3 flex-wrap">
               <div>
                 <h2 className="text-[#2a2a2a] mb-1">Biểu Đồ Cải Thiện Da</h2>
-                <p className="text-sm text-[#6b7280]">Điểm da tăng từ 52 → 87 trong 4 tuần</p>
+                <p className="text-sm text-[#6b7280]">Điểm da tăng từ {overview.startScore} → {overview.currentScore} trong 4 tuần</p>
               </div>
               <div className="flex items-center gap-4 text-xs text-[#9ca3af]">
                 <span className="flex items-center gap-1.5">
@@ -158,7 +222,7 @@ export function ProgressPage() {
 
             <div className="h-52">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart id="progress-main-chart" data={skinScoreData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+                <AreaChart id="progress-main-chart" data={chartData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
                   <defs>
                     <linearGradient id="pgScoreGrad" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#c4a882" stopOpacity={0.18} />

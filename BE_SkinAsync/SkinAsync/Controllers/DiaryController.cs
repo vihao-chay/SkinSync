@@ -1,5 +1,7 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SkinAsync.Base;
+using SkinAsync.Helpers;
 using SkinAsync.Mappers;
 using SkinAsync.Models.Dtos.Diary;
 using SkinAsync.Models.Entities;
@@ -9,6 +11,7 @@ namespace SkinAsync.Controllers;
 
 [ApiController]
 [Route("api/diary")]
+[Authorize]
 public class DiaryController : ControllerBase
 {
     private readonly IDiaryRepository _diaryRepository;
@@ -20,13 +23,50 @@ public class DiaryController : ControllerBase
         _environment = environment;
     }
 
+    [HttpGet("today")]
+    public async Task<IActionResult> GetToday(CancellationToken cancellationToken)
+    {
+        if (!HttpContext.TryGetUserId(out var id))
+        {
+            return Unauthorized("Missing authenticated user.");
+        }
+
+        var date = DateOnly.FromDateTime(DateTime.UtcNow.Date);
+        var log = await _diaryRepository.GetByUserAndDateAsync(id, date, cancellationToken);
+        if (log is null)
+        {
+            return NotFound("Diary log not found.");
+        }
+
+        return Ok(log.ToCheckInDto());
+    }
+
+    [HttpGet("day")]
+    public async Task<IActionResult> GetByDate(
+        [FromQuery] DateOnly date,
+        CancellationToken cancellationToken)
+    {
+        if (!HttpContext.TryGetUserId(out var id))
+        {
+            return Unauthorized("Missing authenticated user.");
+        }
+
+        var log = await _diaryRepository.GetByUserAndDateAsync(id, date, cancellationToken);
+        if (log is null)
+        {
+            return NotFound("Diary log not found.");
+        }
+
+        return Ok(log.ToCheckInDto());
+    }
+
     [HttpPost("check-in")]
     [Consumes("multipart/form-data")]
-    public async Task<IActionResult> CheckIn([FromHeader(Name = "Id")] Guid id, [FromForm] DiaryCheckInRequestDto request, CancellationToken cancellationToken)
+    public async Task<IActionResult> CheckIn([FromForm] DiaryCheckInRequestDto request, CancellationToken cancellationToken)
     {
-        if (id == Guid.Empty)
+        if (!HttpContext.TryGetUserId(out var id))
         {
-            return BadRequest("Missing Id header.");
+            return Unauthorized("Missing authenticated user.");
         }
 
         var date = request.Date ?? DateOnly.FromDateTime(DateTime.UtcNow.Date);
@@ -79,13 +119,12 @@ public class DiaryController : ControllerBase
 
     [HttpGet("month")]
     public async Task<ResponseEntity<PagingResult<MonthlyDiaryDayDto>>> GetMonth(
-        [FromHeader(Name = "Id")] Guid id,
         [FromQuery] DiaryMonthQueryDto query,
         CancellationToken cancellationToken)
     {
-        if (id == Guid.Empty)
+        if (!HttpContext.TryGetUserId(out var id))
         {
-            return ResponseEntity<PagingResult<MonthlyDiaryDayDto>>.Fail("Missing Id header.");
+            return ResponseEntity<PagingResult<MonthlyDiaryDayDto>>.Fail("Missing authenticated user.", 401);
         }
 
         var now = DateTime.UtcNow;

@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SkinAsync.Base;
 using SkinAsync.Helpers;
@@ -12,6 +13,7 @@ namespace SkinAsync.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class AnalysisController : ControllerBase
 {
     private readonly IUserRepository _userRepository;
@@ -42,11 +44,11 @@ public class AnalysisController : ControllerBase
 
     [HttpPost("scan")]
     [Consumes("multipart/form-data")]
-    public async Task<IActionResult> Scan([FromHeader(Name = "Id")] Guid userId, [FromForm] AnalysisScanRequestDto request, CancellationToken cancellationToken)
+    public async Task<IActionResult> Scan([FromForm] AnalysisScanRequestDto request, CancellationToken cancellationToken)
     {
-        if (userId == Guid.Empty)
+        if (!HttpContext.TryGetUserId(out var userId))
         {
-            return BadRequest("Missing Id header.");
+            return Unauthorized("Missing authenticated user.");
         }
 
         if (request.Image is null || request.Image.Length == 0)
@@ -113,13 +115,12 @@ public class AnalysisController : ControllerBase
 
     [HttpGet("history")]
     public async Task<ResponseEntity<PagingResult<AnalysisHistoryItemDto>>> History(
-        [FromHeader(Name = "Id")] Guid userId,
         [FromQuery] AnalysisHistoryQueryDto query,
         CancellationToken cancellationToken)
     {
-        if (userId == Guid.Empty)
+        if (!HttpContext.TryGetUserId(out var userId))
         {
-            return ResponseEntity<PagingResult<AnalysisHistoryItemDto>>.Fail("Missing Id header.");
+            return ResponseEntity<PagingResult<AnalysisHistoryItemDto>>.Fail("Missing authenticated user.", 401);
         }
 
         var history = await _analysisRepository.GetPagedHistoryByUserIdAsync(userId, query, cancellationToken);
@@ -138,12 +139,29 @@ public class AnalysisController : ControllerBase
         return ResponseEntity<PagingResult<AnalysisHistoryItemDto>>.Ok(response, "Fetched analysis history successfully.");
     }
 
-    [HttpGet("{id:guid}")]
-    public async Task<IActionResult> GetById(Guid id, [FromHeader(Name = "Id")] Guid userId, CancellationToken cancellationToken)
+    [HttpGet("latest")]
+    public async Task<IActionResult> Latest(CancellationToken cancellationToken)
     {
-        if (userId == Guid.Empty)
+        if (!HttpContext.TryGetUserId(out var userId))
         {
-            return BadRequest("Missing Id header.");
+            return Unauthorized("Missing authenticated user.");
+        }
+
+        var analysis = await _analysisRepository.GetLatestByUserIdAsync(userId, cancellationToken);
+        if (analysis is null)
+        {
+            return NotFound("No analysis found.");
+        }
+
+        return Ok(analysis.ToDetailDto());
+    }
+
+    [HttpGet("{id:guid}")]
+    public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
+    {
+        if (!HttpContext.TryGetUserId(out var userId))
+        {
+            return Unauthorized("Missing authenticated user.");
         }
 
         var analysis = await _analysisRepository.GetByIdAsync(id, cancellationToken);

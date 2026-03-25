@@ -1,4 +1,5 @@
 using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 
 namespace SkinAsync.Helpers;
 
@@ -8,17 +9,10 @@ public static class HttpContextUserExtensions
     {
         userId = Guid.Empty;
 
-        var claimUserId = httpContext.User?.Claims.FirstOrDefault(x => x.Type == JwtRegisteredClaimNames.Sub)?.Value;
-        if (Guid.TryParse(claimUserId, out userId) && userId != Guid.Empty)
-        {
-            return true;
-        }
+        var claimUserId = httpContext.User?.FindFirstValue(JwtRegisteredClaimNames.Sub)
+            ?? httpContext.User?.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? httpContext.User?.FindFirstValue("sub");
 
-        if (!httpContext.Request.Headers.TryGetValue("Id", out var values))
-        {
-            return false;
-        }
-
-        return Guid.TryParse(values.FirstOrDefault(), out userId) && userId != Guid.Empty;
+        return Guid.TryParse(claimUserId, out userId) && userId != Guid.Empty;
     }
 }

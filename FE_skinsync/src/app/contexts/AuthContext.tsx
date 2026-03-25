@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import {
+  AUTH_STATE_CHANGED_EVENT,
   type AuthUser,
   clearAuthData,
   getSavedUser,
@@ -52,16 +53,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [hydrateCurrentUser]);
 
   useEffect(() => {
+    const syncUserFromStorage = () => {
+      setUser(getSavedUser());
+    };
+
     const onStorageChange = (event: StorageEvent) => {
       if (event.key && !event.key.startsWith("skinsync_")) {
         return;
       }
 
-      setUser(getSavedUser());
+      syncUserFromStorage();
     };
 
+    window.addEventListener(AUTH_STATE_CHANGED_EVENT, syncUserFromStorage);
     window.addEventListener("storage", onStorageChange);
-    return () => window.removeEventListener("storage", onStorageChange);
+    return () => {
+      window.removeEventListener(AUTH_STATE_CHANGED_EVENT, syncUserFromStorage);
+      window.removeEventListener("storage", onStorageChange);
+    };
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
@@ -104,6 +113,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const setCurrentUser = useCallback((nextUser: AuthUser | null) => {
     if (nextUser) {
       setSavedUser(nextUser);
+    } else {
+      clearAuthData();
     }
     setUser(nextUser);
   }, []);

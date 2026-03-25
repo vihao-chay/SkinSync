@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import {
   ArrowLeft,
@@ -11,6 +11,7 @@ import {
   Sun,
   Moon,
 } from "lucide-react";
+import { getTodayCheckInApi, saveCheckInApi } from "../services/diaryService";
 
 type RoutineDone = "yes" | "no" | null;
 type SkinCondition = "better" | "normal" | "worse" | null;
@@ -35,9 +36,12 @@ export function CheckInPage() {
   const [irritation, setIrritation] = useState<Irritation>(null);
   const [irritationNote, setIrritationNote] = useState("");
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [notes, setNotes] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [activeRoutine, setActiveRoutine] = useState<"morning" | "evening">("morning");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const morningChecks = ["Sữa Rửa Mặt", "Toner", "Serum Vitamin C", "Kem Chống Nắng"];
   const eveningChecks = ["Tẩy Trang", "Sữa Rửa Mặt", "Serum Niacinamide", "Kem Dưỡng Đêm"];
@@ -47,16 +51,73 @@ export function CheckInPage() {
   const isComplete =
     routineDone !== null && skinCondition !== null && irritation !== null;
 
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadToday = async () => {
+      const result = await getTodayCheckInApi();
+      if (!isMounted || !result.success || !result.content) {
+        return;
+      }
+
+      const log = result.content;
+      setRoutineDone(log.morningCompleted && log.eveningCompleted ? "yes" : "no");
+      setSkinCondition(mapSkinCondition(log.skinFeeling));
+      setIrritation(log.isIrritated ? "yes" : "no");
+      setNotes(log.notes ?? "");
+
+      if (log.dailyImageUrl) {
+        setPhotoPreview(resolveMediaUrl(log.dailyImageUrl));
+      }
+
+      setMorningDone((prev) => prev.map(() => log.morningCompleted));
+      setEveningDone((prev) => prev.map(() => log.eveningCompleted));
+    };
+
+    void loadToday();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const handlePhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const url = URL.createObjectURL(file);
+      setPhotoFile(file);
       setPhotoPreview(url);
     }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!isComplete) return;
+
+    setSubmitError(null);
+    setIsSubmitting(true);
+
+    const noteParts = [notes.trim()];
+    if (irritation === "yes" && irritationNote.trim()) {
+      noteParts.push(`Kích ứng: ${irritationNote.trim()}`);
+    }
+
+    const payload = {
+      morningCompleted: routineDone === "yes" ? true : morningDone.some(Boolean),
+      eveningCompleted: routineDone === "yes" ? true : eveningDone.some(Boolean),
+      skinFeeling: mapSkinFeeling(skinCondition),
+      isIrritated: irritation === "yes",
+      notes: noteParts.filter(Boolean).join(" | "),
+      image: photoFile,
+    };
+
+    const result = await saveCheckInApi(payload);
+    setIsSubmitting(false);
+
+    if (!result.success) {
+      setSubmitError(result.message || "Không thể cập nhật check-in. Vui lòng thử lại.");
+      return;
+    }
+
     setSubmitted(true);
     setTimeout(() => navigate("/progress"), 2000);
   };
@@ -381,15 +442,15 @@ export function CheckInPage() {
           />
           <button
             onClick={handleSubmit}
-            disabled={!isComplete}
+            disabled={!isComplete || isSubmitting}
             className={`relative w-full py-4 rounded-2xl text-white flex items-center justify-center gap-3 transition-all duration-300 ${
-              isComplete
+              isComplete && !isSubmitting
                 ? "bg-gradient-to-r from-[#c4a882] to-[#8c6e52] shadow-xl shadow-[#c4a882]/25 hover:scale-[1.02] hover:shadow-[#c4a882]/40"
                 : "bg-[#e5e7eb] text-[#9ca3af] cursor-not-allowed"
             }`}
           >
             <Sparkles className={`w-5 h-5 ${isComplete ? "text-white" : "text-[#9ca3af]"}`} />
-            <span>Cập Nhật Dữ Liệu</span>
+            <span>{isSubmitting ? "Đang cập nhật..." : "Cập Nhật Dữ Liệu"}</span>
           </button>
 
           {!isComplete && (
@@ -398,7 +459,33 @@ export function CheckInPage() {
             </p>
           )}
         </div>
+
+        {submitError && (
+          <p className="text-sm text-red-500 text-center">{submitError}</p>
+        )}
       </div>
     </div>
   );
+}
+
+function mapSkinFeeling(condition: SkinCondition): string {
+  if (condition === "better") return "Better";
+  if (condition === "worse") return "Worse";
+  return "Normal";
+}
+
+function mapSkinCondition(skinFeeling: string): SkinCondition {
+  const value = skinFeeling.trim().toLowerCase();
+  if (value === "better") return "better";
+  if (value === "worse") return "worse";
+  return "normal";
+}
+
+function resolveMediaUrl(url: string): string {
+  if (/^https?:\/\//i.test(url)) {
+    return url;
+  }
+
+  const base = (import.meta.env.VITE_API_BASE_URL ?? "/api").replace(/\/api\/?$/i, "");
+  return `${base}${url}`;
 }
