@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
-import { loginWithGoogleToken, saveAuthData, setAuthProvider } from "../services/authService";
+import { loginWithGoogleToken, saveAuthData, setAuthProvider, type SocialAuthProvider } from "../services/authService";
 import { Sparkles } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 
 /**
- * This page handles the redirect callback from Supabase Google OAuth.
- * After user logs in with Google, Supabase redirects back with
+ * This page handles redirect callbacks from Supabase social OAuth.
+ * After user logs in with Google/Facebook, Supabase redirects back with
  * access_token in the URL hash fragment (#access_token=...).
  * We extract it and call our backend to complete login.
  */
@@ -18,6 +18,10 @@ export function AuthCallbackPage() {
   useEffect(() => {
     async function handleCallback() {
       try {
+        const searchParams = new URLSearchParams(window.location.search);
+        const providerParam = searchParams.get("provider");
+        const provider: SocialAuthProvider = providerParam === "facebook" ? "facebook" : "google";
+
         // Supabase puts tokens in the URL hash: #access_token=...&token_type=...
         const hashParams = new URLSearchParams(
           window.location.hash.substring(1) // Remove the '#'
@@ -26,7 +30,7 @@ export function AuthCallbackPage() {
         const accessToken = hashParams.get("access_token");
 
         if (!accessToken) {
-          setError("Không tìm thấy access token từ Google. Vui lòng thử lại.");
+          setError(`Không tìm thấy access token từ ${provider === "google" ? "Google" : "Facebook"}. Vui lòng thử lại.`);
           return;
         }
 
@@ -35,7 +39,7 @@ export function AuthCallbackPage() {
 
         if (result.success && result.content) {
           saveAuthData(result.content);
-          setAuthProvider("google");
+          setAuthProvider(provider);
           setCurrentUser(result.content.user);
           // Navigate based on user role
           if (result.content.user.role === "admin") {
@@ -44,7 +48,7 @@ export function AuthCallbackPage() {
             navigate("/", { replace: true });
           }
         } else {
-          setError(result.message || "Đăng nhập Google thất bại. Vui lòng thử lại.");
+          setError(result.message || `Đăng nhập ${provider === "google" ? "Google" : "Facebook"} thất bại. Vui lòng thử lại.`);
         }
       } catch (err: any) {
         setError(err?.message || "Có lỗi xảy ra trong quá trình xử lý.");

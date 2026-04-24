@@ -1,4 +1,8 @@
+import { createClient } from "@supabase/supabase-js";
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "/api";
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
 
 export interface AuthUser {
   id: string;
@@ -20,7 +24,8 @@ export interface LoginResponse {
 }
 
 export type RegisterResponse = AuthUser;
-export type AuthProvider = "password" | "google";
+export type SocialAuthProvider = "google" | "facebook";
+export type AuthProvider = "password" | SocialAuthProvider;
 
 export interface ApiResponse<T> {
   success: boolean;
@@ -36,6 +41,10 @@ const AUTH_PROVIDER_KEY = "skinsync_auth_provider";
 export const AUTH_STATE_CHANGED_EVENT = "skinsync-auth-changed";
 
 let refreshPromise: Promise<boolean> | null = null;
+
+const supabase = SUPABASE_URL && SUPABASE_ANON_KEY
+  ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  : null;
 
 function buildFailureResponse<T>(message: string, statusCode = 500): ApiResponse<T> {
   return {
@@ -194,7 +203,7 @@ export function setAuthProvider(provider: AuthProvider) {
 
 export function getAuthProvider(): AuthProvider | null {
   const value = localStorage.getItem(AUTH_PROVIDER_KEY);
-  if (value === "password" || value === "google") {
+  if (value === "password" || value === "google" || value === "facebook") {
     return value;
   }
 
@@ -314,4 +323,24 @@ export async function loginWithGoogleToken(supabaseAccessToken: string): Promise
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ supabaseAccessToken }),
   });
+}
+
+export async function startSupabaseOAuth(provider: SocialAuthProvider, redirectTo: string): Promise<string> {
+  if (!supabase) {
+    throw new Error("Thiếu cấu hình Supabase trên frontend.");
+  }
+
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider,
+    options: {
+      redirectTo,
+      skipBrowserRedirect: true,
+    },
+  });
+
+  if (error || !data?.url) {
+    throw new Error(error?.message || "Không thể khởi tạo đăng nhập mạng xã hội.");
+  }
+
+  return data.url;
 }

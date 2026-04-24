@@ -4,7 +4,8 @@ import { Eye, EyeOff, Mail, Lock, ArrowRight, Sparkles, User, Phone, CheckCircle
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 import {
   registerApi,
-  getGoogleLoginUrl,
+  startSupabaseOAuth,
+  type SocialAuthProvider,
 } from "../services/authService";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -31,6 +32,7 @@ export function LoginPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [isFacebookLoading, setIsFacebookLoading] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [formErrors, setFormErrors] = useState<FormErrors>({});
@@ -140,20 +142,19 @@ export function LoginPage() {
     setIsLoading(false);
   }
 
-  // ─── Google Login Handler ───────────────────────────────────────────
-  async function handleGoogleLogin() {
-    setIsGoogleLoading(true);
+  // ─── Social Login Handler ───────────────────────────────────────────
+  async function handleSocialLogin(provider: SocialAuthProvider) {
+    const setLoading = provider === "google" ? setIsGoogleLoading : setIsFacebookLoading;
+    setLoading(true);
     setApiError(null);
 
     try {
-      // The redirect_to should be the AuthCallback page on the frontend
-      const redirectTo = `${window.location.origin}/auth/callback`;
-      const googleUrl = await getGoogleLoginUrl(redirectTo);
-      // Redirect browser to Google OAuth via Supabase
-      window.location.href = googleUrl;
+      const redirectTo = `${window.location.origin}/auth/callback?provider=${provider}`;
+      const authUrl = await startSupabaseOAuth(provider, redirectTo);
+      window.location.href = authUrl;
     } catch (err: any) {
-      setApiError(err?.message || "Không thể kết nối Google. Vui lòng thử lại.");
-      setIsGoogleLoading(false);
+      setApiError(err?.message || `Không thể kết nối ${provider === "google" ? "Google" : "Facebook"}. Vui lòng thử lại.`);
+      setLoading(false);
     }
   }
 
@@ -477,8 +478,8 @@ export function LoginPage() {
             <div className="space-y-3">
               <button
                 type="button"
-                onClick={handleGoogleLogin}
-                disabled={isGoogleLoading}
+                onClick={() => void handleSocialLogin("google")}
+                disabled={isGoogleLoading || isFacebookLoading}
                 className="w-full py-3 rounded-xl border border-[#e5e7eb] bg-white hover:bg-[#fafafa] hover:border-[#d1d5db] flex items-center justify-center gap-3 transition-all group shadow-sm disabled:opacity-70"
               >
                 {isGoogleLoading ? (
@@ -493,6 +494,27 @@ export function LoginPage() {
                     </svg>
                     <span className="text-sm text-[#4b5563] group-hover:text-[#2a2a2a] transition-colors">
                       Tiếp tục với Google
+                    </span>
+                  </>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => void handleSocialLogin("facebook")}
+                disabled={isGoogleLoading || isFacebookLoading}
+                className="w-full py-3 rounded-xl border border-[#e5e7eb] bg-white hover:bg-[#f0f4ff] hover:border-[#1877F2]/30 flex items-center justify-center gap-3 transition-all group shadow-sm disabled:opacity-70"
+              >
+                {isFacebookLoading ? (
+                  <div className="w-5 h-5 border-2 border-[#1877F2]/30 border-t-[#1877F2] rounded-full animate-spin" />
+                ) : (
+                  <>
+                    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <rect width="24" height="24" rx="4" fill="#1877F2" />
+                      <path d="M16.5 12H14V10.5C14 9.948 14.448 9.5 15 9.5H16.5V7H14.5C12.567 7 11 8.567 11 10.5V12H9V14.5H11V21H14V14.5H16L16.5 12Z" fill="white" />
+                    </svg>
+                    <span className="text-sm text-[#4b5563] group-hover:text-[#1877F2] transition-colors">
+                      Tiếp tục với Facebook
                     </span>
                   </>
                 )}
