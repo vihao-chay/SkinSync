@@ -327,7 +327,12 @@ export async function loginWithGoogleToken(supabaseAccessToken: string): Promise
 
 export async function startSupabaseOAuth(provider: SocialAuthProvider, redirectTo: string): Promise<string> {
   if (!supabase) {
-    throw new Error("Thiếu cấu hình Supabase trên frontend.");
+    const missingVars = [
+      !SUPABASE_URL ? "VITE_SUPABASE_URL" : null,
+      !SUPABASE_ANON_KEY ? "VITE_SUPABASE_ANON_KEY" : null,
+    ].filter(Boolean).join(", ");
+
+    throw new Error(`Thiếu cấu hình Supabase trên frontend (${missingVars}).`);
   }
 
   const { data, error } = await supabase.auth.signInWithOAuth({
