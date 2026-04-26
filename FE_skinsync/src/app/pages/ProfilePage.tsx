@@ -192,19 +192,17 @@ export function ProfilePage() {
             <div className="flex-1">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <h1 className="text-2xl text-[#2a2a2a]">Xin chào, {displayName} 👋</h1>
-                    <Link
-                      to="/settings/security"
-                      className="p-1.5 rounded-full hover:bg-[#c4a882]/10 text-[#9ca3af] hover:text-[#c4a882] transition-colors"
-                      title="Chỉnh sửa thông tin tài khoản"
-                    >
-                      <Edit3 className="w-4 h-4" />
-                    </Link>
-                  </div>
+                  <h1 className="text-2xl text-[#2a2a2a] mb-1">Xin chào, {displayName} 👋</h1>
                   <p className="text-[#6b7280] text-sm">{displayName} · {displayEmail}</p>
                 </div>
                 <div className="flex items-center gap-2">
+                  <Link
+                    to="/settings/security"
+                    className="p-2 rounded-full hover:bg-white/70 text-[#6b7280] hover:text-[#c4a882] transition-colors"
+                    title="Chỉnh sửa thông tin tài khoản"
+                  >
+                    <Edit3 className="w-4 h-4" />
+                  </Link>
                   <button className="p-2 rounded-full hover:bg-white/70 transition-colors">
                     <Bell className="w-4 h-4 text-[#6b7280]" />
                   </button>
