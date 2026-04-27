@@ -7,6 +7,7 @@ using SkinAsync.Mappers;
 using SkinAsync.Models.Dtos.Admin;
 using SkinAsync.Models.Dtos.Products;
 using SkinAsync.Models.Entities;
+using SkinAsync.Models.Enums;
 using SkinAsync.Repositories;
 
 namespace SkinAsync.Controllers;
@@ -157,23 +158,22 @@ public class AdminController : ControllerBase
     }
 
     [HttpPatch("users/{id:guid}/status")]
-    public async Task<IActionResult> UpdateUserStatus(Guid id, [FromBody] UpdateUserStatusRequestDto request, CancellationToken cancellationToken)
+    public async Task<ResponseEntity<AdminUserItemDto>> UpdateUserStatus(Guid id, [FromBody] UpdateUserStatusRequestDto request, CancellationToken cancellationToken)
     {
         var user = await _userRepository.GetByIdAsync(id, cancellationToken);
         if (user is null)
         {
-            return NotFound("User not found.");
+            return ResponseEntity<AdminUserItemDto>.Fail("User not found.", 404);
         }
 
-        var status = request.Status.Trim().ToLowerInvariant();
-        if (status is not ("active" or "banned"))
+        if (!UserStatusExtensions.TryParseFromRequest(request.Status, out var nextStatus))
         {
-            return BadRequest("Status must be either 'active' or 'banned'.");
+            return ResponseEntity<AdminUserItemDto>.Fail("Status must be one of: active, inactive, banned.", 400);
         }
 
-        user.Status = status;
+        user.Status = nextStatus.ToDbValue();
         await _userRepository.UpdateAsync(user, cancellationToken);
-        return Ok(user.ToAdminUserDto());
+        return ResponseEntity<AdminUserItemDto>.Ok(user.ToAdminUserDto(), "Cập nhật trạng thái người dùng thành công.");
     }
 
     [HttpPatch("users/{id:guid}/role")]

@@ -56,6 +56,34 @@ function StrengthBar({ password }: { password: string }) {
     );
 }
 
+function PasswordGuide({ password }: { password: string }) {
+    const rules = [
+        { label: "Ít nhất 8 ký tự", valid: password.length >= 8 },
+        { label: "Có chữ in hoa (A-Z)", valid: /[A-Z]/.test(password) },
+        { label: "Có chữ thường (a-z)", valid: /[a-z]/.test(password) },
+        { label: "Có số (0-9)", valid: /[0-9]/.test(password) },
+        { label: "Có ký tự đặc biệt (!@#$...)", valid: /[^A-Za-z0-9]/.test(password) },
+    ];
+
+    return (
+        <div className="mt-2 rounded-xl border border-[#efe7dc] bg-[#fdf8f2] px-3.5 py-3">
+            <p className="text-xs text-[#7c6b58] mb-2">Mật khẩu mạnh nên có:</p>
+            <ul className="space-y-1.5">
+                {rules.map((rule) => (
+                    <li key={rule.label} className="flex items-center gap-2">
+                        <span
+                            className={`inline-block w-1.5 h-1.5 rounded-full ${rule.valid ? "bg-emerald-500" : "bg-[#cbbca9]"}`}
+                        />
+                        <span className={`text-xs ${rule.valid ? "text-emerald-700" : "text-[#9b8d7a]"}`}>
+                            {rule.label}
+                        </span>
+                    </li>
+                ))}
+            </ul>
+        </div>
+    );
+}
+
 export function SecuritySettingsPage() {
     const { user, refreshCurrentUser, setCurrentUser } = useAuth();
     const isGoogleUser = getAuthProvider() === "google";
@@ -432,6 +460,7 @@ export function SecuritySettingsPage() {
 
                         {/* New password */}
                         <div className="flex flex-col gap-1.5">
+                            <PasswordGuide password={newPw} />
                             <label className="text-sm text-[#4b5563] flex items-center gap-1.5">
                                 <ShieldCheck className="w-3.5 h-3.5 text-[#9ca3af]" />
                                 Mật Khẩu Mới
@@ -494,8 +523,7 @@ export function SecuritySettingsPage() {
                             )}
                         </div>
 
-                        <div className="flex items-center justify-between pt-1">
-                            <p className="text-xs text-[#9ca3af]">Mật khẩu phải có ít nhất 8 ký tự</p>
+                        <div className="flex items-center justify-end pt-1">
                             <button
                                 type="submit"
                                 disabled={!canSubmitPw || pwLoading}

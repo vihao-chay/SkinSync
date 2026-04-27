@@ -190,20 +190,12 @@ export const router = createBrowserRouter([
   },
   {
     path: "/forgot-password",
-    element: (
-      <GuestOnly>
-        <ForgotPasswordPage />
-      </GuestOnly>
-    ),
+    element: <ForgotPasswordPage />,
     errorElement: <ErrorBoundary />,
   },
   {
     path: "/reset-password",
-    element: (
-      <GuestOnly>
-        <ResetPasswordPage />
-      </GuestOnly>
-    ),
+    element: <ResetPasswordPage />,
     errorElement: <ErrorBoundary />,
   },
   {

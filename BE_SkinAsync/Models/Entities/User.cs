@@ -9,7 +9,7 @@ public class User
     public string PasswordHash { get; set; } = string.Empty;
     public string? AvatarUrl { get; set; }
     public string Role { get; set; } = "user";
-    public string Status { get; set; } = "active";
+    public string Status { get; set; } = "inactive";
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public UserProfile? Profile { get; set; }

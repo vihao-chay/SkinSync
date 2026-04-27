@@ -11,6 +11,8 @@ import {
   UserCircle,
 } from "lucide-react";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
+import { useAuth } from "../contexts/AuthContext";
+import { resolveUserAvatar } from "../utils/avatar";
 
 const sidebarLinks = [
   { label: "Tổng Quan",  to: "/admin",             icon: <LayoutDashboard className="w-4 h-4" /> },
@@ -27,6 +29,7 @@ interface AdminLayoutProps {
 export function AdminLayout({ children, title }: AdminLayoutProps) {
   const location  = useLocation();
   const navigate  = useNavigate();
+  const { user, logout } = useAuth();
   const [showPopup, setShowPopup] = useState(false);
   const popupRef  = useRef<HTMLDivElement>(null);
 
@@ -45,6 +48,16 @@ export function AdminLayout({ children, title }: AdminLayoutProps) {
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
+
+  const handleLogout = async () => {
+    await logout();
+    setShowPopup(false);
+    navigate("/login", { replace: true });
+  };
+
+  const displayName = user?.fullName ?? "Admin";
+  const displayEmail = user?.email ?? "";
+  const avatarUrl = resolveUserAvatar(user);
 
   return (
     <div className="min-h-screen bg-[#f4f5f7] flex">
@@ -101,14 +114,14 @@ export function AdminLayout({ children, title }: AdminLayoutProps) {
                 Hồ Sơ Của Tôi
               </button>
               <div className="h-px bg-white/8 mx-3" />
-              <Link
-                to="/login"
-                onClick={() => setShowPopup(false)}
+              <button
+                type="button"
+                onClick={handleLogout}
                 className="flex items-center gap-2.5 px-4 py-3 text-white/40 hover:text-white/70 hover:bg-white/5 transition-all text-sm"
               >
                 <LogOut className="w-4 h-4" />
                 Đăng Xuất
-              </Link>
+              </button>
             </div>
           )}
 
@@ -121,14 +134,14 @@ export function AdminLayout({ children, title }: AdminLayoutProps) {
           >
             <div className="w-8 h-8 rounded-full overflow-hidden ring-2 ring-[#c4a882]/40 flex-shrink-0">
               <ImageWithFallback
-                src="https://images.unsplash.com/photo-1739208885492-6e202b6f86f0?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx3b21hbiUyMHBvcnRyYWl0JTIwYXZhdGFyJTIwcHJvZmlsZSUyMHBob3RvJTIwYmVhdXR5fGVufDF8fHx8MTc3NDAxNjIwOHww&ixlib=rb-4.1.0&q=80&w=200"
+                src={avatarUrl}
                 alt="Admin"
                 className="w-full h-full object-cover object-top"
               />
             </div>
             <div className="flex-1 min-w-0 text-left">
-              <p className="text-xs text-white truncate" style={{ fontWeight: 500 }}>Admin Chính</p>
-              <p className="text-[10px] text-white/35 truncate">admin@skincare.ai</p>
+              <p className="text-xs text-white truncate" style={{ fontWeight: 500 }}>{displayName}</p>
+              <p className="text-[10px] text-white/35 truncate">{displayEmail}</p>
             </div>
             <ChevronRight
               className={`w-3.5 h-3.5 text-white/30 transition-transform ${showPopup ? "-rotate-90" : "rotate-90"}`}

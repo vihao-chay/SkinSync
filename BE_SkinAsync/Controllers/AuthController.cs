@@ -5,6 +5,7 @@ using SkinAsync.Helpers;
 using SkinAsync.Mappers;
 using SkinAsync.Models.Dtos.Auth;
 using SkinAsync.Models.Entities;
+using SkinAsync.Models.Enums;
 using SkinAsync.Repositories;
 using SkinAsync.Services;
 
@@ -57,7 +58,7 @@ public class AuthController : ControllerBase
                 Phone = request.Phone.Trim(),
                 PasswordHash = string.Empty,
                 Role = "user",
-                Status = "active",
+                Status = UserStatus.Inactive.ToDbValue(),
                 CreatedAt = DateTime.UtcNow
             };
 
@@ -80,6 +81,10 @@ public class AuthController : ControllerBase
         }
 
         var user = await EnsureLocalUserFromSupabaseAsync(supabaseResult.User, cancellationToken);
+        if (!TryEnsureLoginAllowed(user.Status, out var blockedMessage))
+        {
+            return ResponseEntity<LoginResponseDto>.Fail(blockedMessage, 403);
+        }
 
         var tokenPair = _jwtAuthService.GenerateTokenPair(user.Id, user.Role);
         return ResponseEntity<LoginResponseDto>.Ok(new LoginResponseDto
@@ -124,6 +129,11 @@ public class AuthController : ControllerBase
         }
 
         var user = await EnsureLocalUserFromSupabaseAsync(supabaseUser, cancellationToken);
+        if (!TryEnsureLoginAllowed(user.Status, out var blockedMessage))
+        {
+            return ResponseEntity<LoginResponseDto>.Fail(blockedMessage, 403);
+        }
+
         var tokenPair = _jwtAuthService.GenerateTokenPair(user.Id, user.Role);
 
         return ResponseEntity<LoginResponseDto>.Ok(new LoginResponseDto
@@ -149,6 +159,11 @@ public class AuthController : ControllerBase
         if (user is null)
         {
             return ResponseEntity<LoginResponseDto>.Fail("Không tìm thấy người dùng.", 404);
+        }
+
+        if (!TryEnsureLoginAllowed(user.Status, out var blockedMessage))
+        {
+            return ResponseEntity<LoginResponseDto>.Fail(blockedMessage, 403);
         }
 
         var resolvedRole = string.IsNullOrWhiteSpace(role) ? user.Role : role;
@@ -248,7 +263,7 @@ public class AuthController : ControllerBase
         var signInResult = await _supabaseAuthService.SignInWithEmailPasswordAsync(user.Email, request.OldPassword, cancellationToken);
         if (!signInResult.IsSuccess || string.IsNullOrWhiteSpace(signInResult.AccessToken))
         {
-            return ResponseEntity<object>.Fail("Mật khẩu hiện tại không chính xác hoặc tài khoản đăng nhập Google chưa có mật khẩu. Vui lòng dùng chức năng Quên mật khẩu để tạo mật khẩu mới.", 401);
+            return ResponseEntity<object>.Fail("Mật khẩu hiện tại không chính xác. Vui lòng dùng chức năng Quên mật khẩu để tạo mật khẩu mới.", 401);
         }
 
         // Use the token to update password
@@ -372,7 +387,7 @@ public class AuthController : ControllerBase
             AvatarUrl = avatarUrl,
             PasswordHash = string.Empty,
             Role = "user",
-            Status = "active",
+            Status = UserStatus.Active.ToDbValue(),
             CreatedAt = DateTime.UtcNow
         };
 
@@ -390,5 +405,25 @@ public class AuthController : ControllerBase
         return element.ValueKind == System.Text.Json.JsonValueKind.String
             ? element.GetString()
             : null;
+    }
+
+    private static bool TryEnsureLoginAllowed(string statusValue, out string message)
+    {
+        var status = UserStatusExtensions.FromDbValue(statusValue);
+
+        if (status == UserStatus.Banned)
+        {
+            message = "Tài khoản của bạn đã bị cấm. Vui lòng liên hệ quản trị viên.";
+            return false;
+        }
+
+        if (status == UserStatus.Inactive)
+        {
+            message = "Tài khoản của bạn chưa được kích hoạt. Vui lòng xác thực email hoặc liên hệ quản trị viên.";
+            return false;
+        }
+
+        message = string.Empty;
+        return true;
     }
 }

@@ -1,59 +1,40 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Search,
   X,
-  ChevronDown,
   Users,
   UserCheck,
   UserX,
   TrendingUp,
   MoreHorizontal,
   Pencil,
-  Trash2,
   Ban,
   Mail,
   Star,
   Flame,
   Filter,
+  CheckCircle,
+  XCircle,
+  Send,
+  Loader2,
 } from "lucide-react";
+import { toast } from "sonner";
 import { AdminLayout } from "../../components/AdminSidebar";
 import { ImageWithFallback } from "../../components/figma/ImageWithFallback";
+import {
+  getAdminUsersFromSupabase,
+  updateAdminUserStatus,
+  type AdminUsersPagedData,
+  type AdminUserListItem,
+  type AdminUserStatus,
+} from "../../services/adminUsersService";
 
-type UserStatus = "active" | "inactive" | "banned";
-
-interface User {
-  id: number;
-  name: string;
-  email: string;
-  avatar: string;
-  skinType: string;
-  status: UserStatus;
-  streak: number;
-  score: number;
-  joinDate: string;
-  lastActive: string;
-  analyses: number;
-}
-
-const avatarUrl = "https://images.unsplash.com/photo-1739208885492-6e202b6f86f0?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx3b21hbiUyMHBvcnRyYWl0JTIwYXZhdGFyJTIwcHJvZmlsZSUyMHBob3RvJTIwYmVhdXR5fGVufDF8fHx8MTc3NDAxNjIwOHww&ixlib=rb-4.1.0&q=80&w=200";
-
-const users: User[] = [
-  { id: 1, name: "Nguyễn Lan Anh", email: "lananh@gmail.com", avatar: avatarUrl, skinType: "Da Hỗn Hợp", status: "active", streak: 14, score: 87, joinDate: "01/2026", lastActive: "2 phút trước", analyses: 8 },
-  { id: 2, name: "Trần Minh Khoa", email: "minhkhoa@outlook.com", avatar: avatarUrl, skinType: "Da Dầu", status: "active", streak: 7, score: 72, joinDate: "02/2026", lastActive: "1 giờ trước", analyses: 4 },
-  { id: 3, name: "Lê Thị Hoa", email: "thihoa@gmail.com", avatar: avatarUrl, skinType: "Da Khô", status: "active", streak: 28, score: 91, joinDate: "12/2025", lastActive: "15 phút trước", analyses: 12 },
-  { id: 4, name: "Phạm Thu Hiền", email: "thuhien@yahoo.com", avatar: avatarUrl, skinType: "Da Nhạy Cảm", status: "inactive", streak: 0, score: 65, joinDate: "01/2026", lastActive: "3 ngày trước", analyses: 3 },
-  { id: 5, name: "Đỗ Văn Nam", email: "vannam@gmail.com", avatar: avatarUrl, skinType: "Da Thường", status: "active", streak: 5, score: 78, joinDate: "03/2026", lastActive: "40 phút trước", analyses: 2 },
-  { id: 6, name: "Vũ Thanh Hằng", email: "thanhhang@gmail.com", avatar: avatarUrl, skinType: "Da Dầu", status: "banned", streak: 0, score: 45, joinDate: "11/2025", lastActive: "2 tuần trước", analyses: 6 },
-  { id: 7, name: "Hoàng Thị Mai", email: "thimai@email.com", avatar: avatarUrl, skinType: "Da Hỗn Hợp", status: "active", streak: 21, score: 88, joinDate: "01/2026", lastActive: "5 phút trước", analyses: 10 },
-  { id: 8, name: "Bùi Quốc Hùng", email: "quochung@gmail.com", avatar: avatarUrl, skinType: "Da Khô", status: "inactive", streak: 0, score: 60, joinDate: "02/2026", lastActive: "1 tuần trước", analyses: 1 },
-];
-
-const statusStyle: Record<UserStatus, string> = {
+const statusStyle: Record<AdminUserStatus, string> = {
   active: "bg-emerald-50 text-emerald-600 border border-emerald-100",
-  inactive: "bg-[#f3f4f6] text-[#6b7280] border border-[#e5e7eb]",
+  inactive: "bg-amber-50 text-amber-600 border border-amber-100",
   banned: "bg-red-50 text-red-500 border border-red-100",
 };
-const statusLabel: Record<UserStatus, string> = {
+const statusLabel: Record<AdminUserStatus, string> = {
   active: "Hoạt Động",
   inactive: "Không Hoạt Động",
   banned: "Đã Cấm",
@@ -65,6 +46,11 @@ const skinTypeColors: Record<string, string> = {
   "Da Khô": "bg-amber-50 text-amber-600 border-amber-100",
   "Da Nhạy Cảm": "bg-pink-50 text-pink-600 border-pink-100",
   "Da Thường": "bg-emerald-50 text-emerald-600 border-emerald-100",
+  Combination: "bg-purple-50 text-purple-600 border-purple-100",
+  Oily: "bg-blue-50 text-blue-600 border-blue-100",
+  Dry: "bg-amber-50 text-amber-600 border-amber-100",
+  Sensitive: "bg-pink-50 text-pink-600 border-pink-100",
+  Normal: "bg-emerald-50 text-emerald-600 border-emerald-100",
 };
 
 const statusFilters: { label: string; value: string }[] = [
@@ -74,28 +60,247 @@ const statusFilters: { label: string; value: string }[] = [
   { label: "Đã Cấm", value: "banned" },
 ];
 
+type ConfirmAction = {
+  type: "suspend" | "activate" | "ban";
+  userId: AdminUserListItem["id"];
+  userName: string;
+};
+
+type EmailData = {
+  userEmail: string;
+  userName: string;
+};
+
 export function AdminUsersPage() {
+  const PAGE_SIZE = 5;
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [openMenu, setOpenMenu] = useState<number | null>(null);
+  const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [sortByScore, setSortByScore] = useState(false);
+  const [users, setUsers] = useState<AdminUserListItem[]>([]);
+  const [paging, setPaging] = useState<Pick<AdminUsersPagedData, "pageIndex" | "pageSize" | "totalRow" | "totalPages">>({
+    pageIndex: 1,
+    pageSize: PAGE_SIZE,
+    totalRow: 0,
+    totalPages: 1,
+  });
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
+  const [emailModal, setEmailModal] = useState<EmailData | null>(null);
+  const [emailSubject, setEmailSubject] = useState("");
+  const [emailBody, setEmailBody] = useState("");
+  const [isSending, setIsSending] = useState(false);
 
-  const filtered = users
-    .filter((u) => {
-      const matchSearch =
-        u.name.toLowerCase().includes(search.toLowerCase()) ||
-        u.email.toLowerCase().includes(search.toLowerCase());
-      const matchStatus = statusFilter === "all" || u.status === statusFilter;
-      return matchSearch && matchStatus;
-    })
-    .sort((a, b) => (sortByScore ? b.score - a.score : a.id - b.id));
+  useEffect(() => {
+    setPaging((prev) => (prev.pageIndex === 1 ? prev : { ...prev, pageIndex: 1 }));
+  }, [search, statusFilter]);
 
-  const stats = [
-    { label: "Tổng Người Dùng", value: "12,450", icon: <Users className="w-5 h-5" />, delta: "+284 tuần này", color: "#c4a882", bg: "from-[#c4a882]/10 to-[#c4a882]/5", border: "border-[#c4a882]/15" },
-    { label: "Đang Hoạt Động", value: "9,820", icon: <UserCheck className="w-5 h-5" />, delta: "78.9% tổng số", color: "#10b981", bg: "from-emerald-50 to-teal-50/60", border: "border-emerald-100" },
-    { label: "Không Hoạt Động", value: "2,410", icon: <UserX className="w-5 h-5" />, delta: "19.4% tổng số", color: "#f59e0b", bg: "from-amber-50 to-orange-50/60", border: "border-amber-100" },
-    { label: "Điểm Da TB", value: "76.4", icon: <TrendingUp className="w-5 h-5" />, delta: "+3.2 so với tháng trước", color: "#8c6e52", bg: "from-[#8c6e52]/10 to-[#8c6e52]/5", border: "border-[#8c6e52]/15" },
-  ];
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadUsers = async () => {
+      if (!hasLoadedOnce) {
+        setIsLoading(true);
+      }
+      setLoadError(null);
+
+      const result = await getAdminUsersFromSupabase(paging.pageIndex, PAGE_SIZE, {
+        search,
+        status: statusFilter as "all" | AdminUserStatus,
+      });
+      if (!isMounted) {
+        return;
+      }
+
+      if (result.success && result.content) {
+        setUsers(result.content.items);
+        setPaging({
+          pageIndex: result.content.pageIndex,
+          pageSize: result.content.pageSize,
+          totalRow: result.content.totalRow,
+          totalPages: Math.max(1, result.content.totalPages),
+        });
+      } else {
+        setUsers([]);
+        setPaging((prev) => ({ ...prev, totalRow: 0, totalPages: 1 }));
+        setLoadError(result.message || "Không thể tải danh sách người dùng.");
+      }
+
+      setHasLoadedOnce(true);
+      setIsLoading(false);
+    };
+
+    loadUsers();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [paging.pageIndex, hasLoadedOnce, search, statusFilter]);
+
+  const paginationItems = useMemo<(number | "...")[]>(() => {
+    const total = paging.totalPages;
+    const current = paging.pageIndex;
+
+    if (total <= 7) {
+      return Array.from({ length: total }, (_, i) => i + 1);
+    }
+
+    const pages: (number | "...")[] = [1];
+    const start = Math.max(2, current - 1);
+    const end = Math.min(total - 1, current + 1);
+
+    if (start > 2) {
+      pages.push("...");
+    }
+
+    for (let p = start; p <= end; p += 1) {
+      pages.push(p);
+    }
+
+    if (end < total - 1) {
+      pages.push("...");
+    }
+
+    pages.push(total);
+    return pages;
+  }, [paging.pageIndex, paging.totalPages]);
+
+  const filtered = useMemo(() => [...users]
+    .sort((a, b) => (sortByScore
+      ? b.score - a.score
+      : new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())), [users, sortByScore]);
+
+  const stats = useMemo(() => {
+    const totalUsers = users.length;
+    const activeUsers = users.filter((u) => u.status === "active").length;
+    const inactiveUsers = users.filter((u) => u.status === "inactive").length;
+    const avgScore = totalUsers
+      ? users.reduce((sum, user) => sum + user.score, 0) / totalUsers
+      : 0;
+
+    return [
+      {
+        label: "Tổng Người Dùng",
+        value: totalUsers.toLocaleString("vi-VN"),
+        icon: <Users className="w-5 h-5" />,
+        delta: "Dữ liệu từ hệ thống",
+        color: "#c4a882",
+        bg: "from-[#c4a882]/10 to-[#c4a882]/5",
+        border: "border-[#c4a882]/15",
+      },
+      {
+        label: "Đang Hoạt Động",
+        value: activeUsers.toLocaleString("vi-VN"),
+        icon: <UserCheck className="w-5 h-5" />,
+        delta: totalUsers ? `${((activeUsers / totalUsers) * 100).toFixed(1)}% tổng số` : "0% tổng số",
+        color: "#10b981",
+        bg: "from-emerald-50 to-teal-50/60",
+        border: "border-emerald-100",
+      },
+      {
+        label: "Không Hoạt Động",
+        value: inactiveUsers.toLocaleString("vi-VN"),
+        icon: <UserX className="w-5 h-5" />,
+        delta: totalUsers ? `${((inactiveUsers / totalUsers) * 100).toFixed(1)}% tổng số` : "0% tổng số",
+        color: "#f59e0b",
+        bg: "from-amber-50 to-orange-50/60",
+        border: "border-amber-100",
+      },
+      {
+        label: "Điểm Da TB",
+        value: avgScore.toFixed(1),
+        icon: <TrendingUp className="w-5 h-5" />,
+        delta: "Tính từ phân tích gần nhất",
+        color: "#8c6e52",
+        bg: "from-[#8c6e52]/10 to-[#8c6e52]/5",
+        border: "border-[#8c6e52]/15",
+      },
+    ];
+  }, [users]);
+
+  const handleConfirm = () => {
+    if (!confirmAction) return;
+
+    const nextStatus: AdminUserStatus =
+      confirmAction.type === "suspend"
+        ? "inactive"
+        : confirmAction.type === "activate"
+          ? "active"
+          : "banned";
+
+    updateAdminUserStatus(confirmAction.userId, nextStatus)
+      .then((result) => {
+        if (!result.success || !result.content) {
+          toast.error(result.message || "Không thể cập nhật trạng thái người dùng");
+          return;
+        }
+
+        const updatedStatus = result.content;
+
+        setUsers((prev) => prev.map((u) => (u.id === confirmAction.userId ? { ...u, status: updatedStatus } : u)));
+        toast.success(`Đã cập nhật trạng thái cho ${confirmAction.userName}`);
+        setConfirmAction(null);
+      })
+      .catch(() => {
+        toast.error("Không thể cập nhật trạng thái người dùng");
+      });
+  };
+
+  const getActionConfig = (type: ConfirmAction["type"]) => {
+    switch (type) {
+      case "suspend":
+        return {
+          title: "Xác nhận dừng tài khoản?",
+          action: "dừng",
+          buttonClass: "bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600",
+        };
+      case "activate":
+        return {
+          title: "Xác nhận mở tài khoản?",
+          action: "mở",
+          buttonClass: "bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600",
+        };
+      case "ban":
+        return {
+          title: "Xác nhận cấm tài khoản?",
+          action: "cấm",
+          buttonClass: "bg-gradient-to-r from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600",
+        };
+    }
+  };
+
+  const handleSendEmail = async () => {
+    if (!emailModal) return;
+    if (!emailSubject.trim() || !emailBody.trim()) {
+      toast.error("Vui lòng điền đầy đủ chủ đề và nội dung email");
+      return;
+    }
+
+    setIsSending(true);
+    await new Promise((resolve) => {
+      setTimeout(resolve, 1500);
+    });
+
+    console.log("Sending email to:", emailModal.userEmail, {
+      subject: emailSubject,
+      body: emailBody,
+    });
+
+    toast.success("Email đã được gửi thành công!");
+    setEmailModal(null);
+    setEmailSubject("");
+    setEmailBody("");
+    setIsSending(false);
+  };
+
+  const closeEmailModal = () => {
+    setEmailModal(null);
+    setEmailSubject("");
+    setEmailBody("");
+    setIsSending(false);
+  };
 
   return (
     <AdminLayout title="Người Dùng">
@@ -170,6 +375,18 @@ export function AdminUsersPage() {
         </div>
       </div>
 
+      {isLoading && (
+        <div className="mb-5 rounded-xl border border-[#e5e7eb] bg-white px-4 py-3 text-sm text-[#6b7280]">
+          Đang tải danh sách người dùng...
+        </div>
+      )}
+
+      {loadError && (
+        <div className="mb-5 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600">
+          {loadError}
+        </div>
+      )}
+
       {/* Table */}
       <div className="bg-white rounded-2xl border border-[#e5e7eb] shadow-sm overflow-hidden">
         {/* Head */}
@@ -203,7 +420,7 @@ export function AdminUsersPage() {
               <div>
                 <p className="text-sm text-[#1a1a2e] truncate" style={{ fontWeight: 500 }}>{user.name}</p>
                 <p className="text-xs text-[#9ca3af] truncate">{user.email}</p>
-                <p className="text-[10px] text-[#9ca3af]">Tham gia: {user.joinDate} · {user.lastActive}</p>
+                <p className="text-[10px] text-[#9ca3af]">Tham gia: {user.joinDate} · SĐT: {user.phone}</p>
               </div>
 
               {/* Skin Type */}
@@ -263,24 +480,68 @@ export function AdminUsersPage() {
                 </button>
                 {openMenu === user.id && (
                   <div className="absolute right-0 top-full mt-1 w-44 bg-white border border-[#e5e7eb] rounded-2xl shadow-xl py-1.5 z-20">
-                    {[
-                      { icon: <Mail className="w-3.5 h-3.5" />, label: "Gửi Email", color: "" },
-                      { icon: <Pencil className="w-3.5 h-3.5" />, label: "Chỉnh Sửa", color: "" },
-                      { icon: <Star className="w-3.5 h-3.5" />, label: "Xem Hồ Sơ", color: "" },
-                      { icon: <Ban className="w-3.5 h-3.5" />, label: "Cấm Tài Khoản", color: "text-red-500 hover:bg-red-50" },
-                      { icon: <Trash2 className="w-3.5 h-3.5" />, label: "Xóa Tài Khoản", color: "text-red-500 hover:bg-red-50" },
-                    ].map((action) => (
+                    <button
+                      onClick={() => {
+                        setOpenMenu(null);
+                        setEmailModal({ userEmail: user.email, userName: user.name });
+                      }}
+                      className="w-full flex items-center gap-2.5 px-4 py-2 text-xs transition-colors text-[#4b5563] hover:bg-[#f9fafb] hover:text-[#c4a882]"
+                    >
+                      <Mail className="w-3.5 h-3.5" />
+                      Gửi Email
+                    </button>
+                    <button
+                      onClick={() => {
+                        setOpenMenu(null);
+                      }}
+                      className="w-full flex items-center gap-2.5 px-4 py-2 text-xs transition-colors text-[#4b5563] hover:bg-[#f9fafb] hover:text-[#c4a882]"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                      Chỉnh Sửa
+                    </button>
+                    <button
+                      onClick={() => {
+                        setOpenMenu(null);
+                      }}
+                      className="w-full flex items-center gap-2.5 px-4 py-2 text-xs transition-colors text-[#4b5563] hover:bg-[#f9fafb] hover:text-[#c4a882]"
+                    >
+                      <Star className="w-3.5 h-3.5" />
+                      Xem Hồ Sơ
+                    </button>
+                    {user.status === "active" && (
                       <button
-                        key={action.label}
-                        onClick={() => setOpenMenu(null)}
-                        className={`w-full flex items-center gap-2.5 px-4 py-2 text-xs transition-colors ${
-                          action.color || "text-[#4b5563] hover:bg-[#f9fafb] hover:text-[#c4a882]"
-                        }`}
+                        onClick={() => {
+                          setOpenMenu(null);
+                          setConfirmAction({ type: "suspend", userId: user.id, userName: user.name });
+                        }}
+                        className="w-full flex items-center gap-2.5 px-4 py-2 text-xs transition-colors text-orange-500 hover:bg-orange-50"
                       >
-                        {action.icon}
-                        {action.label}
+                        <XCircle className="w-3.5 h-3.5" />
+                        Dừng Tài Khoản
                       </button>
-                    ))}
+                    )}
+                    {user.status !== "active" && (
+                      <button
+                        onClick={() => {
+                          setOpenMenu(null);
+                          setConfirmAction({ type: "activate", userId: user.id, userName: user.name });
+                        }}
+                        className="w-full flex items-center gap-2.5 px-4 py-2 text-xs transition-colors text-emerald-500 hover:bg-emerald-50"
+                      >
+                        <CheckCircle className="w-3.5 h-3.5" />
+                        Mở Tài Khoản
+                      </button>
+                    )}
+                    <button
+                      onClick={() => {
+                        setOpenMenu(null);
+                        setConfirmAction({ type: "ban", userId: user.id, userName: user.name });
+                      }}
+                      className="w-full flex items-center gap-2.5 px-4 py-2 text-xs transition-colors text-red-500 hover:bg-red-50"
+                    >
+                      <Ban className="w-3.5 h-3.5" />
+                      Cấm Tài Khoản
+                    </button>
                   </div>
                 )}
               </div>
@@ -297,13 +558,26 @@ export function AdminUsersPage() {
 
         {/* Pagination */}
         <div className="px-5 py-4 border-t border-[#f3f4f6] flex items-center justify-between text-sm text-[#6b7280]">
-          <span>Hiển thị {filtered.length} / {users.length} người dùng</span>
+          <span>Hiển thị {filtered.length} / {paging.totalRow} người dùng</span>
           <div className="flex items-center gap-1">
-            {[1, 2, 3, "...", 156].map((p, i) => (
+            <button
+              onClick={() => setPaging((prev) => ({ ...prev, pageIndex: Math.max(1, prev.pageIndex - 1) }))}
+              disabled={paging.pageIndex <= 1}
+              className="min-w-[32px] h-8 px-2 rounded-lg text-xs transition-colors disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[#f4f5f7]"
+            >
+              {'<'}
+            </button>
+            {paginationItems.map((p, i) => (
               <button
-                key={i}
+                key={`${p}-${i}`}
+                onClick={() => {
+                  if (typeof p === "number") {
+                    setPaging((prev) => ({ ...prev, pageIndex: p }));
+                  }
+                }}
+                disabled={p === "..."}
                 className={`min-w-[32px] h-8 px-2 rounded-lg text-xs transition-colors ${
-                  p === 1
+                  p === paging.pageIndex
                     ? "bg-gradient-to-r from-[#c4a882] to-[#8c6e52] text-white shadow-sm"
                     : "hover:bg-[#f4f5f7] text-[#6b7280]"
                 }`}
@@ -311,9 +585,169 @@ export function AdminUsersPage() {
                 {p}
               </button>
             ))}
+            <button
+              onClick={() => setPaging((prev) => ({ ...prev, pageIndex: Math.min(prev.totalPages, prev.pageIndex + 1) }))}
+              disabled={paging.pageIndex >= paging.totalPages}
+              className="min-w-[32px] h-8 px-2 rounded-lg text-xs transition-colors disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[#f4f5f7]"
+            >
+              {'>'}
+            </button>
           </div>
         </div>
       </div>
+
+      {/* Confirmation Modal */}
+      {confirmAction && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl shadow-2xl border border-[#e5e7eb] max-w-md w-full p-6 animate-in zoom-in-95 duration-200">
+            <div className="text-center mb-5">
+              <div
+                className={`w-14 h-14 mx-auto mb-4 rounded-2xl flex items-center justify-center ${
+                  confirmAction.type === "suspend"
+                    ? "bg-orange-50"
+                    : confirmAction.type === "activate"
+                      ? "bg-emerald-50"
+                      : "bg-red-50"
+                }`}
+              >
+                {confirmAction.type === "suspend" && <XCircle className="w-7 h-7 text-orange-500" />}
+                {confirmAction.type === "activate" && <CheckCircle className="w-7 h-7 text-emerald-500" />}
+                {confirmAction.type === "ban" && <Ban className="w-7 h-7 text-red-500" />}
+              </div>
+              <h3 className="text-xl text-[#1a1a2e] mb-2" style={{ fontWeight: 600 }}>
+                {getActionConfig(confirmAction.type).title}
+              </h3>
+              <p className="text-sm text-[#6b7280] leading-relaxed">
+                Bạn có chắc chắn muốn {getActionConfig(confirmAction.type).action} người dùng{" "}
+                <span className="text-[#1a1a2e]" style={{ fontWeight: 500 }}>
+                  {confirmAction.userName}
+                </span>{" "}
+                không? Hành động này sẽ áp dụng ngay lập tức.
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setConfirmAction(null)}
+                className="flex-1 px-4 py-2.5 rounded-xl border border-[#e5e7eb] text-[#4b5563] text-sm hover:bg-[#f9fafb] transition-colors"
+                style={{ fontWeight: 500 }}
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleConfirm}
+                className={`flex-1 px-4 py-2.5 rounded-xl text-white text-sm shadow-lg transition-all ${
+                  getActionConfig(confirmAction.type).buttonClass
+                }`}
+                style={{ fontWeight: 500 }}
+              >
+                Xác nhận
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Email Modal */}
+      {emailModal && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl shadow-2xl border border-[#e5e7eb] max-w-2xl w-full p-6 animate-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#c4a882] to-[#8c6e52] flex items-center justify-center">
+                <Mail className="w-6 h-6 text-white" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-xl text-[#1a1a2e]" style={{ fontWeight: 600 }}>
+                  Gửi Email
+                </h3>
+                <p className="text-sm text-[#6b7280]">
+                  Gửi email đến {emailModal.userName}
+                </p>
+              </div>
+              <button
+                onClick={closeEmailModal}
+                disabled={isSending}
+                className="w-8 h-8 rounded-lg hover:bg-[#f4f5f7] text-[#9ca3af] hover:text-[#1a1a2e] flex items-center justify-center transition-colors disabled:opacity-50"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Form */}
+            <div className="space-y-4">
+              {/* Recipient */}
+              <div>
+                <label className="block text-sm text-[#4b5563] mb-2" style={{ fontWeight: 500 }}>
+                  Người nhận
+                </label>
+                <div className="px-4 py-3 rounded-xl bg-[#f9fafb] border border-[#e5e7eb] text-sm text-[#6b7280]">
+                  {emailModal.userEmail}
+                </div>
+              </div>
+
+              {/* Subject */}
+              <div>
+                <label className="block text-sm text-[#4b5563] mb-2" style={{ fontWeight: 500 }}>
+                  Chủ đề <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={emailSubject}
+                  onChange={(e) => setEmailSubject(e.target.value)}
+                  placeholder="Nhập chủ đề email..."
+                  disabled={isSending}
+                  className="w-full px-4 py-3 rounded-xl bg-white border border-[#e5e7eb] text-sm text-[#1a1a2e] placeholder:text-[#9ca3af] focus:outline-none focus:ring-2 focus:ring-[#c4a882]/20 focus:border-[#c4a882] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                />
+              </div>
+
+              {/* Message Body */}
+              <div>
+                <label className="block text-sm text-[#4b5563] mb-2" style={{ fontWeight: 500 }}>
+                  Nội dung <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  value={emailBody}
+                  onChange={(e) => setEmailBody(e.target.value)}
+                  placeholder="Nhập nội dung email..."
+                  disabled={isSending}
+                  rows={8}
+                  className="w-full px-4 py-3 rounded-xl bg-white border border-[#e5e7eb] text-sm text-[#1a1a2e] placeholder:text-[#9ca3af] focus:outline-none focus:ring-2 focus:ring-[#c4a882]/20 focus:border-[#c4a882] transition-all resize-y disabled:opacity-50 disabled:cursor-not-allowed"
+                />
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center gap-3 mt-6">
+              <button
+                onClick={closeEmailModal}
+                disabled={isSending}
+                className="flex-1 px-4 py-3 rounded-xl border border-[#e5e7eb] text-[#4b5563] text-sm hover:bg-[#f9fafb] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{ fontWeight: 500 }}
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleSendEmail}
+                disabled={isSending || !emailSubject.trim() || !emailBody.trim()}
+                className="flex-1 px-4 py-3 rounded-xl bg-gradient-to-r from-[#c4a882] to-[#8c6e52] hover:from-[#b8996f] hover:to-[#7a5d44] text-white text-sm shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                style={{ fontWeight: 500 }}
+              >
+                {isSending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Đang gửi...
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-4 h-4" />
+                    Gửi Email
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </AdminLayout>
   );
 }

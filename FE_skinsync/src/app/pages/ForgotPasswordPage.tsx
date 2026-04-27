@@ -3,12 +3,18 @@ import { Link } from "react-router";
 import { Mail, ArrowLeft, Sparkles, Send, CheckCircle2 } from "lucide-react";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 import { forgotPasswordApi } from "../services/authService";
+import { useAuth } from "../contexts/AuthContext";
 
 export function ForgotPasswordPage() {
+    const { isAuthenticated, user } = useAuth();
     const [email, setEmail] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const [isSent, setIsSent] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const backTo = isAuthenticated
+        ? (user?.role === "admin" ? "/admin/profile" : "/settings/security")
+        : "/login";
+    const backLabel = isAuthenticated ? "Quay lại cài đặt bảo mật" : "Quay lại đăng nhập";
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -98,11 +104,11 @@ export function ForgotPasswordPage() {
 
                         {/* Back to login */}
                         <Link
-                            to="/login"
+                            to={backTo}
                             className="inline-flex items-center gap-2 text-sm text-[#9ca3af] hover:text-[#c4a882] transition-colors mb-8"
                         >
                             <ArrowLeft className="w-4 h-4" />
-                            Quay lại đăng nhập
+                            {backLabel}
                         </Link>
 
                         {!isSent ? (
@@ -190,11 +196,11 @@ export function ForgotPasswordPage() {
                                     </ul>
                                 </div>
                                 <Link
-                                    to="/login"
+                                    to={backTo}
                                     className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-[#c4a882]/30 text-[#c4a882] text-sm hover:bg-[#c4a882]/5 transition-colors"
                                 >
                                     <ArrowLeft className="w-4 h-4" />
-                                    Quay Lại Đăng Nhập
+                                    {backLabel}
                                 </Link>
                             </div>
                         )}

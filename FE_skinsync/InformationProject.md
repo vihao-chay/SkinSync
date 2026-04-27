@@ -1,0 +1,1 @@
+màu chủ đạo dự án: be vàng ấm #c4a882 và nâu be #8c6e52

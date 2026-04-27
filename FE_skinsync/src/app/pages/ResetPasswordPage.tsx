@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router";
 import { Lock, Eye, EyeOff, ArrowLeft, Sparkles, ShieldCheck, CheckCircle2 } from "lucide-react";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 import { resetPasswordApi } from "../services/authService";
+import { useAuth } from "../contexts/AuthContext";
 
 function StrengthBar({ password }: { password: string }) {
   const getStrength = () => {
@@ -39,6 +40,7 @@ function StrengthBar({ password }: { password: string }) {
 
 export function ResetPasswordPage() {
   const navigate = useNavigate();
+  const { isAuthenticated, user } = useAuth();
   const [newPw, setNewPw] = useState("");
   const [confirmPw, setConfirmPw] = useState("");
   const [showNew, setShowNew] = useState(false);
@@ -60,6 +62,10 @@ export function ResetPasswordPage() {
 
   const pwMatch = newPw && confirmPw && newPw === confirmPw;
   const canSubmit = newPw.length >= 8 && !!pwMatch && Boolean(accessToken);
+  const backTo = isAuthenticated
+    ? (user?.role === "admin" ? "/admin/profile" : "/settings/security")
+    : "/login";
+  const backLabel = isAuthenticated ? "Quay lại cài đặt bảo mật" : "Quay lại đăng nhập";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -147,11 +153,11 @@ export function ResetPasswordPage() {
         <div className="w-full lg:w-1/2 flex items-center justify-center bg-white px-6 py-16">
           <div className="w-full max-w-md">
             <Link
-              to="/login"
+              to={backTo}
               className="inline-flex items-center gap-2 text-sm text-[#9ca3af] hover:text-[#c4a882] transition-colors mb-8"
             >
               <ArrowLeft className="w-4 h-4" />
-              Quay lại đăng nhập
+              {backLabel}
             </Link>
 
             {!isDone ? (
