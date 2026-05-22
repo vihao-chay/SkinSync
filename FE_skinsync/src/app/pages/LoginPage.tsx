@@ -19,10 +19,10 @@ interface FormErrors {
   confirmPassword?: string;
 }
 
-export function LoginPage() {
+export function LoginPage({ initialMode = "login" }: { initialMode?: AuthMode }) {
   const navigate = useNavigate();
   const { login } = useAuth();
-  const [mode, setMode] = useState<AuthMode>("login");
+  const [mode, setMode] = useState<AuthMode>(initialMode);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [email, setEmail] = useState("");

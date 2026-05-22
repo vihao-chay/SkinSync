@@ -80,11 +80,11 @@ public static class DbSeeder
             var all = new[] { "All" };
 
             dbContext.Products.AddRange(
-                new Product { Id = Guid.NewGuid(), Name = "Gentle Cleanser", Brand = "SkinSync", Category = "Cleanser", Price = 8.99m, SuitableSkinTypes = all, Status = "active", Rating = 4.6m, CreatedAt = now },
-                new Product { Id = Guid.NewGuid(), Name = "Hydrating Toner", Brand = "SkinSync", Category = "Toner", Price = 9.99m, SuitableSkinTypes = all, Status = "active", Rating = 4.4m, CreatedAt = now },
-                new Product { Id = Guid.NewGuid(), Name = "Niacinamide Serum", Brand = "SkinSync", Category = "Serum", Price = 14.50m, SuitableSkinTypes = all, Status = "active", Rating = 4.7m, CreatedAt = now },
-                new Product { Id = Guid.NewGuid(), Name = "Daily SPF 50", Brand = "SkinSync", Category = "Sunscreen", Price = 12.25m, SuitableSkinTypes = all, Status = "active", Rating = 4.8m, CreatedAt = now },
-                new Product { Id = Guid.NewGuid(), Name = "Barrier Moisturizer", Brand = "SkinSync", Category = "Moisturizer", Price = 11.40m, SuitableSkinTypes = all, Status = "active", Rating = 4.5m, CreatedAt = now }
+                new Product { Id = Guid.NewGuid(), Name = "Gentle Cleanser", Brand = "SkinSync", Category = "Cleanser", Description = "Sữa rửa mặt dịu nhẹ cho routine hằng ngày.", Ingredient = "Glycerin, amino acid surfactants, panthenol", UsageGuide = "Massage trên da ẩm 60 giây rồi rửa sạch.", Price = 8.99m, SuitableSkinTypes = all, Status = "active", Rating = 4.6m, CreatedAt = now },
+                new Product { Id = Guid.NewGuid(), Name = "Hydrating Toner", Brand = "SkinSync", Category = "Toner", Description = "Toner cấp ẩm giúp cân bằng bề mặt da.", Ingredient = "Hyaluronic acid, beta-glucan, allantoin", UsageGuide = "Vỗ nhẹ 1 đến 2 lớp sau bước làm sạch.", Price = 9.99m, SuitableSkinTypes = all, Status = "active", Rating = 4.4m, CreatedAt = now },
+                new Product { Id = Guid.NewGuid(), Name = "Niacinamide Serum", Brand = "SkinSync", Category = "Serum", Description = "Serum hỗ trợ kiểm soát dầu và làm đều màu da.", Ingredient = "Niacinamide, zinc PCA, panthenol", UsageGuide = "Dùng 2 đến 3 giọt trước kem dưỡng.", Price = 14.50m, SuitableSkinTypes = all, Status = "active", Rating = 4.7m, CreatedAt = now },
+                new Product { Id = Guid.NewGuid(), Name = "Daily SPF 50", Brand = "SkinSync", Category = "Sunscreen", Description = "Kem chống nắng phổ rộng cho ban ngày.", Ingredient = "Modern UV filters, vitamin E, silica", UsageGuide = "Thoa lượng 2 ngón tay vào cuối routine buổi sáng.", Price = 12.25m, SuitableSkinTypes = all, Status = "active", Rating = 4.8m, CreatedAt = now },
+                new Product { Id = Guid.NewGuid(), Name = "Barrier Moisturizer", Brand = "SkinSync", Category = "Moisturizer", Description = "Kem dưỡng hỗ trợ phục hồi hàng rào bảo vệ da.", Ingredient = "Ceramide, cholesterol, fatty acids", UsageGuide = "Thoa đều sau serum, dùng sáng hoặc tối.", Price = 11.40m, SuitableSkinTypes = all, Status = "active", Rating = 4.5m, CreatedAt = now }
             );
         }
 

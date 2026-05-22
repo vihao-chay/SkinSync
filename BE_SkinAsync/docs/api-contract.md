@@ -63,6 +63,28 @@ Most endpoints return:
 
 - `GET /regimens/current` (authenticated)
 - `PUT /regimens/current` (authenticated)
+- `POST /regimens/custom` (authenticated)
+- `PUT /regimens/{id}` (authenticated)
+- `DELETE /regimens/{id}` (authenticated)
+
+### Products
+
+- `GET /products` (authenticated)
+- `GET /products/{id}` (authenticated)
+
+### Routine Tracking
+
+- `GET /routine-tracking/today` (authenticated)
+- `GET /routine-tracking/history?days=30` (authenticated)
+- `POST /routine-tracking/steps/{stepId}/complete` (authenticated)
+- `DELETE /routine-tracking/steps/{stepId}/complete` (authenticated)
+- `POST /routine-tracking/routines/{routineType}/complete` (authenticated)
+
+### Reminders
+
+- `GET /reminders` (authenticated)
+- `PUT /reminders` (authenticated)
+- `PATCH /reminders/{id}/toggle` (authenticated)
 
 ### Diary
 
@@ -76,6 +98,8 @@ Most endpoints return:
 - `GET /progress/overview` (authenticated)
 - `GET /progress/chart?days=28` (authenticated)
 - `GET /progress/streak?days=90` (authenticated)
+- `GET /progress/weekly-completion` (authenticated)
+- `GET /progress/monthly-report?year=YYYY&month=MM` (authenticated)
 
 ## Admin Endpoints
 

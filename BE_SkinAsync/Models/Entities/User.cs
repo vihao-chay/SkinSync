@@ -16,4 +16,6 @@ public class User
     public ICollection<AiAnalysis> Analyses { get; set; } = new List<AiAnalysis>();
     public ICollection<UserRegimen> Regimens { get; set; } = new List<UserRegimen>();
     public ICollection<DailyLog> DailyLogs { get; set; } = new List<DailyLog>();
+    public ICollection<RoutineTracking> RoutineTrackings { get; set; } = new List<RoutineTracking>();
+    public ICollection<Reminder> Reminders { get; set; } = new List<Reminder>();
 }

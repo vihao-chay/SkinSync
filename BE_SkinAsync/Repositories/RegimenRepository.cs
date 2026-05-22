@@ -31,9 +31,29 @@ public class RegimenRepository : IRegimenRepository
             .FirstOrDefaultAsync(x => x.UserId == userId && x.IsActive, cancellationToken);
     }
 
+    public Task<UserRegimen?> GetByIdForUserAsync(Guid regimenId, Guid userId, CancellationToken cancellationToken)
+    {
+        return _dbContext.UserRegimens
+            .Include(x => x.Items)
+            .ThenInclude(x => x.Product)
+            .FirstOrDefaultAsync(x => x.Id == regimenId && x.UserId == userId, cancellationToken);
+    }
+
     public async Task AddAsync(UserRegimen regimen, CancellationToken cancellationToken)
     {
         _dbContext.UserRegimens.Add(regimen);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task UpdateAsync(UserRegimen regimen, CancellationToken cancellationToken)
+    {
+        _dbContext.UserRegimens.Update(regimen);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task DeleteAsync(UserRegimen regimen, CancellationToken cancellationToken)
+    {
+        _dbContext.UserRegimens.Remove(regimen);
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
 

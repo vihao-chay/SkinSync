@@ -189,6 +189,15 @@ export const router = createBrowserRouter([
     errorElement: <ErrorBoundary />,
   },
   {
+    path: "/register",
+    element: (
+      <GuestOnly>
+        <LoginPage initialMode="register" />
+      </GuestOnly>
+    ),
+    errorElement: <ErrorBoundary />,
+  },
+  {
     path: "/forgot-password",
     element: <ForgotPasswordPage />,
     errorElement: <ErrorBoundary />,

@@ -110,6 +110,9 @@ public class AdminController : ControllerBase
             Name = request.Name.Trim(),
             Brand = request.Brand.Trim(),
             Category = request.Category.Trim(),
+            Description = request.Description.Trim(),
+            Ingredient = request.Ingredient.Trim(),
+            UsageGuide = request.UsageGuide.Trim(),
             Price = request.Price,
             SuitableSkinTypes = request.SuitableSkinTypes,
             ImageUrl = request.ImageUrl,
@@ -134,6 +137,9 @@ public class AdminController : ControllerBase
         product.Name = request.Name.Trim();
         product.Brand = request.Brand.Trim();
         product.Category = request.Category.Trim();
+        product.Description = request.Description.Trim();
+        product.Ingredient = request.Ingredient.Trim();
+        product.UsageGuide = request.UsageGuide.Trim();
         product.Price = request.Price;
         product.SuitableSkinTypes = request.SuitableSkinTypes;
         product.ImageUrl = request.ImageUrl;

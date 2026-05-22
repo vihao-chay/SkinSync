@@ -6,6 +6,9 @@ public class ProductResponseDto
     public string Name { get; set; } = string.Empty;
     public string Brand { get; set; } = string.Empty;
     public string Category { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public string Ingredient { get; set; } = string.Empty;
+    public string UsageGuide { get; set; } = string.Empty;
     public decimal Price { get; set; }
     public string[] SuitableSkinTypes { get; set; } = Array.Empty<string>();
     public string? ImageUrl { get; set; }

@@ -16,6 +16,10 @@ public class ProductUpsertRequestDto
     [MaxLength(50)]
     public string Category { get; set; } = string.Empty;
 
+    public string Description { get; set; } = string.Empty;
+    public string Ingredient { get; set; } = string.Empty;
+    public string UsageGuide { get; set; } = string.Empty;
+
     [Range(0.01, 999999)]
     public decimal Price { get; set; }
 

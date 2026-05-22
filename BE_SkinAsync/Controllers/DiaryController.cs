@@ -24,49 +24,49 @@ public class DiaryController : ControllerBase
     }
 
     [HttpGet("today")]
-    public async Task<IActionResult> GetToday(CancellationToken cancellationToken)
+    public async Task<ResponseEntity<DiaryCheckInResponseDto>> GetToday(CancellationToken cancellationToken)
     {
         if (!HttpContext.TryGetUserId(out var id))
         {
-            return Unauthorized("Missing authenticated user.");
+            return ResponseEntity<DiaryCheckInResponseDto>.Fail("Thiếu thông tin người dùng.", 401);
         }
 
         var date = DateOnly.FromDateTime(DateTime.UtcNow.Date);
         var log = await _diaryRepository.GetByUserAndDateAsync(id, date, cancellationToken);
         if (log is null)
         {
-            return NotFound("Diary log not found.");
+            return ResponseEntity<DiaryCheckInResponseDto>.Fail("Chưa có check-in hôm nay.", 404);
         }
 
-        return Ok(log.ToCheckInDto());
+        return ResponseEntity<DiaryCheckInResponseDto>.Ok(log.ToCheckInDto(), "Lấy check-in hôm nay thành công.");
     }
 
     [HttpGet("day")]
-    public async Task<IActionResult> GetByDate(
+    public async Task<ResponseEntity<DiaryCheckInResponseDto>> GetByDate(
         [FromQuery] DateOnly date,
         CancellationToken cancellationToken)
     {
         if (!HttpContext.TryGetUserId(out var id))
         {
-            return Unauthorized("Missing authenticated user.");
+            return ResponseEntity<DiaryCheckInResponseDto>.Fail("Thiếu thông tin người dùng.", 401);
         }
 
         var log = await _diaryRepository.GetByUserAndDateAsync(id, date, cancellationToken);
         if (log is null)
         {
-            return NotFound("Diary log not found.");
+            return ResponseEntity<DiaryCheckInResponseDto>.Fail("Không tìm thấy check-in.", 404);
         }
 
-        return Ok(log.ToCheckInDto());
+        return ResponseEntity<DiaryCheckInResponseDto>.Ok(log.ToCheckInDto(), "Lấy check-in thành công.");
     }
 
     [HttpPost("check-in")]
     [Consumes("multipart/form-data")]
-    public async Task<IActionResult> CheckIn([FromForm] DiaryCheckInRequestDto request, CancellationToken cancellationToken)
+    public async Task<ResponseEntity<DiaryCheckInResponseDto>> CheckIn([FromForm] DiaryCheckInRequestDto request, CancellationToken cancellationToken)
     {
         if (!HttpContext.TryGetUserId(out var id))
         {
-            return Unauthorized("Missing authenticated user.");
+            return ResponseEntity<DiaryCheckInResponseDto>.Fail("Thiếu thông tin người dùng.", 401);
         }
 
         var date = request.Date ?? DateOnly.FromDateTime(DateTime.UtcNow.Date);
@@ -103,7 +103,7 @@ public class DiaryController : ControllerBase
             };
 
             await _diaryRepository.AddAsync(newLog, cancellationToken);
-            return Ok(newLog.ToCheckInDto());
+            return ResponseEntity<DiaryCheckInResponseDto>.Ok(newLog.ToCheckInDto(), "Cập nhật check-in thành công.");
         }
 
         existing.MorningCompleted = request.MorningCompleted;
@@ -114,7 +114,7 @@ public class DiaryController : ControllerBase
         existing.DailyImageUrl = imageUrl;
 
         await _diaryRepository.UpdateAsync(existing, cancellationToken);
-        return Ok(existing.ToCheckInDto());
+        return ResponseEntity<DiaryCheckInResponseDto>.Ok(existing.ToCheckInDto(), "Cập nhật check-in thành công.");
     }
 
     [HttpGet("month")]

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using SkinAsync.Base;
 using SkinAsync.Data;
 using SkinAsync.Helpers;
 using SkinAsync.Models.Dtos.Progress;
@@ -20,11 +21,11 @@ public class ProgressController : ControllerBase
     }
 
     [HttpGet("overview")]
-    public async Task<IActionResult> GetOverview(CancellationToken cancellationToken)
+    public async Task<ResponseEntity<ProgressOverviewResponseDto>> GetOverview(CancellationToken cancellationToken)
     {
         if (!HttpContext.TryGetUserId(out var userId))
         {
-            return Unauthorized("Missing authenticated user.");
+            return ResponseEntity<ProgressOverviewResponseDto>.Fail("Thiếu thông tin người dùng.", 401);
         }
 
         var analyses = await _dbContext.AiAnalyses
@@ -53,22 +54,22 @@ public class ProgressController : ControllerBase
             CurrentStreak = await CalculateCurrentStreakAsync(userId, cancellationToken)
         };
 
-        return Ok(overview);
+        return ResponseEntity<ProgressOverviewResponseDto>.Ok(overview, "Lấy tổng quan tiến độ thành công.");
     }
 
     [HttpGet("chart")]
-    public async Task<IActionResult> GetChart(
+    public async Task<ResponseEntity<IEnumerable<ProgressChartPointDto>>> GetChart(
         [FromQuery] int days = 30,
         CancellationToken cancellationToken = default)
     {
         if (!HttpContext.TryGetUserId(out var userId))
         {
-            return Unauthorized("Missing authenticated user.");
+            return ResponseEntity<IEnumerable<ProgressChartPointDto>>.Fail("Thiếu thông tin người dùng.", 401);
         }
 
         if (days is < 1 or > 365)
         {
-            return BadRequest("days must be between 1 and 365.");
+            return ResponseEntity<IEnumerable<ProgressChartPointDto>>.Fail("days phải nằm trong khoảng 1 đến 365.");
         }
 
         var fromUtc = DateTime.UtcNow.Date.AddDays(-(days - 1));
@@ -87,22 +88,22 @@ public class ProgressController : ControllerBase
             })
             .ToList();
 
-        return Ok(chart);
+        return ResponseEntity<IEnumerable<ProgressChartPointDto>>.Ok(chart, "Lấy dữ liệu biểu đồ thành công.");
     }
 
     [HttpGet("streak")]
-    public async Task<IActionResult> GetStreak(
+    public async Task<ResponseEntity<ProgressStreakResponseDto>> GetStreak(
         [FromQuery] int days = 30,
         CancellationToken cancellationToken = default)
     {
         if (!HttpContext.TryGetUserId(out var userId))
         {
-            return Unauthorized("Missing authenticated user.");
+            return ResponseEntity<ProgressStreakResponseDto>.Fail("Thiếu thông tin người dùng.", 401);
         }
 
         if (days is < 1 or > 90)
         {
-            return BadRequest("days must be between 1 and 90.");
+            return ResponseEntity<ProgressStreakResponseDto>.Fail("days phải nằm trong khoảng 1 đến 90.");
         }
 
         var nowDate = DateOnly.FromDateTime(DateTime.UtcNow.Date);
@@ -132,7 +133,94 @@ public class ProgressController : ControllerBase
             LastDays = daily
         };
 
-        return Ok(result);
+        return ResponseEntity<ProgressStreakResponseDto>.Ok(result, "Lấy streak thành công.");
+    }
+
+    [HttpGet("weekly-completion")]
+    public async Task<ResponseEntity<WeeklyCompletionResponseDto>> GetWeeklyCompletion(CancellationToken cancellationToken)
+    {
+        if (!HttpContext.TryGetUserId(out var userId))
+        {
+            return ResponseEntity<WeeklyCompletionResponseDto>.Fail("Thiếu thông tin người dùng.", 401);
+        }
+
+        var today = DateOnly.FromDateTime(DateTime.UtcNow.Date);
+        var offset = ((int)today.DayOfWeek + 6) % 7;
+        var weekStart = today.AddDays(-offset);
+        var weekEnd = weekStart.AddDays(6);
+
+        var logs = await _dbContext.DailyLogs
+            .AsNoTracking()
+            .Where(x => x.UserId == userId && x.Date >= weekStart && x.Date <= weekEnd)
+            .ToListAsync(cancellationToken);
+
+        var completedDays = logs.Count(x => x.MorningCompleted || x.EveningCompleted);
+        var response = new WeeklyCompletionResponseDto
+        {
+            WeekStart = weekStart,
+            WeekEnd = weekEnd,
+            CompletedDays = completedDays,
+            TotalDays = 7,
+            CompletionPercent = Math.Round(completedDays / 7m * 100m, 2)
+        };
+
+        return ResponseEntity<WeeklyCompletionResponseDto>.Ok(response, "Lấy tỷ lệ hoàn thành tuần thành công.");
+    }
+
+    [HttpGet("monthly-report")]
+    public async Task<ResponseEntity<MonthlyReportResponseDto>> GetMonthlyReport(
+        [FromQuery] int? year,
+        [FromQuery] int? month,
+        CancellationToken cancellationToken)
+    {
+        if (!HttpContext.TryGetUserId(out var userId))
+        {
+            return ResponseEntity<MonthlyReportResponseDto>.Fail("Thiếu thông tin người dùng.", 401);
+        }
+
+        var now = DateTime.UtcNow;
+        var selectedYear = year ?? now.Year;
+        var selectedMonth = month ?? now.Month;
+
+        if (selectedMonth is < 1 or > 12)
+        {
+            return ResponseEntity<MonthlyReportResponseDto>.Fail("month phải nằm trong khoảng 1 đến 12.");
+        }
+
+        var logs = await _dbContext.DailyLogs
+            .AsNoTracking()
+            .Where(x => x.UserId == userId && x.Date.Year == selectedYear && x.Date.Month == selectedMonth)
+            .OrderBy(x => x.Date)
+            .ToListAsync(cancellationToken);
+
+        var completedDays = logs.Count(x => x.MorningCompleted || x.EveningCompleted);
+        var fullRoutineDays = logs.Count(x => x.MorningCompleted && x.EveningCompleted);
+        var daysInMonth = DateTime.DaysInMonth(selectedYear, selectedMonth);
+        var streakDays = Enumerable.Range(1, daysInMonth)
+            .Select(day =>
+            {
+                var date = new DateOnly(selectedYear, selectedMonth, day);
+                var log = logs.FirstOrDefault(x => x.Date == date);
+                return new ProgressStreakDayDto
+                {
+                    Date = date,
+                    Completed = log is not null && (log.MorningCompleted || log.EveningCompleted)
+                };
+            })
+            .ToList();
+
+        var response = new MonthlyReportResponseDto
+        {
+            Year = selectedYear,
+            Month = selectedMonth,
+            CompletedDays = completedDays,
+            FullRoutineDays = fullRoutineDays,
+            TotalTrackedDays = logs.Count,
+            CompletionPercent = Math.Round(completedDays / (decimal)daysInMonth * 100m, 2),
+            BestStreak = CalculateBestStreak(streakDays)
+        };
+
+        return ResponseEntity<MonthlyReportResponseDto>.Ok(response, "Lấy báo cáo tháng thành công.");
     }
 
     private async Task<int> CalculateCurrentStreakAsync(Guid userId, CancellationToken cancellationToken)

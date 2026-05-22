@@ -25,9 +25,11 @@ public class RegimenBuilderService : IRegimenBuilderService
             Id = Guid.NewGuid(),
             UserId = userId,
             AnalysisId = analysisId,
+            Name = "Lộ trình AI đề xuất",
             StartDate = DateOnly.FromDateTime(DateTime.UtcNow),
             EndDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(30)),
-            IsActive = true
+            IsActive = true,
+            IsCustom = false
         };
 
         regimen.Items = BuildItems(regimen.Id, filtered);
@@ -59,7 +61,10 @@ public class RegimenBuilderService : IRegimenBuilderService
                 RegimenId = regimenId,
                 ProductId = product.Id,
                 RoutineTime = routineTime,
-                StepOrder = step
+                StepOrder = step,
+                Instruction = string.IsNullOrWhiteSpace(product.UsageGuide)
+                    ? $"Sử dụng theo hướng dẫn cho bước {category.ToLowerInvariant()}."
+                    : product.UsageGuide
             };
 
             step++;

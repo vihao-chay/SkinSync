@@ -29,3 +29,23 @@ public class ProgressStreakResponseDto
     public int BestStreak { get; set; }
     public IEnumerable<ProgressStreakDayDto> LastDays { get; set; } = Array.Empty<ProgressStreakDayDto>();
 }
+
+public class WeeklyCompletionResponseDto
+{
+    public DateOnly WeekStart { get; set; }
+    public DateOnly WeekEnd { get; set; }
+    public int CompletedDays { get; set; }
+    public int TotalDays { get; set; }
+    public decimal CompletionPercent { get; set; }
+}
+
+public class MonthlyReportResponseDto
+{
+    public int Year { get; set; }
+    public int Month { get; set; }
+    public int CompletedDays { get; set; }
+    public int FullRoutineDays { get; set; }
+    public int TotalTrackedDays { get; set; }
+    public decimal CompletionPercent { get; set; }
+    public int BestStreak { get; set; }
+}

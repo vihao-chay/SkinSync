@@ -27,6 +27,24 @@ export interface ProgressStreak {
   lastDays: ProgressStreakDay[];
 }
 
+export interface WeeklyCompletion {
+  weekStart: string;
+  weekEnd: string;
+  completedDays: number;
+  totalDays: number;
+  completionPercent: number;
+}
+
+export interface MonthlyReport {
+  year: number;
+  month: number;
+  completedDays: number;
+  fullRoutineDays: number;
+  totalTrackedDays: number;
+  completionPercent: number;
+  bestStreak: number;
+}
+
 export async function getProgressOverviewApi(): Promise<ApiResponse<ProgressOverview>> {
   return apiRequest<ProgressOverview>("/progress/overview", { method: "GET" }, { requiresAuth: true });
 }
@@ -37,4 +55,22 @@ export async function getProgressChartApi(days = 30): Promise<ApiResponse<Progre
 
 export async function getProgressStreakApi(days = 30): Promise<ApiResponse<ProgressStreak>> {
   return apiRequest<ProgressStreak>(`/progress/streak?days=${days}`, { method: "GET" }, { requiresAuth: true });
+}
+
+export async function getWeeklyCompletionApi(): Promise<ApiResponse<WeeklyCompletion>> {
+  return apiRequest<WeeklyCompletion>("/progress/weekly-completion", { method: "GET" }, { requiresAuth: true });
+}
+
+export async function getMonthlyReportApi(year?: number, month?: number): Promise<ApiResponse<MonthlyReport>> {
+  const params = new URLSearchParams();
+  if (year) {
+    params.set("year", String(year));
+  }
+
+  if (month) {
+    params.set("month", String(month));
+  }
+
+  const query = params.toString();
+  return apiRequest<MonthlyReport>(`/progress/monthly-report${query ? `?${query}` : ""}`, { method: "GET" }, { requiresAuth: true });
 }

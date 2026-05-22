@@ -19,6 +19,15 @@ function buildFailureResponse<T>(message: string, statusCode = 500): ApiResponse
 async function parseApiResponse<T>(response: Response): Promise<ApiResponse<T>> {
   try {
     const data = (await response.json()) as Partial<ApiResponse<T>>;
+    if (!("success" in data) && !("content" in data)) {
+      return {
+        success: response.ok,
+        statusCode: response.status,
+        message: response.ok ? "Success" : "Request failed",
+        content: response.ok ? (data as T) : null,
+      };
+    }
+
     return {
       success: Boolean(data.success),
       statusCode: typeof data.statusCode === "number" ? data.statusCode : response.status,

@@ -16,6 +16,8 @@ public class AppDbContext : DbContext
     public DbSet<UserRegimen> UserRegimens => Set<UserRegimen>();
     public DbSet<RegimenItem> RegimenItems => Set<RegimenItem>();
     public DbSet<DailyLog> DailyLogs => Set<DailyLog>();
+    public DbSet<RoutineTracking> RoutineTrackings => Set<RoutineTracking>();
+    public DbSet<Reminder> Reminders => Set<Reminder>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -70,6 +72,9 @@ public class AppDbContext : DbContext
             entity.Property(x => x.Name).HasMaxLength(255).IsRequired();
             entity.Property(x => x.Brand).HasMaxLength(150).IsRequired();
             entity.Property(x => x.Category).HasMaxLength(50).IsRequired();
+            entity.Property(x => x.Description).HasColumnType("text").HasDefaultValue(string.Empty);
+            entity.Property(x => x.Ingredient).HasColumnType("text").HasDefaultValue(string.Empty);
+            entity.Property(x => x.UsageGuide).HasColumnType("text").HasDefaultValue(string.Empty);
             entity.Property(x => x.Price).HasPrecision(12, 2).IsRequired();
             entity.Property(x => x.SuitableSkinTypes).HasColumnType("text[]").IsRequired();
             entity.Property(x => x.ImageUrl).HasMaxLength(500);
@@ -83,6 +88,8 @@ public class AppDbContext : DbContext
             entity.ToTable("user_regimens");
             entity.HasKey(x => x.Id);
             entity.HasIndex(x => new { x.UserId, x.IsActive });
+            entity.Property(x => x.Name).HasMaxLength(120).HasDefaultValue("Lộ trình chăm sóc da");
+            entity.Property(x => x.IsCustom).HasDefaultValue(false);
             entity.HasOne(x => x.User)
                 .WithMany(x => x.Regimens)
                 .HasForeignKey(x => x.UserId)
@@ -90,7 +97,7 @@ public class AppDbContext : DbContext
             entity.HasOne(x => x.Analysis)
                 .WithMany(x => x.Regimens)
                 .HasForeignKey(x => x.AnalysisId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<RegimenItem>(entity =>
@@ -99,6 +106,7 @@ public class AppDbContext : DbContext
             entity.HasKey(x => x.Id);
             entity.HasIndex(x => new { x.RegimenId, x.RoutineTime, x.StepOrder });
             entity.Property(x => x.RoutineTime).HasMaxLength(20).IsRequired();
+            entity.Property(x => x.Instruction).HasColumnType("text").HasDefaultValue(string.Empty);
             entity.HasOne(x => x.Regimen)
                 .WithMany(x => x.Items)
                 .HasForeignKey(x => x.RegimenId)
@@ -107,6 +115,38 @@ public class AppDbContext : DbContext
                 .WithMany(x => x.RegimenItems)
                 .HasForeignKey(x => x.ProductId)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<RoutineTracking>(entity =>
+        {
+            entity.ToTable("routine_trackings");
+            entity.HasKey(x => x.Id);
+            entity.HasIndex(x => new { x.UserId, x.CompletedAt });
+            entity.HasIndex(x => new { x.UserId, x.StepId, x.CompletedAt });
+            entity.Property(x => x.Status).HasMaxLength(20).HasDefaultValue("completed");
+            entity.Property(x => x.CompletedAt).HasDefaultValueSql("timezone('utc', now())");
+            entity.HasOne(x => x.User)
+                .WithMany(x => x.RoutineTrackings)
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(x => x.Step)
+                .WithMany(x => x.Trackings)
+                .HasForeignKey(x => x.StepId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Reminder>(entity =>
+        {
+            entity.ToTable("reminders");
+            entity.HasKey(x => x.Id);
+            entity.HasIndex(x => new { x.UserId, x.RoutineType }).IsUnique();
+            entity.Property(x => x.RoutineType).HasMaxLength(20).IsRequired();
+            entity.Property(x => x.IsEnabled).HasDefaultValue(true);
+            entity.Property(x => x.CreatedAt).HasDefaultValueSql("timezone('utc', now())");
+            entity.HasOne(x => x.User)
+                .WithMany(x => x.Reminders)
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<DailyLog>(entity =>

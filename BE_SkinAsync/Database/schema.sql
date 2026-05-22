@@ -40,6 +40,9 @@ CREATE TABLE IF NOT EXISTS products (
     name VARCHAR(255) NOT NULL,
     brand VARCHAR(150) NOT NULL,
     category VARCHAR(50) NOT NULL,
+    description TEXT NOT NULL DEFAULT '',
+    ingredient TEXT NOT NULL DEFAULT '',
+    usage_guide TEXT NOT NULL DEFAULT '',
     price NUMERIC(12,2) NOT NULL CHECK (price >= 0),
     suitable_skin_types TEXT[] NOT NULL,
     image_url VARCHAR(500),
@@ -53,10 +56,12 @@ CREATE INDEX IF NOT EXISTS idx_products_status_category ON products(status, cate
 CREATE TABLE IF NOT EXISTS user_regimens (
     id UUID PRIMARY KEY,
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    analysis_id UUID NOT NULL REFERENCES ai_analyses(id) ON DELETE CASCADE,
+    analysis_id UUID REFERENCES ai_analyses(id) ON DELETE SET NULL,
+    name VARCHAR(120) NOT NULL DEFAULT 'Lộ trình chăm sóc da',
     start_date DATE NOT NULL,
     end_date DATE NOT NULL,
-    is_active BOOLEAN NOT NULL DEFAULT TRUE
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    is_custom BOOLEAN NOT NULL DEFAULT FALSE
 );
 
 CREATE INDEX IF NOT EXISTS idx_user_regimens_user_active ON user_regimens(user_id, is_active);
@@ -66,10 +71,32 @@ CREATE TABLE IF NOT EXISTS regimen_items (
     regimen_id UUID NOT NULL REFERENCES user_regimens(id) ON DELETE CASCADE,
     product_id UUID NOT NULL REFERENCES products(id) ON DELETE RESTRICT,
     routine_time VARCHAR(20) NOT NULL CHECK (routine_time IN ('Morning', 'Evening')),
-    step_order INT NOT NULL CHECK (step_order > 0)
+    step_order INT NOT NULL CHECK (step_order > 0),
+    instruction TEXT NOT NULL DEFAULT ''
 );
 
 CREATE INDEX IF NOT EXISTS idx_regimen_items_regimen_time_step ON regimen_items(regimen_id, routine_time, step_order);
+
+CREATE TABLE IF NOT EXISTS routine_trackings (
+    id UUID PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    step_id UUID NOT NULL REFERENCES regimen_items(id) ON DELETE CASCADE,
+    completed_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now()),
+    status VARCHAR(20) NOT NULL DEFAULT 'completed'
+);
+
+CREATE INDEX IF NOT EXISTS idx_routine_trackings_user_completed_at ON routine_trackings(user_id, completed_at DESC);
+CREATE INDEX IF NOT EXISTS idx_routine_trackings_user_step_completed_at ON routine_trackings(user_id, step_id, completed_at DESC);
+
+CREATE TABLE IF NOT EXISTS reminders (
+    id UUID PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    time TIME NOT NULL,
+    routine_type VARCHAR(20) NOT NULL CHECK (routine_type IN ('Morning', 'Evening')),
+    is_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now()),
+    CONSTRAINT uq_reminders_user_routine_type UNIQUE (user_id, routine_type)
+);
 
 CREATE TABLE IF NOT EXISTS daily_logs (
     id UUID PRIMARY KEY,

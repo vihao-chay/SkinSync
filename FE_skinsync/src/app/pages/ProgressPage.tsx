@@ -26,9 +26,11 @@ import {
 } from "lucide-react";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 import {
+  getMonthlyReportApi,
   getProgressChartApi,
   getProgressOverviewApi,
   getProgressStreakApi,
+  getWeeklyCompletionApi,
 } from "../services/progressService";
 
 const fallbackSkinScoreData = [
@@ -79,15 +81,23 @@ export function ProgressPage() {
     currentStreak: 13,
   });
   const [chartData, setChartData] = useState(fallbackSkinScoreData);
+  const [weeklyCompletion, setWeeklyCompletion] = useState(86);
+  const [monthlyReport, setMonthlyReport] = useState({
+    completedDays: 24,
+    fullRoutineDays: 18,
+    bestStreak: 13,
+  });
 
   useEffect(() => {
     let isMounted = true;
 
     const load = async () => {
-      const [overviewResult, chartResult, streakResult] = await Promise.all([
+      const [overviewResult, chartResult, streakResult, weeklyResult, monthlyResult] = await Promise.all([
         getProgressOverviewApi(),
         getProgressChartApi(30),
         getProgressStreakApi(30),
+        getWeeklyCompletionApi(),
+        getMonthlyReportApi(),
       ]);
 
       if (!isMounted) {
@@ -120,6 +130,18 @@ export function ProgressPage() {
         }));
 
         setChartData(mapped);
+      }
+
+      if (weeklyResult.success && weeklyResult.content) {
+        setWeeklyCompletion(Math.round(weeklyResult.content.completionPercent));
+      }
+
+      if (monthlyResult.success && monthlyResult.content) {
+        setMonthlyReport({
+          completedDays: monthlyResult.content.completedDays,
+          fullRoutineDays: monthlyResult.content.fullRoutineDays,
+          bestStreak: monthlyResult.content.bestStreak,
+        });
       }
     };
 
@@ -180,7 +202,7 @@ export function ProgressPage() {
           {[
             { label: "Điểm Da Hiện Tại",  value: `${overview.currentScore}`, unit: "/100", color: "#c4a882", bg: "#fdf8f2", icon: <Star className="w-4 h-4" /> },
             { label: "Cải Thiện",          value: `+${improvementPercent}`, unit: "%", color: "#10b981", bg: "#f0fdf4", icon: <TrendingUp className="w-4 h-4" /> },
-            { label: "Ngày Duy Trì",       value: `${overview.completedDaysLast28}`, unit: " ngày", color: "#8c6e52", bg: "#fdf8f2", icon: <CheckCircle2 className="w-4 h-4" /> },
+            { label: "Hoàn Thành Tuần",       value: `${weeklyCompletion}`, unit: "%", color: "#8c6e52", bg: "#fdf8f2", icon: <CheckCircle2 className="w-4 h-4" /> },
             { label: "Streak Hiện Tại",    value: `${overview.currentStreak}`, unit: " ngày", color: "#f97316", bg: "#fff7ed", icon: <Flame className="w-4 h-4" /> },
           ].map((s) => (
             <div
@@ -196,6 +218,22 @@ export function ProgressPage() {
                 {s.value}
                 <span className="text-sm text-[#9ca3af]">{s.unit}</span>
               </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="grid sm:grid-cols-3 gap-4">
+          {[
+            { label: "Check-in Tháng Này", value: `${monthlyReport.completedDays}`, unit: " ngày" },
+            { label: "Đủ Sáng Và Tối", value: `${monthlyReport.fullRoutineDays}`, unit: " ngày" },
+            { label: "Best Streak Tháng", value: `${monthlyReport.bestStreak}`, unit: " ngày" },
+          ].map((item) => (
+            <div key={item.label} className="rounded-2xl border border-[#e8d5b7]/50 bg-white p-4 shadow-sm">
+              <p className="text-xs text-[#6b7280] mb-2">{item.label}</p>
+              <p className="text-2xl text-[#8c6e52]">
+                {item.value}
+                <span className="text-sm text-[#9ca3af]">{item.unit}</span>
+              </p>
             </div>
           ))}
         </div>
