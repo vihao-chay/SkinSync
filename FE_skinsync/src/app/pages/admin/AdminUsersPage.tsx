@@ -71,6 +71,52 @@ type EmailData = {
   userName: string;
 };
 
+type AdminToastVariant = "success" | "error";
+
+function showAdminToast(variant: AdminToastVariant, title: string, message: string) {
+  const isSuccess = variant === "success";
+
+  toast.custom((id) => (
+    <div className="w-[360px] max-w-[calc(100vw-2rem)] rounded-2xl border border-[#e8d5b7]/50 bg-white/90 backdrop-blur-xl shadow-xl shadow-[#8c6e52]/10 overflow-hidden">
+      <div className="flex gap-3 p-4">
+        <div
+          className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
+            isSuccess ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-500"
+          }`}
+        >
+          {isSuccess ? <CheckCircle className="w-5 h-5" /> : <XCircle className="w-5 h-5" />}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm text-[#2a2a2a]" style={{ fontWeight: 600 }}>{title}</p>
+          <p className="text-xs text-[#6b7280] leading-relaxed mt-1">{message}</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => toast.dismiss(id)}
+          className="w-7 h-7 rounded-lg text-[#9ca3af] hover:text-[#8c6e52] hover:bg-[#f5f0e8] flex items-center justify-center transition-colors"
+          aria-label="Đóng thông báo"
+        >
+          <X className="w-3.5 h-3.5" />
+        </button>
+      </div>
+      <div className={`h-1 ${isSuccess ? "bg-[#c4a882]" : "bg-red-400"}`} />
+    </div>
+  ), {
+    duration: isSuccess ? 3800 : 4800,
+  });
+}
+
+function getStatusActionSuccessTitle(type: ConfirmAction["type"]) {
+  switch (type) {
+    case "suspend":
+      return "Đã dừng tài khoản";
+    case "activate":
+      return "Đã mở tài khoản";
+    case "ban":
+      return "Đã cấm tài khoản";
+  }
+}
+
 export function AdminUsersPage() {
   const PAGE_SIZE = 5;
   const [search, setSearch] = useState("");
@@ -92,6 +138,7 @@ export function AdminUsersPage() {
   const [emailSubject, setEmailSubject] = useState("");
   const [emailBody, setEmailBody] = useState("");
   const [isSending, setIsSending] = useState(false);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
   useEffect(() => {
     setPaging((prev) => (prev.pageIndex === 1 ? prev : { ...prev, pageIndex: 1 }));
@@ -220,32 +267,48 @@ export function AdminUsersPage() {
     ];
   }, [users]);
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     if (!confirmAction) return;
 
+    const currentAction = confirmAction;
     const nextStatus: AdminUserStatus =
-      confirmAction.type === "suspend"
+      currentAction.type === "suspend"
         ? "inactive"
-        : confirmAction.type === "activate"
+        : currentAction.type === "activate"
           ? "active"
           : "banned";
 
-    updateAdminUserStatus(confirmAction.userId, nextStatus)
-      .then((result) => {
-        if (!result.success || !result.content) {
-          toast.error(result.message || "Không thể cập nhật trạng thái người dùng");
-          return;
-        }
+    setIsUpdatingStatus(true);
 
-        const updatedStatus = result.content;
+    try {
+      const result = await updateAdminUserStatus(currentAction.userId, nextStatus);
+      if (!result.success || !result.content) {
+        showAdminToast(
+          "error",
+          "Cập nhật thất bại",
+          result.message || `Không thể cập nhật trạng thái cho ${currentAction.userName}.`
+        );
+        return;
+      }
 
-        setUsers((prev) => prev.map((u) => (u.id === confirmAction.userId ? { ...u, status: updatedStatus } : u)));
-        toast.success(`Đã cập nhật trạng thái cho ${confirmAction.userName}`);
-        setConfirmAction(null);
-      })
-      .catch(() => {
-        toast.error("Không thể cập nhật trạng thái người dùng");
-      });
+      const updatedStatus = result.content;
+
+      setUsers((prev) => prev.map((u) => (u.id === currentAction.userId ? { ...u, status: updatedStatus } : u)));
+      showAdminToast(
+        "success",
+        getStatusActionSuccessTitle(currentAction.type),
+        `${currentAction.userName} đã được cập nhật trạng thái thành công.`
+      );
+      setConfirmAction(null);
+    } catch {
+      showAdminToast(
+        "error",
+        "Cập nhật thất bại",
+        `Không thể cập nhật trạng thái cho ${currentAction.userName}. Vui lòng thử lại.`
+      );
+    } finally {
+      setIsUpdatingStatus(false);
+    }
   };
 
   const getActionConfig = (type: ConfirmAction["type"]) => {
@@ -274,25 +337,43 @@ export function AdminUsersPage() {
   const handleSendEmail = async () => {
     if (!emailModal) return;
     if (!emailSubject.trim() || !emailBody.trim()) {
-      toast.error("Vui lòng điền đầy đủ chủ đề và nội dung email");
+      showAdminToast(
+        "error",
+        "Thiếu nội dung email",
+        "Vui lòng điền đầy đủ chủ đề và nội dung trước khi gửi."
+      );
       return;
     }
 
     setIsSending(true);
-    await new Promise((resolve) => {
-      setTimeout(resolve, 1500);
-    });
 
-    console.log("Sending email to:", emailModal.userEmail, {
-      subject: emailSubject,
-      body: emailBody,
-    });
+    try {
+      await new Promise((resolve) => {
+        setTimeout(resolve, 1500);
+      });
 
-    toast.success("Email đã được gửi thành công!");
-    setEmailModal(null);
-    setEmailSubject("");
-    setEmailBody("");
-    setIsSending(false);
+      console.log("Sending email to:", emailModal.userEmail, {
+        subject: emailSubject,
+        body: emailBody,
+      });
+
+      showAdminToast(
+        "success",
+        "Email đã được gửi",
+        `Tin nhắn đã được gửi thành công đến ${emailModal.userName}.`
+      );
+      setEmailModal(null);
+      setEmailSubject("");
+      setEmailBody("");
+    } catch {
+      showAdminToast(
+        "error",
+        "Gửi email thất bại",
+        `Không thể gửi email đến ${emailModal.userName}. Vui lòng thử lại.`
+      );
+    } finally {
+      setIsSending(false);
+    }
   };
 
   const closeEmailModal = () => {
@@ -628,19 +709,22 @@ export function AdminUsersPage() {
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setConfirmAction(null)}
-                className="flex-1 px-4 py-2.5 rounded-xl border border-[#e5e7eb] text-[#4b5563] text-sm hover:bg-[#f9fafb] transition-colors"
+                disabled={isUpdatingStatus}
+                className="flex-1 px-4 py-2.5 rounded-xl border border-[#e5e7eb] text-[#4b5563] text-sm hover:bg-[#f9fafb] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{ fontWeight: 500 }}
               >
                 Hủy
               </button>
               <button
                 onClick={handleConfirm}
-                className={`flex-1 px-4 py-2.5 rounded-xl text-white text-sm shadow-lg transition-all ${
+                disabled={isUpdatingStatus}
+                className={`flex-1 px-4 py-2.5 rounded-xl text-white text-sm shadow-lg transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 ${
                   getActionConfig(confirmAction.type).buttonClass
                 }`}
                 style={{ fontWeight: 500 }}
               >
-                Xác nhận
+                {isUpdatingStatus && <Loader2 className="w-4 h-4 animate-spin" />}
+                {isUpdatingStatus ? "Đang cập nhật..." : "Xác nhận"}
               </button>
             </div>
           </div>
