@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, useRef, type ReactNode } from "react";
 import { Link } from "react-router";
 import {
+  AlertCircle,
   ArrowLeft,
   Bell,
   CheckCircle2,
@@ -20,6 +21,11 @@ import {
   Trash2,
   X,
 } from "lucide-react";
+import { toast } from "sonner";
+import { Alert, AlertTitle, AlertDescription } from "../components/ui/alert";
+import { Badge } from "../components/ui/badge";
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "../components/ui/accordion";
+import { checkIngredientConflicts, type ConflictWarningDTO } from "../services/conflictService";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 import {
   createCustomRegimenApi,
@@ -155,6 +161,9 @@ export function RoutinePage() {
   const [newInstruction, setNewInstruction] = useState("");
   const [routineName, setRoutineName] = useState("Lộ trình chăm sóc da");
 
+  const [conflicts, setConflicts] = useState<ConflictWarningDTO[]>([]);
+  const allowToastRef = useRef(false);
+
   useEffect(() => {
     let isMounted = true;
 
@@ -202,6 +211,63 @@ export function RoutinePage() {
       isMounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function detectConflicts() {
+      const morningProducts = steps
+        .filter((s) => s.routineTime === "Morning")
+        .map((s) => ({ id: s.productId, name: s.productName, ingredient: s.ingredient }));
+      const eveningProducts = steps
+        .filter((s) => s.routineTime === "Evening")
+        .map((s) => ({ id: s.productId, name: s.productName, ingredient: s.ingredient }));
+
+      const [morningConflicts, eveningConflicts] = await Promise.all([
+        checkIngredientConflicts(morningProducts),
+        checkIngredientConflicts(eveningProducts),
+      ]);
+
+      if (!isMounted) return;
+
+      const combined = [
+        ...morningConflicts.map((c) => ({ ...c, routineTime: "Morning" as RoutineType })),
+        ...eveningConflicts.map((c) => ({ ...c, routineTime: "Evening" as RoutineType })),
+      ];
+
+      if (allowToastRef.current) {
+        // So sánh để tìm xung đột mới
+        const oldKeys = new Set(
+          conflicts.map(
+            (c) => `${c.productAId}-${c.productBId}-${c.ingredientA}-${c.ingredientB}-${c.routineTime}`
+          )
+        );
+
+        combined.forEach((newC) => {
+          const key = `${newC.productAId}-${newC.productBId}-${newC.ingredientA}-${newC.ingredientB}-${newC.routineTime}`;
+          if (!oldKeys.has(key)) {
+            const timeLabel = newC.routineTime === "Morning" ? "buổi sáng" : "buổi tối";
+            toast.error(
+              `Phát hiện xung đột hoạt chất trong routine ${timeLabel}!`,
+              {
+                description: `${newC.productAName} (${newC.ingredientA}) và ${newC.productBName} (${newC.ingredientB}) không nên dùng chung.`,
+                duration: 6000,
+              }
+            );
+          }
+        });
+        allowToastRef.current = false;
+      }
+
+      setConflicts(combined);
+    }
+
+    void detectConflicts();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [steps]);
 
   const completedStepIds = useMemo(() => {
     return new Set(tracking?.steps.map((step) => step.stepId) ?? []);
@@ -262,6 +328,7 @@ export function RoutinePage() {
       return;
     }
 
+    allowToastRef.current = true;
     setSteps((current) => renumberSteps([
       ...current,
       {
@@ -542,6 +609,7 @@ export function RoutinePage() {
               onMoveStep={moveStep}
               onRemoveStep={removeStep}
               onUpdateInstruction={updateInstruction}
+              conflicts={conflicts}
             />
 
             <RoutineSection
@@ -558,6 +626,7 @@ export function RoutinePage() {
               onMoveStep={moveStep}
               onRemoveStep={removeStep}
               onUpdateInstruction={updateInstruction}
+              conflicts={conflicts}
             />
           </section>
 
@@ -656,6 +725,7 @@ function RoutineSection({
   onMoveStep,
   onRemoveStep,
   onUpdateInstruction,
+  conflicts,
 }: {
   title: string;
   subtitle: string;
@@ -670,6 +740,7 @@ function RoutineSection({
   onMoveStep: (key: string, direction: -1 | 1) => void;
   onRemoveStep: (key: string) => void;
   onUpdateInstruction: (key: string, instruction: string) => void;
+  conflicts: ConflictWarningDTO[];
 }) {
   return (
     <div className="rounded-2xl border border-[#e8d5b7]/40 bg-white/80 backdrop-blur-xl shadow-sm overflow-hidden">
@@ -696,6 +767,11 @@ function RoutineSection({
       <div className="p-5 space-y-3">
         {steps.map((step, index) => {
           const done = Boolean(step.stepId && completedStepIds.has(step.stepId));
+          const stepConflicts = conflicts.filter(
+            (c) =>
+              c.routineTime === routineTime &&
+              (c.productAId === step.productId || c.productBId === step.productId)
+          );
           return (
             <div key={step.key} className="rounded-2xl border border-[#e8d5b7]/35 bg-white p-4 shadow-sm">
               <div className="flex gap-4">
@@ -770,6 +846,54 @@ function RoutineSection({
                   ) : (
                     <p className="mt-3 text-sm text-[#4b5563] leading-relaxed">{step.instruction || step.usageGuide}</p>
                   )}
+
+                  {/* Cảnh báo xung đột hoạt chất */}
+                  {stepConflicts.map((c) => {
+                    const otherProductName = c.productAId === step.productId ? c.productBName : c.productAName;
+                    const otherActive = c.productAId === step.productId ? c.ingredientB : c.ingredientA;
+                    const thisActive = c.productAId === step.productId ? c.ingredientA : c.ingredientB;
+
+                    return (
+                      <Alert
+                        key={`${c.productAId}-${c.productBId}-${thisActive}-${otherActive}`}
+                        variant={c.severity === "High" ? "destructive" : "warning"}
+                        className="mt-4 border bg-opacity-40 animate-in fade-in slide-in-from-top-1"
+                      >
+                        <AlertCircle className="w-4 h-4" />
+                        <AlertTitle className="text-sm font-semibold">
+                          Cảnh báo xung đột hoạt chất!
+                        </AlertTitle>
+                        <AlertDescription className="text-xs space-y-2 mt-1">
+                          <div className="flex flex-wrap items-center gap-1 leading-relaxed">
+                            <span>Sản phẩm này chứa</span>
+                            <Badge variant={c.severity === "High" ? "destructive" : "secondary"}>
+                              {thisActive}
+                            </Badge>
+                            <span>xung đột với hoạt chất của</span>
+                            <strong className="text-foreground font-semibold">
+                              {otherProductName}
+                            </strong>
+                            <span>chứa</span>
+                            <Badge variant={c.severity === "High" ? "destructive" : "secondary"}>
+                              {otherActive}
+                            </Badge>
+                            <span>trong cùng buổi routine.</span>
+                          </div>
+
+                          <Accordion type="single" collapsible className="w-full mt-2 border-t border-current/15 pt-1">
+                            <AccordionItem value="advice" className="border-none">
+                              <AccordionTrigger className="text-xs py-1 hover:no-underline text-current/80 hover:text-current font-medium transition-colors">
+                                Chi tiết tác hại & Lời khuyên
+                              </AccordionTrigger>
+                              <AccordionContent className="text-xs text-current/90 mt-1 leading-relaxed whitespace-pre-line pl-2 border-l-2 border-current/30">
+                                {c.advice}
+                              </AccordionContent>
+                            </AccordionItem>
+                          </Accordion>
+                        </AlertDescription>
+                      </Alert>
+                    );
+                  })}
                 </div>
               </div>
             </div>
