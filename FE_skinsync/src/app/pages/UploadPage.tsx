@@ -1,186 +1,220 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
-import { ArrowLeft, Camera, Upload, X } from "lucide-react";
+import { AlertCircle, ArrowLeft, Camera, ImagePlus, Sparkles, Upload, X } from "lucide-react";
+import { scanAnalysisApi } from "../services/analysisService";
+
+const maxImageSize = 10 * 1024 * 1024;
 
 export function UploadPage() {
   const navigate = useNavigate();
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
-  
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const previewFile = (file: File) => {
+    setErrorMessage(null);
+
+    if (!file.type.startsWith("image/")) {
+      setErrorMessage("Vui lòng chọn đúng định dạng ảnh.");
+      return;
+    }
+
+    if (file.size > maxImageSize) {
+      setErrorMessage("Ảnh cần nhỏ hơn 10MB để phân tích ổn định.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setUploadedImage(event.target?.result as string);
+      setSelectedFile(file);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setUploadedImage(e.target?.result as string);
-      };
-      reader.readAsDataURL(file);
+      previewFile(file);
     }
   };
-  
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
+
+  const handleDragOver = (event: React.DragEvent) => {
+    event.preventDefault();
     setIsDragging(true);
   };
-  
+
   const handleDragLeave = () => {
     setIsDragging(false);
   };
-  
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
+
+  const handleDrop = (event: React.DragEvent) => {
+    event.preventDefault();
     setIsDragging(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file && file.type.startsWith('image/')) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setUploadedImage(e.target?.result as string);
-      };
-      reader.readAsDataURL(file);
+
+    const file = event.dataTransfer.files?.[0];
+    if (file) {
+      previewFile(file);
     }
   };
-  
-  const handleNext = () => {
-    // Simulate analysis
-    setTimeout(() => {
-      navigate("/dashboard");
-    }, 1000);
+
+  const clearImage = () => {
+    setUploadedImage(null);
+    setSelectedFile(null);
+    setErrorMessage(null);
   };
-  
-  const handleSkip = () => {
-    navigate("/dashboard");
+
+  const handleAnalyze = async () => {
+    if (!selectedFile) {
+      setErrorMessage("Hãy chọn một ảnh da mặt trước khi phân tích.");
+      return;
+    }
+
+    setIsAnalyzing(true);
+    setErrorMessage(null);
+
+    const result = await scanAnalysisApi(selectedFile);
+    if (result.success && result.content) {
+      navigate("/analysis");
+      return;
+    }
+
+    setErrorMessage(result.message || "Không thể phân tích ảnh lúc này. Vui lòng thử lại.");
+    setIsAnalyzing(false);
   };
-  
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-white to-[#faf9f6] pt-24 pb-12 px-6">
-      <div className="max-w-3xl mx-auto">
-        {/* Header */}
+    <div className="min-h-screen bg-[#faf7f2] pt-24 pb-12 px-4 sm:px-6">
+      <div className="max-w-4xl mx-auto">
         <div className="mb-8">
-          <Link to="/quiz" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-4">
+          <Link to="/quiz" className="inline-flex items-center gap-2 text-sm text-[#6b7280] hover:text-[#8c6e52] transition-colors mb-4">
             <ArrowLeft className="w-4 h-4" />
-            Trở Lại
+            Trở lại khảo sát
           </Link>
-          
-          {/* Progress Bar */}
-          <div className="relative h-2 bg-secondary rounded-full overflow-hidden mb-4">
-            <div 
-              className="absolute inset-y-0 left-0 bg-gradient-to-r from-[#c4a882] to-[#8c6e52] transition-all duration-500"
-              style={{ width: '40%' }}
-            />
+
+          <div className="h-2 bg-[#f5f0e8] rounded-full overflow-hidden mb-3">
+            <div className="h-full w-[40%] bg-gradient-to-r from-[#c4a882] to-[#8c6e52] transition-all duration-500" />
           </div>
-          <p className="text-sm text-muted-foreground">Bước 2 / 5</p>
+          <p className="text-sm text-[#6b7280]">Bước 2 / 5</p>
         </div>
-        
-        {/* Content */}
-        <div className="bg-white rounded-3xl shadow-xl p-8 md:p-12 border border-border">
-          <h1 className="text-4xl font-bold mb-3">
-            Tải Ảnh <span className="text-[#c4a882]">Da Mặt</span>
-            <span className="text-lg text-muted-foreground ml-3">(Tùy Chọn)</span>
-          </h1>
-          <p className="text-muted-foreground mb-12">
-            Ảnh chụp rõ nét giúp AI phân tích chính xác nhất. Đảm bảo mặt bạn được chiếu sáng tốt.
-          </p>
-          
-          {/* Upload Area */}
-          {!uploadedImage ? (
-            <div
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
-              className={`relative border-2 border-dashed rounded-3xl p-12 text-center transition-all ${
-                isDragging
-                  ? "border-[#c4a882] bg-gradient-to-br from-[#c4a882]/5 to-[#8c6e52]/5"
-                  : "border-border hover:border-[#c4a882]/30"
-              }`}
-            >
-              <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-[#d4f4f4] to-[#fce7f3] flex items-center justify-center">
-                <Camera className="w-10 h-10 text-[#c4a882]" />
+
+        <section className="bg-white/85 backdrop-blur-xl border border-[#e8d5b7]/40 rounded-2xl shadow-sm overflow-hidden">
+          <div className="grid lg:grid-cols-[1fr_320px]">
+            <div className="p-6 sm:p-8 lg:p-10">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#e8d5b7]/40 text-[#8c6e52] text-xs mb-4">
+                <Sparkles className="w-3.5 h-3.5" />
+                AI phân tích da
               </div>
-              
-              <h3 className="text-xl font-semibold mb-2">Kéo thả ảnh vào đây</h3>
-              <p className="text-muted-foreground mb-6">hoặc</p>
-              
-              <label className="inline-block px-6 py-3 bg-gradient-to-r from-[#c4a882] to-[#8c6e52] text-white rounded-full cursor-pointer hover:shadow-lg transition-all">
-                <span className="flex items-center gap-2">
-                  <Upload className="w-4 h-4" />
-                  Chọn Ảnh
-                </span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleFileChange}
-                  className="hidden"
-                />
-              </label>
-              
-              <p className="text-sm text-muted-foreground mt-6">
-                Hỗ trợ: JPG, PNG, HEIC (Tối đa 10MB)
+              <h1 className="text-3xl text-[#2a2a2a] mb-3">Tải ảnh da mặt</h1>
+              <p className="text-sm text-[#6b7280] leading-relaxed mb-8">
+                Ảnh rõ nét giúp hệ thống tạo báo cáo da và lộ trình sản phẩm chính xác hơn.
               </p>
-            </div>
-          ) : (
-            <div className="relative">
-              <div className="relative rounded-3xl overflow-hidden border-2 border-[#c4a882] mb-6">
-                <img 
-                  src={uploadedImage} 
-                  alt="Uploaded face"
-                  className="w-full h-96 object-cover"
-                />
-                <button
-                  onClick={() => setUploadedImage(null)}
-                  className="absolute top-4 right-4 w-10 h-10 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white transition-colors"
+
+              {!uploadedImage ? (
+                <div
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  className={`relative border-2 border-dashed rounded-2xl p-8 sm:p-12 text-center transition-all ${
+                    isDragging
+                      ? "border-[#c4a882] bg-[#f5f0e8]"
+                      : "border-[#e8d5b7] bg-[#faf7f2] hover:border-[#c4a882]"
+                  }`}
                 >
-                  <X className="w-5 h-5" />
-                </button>
-                
-                {/* Scan Effect */}
-                <div className="absolute inset-0 border-2 border-[#c4a882]/50">
-                  <div className="absolute top-1/4 left-1/4 w-6 h-6 border-t-2 border-l-2 border-[#c4a882]" />
-                  <div className="absolute top-1/4 right-1/4 w-6 h-6 border-t-2 border-r-2 border-[#c4a882]" />
-                  <div className="absolute bottom-1/4 left-1/4 w-6 h-6 border-b-2 border-l-2 border-[#c4a882]" />
-                  <div className="absolute bottom-1/4 right-1/4 w-6 h-6 border-b-2 border-r-2 border-[#c4a882]" />
+                  <div className="w-16 h-16 mx-auto mb-5 rounded-2xl bg-gradient-to-br from-[#f5f0e8] to-[#f5e6d3] border border-[#e8d5b7]/60 flex items-center justify-center">
+                    <Camera className="w-8 h-8 text-[#8c6e52]" />
+                  </div>
+                  <h2 className="text-xl text-[#2a2a2a] mb-2">Kéo thả ảnh vào đây</h2>
+                  <p className="text-sm text-[#6b7280] mb-6">hoặc chọn ảnh từ thiết bị của bạn</p>
+
+                  <label className="inline-flex items-center gap-2 px-6 py-3 bg-[#c4a882] hover:bg-[#8c6e52] text-white rounded-xl cursor-pointer transition-colors">
+                    <Upload className="w-4 h-4" />
+                    Chọn ảnh
+                    <input type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
+                  </label>
+
+                  <p className="text-xs text-[#9ca3af] mt-5">Hỗ trợ JPG, PNG, HEIC. Tối đa 10MB.</p>
                 </div>
+              ) : (
+                <div>
+                  <div className="relative rounded-2xl overflow-hidden border border-[#c4a882]/50 mb-5 bg-[#f5f0e8]">
+                    <img src={uploadedImage} alt="Ảnh da mặt đã tải lên" className="w-full h-[360px] object-cover" />
+                    <button
+                      type="button"
+                      onClick={clearImage}
+                      className="absolute top-4 right-4 w-10 h-10 bg-white/90 backdrop-blur-xl rounded-xl flex items-center justify-center hover:bg-white transition-colors"
+                      aria-label="Xóa ảnh đã chọn"
+                    >
+                      <X className="w-5 h-5 text-[#6b7280]" />
+                    </button>
+                    <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/45 to-transparent">
+                      <div className="inline-flex items-center gap-2 rounded-full bg-white/90 backdrop-blur-xl px-3 py-1.5 text-xs text-[#8c6e52]">
+                        <ImagePlus className="w-3.5 h-3.5" />
+                        Ảnh đã sẵn sàng để phân tích
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {errorMessage && (
+                <div className="mt-5 flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                  <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                  <span>{errorMessage}</span>
+                </div>
+              )}
+
+              <div className="mt-8 flex flex-col sm:flex-row gap-3">
+                <button
+                  type="button"
+                  onClick={() => navigate("/dashboard")}
+                  disabled={isAnalyzing}
+                  className="flex-1 px-6 py-3 rounded-xl border border-[#e8d5b7] text-[#8c6e52] hover:bg-[#f5f0e8] disabled:opacity-60 transition-colors"
+                >
+                  Bỏ qua
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void handleAnalyze()}
+                  disabled={isAnalyzing || !selectedFile}
+                  className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-[#c4a882] text-white hover:bg-[#8c6e52] disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                >
+                  {isAnalyzing ? (
+                    <>
+                      <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                      Đang phân tích
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4" />
+                      Phân tích ảnh
+                    </>
+                  )}
+                </button>
               </div>
-              
-              <div className="bg-gradient-to-r from-[#d4f4f4] to-[#fce7f3] rounded-2xl p-4 mb-8">
-                <p className="text-sm text-center">
-                  ✓ Ảnh của bạn đã sẵn sàng cho phân tích AI
-                </p>
+            </div>
+
+            <aside className="border-t lg:border-t-0 lg:border-l border-[#e8d5b7]/35 bg-[#faf7f2]/80 p-6 sm:p-8">
+              <h2 className="text-lg text-[#2a2a2a] mb-4">Gợi ý để ảnh rõ hơn</h2>
+              <div className="space-y-3">
+                {[
+                  "Chụp trong ánh sáng tự nhiên hoặc ánh sáng đều.",
+                  "Giữ mặt nhìn thẳng, không che vùng trán và má.",
+                  "Tẩy trang nhẹ trước khi chụp nếu có thể.",
+                ].map((tip, index) => (
+                  <div key={tip} className="flex gap-3 rounded-2xl border border-[#e8d5b7]/40 bg-white/80 px-4 py-3">
+                    <span className="w-7 h-7 rounded-xl bg-[#e8d5b7]/45 text-[#8c6e52] flex items-center justify-center text-sm flex-shrink-0">
+                      {index + 1}
+                    </span>
+                    <p className="text-sm text-[#4b5563] leading-relaxed">{tip}</p>
+                  </div>
+                ))}
               </div>
-            </div>
-          )}
-          
-          {/* Tips */}
-          <div className="grid md:grid-cols-3 gap-4 my-8 p-6 bg-muted/30 rounded-2xl">
-            <div className="text-center">
-              <div className="text-2xl mb-2">💡</div>
-              <p className="text-sm text-muted-foreground">Chụp trong ánh sáng tự nhiên</p>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl mb-2">👤</div>
-              <p className="text-sm text-muted-foreground">Mặt nhìn thẳng vào camera</p>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl mb-2">✨</div>
-              <p className="text-sm text-muted-foreground">Không makeup để kết quả tốt nhất</p>
-            </div>
+            </aside>
           </div>
-          
-          {/* Buttons */}
-          <div className="flex gap-4">
-            <button
-              onClick={handleSkip}
-              className="flex-1 py-4 rounded-full border-2 border-border hover:border-[#c4a882]/30 transition-all"
-            >
-              Bỏ Qua
-            </button>
-            <button
-              onClick={handleNext}
-              className="flex-1 py-4 rounded-full bg-gradient-to-r from-[#c4a882] to-[#8c6e52] text-white hover:shadow-lg hover:shadow-[#c4a882]/30 transition-all"
-            >
-              Tiếp Theo
-            </button>
-          </div>
-        </div>
+        </section>
       </div>
     </div>
   );

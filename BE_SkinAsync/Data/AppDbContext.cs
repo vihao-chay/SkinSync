@@ -13,6 +13,7 @@ public class AppDbContext : DbContext
     public DbSet<UserProfile> UserProfiles => Set<UserProfile>();
     public DbSet<AiAnalysis> AiAnalyses => Set<AiAnalysis>();
     public DbSet<Product> Products => Set<Product>();
+    public DbSet<IngredientConflictRule> IngredientConflictRules => Set<IngredientConflictRule>();
     public DbSet<UserRegimen> UserRegimens => Set<UserRegimen>();
     public DbSet<RegimenItem> RegimenItems => Set<RegimenItem>();
     public DbSet<DailyLog> DailyLogs => Set<DailyLog>();
@@ -80,6 +81,19 @@ public class AppDbContext : DbContext
             entity.Property(x => x.ImageUrl).HasMaxLength(500);
             entity.Property(x => x.Rating).HasPrecision(3, 2).HasDefaultValue(0m);
             entity.Property(x => x.Status).HasMaxLength(20).HasDefaultValue("active");
+            entity.Property(x => x.CreatedAt).HasDefaultValueSql("timezone('utc', now())");
+        });
+
+        modelBuilder.Entity<IngredientConflictRule>(entity =>
+        {
+            entity.ToTable("ingredient_conflict_rules");
+            entity.HasKey(x => x.Id);
+            entity.HasIndex(x => new { x.PrimaryIngredient, x.ConflictingIngredient }).IsUnique();
+            entity.Property(x => x.PrimaryIngredient).HasMaxLength(120).IsRequired();
+            entity.Property(x => x.ConflictingIngredient).HasMaxLength(120).IsRequired();
+            entity.Property(x => x.Severity).HasMaxLength(20).HasDefaultValue("warning");
+            entity.Property(x => x.Message).HasColumnType("text").HasDefaultValue(string.Empty);
+            entity.Property(x => x.Recommendation).HasColumnType("text").HasDefaultValue(string.Empty);
             entity.Property(x => x.CreatedAt).HasDefaultValueSql("timezone('utc', now())");
         });
 

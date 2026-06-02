@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link } from "react-router";
 import {
   ArrowLeft,
+  AlertTriangle,
   Bell,
   CheckCircle2,
   ChevronDown,
@@ -42,6 +43,10 @@ import {
   saveReminderApi,
   type Reminder,
 } from "../services/reminderService";
+import {
+  checkIngredientConflictsApi,
+  type IngredientConflictWarning,
+} from "../services/ingredientConflictService";
 
 type RoutineType = "Morning" | "Evening";
 
@@ -150,6 +155,8 @@ export function RoutinePage() {
   const [editMode, setEditMode] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [conflictWarnings, setConflictWarnings] = useState<IngredientConflictWarning[]>([]);
+  const [isCheckingConflicts, setIsCheckingConflicts] = useState(false);
   const [newRoutineTime, setNewRoutineTime] = useState<RoutineType>("Morning");
   const [newProductId, setNewProductId] = useState("");
   const [newInstruction, setNewInstruction] = useState("");
@@ -218,6 +225,38 @@ export function RoutinePage() {
   const eveningSteps = useMemo(() => {
     return steps.filter((step) => step.routineTime === "Evening").sort((a, b) => a.stepOrder - b.stepOrder);
   }, [steps]);
+
+  const conflictProductKey = useMemo(() => {
+    return getCheckableProductIds(steps).join("|");
+  }, [steps]);
+
+  useEffect(() => {
+    const productIds = conflictProductKey ? conflictProductKey.split("|") : [];
+    if (productIds.length < 2) {
+      setConflictWarnings([]);
+      setIsCheckingConflicts(false);
+      return;
+    }
+
+    let isMounted = true;
+
+    async function checkConflicts() {
+      setIsCheckingConflicts(true);
+      const result = await checkIngredientConflictsApi(productIds);
+
+      if (!isMounted) {
+        return;
+      }
+
+      setConflictWarnings(result.success && result.content ? result.content.warnings : []);
+      setIsCheckingConflicts(false);
+    }
+
+    void checkConflicts();
+    return () => {
+      isMounted = false;
+    };
+  }, [conflictProductKey]);
 
   async function refreshTracking() {
     const result = await getTodayRoutineTrackingApi();
@@ -465,6 +504,10 @@ export function RoutinePage() {
           </div>
         )}
 
+        {steps.length > 0 && (
+          <ConflictWarningPanel warnings={conflictWarnings} isLoading={isCheckingConflicts} />
+        )}
+
         <div className="grid lg:grid-cols-[1fr_360px] gap-6">
           <section className="space-y-6">
             {editMode && (
@@ -638,6 +681,80 @@ export function RoutinePage() {
       {selectedProduct && (
         <ProductDetailModal product={selectedProduct} onClose={() => setSelectedProduct(null)} />
       )}
+    </div>
+  );
+}
+
+function ConflictWarningPanel({
+  warnings,
+  isLoading,
+}: {
+  warnings: IngredientConflictWarning[];
+  isLoading: boolean;
+}) {
+  const hasWarning = warnings.length > 0;
+
+  return (
+    <div className={`mb-6 rounded-2xl border backdrop-blur-xl p-5 shadow-sm ${
+      hasWarning
+        ? "border-amber-200 bg-amber-50/85"
+        : "border-[#e8d5b7]/40 bg-white/80"
+    }`}>
+      <div className="flex flex-col gap-4">
+        <div className="flex items-start gap-3">
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
+            hasWarning ? "bg-amber-100 text-amber-700" : "bg-emerald-50 text-emerald-600"
+          }`}>
+            {hasWarning ? <AlertTriangle className="w-5 h-5" /> : <CheckCircle2 className="w-5 h-5" />}
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-lg text-[#2a2a2a]">Kiểm tra xung đột thành phần</h2>
+              {isLoading && (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/70 px-2.5 py-1 text-xs text-[#8c6e52]">
+                  <span className="w-3 h-3 border-2 border-[#c4a882]/30 border-t-[#c4a882] rounded-full animate-spin" />
+                  Đang kiểm tra
+                </span>
+              )}
+            </div>
+            <p className="text-sm text-[#6b7280] mt-1">
+              {hasWarning
+                ? "Routine có hoạt chất nên tách thời điểm sử dụng để giảm kích ứng."
+                : "Chưa phát hiện cặp thành phần cần cảnh báo trong routine hiện tại."}
+            </p>
+          </div>
+        </div>
+
+        {hasWarning && (
+          <div className="grid md:grid-cols-2 gap-3">
+            {warnings.map((warning) => (
+              <div
+                key={`${warning.productAId}-${warning.productBId}-${warning.ingredientA}-${warning.ingredientB}`}
+                className={`rounded-2xl border bg-white/85 p-4 ${
+                  warning.severity === "danger" ? "border-red-200" : "border-amber-200"
+                }`}
+              >
+                <div className="flex items-center justify-between gap-3 mb-2">
+                  <span className={`px-2.5 py-1 rounded-full text-xs ${
+                    warning.severity === "danger"
+                      ? "bg-red-100 text-red-700"
+                      : "bg-amber-100 text-amber-700"
+                  }`}>
+                    {warning.severity === "danger" ? "Cần tách routine" : "Cần lưu ý"}
+                  </span>
+                  <span className="text-xs text-[#8c6e52]">
+                    {warning.ingredientA} + {warning.ingredientB}
+                  </span>
+                </div>
+                <p className="text-sm text-[#2a2a2a] leading-relaxed">{warning.message}</p>
+                <p className="text-xs text-[#6b7280] leading-relaxed mt-2">
+                  {warning.productAName} và {warning.productBName}. {warning.recommendation}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -906,6 +1023,14 @@ function renumberSteps(items: EditableStep[]): EditableStep[] {
 
     return { ...step, stepOrder: order + 1 };
   });
+}
+
+function getCheckableProductIds(items: EditableStep[]): string[] {
+  return Array.from(new Set(items.map((step) => step.productId).filter(isGuid))).sort();
+}
+
+function isGuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 }
 
 function defaultReminders(): Reminder[] {

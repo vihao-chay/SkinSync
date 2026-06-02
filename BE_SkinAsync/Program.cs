@@ -75,6 +75,7 @@ builder.Services.AddScoped<IProductRepository, ProductRepository>();
 
 builder.Services.AddScoped<IAiAnalysisService, AiAnalysisService>();
 builder.Services.AddScoped<IRegimenBuilderService, RegimenBuilderService>();
+builder.Services.AddScoped<IIngredientConflictService, IngredientConflictService>();
 builder.Services.AddHttpClient<ISupabaseAuthService, SupabaseAuthService>();
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
