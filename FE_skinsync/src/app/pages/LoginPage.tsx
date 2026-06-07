@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { Eye, EyeOff, Mail, Lock, ArrowRight, Sparkles, User, Phone, CheckCircle, AlertCircle } from "lucide-react";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
+import { BrandLogo } from "../components/BrandLogo";
 import {
   registerApi,
   startSupabaseOAuth,
@@ -175,7 +176,7 @@ export function LoginPage({ initialMode = "login" }: { initialMode?: AuthMode })
         <div className="px-12 py-5">
           <div className="flex items-center justify-between">
             <Link to="/" className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#c4a882] to-[#8c6e52]" />
+              <BrandLogo className="w-9 h-9 rounded-xl border border-white/30 shadow-md shadow-black/10" />
               <span className="text-white/90 text-lg" style={{ textShadow: "0 1px 4px rgba(0,0,0,0.3)" }}>
                 SkinSync
               </span>

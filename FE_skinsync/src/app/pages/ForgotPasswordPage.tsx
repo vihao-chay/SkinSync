@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router";
 import { Mail, ArrowLeft, Sparkles, Send, CheckCircle2 } from "lucide-react";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
+import { BrandLogo } from "../components/BrandLogo";
 import { forgotPasswordApi } from "../services/authService";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -46,7 +47,7 @@ export function ForgotPasswordPage() {
             <nav className="absolute top-0 left-0 right-0 z-50">
                 <div className="px-12 py-5">
                     <Link to="/" className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#c4a882] to-[#8c6e52]" />
+                        <BrandLogo className="w-9 h-9 rounded-xl border border-white/30 shadow-md shadow-black/10" />
                         <span className="text-white/90 text-lg" style={{ textShadow: "0 1px 4px rgba(0,0,0,0.3)" }}>
                             SkinSync
                         </span>
@@ -85,9 +86,7 @@ export function ForgotPasswordPage() {
                         <div className="pb-4">
                             <div className="bg-white/10 backdrop-blur-md rounded-2xl p-5 border border-white/20">
                                 <div className="flex items-center gap-3 mb-2">
-                                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#c4a882] to-[#8c6e52] flex items-center justify-center">
-                                        <Sparkles className="w-4 h-4 text-white" />
-                                    </div>
+                                    <BrandLogo className="w-8 h-8 rounded-lg border border-white/20 shadow-sm" />
                                     <span className="text-white text-sm">SkinSync AI</span>
                                 </div>
                                 <p className="text-white/70 text-sm leading-relaxed">

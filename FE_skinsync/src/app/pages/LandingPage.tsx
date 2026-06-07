@@ -18,6 +18,7 @@ import {
   Award,
   Clock,
 } from "lucide-react";
+import { BrandLogo } from "../components/BrandLogo";
 
 /* ─── tiny hook: animate number up ─── */
 function useCountUp(target: number, duration = 1800, start = false) {
@@ -681,9 +682,7 @@ export function LandingPage() {
       <footer className="py-8 px-6 bg-[#1a1410] border-t border-white/5">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-[#c4a882] to-[#8c6e52] flex items-center justify-center">
-              <Sparkles className="w-3.5 h-3.5 text-white" />
-            </div>
+            <BrandLogo className="w-8 h-8 rounded-lg border border-white/10" />
             <span className="text-[#e8d5b7] text-sm" style={{ fontWeight: 600 }}>SkinSync</span>
           </div>
           <p className="text-xs text-[#6b5540]">© 2026 SkinSync. Mọi quyền được bảo lưu.</p>

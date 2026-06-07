@@ -5,6 +5,7 @@ import 'auth/auth_repository.dart';
 import 'screens/auth_screen.dart';
 import 'screens/home_screen.dart';
 import 'theme.dart';
+import 'widgets/brand_logo.dart';
 
 class SkinSyncApp extends StatelessWidget {
   const SkinSyncApp({super.key});
@@ -89,18 +90,17 @@ class SplashScreen extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                width: 68,
-                height: 68,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: SkinSyncGradients.brand,
-                ),
-                child: const Icon(
-                  Icons.auto_awesome_rounded,
-                  color: Colors.white,
-                  size: 30,
-                ),
+              BrandLogo(
+                size: 78,
+                borderRadius: 22,
+                borderColor: SkinSyncColors.border.withValues(alpha: .7),
+                boxShadow: [
+                  BoxShadow(
+                    color: SkinSyncColors.cocoa.withValues(alpha: .16),
+                    blurRadius: 22,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
               ),
               const SizedBox(height: 18),
               Text('SkinSync', style: Theme.of(context).textTheme.titleLarge),

@@ -18,7 +18,7 @@ class SupabaseConfig {
   );
   static const redirectUrl = String.fromEnvironment(
     'SKINSYNC_SUPABASE_REDIRECT_URL',
-    defaultValue: 'com.example.mobile_skinasync://login-callback',
+    defaultValue: 'com.example.mobileskinasync://login-callback',
   );
 
   static bool get isConfigured => url.isNotEmpty && anonKey.isNotEmpty;

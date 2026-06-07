@@ -1,11 +1,12 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
-import '../auth/auth_api_client.dart';
 import '../auth/auth_models.dart';
 import '../auth/auth_repository.dart';
-import '../auth/supabase_oauth_service.dart';
 import '../theme.dart';
 import '../widgets/auth_text_field.dart';
+import '../widgets/brand_logo.dart';
 
 enum AuthMode { login, register }
 
@@ -410,8 +411,6 @@ class _AuthScreenState extends State<AuthScreen> {
             isLoading: _isGoogleLoading,
             onPressed: _isBusy ? null : _handleGoogleLogin,
           ),
-          const SizedBox(height: 20),
-          _buildApiHint(),
           const SizedBox(height: 18),
           Center(
             child: TextButton(
@@ -423,44 +422,6 @@ class _AuthScreenState extends State<AuthScreen> {
                     ? 'Đã có tài khoản? Đăng nhập'
                     : 'Chưa có tài khoản? Đăng ký ngay',
                 style: const TextStyle(fontWeight: FontWeight.w700),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildApiHint() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: SkinSyncColors.cream.withValues(alpha: .7),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: SkinSyncColors.border.withValues(alpha: .45)),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            SupabaseConfig.isConfigured
-                ? Icons.cloud_done_outlined
-                : Icons.cloud_off_outlined,
-            color: SkinSyncColors.cocoa,
-            size: 18,
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              SupabaseConfig.isConfigured
-                  ? 'API: ${ApiConfig.baseUrl} · OAuth: ${SupabaseConfig.redirectUrl}'
-                  : 'API: ${ApiConfig.baseUrl} · Thiếu cấu hình Supabase OAuth',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: SkinSyncColors.muted,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
               ),
             ),
           ),
@@ -524,18 +485,17 @@ class _HeroHeader extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Container(
-                      width: 34,
-                      height: 34,
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.white24,
-                      ),
-                      child: const Icon(
-                        Icons.auto_awesome_rounded,
-                        color: Colors.white,
-                        size: 18,
-                      ),
+                    BrandLogo(
+                      size: 38,
+                      borderRadius: 13,
+                      borderColor: Colors.white.withValues(alpha: .35),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: .12),
+                          blurRadius: 12,
+                          offset: const Offset(0, 5),
+                        ),
+                      ],
                     ),
                     const SizedBox(width: 10),
                     const Text(
@@ -822,35 +782,74 @@ class _GoogleSignInButton extends StatelessWidget {
             : Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Container(
-                    width: 26,
-                    height: 26,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(999),
-                      border: Border.all(color: const Color(0xFFE5E7EB)),
-                    ),
-                    child: const Center(
-                      child: Text(
-                        'G',
-                        style: TextStyle(
-                          color: Color(0xFF4285F4),
-                          fontSize: 15,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
+                  const _GoogleLogo(),
+                  const SizedBox(width: 12),
                   const Text(
                     'Tiếp tục với Google',
-                    style: TextStyle(fontWeight: FontWeight.w800),
+                    style: TextStyle(
+                      color: Color(0xFF374151),
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ],
               ),
       ),
     );
   }
+}
+
+class _GoogleLogo extends StatelessWidget {
+  const _GoogleLogo();
+
+  @override
+  Widget build(BuildContext context) {
+    return const SizedBox.square(
+      dimension: 24,
+      child: CustomPaint(painter: _GoogleLogoPainter()),
+    );
+  }
+}
+
+class _GoogleLogoPainter extends CustomPainter {
+  const _GoogleLogoPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final strokeWidth = size.shortestSide * .18;
+    final rect = Offset.zero & size;
+    final arcRect = rect.deflate(strokeWidth / 2);
+    final arcPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round;
+
+    arcPaint.color = const Color(0xFF4285F4);
+    canvas.drawArc(arcRect, -.06 * math.pi, .42 * math.pi, false, arcPaint);
+
+    arcPaint.color = const Color(0xFF34A853);
+    canvas.drawArc(arcRect, .36 * math.pi, .56 * math.pi, false, arcPaint);
+
+    arcPaint.color = const Color(0xFFFBBC05);
+    canvas.drawArc(arcRect, .92 * math.pi, .34 * math.pi, false, arcPaint);
+
+    arcPaint.color = const Color(0xFFEA4335);
+    canvas.drawArc(arcRect, 1.26 * math.pi, .58 * math.pi, false, arcPaint);
+
+    final barPaint = Paint()
+      ..color = const Color(0xFF4285F4)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.square;
+    canvas.drawLine(
+      Offset(size.width * .52, size.height * .50),
+      Offset(size.width * .92, size.height * .50),
+      barPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _GoogleLogoPainter oldDelegate) => false;
 }
 
 class _MessageBanner extends StatelessWidget {

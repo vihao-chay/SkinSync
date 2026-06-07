@@ -1,9 +1,10 @@
 import { Link, useLocation, useNavigate } from "react-router";
-import { User, Bell, ChevronDown, LogOut, ChevronRight, Sparkles } from "lucide-react";
+import { User, Bell, ChevronDown, LogOut, ChevronRight } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { useAuth } from "../contexts/AuthContext";
 import { resolveUserAvatar } from "../utils/avatar";
+import { BrandLogo } from "./BrandLogo";
 
 export function Navigation() {
   const location = useLocation();
@@ -55,9 +56,7 @@ export function Navigation() {
 
           {/* ── Logo ── */}
           <Link to="/" className="flex items-center gap-2.5 flex-shrink-0">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#c4a882] to-[#8c6e52] flex items-center justify-center shadow-sm shadow-[#c4a882]/25">
-              <Sparkles className="w-4 h-4 text-white" />
-            </div>
+            <BrandLogo className="w-9 h-9 rounded-xl border border-[#e8d5b7]/70 shadow-sm shadow-[#c4a882]/20" />
             <span className="text-[#1c1008] tracking-tight" style={{ fontWeight: 600, fontSize: "1.05rem" }}>
               SkinSync
             </span>
