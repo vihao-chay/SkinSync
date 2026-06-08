@@ -1,14 +1,17 @@
-import { useState } from "react";
+import { useState, type ChangeEvent, type DragEvent } from "react";
 import { Link, useNavigate } from "react-router";
 import { AlertCircle, ArrowLeft, Camera, ImagePlus, Sparkles, Upload, X } from "lucide-react";
-import { scanAnalysisApi } from "../services/analysisService";
+import { analyzeSkinApi } from "../services/analysisService";
 
 const maxImageSize = 10 * 1024 * 1024;
+const ANALYSIS_CACHE_KEY = "skinsync_latest_skin_analysis";
+const ANALYSIS_IMAGE_KEY = "skinsync_latest_skin_image";
 
 export function UploadPage() {
   const navigate = useNavigate();
-  const [uploadedImage, setUploadedImage] = useState<string | null>(null);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [dataUrl, setDataUrl] = useState<string | null>(null);
+  const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -28,20 +31,27 @@ export function UploadPage() {
 
     const reader = new FileReader();
     reader.onload = (event) => {
-      setUploadedImage(event.target?.result as string);
-      setSelectedFile(file);
+      const result = event.target?.result;
+      if (typeof result !== "string") {
+        setErrorMessage("Không thể đọc ảnh đã chọn.");
+        return;
+      }
+
+      setPreviewUrl(result);
+      setDataUrl(result);
+      setSelectedFileName(file.name);
     };
     reader.readAsDataURL(file);
   };
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       previewFile(file);
     }
   };
 
-  const handleDragOver = (event: React.DragEvent) => {
+  const handleDragOver = (event: DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     setIsDragging(true);
   };
@@ -50,7 +60,7 @@ export function UploadPage() {
     setIsDragging(false);
   };
 
-  const handleDrop = (event: React.DragEvent) => {
+  const handleDrop = (event: DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     setIsDragging(false);
 
@@ -61,13 +71,14 @@ export function UploadPage() {
   };
 
   const clearImage = () => {
-    setUploadedImage(null);
-    setSelectedFile(null);
+    setPreviewUrl(null);
+    setDataUrl(null);
+    setSelectedFileName(null);
     setErrorMessage(null);
   };
 
   const handleAnalyze = async () => {
-    if (!selectedFile) {
+    if (!dataUrl) {
       setErrorMessage("Hãy chọn một ảnh da mặt trước khi phân tích.");
       return;
     }
@@ -75,8 +86,10 @@ export function UploadPage() {
     setIsAnalyzing(true);
     setErrorMessage(null);
 
-    const result = await scanAnalysisApi(selectedFile);
+    const result = await analyzeSkinApi({ imageUrl: dataUrl });
     if (result.success && result.content) {
+      sessionStorage.setItem(ANALYSIS_CACHE_KEY, JSON.stringify(result.content));
+      sessionStorage.setItem(ANALYSIS_IMAGE_KEY, dataUrl);
       navigate("/analysis");
       return;
     }
@@ -109,10 +122,10 @@ export function UploadPage() {
               </div>
               <h1 className="text-3xl text-[#2a2a2a] mb-3">Tải ảnh da mặt</h1>
               <p className="text-sm text-[#6b7280] leading-relaxed mb-8">
-                Ảnh rõ nét giúp hệ thống tạo báo cáo da và lộ trình sản phẩm chính xác hơn.
+                Ảnh rõ nét giúp hệ thống tạo báo cáo da và đề xuất routine chính xác hơn.
               </p>
 
-              {!uploadedImage ? (
+              {!previewUrl ? (
                 <div
                   onDragOver={handleDragOver}
                   onDragLeave={handleDragLeave}
@@ -140,7 +153,7 @@ export function UploadPage() {
               ) : (
                 <div>
                   <div className="relative rounded-2xl overflow-hidden border border-[#c4a882]/50 mb-5 bg-[#f5f0e8]">
-                    <img src={uploadedImage} alt="Ảnh da mặt đã tải lên" className="w-full h-[360px] object-cover" />
+                    <img src={previewUrl} alt="Ảnh da mặt đã tải lên" className="w-full h-[360px] object-cover" />
                     <button
                       type="button"
                       onClick={clearImage}
@@ -152,7 +165,7 @@ export function UploadPage() {
                     <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/45 to-transparent">
                       <div className="inline-flex items-center gap-2 rounded-full bg-white/90 backdrop-blur-xl px-3 py-1.5 text-xs text-[#8c6e52]">
                         <ImagePlus className="w-3.5 h-3.5" />
-                        Ảnh đã sẵn sàng để phân tích
+                        {selectedFileName ?? "Ảnh đã sẵn sàng để phân tích"}
                       </div>
                     </div>
                   </div>
@@ -178,7 +191,7 @@ export function UploadPage() {
                 <button
                   type="button"
                   onClick={() => void handleAnalyze()}
-                  disabled={isAnalyzing || !selectedFile}
+                  disabled={isAnalyzing || !dataUrl}
                   className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-[#c4a882] text-white hover:bg-[#8c6e52] disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
                 >
                   {isAnalyzing ? (
