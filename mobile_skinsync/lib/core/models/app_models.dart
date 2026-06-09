@@ -64,31 +64,61 @@ class AppUser {
 
 class SkinProfile {
   const SkinProfile({
+    this.displayName,
+    this.dateOfBirth,
+    this.gender,
+    this.healthIssues = const [],
     this.skinType,
     this.monthlyBudget,
     this.budgetLabel,
     this.concerns = const [],
+    this.currentRoutineLevel,
     this.goals = const [],
     this.allergies = const [],
     this.avoidIngredients = const [],
+    this.skinGoals = const [],
+    this.rednessWhenNewProducts,
+    this.rednessWhenSunOrExercise,
+    this.sensitivityLevel,
+    this.isOnboardingCompleted = false,
   });
 
+  final String? displayName;
+  final String? dateOfBirth;
+  final String? gender;
+  final List<String> healthIssues;
   final String? skinType;
   final double? monthlyBudget;
   final String? budgetLabel;
   final List<String> concerns;
+  final String? currentRoutineLevel;
   final List<String> goals;
   final List<String> allergies;
   final List<String> avoidIngredients;
+  final List<String> skinGoals;
+  final String? rednessWhenNewProducts;
+  final String? rednessWhenSunOrExercise;
+  final int? sensitivityLevel;
+  final bool isOnboardingCompleted;
 
   factory SkinProfile.fromJson(Map<String, dynamic> json) => SkinProfile(
+        displayName: json['displayName'] as String?,
+        dateOfBirth: json['dateOfBirth'] as String?,
+        gender: json['gender'] as String?,
+        healthIssues: ((json['healthIssues'] as List?) ?? const []).map((e) => e.toString()).toList(),
         skinType: json['skinType'] as String?,
         monthlyBudget: (json['monthlyBudget'] as num?)?.toDouble(),
         budgetLabel: json['budgetLabel'] as String?,
         concerns: ((json['concerns'] as List?) ?? const []).map((e) => e.toString()).toList(),
+        currentRoutineLevel: json['currentRoutineLevel'] as String?,
         goals: ((json['goals'] as List?) ?? const []).map((e) => e.toString()).toList(),
         allergies: ((json['allergies'] as List?) ?? const []).map((e) => e.toString()).toList(),
         avoidIngredients: ((json['avoidIngredients'] as List?) ?? const []).map((e) => e.toString()).toList(),
+        skinGoals: ((json['skinGoals'] as List?) ?? const []).map((e) => e.toString()).toList(),
+        rednessWhenNewProducts: json['rednessWhenNewProducts'] as String?,
+        rednessWhenSunOrExercise: json['rednessWhenSunOrExercise'] as String?,
+        sensitivityLevel: json['sensitivityLevel'] as int?,
+        isOnboardingCompleted: (json['isOnboardingCompleted'] ?? false) as bool,
       );
 }
 

@@ -46,87 +46,86 @@ class SkinAnalysisPage extends StatelessWidget {
     return Column(
       children: [
         Expanded(
-          child: SingleChildScrollView(
+          child: ListView(
             padding: const EdgeInsets.fromLTRB(
               AppSpacing.pagePadding,
               AppSpacing.pagePadding,
               AppSpacing.pagePadding,
               24,
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Skin Analysis', style: Theme.of(context).textTheme.headlineMedium),
-                const SizedBox(height: 6),
-                Text(result.overview ?? 'Your latest AI-powered skin summary.', style: Theme.of(context).textTheme.bodySmall),
-                const SizedBox(height: AppSpacing.sectionGap),
-                PremiumCard(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('${result.overallScore}', style: Theme.of(context).textTheme.displayLarge),
-                      const SizedBox(height: 4),
-                      Text('${result.skinType} skin'),
-                      const SizedBox(height: 6),
-                      Text('Confidence ${result.confidenceScore}%'),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: result.issues.map((issue) => SkinChip(label: issue.issueType)).toList(),
-                ),
-                const SizedBox(height: AppSpacing.sectionGap),
-                GridView.count(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  crossAxisCount: 2,
-                  mainAxisSpacing: 12,
-                  crossAxisSpacing: 12,
-                  childAspectRatio: 1.2,
+            children: [
+              Text('Skin Analysis', style: Theme.of(context).textTheme.headlineMedium),
+              const SizedBox(height: 6),
+              Text(result.overview ?? 'Your latest AI-powered skin summary.', style: Theme.of(context).textTheme.bodySmall),
+              const SizedBox(height: AppSpacing.sectionGap),
+              PremiumCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    MetricTile(icon: Icons.face_rounded, label: 'Score', value: '${result.overallScore}/100'),
-                    MetricTile(icon: Icons.shield_outlined, label: 'Confidence', value: '${result.confidenceScore}%'),
-                    MetricTile(icon: Icons.bubble_chart_outlined, label: 'Concerns', value: '${result.issues.length}'),
-                    MetricTile(icon: Icons.recommend_outlined, label: 'Tips', value: '${result.recommendations.length}'),
+                    Text('${result.overallScore}', style: Theme.of(context).textTheme.displayLarge),
+                    const SizedBox(height: 4),
+                    Text('${result.skinType} skin'),
+                    const SizedBox(height: 6),
+                    Text('Confidence ${result.confidenceScore}%'),
                   ],
                 ),
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: result.issues.map((issue) => SkinChip(label: issue.issueType)).toList(),
+              ),
+              const SizedBox(height: AppSpacing.sectionGap),
+              GridView.count(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                crossAxisCount: 2,
+                mainAxisSpacing: 12,
+                crossAxisSpacing: 12,
+                childAspectRatio: 1.2,
+                children: [
+                  MetricTile(icon: Icons.face_rounded, label: 'Score', value: '${result.overallScore}/100'),
+                  MetricTile(icon: Icons.shield_outlined, label: 'Confidence', value: '${result.confidenceScore}%'),
+                  MetricTile(icon: Icons.bubble_chart_outlined, label: 'Concerns', value: '${result.issues.length}'),
+                  MetricTile(icon: Icons.recommend_outlined, label: 'Tips', value: '${result.recommendations.length}'),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.sectionGap),
+              PremiumCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Recommendations', style: Theme.of(context).textTheme.titleLarge),
+                    const SizedBox(height: 12),
+                    ...result.recommendations.map(
+                      (tip) => Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: Text('• ${tip.content}'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (result.warnings.isNotEmpty) ...[
                 const SizedBox(height: AppSpacing.sectionGap),
                 PremiumCard(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Recommendations', style: Theme.of(context).textTheme.titleLarge),
-                      const SizedBox(height: 12),
-                      ...result.recommendations.map(
-                        (tip) => Padding(
-                          padding: const EdgeInsets.only(bottom: 10),
-                          child: Text('• ${tip.content}'),
+                      Text('Warnings', style: Theme.of(context).textTheme.titleLarge),
+                      const SizedBox(height: 10),
+                      ...result.warnings.map(
+                        (warning) => Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Text('• $warning'),
                         ),
                       ),
                     ],
                   ),
                 ),
-                if (result.warnings.isNotEmpty) ...[
-                  const SizedBox(height: AppSpacing.sectionGap),
-                  PremiumCard(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Warnings', style: Theme.of(context).textTheme.titleLarge),
-                        const SizedBox(height: 10),
-                        ...result.warnings.map((warning) => Padding(
-                              padding: const EdgeInsets.only(bottom: 8),
-                              child: Text('• $warning'),
-                            )),
-                      ],
-                    ),
-                  ),
-                ],
               ],
-            ),
+            ],
           ),
         ),
         SafeArea(

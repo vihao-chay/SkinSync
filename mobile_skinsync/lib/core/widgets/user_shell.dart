@@ -88,6 +88,7 @@ class UserShell extends StatelessWidget {
               onDestinationSelected: (index) =>
                   _navigateToRootSection(context, navRoutes[index]),
               labelBehavior: NavigationDestinationLabelBehavior.onlyShowSelected,
+              height: 60,
               destinations: const [
                 NavigationDestination(icon: Icon(Icons.dashboard_outlined), label: 'Dashboard'),
                 NavigationDestination(icon: Icon(Icons.auto_awesome_outlined), label: 'Analysis'),

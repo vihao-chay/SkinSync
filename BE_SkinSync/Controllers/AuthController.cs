@@ -34,11 +34,14 @@ public class AuthController : ControllerBase
     public async Task<ResponseEntity<AuthUserResponseDto>> Register([FromBody] RegisterRequestDto request, CancellationToken cancellationToken)
     {
         var email = request.Email.Trim().ToLowerInvariant();
+        var fullName = string.IsNullOrWhiteSpace(request.FullName)
+            ? email.Split('@', 2)[0]
+            : request.FullName.Trim();
 
         var supabaseResult = await _supabaseAuthService.SignUpWithEmailPasswordAsync(
             email,
             request.Password,
-            request.FullName.Trim(),
+            fullName,
             request.Phone.Trim(),
             cancellationToken);
 
@@ -53,7 +56,7 @@ public class AuthController : ControllerBase
             user = new User
             {
                 Id = Guid.NewGuid(),
-                FullName = request.FullName.Trim(),
+                FullName = fullName,
                 Email = email,
                 Phone = request.Phone.Trim(),
                 PasswordHash = string.Empty,
@@ -119,6 +122,7 @@ public class AuthController : ControllerBase
     }
 
     [AllowAnonymous]
+    [HttpPost("google")]
     [HttpPost("login/google")]
     public async Task<ResponseEntity<LoginResponseDto>> LoginWithGoogle([FromBody] GoogleLoginRequestDto request, CancellationToken cancellationToken)
     {

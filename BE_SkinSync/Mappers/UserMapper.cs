@@ -29,9 +29,13 @@ public static class UserMapper
         return new SurveyResponseDto
         {
             UserId = profile.UserId,
+            DisplayName = payload.DisplayName ?? string.Empty,
+            DateOfBirth = payload.DateOfBirth,
+            Gender = payload.Gender ?? profile.Gender,
+            HealthIssues = payload.HealthIssues,
             SkinType = profile.SkinType,
             MonthlyBudget = profile.MonthlyBudget,
-            BudgetLabel = profile.MonthlyBudget switch
+            BudgetLabel = payload.BudgetLevel ?? profile.MonthlyBudget switch
             {
                 null => null,
                 <= 300000 => "Tiet kiem",
@@ -39,14 +43,30 @@ public static class UserMapper
                 _ => "Cao cap"
             },
             Concerns = payload.Concerns,
+            CurrentRoutineLevel = payload.CurrentRoutineLevel,
             Goals = payload.Goals,
             Allergies = payload.Allergies,
             AvoidIngredients = payload.AvoidIngredients,
+            SkinGoals = payload.SkinGoals,
+            RednessWhenNewProducts = payload.RednessWhenNewProducts,
+            RednessWhenSunOrExercise = payload.RednessWhenSunOrExercise,
             Age = profile.Age,
             BirthYear = profile.BirthYear,
-            Gender = profile.Gender,
-            SensitivityLevel = profile.SensitivityLevel
+            SensitivityLevel = profile.SensitivityLevel,
+            IsOnboardingCompleted = IsOnboardingCompleted(profile, payload)
         };
+    }
+
+    private static bool IsOnboardingCompleted(UserProfile profile, UserProfilePayload payload)
+    {
+        return !string.IsNullOrWhiteSpace(payload.DisplayName)
+            && !string.IsNullOrWhiteSpace(payload.DateOfBirth)
+            && !string.IsNullOrWhiteSpace(payload.Gender)
+            && !string.IsNullOrWhiteSpace(profile.SkinType)
+            && !string.IsNullOrWhiteSpace(payload.BudgetLevel)
+            && payload.Concerns.Count > 0
+            && !string.IsNullOrWhiteSpace(payload.CurrentRoutineLevel)
+            && payload.SkinGoals.Count > 0;
     }
 
     public static AdminUserItemDto ToAdminUserDto(this User user)

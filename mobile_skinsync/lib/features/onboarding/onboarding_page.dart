@@ -1,215 +1,234 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../core/routes/app_routes.dart';
+import '../../core/state/app_state.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
-import '../../core/widgets/gradient_pill_button.dart';
+import '../../core/widgets/app_text_field.dart';
+import '../../core/widgets/premium_card.dart';
 import '../../core/widgets/responsive_container.dart';
+import 'onboarding_state.dart';
+import 'widgets/choice_tiles.dart';
+import 'widgets/date_picker_field.dart';
+import 'widgets/onboarding_layout.dart';
+import 'widgets/primary_button.dart';
 
-class OnboardingPage extends StatefulWidget {
+class OnboardingPage extends StatelessWidget {
   const OnboardingPage({super.key});
 
   @override
-  State<OnboardingPage> createState() => _OnboardingPageState();
+  Widget build(BuildContext context) {
+    return ChangeNotifierProvider(
+      create: (_) => OnboardingState(),
+      child: const _OnboardingBody(),
+    );
+  }
 }
 
-class _OnboardingPageState extends State<OnboardingPage> {
-  final _controller = PageController();
-  int _currentIndex = 0;
+class _OnboardingBody extends StatefulWidget {
+  const _OnboardingBody();
 
-  static const _slides = [
-    _OnboardingData(
-      title: 'Understand Your Skin',
-      subtitle: 'Get AI-powered insights from your skin photo.',
-      icon: Icons.face_retouching_natural_rounded,
-    ),
-    _OnboardingData(
-      title: 'Build Your Routine',
-      subtitle: 'Receive a personalized morning and night skincare plan.',
-      icon: Icons.spa_rounded,
-    ),
-    _OnboardingData(
-      title: 'Track Your Progress',
-      subtitle: 'Log your routine and watch your skin journey improve.',
-      icon: Icons.calendar_month_rounded,
-    ),
-  ];
+  @override
+  State<_OnboardingBody> createState() => _OnboardingBodyState();
+}
+
+class _OnboardingBodyState extends State<_OnboardingBody> {
+  final PageController _controller = PageController();
+  final TextEditingController _nameController = TextEditingController();
 
   @override
   void dispose() {
     _controller.dispose();
+    _nameController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final isLast = _currentIndex == _slides.length - 1;
+    final state = context.watch<OnboardingState>();
+    final appState = context.read<AppState>();
+
+    if (_nameController.text.isEmpty && state.displayName.isNotEmpty) {
+      _nameController.text = state.displayName;
+    }
 
     return Scaffold(
       backgroundColor: AppColors.pageBackground,
-      body: ResponsiveContainer(
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.pagePadding),
-            child: Column(
-              children: [
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: () => Navigator.pushReplacementNamed(context, AppRoutes.login),
-                    child: const Text('Skip'),
-                  ),
-                ),
-                Expanded(
-                  child: PageView.builder(
-                    controller: _controller,
-                    itemCount: _slides.length,
-                    onPageChanged: (index) => setState(() => _currentIndex = index),
-                    itemBuilder: (context, index) {
-                      final slide = _slides[index];
-                      return _OnboardingSlide(data: slide);
-                    },
-                  ),
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: List.generate(_slides.length, (index) {
-                    final selected = index == _currentIndex;
-                    return AnimatedContainer(
-                      duration: const Duration(milliseconds: 220),
-                      margin: const EdgeInsets.symmetric(horizontal: 4),
-                      width: selected ? 22 : 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                        color: selected ? AppColors.primary : AppColors.border,
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                    );
-                  }),
-                ),
-                const SizedBox(height: AppSpacing.largeGap),
-                GradientPillButton(
-                  label: isLast ? 'Get Started' : 'Next',
-                  expanded: true,
-                  onPressed: () {
-                    if (isLast) {
-                      Navigator.pushReplacementNamed(context, AppRoutes.login);
-                      return;
-                    }
-                    _controller.nextPage(
-                      duration: const Duration(milliseconds: 260),
-                      curve: Curves.easeOutCubic,
-                    );
-                  },
-                ),
-                const SizedBox(height: AppSpacing.mediumGap),
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.pushReplacementNamed(context, AppRoutes.login),
-                    child: const Text('Sign In'),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _OnboardingSlide extends StatelessWidget {
-  const _OnboardingSlide({required this.data});
-
-  final _OnboardingData data;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Container(
-          width: double.infinity,
-          height: 320,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(32),
-            gradient: const LinearGradient(
-              colors: [AppColors.secondary, Colors.white],
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-            ),
-          ),
-          child: Stack(
-            alignment: Alignment.center,
+      body: SafeArea(
+        child: ResponsiveContainer(
+          child: Column(
             children: [
-              Positioned(
-                top: 42,
-                left: 42,
-                child: _SoftBubble(size: 72, color: AppColors.softPink.withValues(alpha: 0.8)),
+              Expanded(
+                child: PageView(
+                  controller: _controller,
+                  physics: const NeverScrollableScrollPhysics(),
+                  children: [
+                    _introStep(),
+                    _nameStep(state),
+                    _dobStep(state),
+                    _genderStep(state),
+                  ],
+                ),
               ),
-              Positioned(
-                right: 36,
-                bottom: 54,
-                child: _SoftBubble(size: 96, color: AppColors.accent.withValues(alpha: 0.45)),
-              ),
-              CircleAvatar(
-                radius: 58,
-                backgroundColor: Colors.white,
-                child: Icon(data.icon, size: 54, color: AppColors.primaryDark),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.pagePadding,
+                  0,
+                  AppSpacing.pagePadding,
+                  AppSpacing.pagePadding,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (appState.errorMessage != null) ...[
+                      Text(
+                        appState.errorMessage!,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.error),
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+                    PrimaryButton(
+                      label: state.currentStep == OnboardingState.totalSteps - 1 ? 'Hoàn tất' : 'Tiếp tục',
+                      isLoading: state.isSubmitting || appState.isBusy,
+                      onPressed: () => _next(context, state),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
         ),
-        const SizedBox(height: 40),
-        Text(
-          data.title,
-          textAlign: TextAlign.center,
-          style: Theme.of(context).textTheme.headlineLarge,
-        ),
-        const SizedBox(height: 12),
-        Text(
-          data.subtitle,
-          textAlign: TextAlign.center,
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: AppColors.mutedText,
-              ),
-        ),
-      ],
-    );
-  }
-}
-
-class _SoftBubble extends StatelessWidget {
-  const _SoftBubble({
-    required this.size,
-    required this.color,
-  });
-
-  final double size;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: color,
       ),
     );
   }
-}
 
-class _OnboardingData {
-  const _OnboardingData({
-    required this.title,
-    required this.subtitle,
-    required this.icon,
-  });
+  Widget _introStep() {
+    return OnboardingLayout(
+      progress: 1 / OnboardingState.totalSteps,
+      title: 'Bạn đã thực sự hiểu làn da của mình chưa?',
+      subtitle: 'Hãy bắt đầu hành trình mới để SkinSync hiểu bạn hơn và cá nhân hoá routine phù hợp.',
+      onBack: null,
+      child: const SizedBox.shrink(),
+      bottomBar: const SizedBox.shrink(),
+    );
+  }
 
-  final String title;
-  final String subtitle;
-  final IconData icon;
+  Widget _nameStep(OnboardingState state) {
+    return OnboardingLayout(
+      progress: 2 / OnboardingState.totalSteps,
+      title: 'Bạn muốn SkinSync gọi bạn là gì?',
+      subtitle: 'Tên hiển thị giúp app cá nhân hoá lời chào và trải nghiệm của bạn.',
+      onBack: () {
+        state.back();
+        _controller.previousPage(duration: const Duration(milliseconds: 240), curve: Curves.easeOutCubic);
+      },
+      child: PremiumCard(
+        child: AppTextField(
+          label: 'Tên hiển thị',
+          hint: 'Nhập tên của bạn',
+          controller: _nameController,
+          autofocus: true,
+          onChanged: (value) {
+            state.displayName = value;
+            state.notifyListeners();
+          },
+        ),
+      ),
+      bottomBar: const SizedBox.shrink(),
+    );
+  }
+
+  Widget _dobStep(OnboardingState state) {
+    return OnboardingLayout(
+      progress: 3 / OnboardingState.totalSteps,
+      title: '${state.displayName.isNotEmpty ? state.displayName : 'Bạn'}, ngày sinh của bạn là ngày nào thế?',
+      subtitle: 'Thông tin này giúp chúng tôi hiểu rõ hơn về làn da của bạn.',
+      onBack: () {
+        state.back();
+        _controller.previousPage(duration: const Duration(milliseconds: 240), curve: Curves.easeOutCubic);
+      },
+      child: DatePickerField(
+        label: 'Ngày sinh',
+        value: state.dateOfBirth,
+        onTap: () async {
+          final picked = await showDatePicker(
+            context: context,
+            initialDate: state.dateOfBirth ?? DateTime(2000, 1, 1),
+            firstDate: DateTime(1950),
+            lastDate: DateTime.now(),
+          );
+          if (picked != null) {
+            state.dateOfBirth = picked;
+            state.notifyListeners();
+          }
+        },
+      ),
+      bottomBar: const SizedBox.shrink(),
+    );
+  }
+
+  Widget _genderStep(OnboardingState state) {
+    return OnboardingLayout(
+      progress: 1,
+      title: 'Hello ${state.displayName.isNotEmpty ? state.displayName : 'bạn'}, giới tính của bạn là gì?',
+      subtitle: 'Thông tin này giúp chúng tôi điều chỉnh thói quen để phù hợp hơn với bạn.',
+      onBack: () {
+        state.back();
+        _controller.previousPage(duration: const Duration(milliseconds: 240), curve: Curves.easeOutCubic);
+      },
+      child: Column(
+        children: [
+          for (final item in OnboardingGender.values) ...[
+            SingleChoiceTile(
+              title: switch (item) {
+                OnboardingGender.male => 'Nam',
+                OnboardingGender.female => 'Nữ',
+                OnboardingGender.other => 'Khác',
+                OnboardingGender.preferNotToSay => 'Không muốn trả lời',
+              },
+              selected: state.gender == item,
+              onTap: () {
+                state.gender = item;
+                state.notifyListeners();
+              },
+            ),
+            const SizedBox(height: 12),
+          ],
+        ],
+      ),
+      bottomBar: const SizedBox.shrink(),
+    );
+  }
+
+  Future<void> _next(BuildContext context, OnboardingState state) async {
+    if (!state.canContinue) {
+      final message = state.validationMessage ?? 'Vui lòng hoàn thành bước này.';
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+      return;
+    }
+
+    if (state.currentStep < OnboardingState.totalSteps - 1) {
+      state.next();
+      await _controller.nextPage(duration: const Duration(milliseconds: 240), curve: Curves.easeOutCubic);
+      return;
+    }
+
+    state.isSubmitting = true;
+    state.notifyListeners();
+    try {
+      final payload = state.toPayload();
+      await context.read<AppState>().submitOnboarding(payload);
+      if (!context.mounted) return;
+      Navigator.pushNamedAndRemoveUntil(context, AppRoutes.dashboard, (route) => false);
+    } catch (_) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Không thể lưu thông tin. Vui lòng thử lại.')),
+      );
+    } finally {
+      state.isSubmitting = false;
+      state.notifyListeners();
+    }
+  }
 }

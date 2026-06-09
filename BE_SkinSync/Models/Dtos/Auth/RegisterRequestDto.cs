@@ -4,9 +4,8 @@ namespace SkinSync.Models.Dtos.Auth;
 
 public class RegisterRequestDto
 {
-    [Required]
     [MaxLength(120)]
-    public string FullName { get; set; } = string.Empty;
+    public string? FullName { get; set; }
 
     [Required]
     [EmailAddress]

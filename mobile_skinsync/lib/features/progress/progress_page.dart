@@ -72,6 +72,17 @@ class ProgressPage extends StatelessWidget {
                 ],
               ),
             ),
+            const SizedBox(height: AppSpacing.sectionGap),
+            PremiumCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Daily tip', style: Theme.of(context).textTheme.titleLarge),
+                  const SizedBox(height: 10),
+                  Text(progress?.dailyTip ?? 'Add a daily log to get a tailored tip.'),
+                ],
+              ),
+            ),
           ],
         ),
         Positioned(

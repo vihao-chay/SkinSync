@@ -1,6 +1,33 @@
+import 'package:flutter/foundation.dart';
+
 class AppConfig {
-  static const apiBaseUrl = String.fromEnvironment(
+  static const _envApiBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://10.0.2.2:5000',
+    defaultValue: '',
   );
+
+  static String get apiBaseUrl {
+    if (_envApiBaseUrl.isNotEmpty) {
+      return _envApiBaseUrl;
+    }
+
+    if (kIsWeb) {
+      return 'http://localhost:5199';
+    }
+
+    switch (defaultTargetPlatform) {
+      case TargetPlatform.android:
+        return 'http://10.0.2.2:5199';
+      case TargetPlatform.iOS:
+      case TargetPlatform.macOS:
+      case TargetPlatform.windows:
+      case TargetPlatform.linux:
+      case TargetPlatform.fuchsia:
+        return 'http://localhost:5199';
+    }
+  }
+
+  static const authCallbackScheme = 'skinsync';
+  static const authCallbackHost = 'auth';
+  static const authCallbackUrl = '$authCallbackScheme://$authCallbackHost';
 }
