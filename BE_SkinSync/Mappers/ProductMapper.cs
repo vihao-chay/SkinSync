@@ -1,4 +1,4 @@
-using SkinSync.Models.Dtos.Products;
+    using SkinSync.Models.Dtos.Products;
 using SkinSync.Models.Entities;
 
 namespace SkinSync.Mappers;
