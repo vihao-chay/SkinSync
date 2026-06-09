@@ -1,5 +1,6 @@
-    using SkinSync.Models.Dtos.Products;
+using SkinSync.Models.Dtos.Products;
 using SkinSync.Models.Entities;
+using System.Text.Json;
 
 namespace SkinSync.Mappers;
 
@@ -18,10 +19,28 @@ public static class ProductMapper
             UsageGuide = product.UsageGuide,
             Price = product.Price,
             SuitableSkinTypes = product.SuitableSkinTypes,
+            SuitableFor = ParseJsonArray(product.SuitableSkinTypes),
             ImageUrl = product.ImageUrl,
             Rating = product.Rating,
             Status = product.Status,
             CreatedAt = product.CreatedAt
         };
+    }
+
+    private static IReadOnlyCollection<string> ParseJsonArray(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return Array.Empty<string>();
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize<string[]>(value) ?? Array.Empty<string>();
+        }
+        catch (JsonException)
+        {
+            return value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        }
     }
 }

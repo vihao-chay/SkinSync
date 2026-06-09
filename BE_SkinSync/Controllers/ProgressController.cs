@@ -51,7 +51,9 @@ public class ProgressController : ControllerBase
             ImprovementPercent = CalculateImprovementPercent(analyses.FirstOrDefault()?.OverallScore, analyses.LastOrDefault()?.OverallScore),
             CompletedDaysLast28 = completedDays,
             CompletionRateLast28 = Math.Round((decimal)completedDays / 28m * 100m, 2),
-            CurrentStreak = await CalculateCurrentStreakAsync(userId, cancellationToken)
+            CurrentStreak = await CalculateCurrentStreakAsync(userId, cancellationToken),
+            DailyTip = BuildDailyTip(analyses.LastOrDefault()?.OverallScore, completedDays),
+            ProgressInsight = BuildProgressInsight(analyses.FirstOrDefault()?.OverallScore, analyses.LastOrDefault()?.OverallScore, completedDays)
         };
 
         return ResponseEntity<ProgressOverviewResponseDto>.Ok(overview, "Láº¥y tá»•ng quan tiáº¿n Ä‘á»™ thÃ nh cÃ´ng.");
@@ -283,5 +285,43 @@ public class ProgressController : ControllerBase
 
         var improvement = (currentScore.Value - startScore.Value) / (decimal)startScore.Value * 100m;
         return Math.Round(improvement, 2);
+    }
+
+    private static string BuildDailyTip(int? currentScore, int completedDays)
+    {
+        if (!currentScore.HasValue)
+        {
+            return "Start with a simple cleanse, moisturizer, and sunscreen routine to build consistency.";
+        }
+
+        if (currentScore.Value < 65)
+        {
+            return "Keep today's routine gentle, prioritize hydration, and avoid layering too many strong actives.";
+        }
+
+        if (completedDays < 10)
+        {
+            return "Your skin often improves with consistency; try completing both morning and evening steps today.";
+        }
+
+        return "Your routine is trending well. Maintain sunscreen every morning and keep evening hydration steady.";
+    }
+
+    private static string BuildProgressInsight(int? startScore, int? currentScore, int completedDays)
+    {
+        if (!startScore.HasValue || !currentScore.HasValue)
+        {
+            return "Complete more analyses and daily logs to unlock stronger progress insights.";
+        }
+
+        var delta = currentScore.Value - startScore.Value;
+        var trend = delta switch
+        {
+            > 0 => $"improved by {delta} points",
+            < 0 => $"dropped by {Math.Abs(delta)} points",
+            _ => "stayed stable"
+        };
+
+        return $"Over your tracked period, your skin score has {trend}. You completed routine tracking on {completedDays} of the last 28 days.";
     }
 }

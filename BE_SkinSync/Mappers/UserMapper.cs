@@ -2,6 +2,7 @@ using SkinSync.Models.Dtos.Admin;
 using SkinSync.Models.Dtos.Auth;
 using SkinSync.Models.Dtos.Users;
 using SkinSync.Models.Entities;
+using SkinSync.Helpers;
 
 namespace SkinSync.Mappers;
 
@@ -23,12 +24,24 @@ public static class UserMapper
 
     public static SurveyResponseDto ToSurveyDto(this UserProfile profile)
     {
+        var payload = UserProfilePayloadHelper.Parse(profile.SkinConcerns);
+
         return new SurveyResponseDto
         {
             UserId = profile.UserId,
             SkinType = profile.SkinType,
-            SkinConcerns = profile.SkinConcerns,
             MonthlyBudget = profile.MonthlyBudget,
+            BudgetLabel = profile.MonthlyBudget switch
+            {
+                null => null,
+                <= 300000 => "Tiet kiem",
+                <= 800000 => "Trung binh",
+                _ => "Cao cap"
+            },
+            Concerns = payload.Concerns,
+            Goals = payload.Goals,
+            Allergies = payload.Allergies,
+            AvoidIngredients = payload.AvoidIngredients,
             Age = profile.Age,
             BirthYear = profile.BirthYear,
             Gender = profile.Gender,

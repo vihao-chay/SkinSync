@@ -93,7 +93,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                   expanded: true,
                   onPressed: () {
                     if (isLast) {
-                      Navigator.pushReplacementNamed(context, AppRoutes.quiz);
+                      Navigator.pushReplacementNamed(context, AppRoutes.login);
                       return;
                     }
                     _controller.nextPage(

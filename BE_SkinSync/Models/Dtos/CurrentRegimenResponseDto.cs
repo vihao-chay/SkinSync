@@ -23,6 +23,9 @@ public class RegimenProductDto
     public string? Ingredient { get; set; }
     public string? UsageGuide { get; set; }
     public string? Instruction { get; set; }
+    public string? Purpose { get; set; }
+    public string? Frequency { get; set; }
+    public string? Caution { get; set; }
     public decimal Price { get; set; }
     public string? ImageUrl { get; set; }
     public int StepOrder { get; set; }

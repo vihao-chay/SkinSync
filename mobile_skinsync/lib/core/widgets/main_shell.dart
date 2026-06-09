@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../features/analysis/skin_analysis_page.dart';
 import '../../features/dashboard/dashboard_page.dart';
@@ -6,6 +7,7 @@ import '../../features/profile/profile_page.dart';
 import '../../features/progress/progress_page.dart';
 import '../../features/routine/routine_page.dart';
 import '../routes/app_routes.dart';
+import '../state/app_state.dart';
 import '../theme/app_colors.dart';
 import 'responsive_container.dart';
 
@@ -54,6 +56,13 @@ class _MainShellState extends State<MainShell> {
 
   @override
   Widget build(BuildContext context) {
+    final isAuthenticated = context.watch<AppState>().isAuthenticated;
+    if (!isAuthenticated) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Navigator.pushReplacementNamed(context, AppRoutes.login);
+      });
+    }
+
     return Scaffold(
       backgroundColor: AppColors.pageBackground,
       body: ResponsiveContainer(
