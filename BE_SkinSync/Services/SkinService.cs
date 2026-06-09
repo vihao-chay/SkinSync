@@ -1,4 +1,5 @@
 using System.IO;
+using System.Globalization;
 using System.Net.Http;
 using System.Text;
 using Microsoft.AspNetCore.Hosting;
@@ -98,6 +99,16 @@ public class SkinService : ISkinService
             throw new ArgumentException("Message cannot be empty.");
         }
 
+        if (!IsFaceSkinTopic(request.Message))
+        {
+            return new SkinChatResponseDto
+            {
+                Response = "Mình chỉ hỗ trợ các câu hỏi liên quan đến da mặt và chăm sóc da. Bạn có thể hỏi về mụn, da dầu, da khô, routine, sản phẩm hoặc thành phần skincare.",
+                ProviderUsed = "SkinSync",
+                ModelUsed = "local-guard"
+            };
+        }
+
         return await _aiService.GetSkincareAdviceAsync(request.Message, request.UserProfile, cancellationToken);
     }
 
@@ -171,5 +182,45 @@ public class SkinService : ISkinService
             ".webp" => "image/webp",
             _ => "image/jpeg"
         };
+    }
+
+    private static bool IsFaceSkinTopic(string message)
+    {
+        var normalized = RemoveDiacritics(message).ToLowerInvariant();
+        var trimmed = normalized.Trim();
+
+        var greetings = new[] { "xin chao", "hello", "hi", "chao" };
+        if (greetings.Contains(trimmed))
+        {
+            return true;
+        }
+
+        var keywords = new[]
+        {
+            "da", "mat", "skin", "face", "skincare", "mun", "nam", "tan nhang",
+            "lo chan long", "dau", "kho", "nhay cam", "kich ung", "do da",
+            "tham", "seo", "nep nhan", "routine", "lo trinh", "sua rua mat",
+            "toner", "serum", "duong am", "chong nang", "retinol", "bha", "aha",
+            "niacinamide", "vitamin c", "hyaluronic", "salicylic", "thanh phan",
+            "san pham"
+        };
+
+        return keywords.Any(normalized.Contains);
+    }
+
+    private static string RemoveDiacritics(string value)
+    {
+        var normalized = value.Normalize(NormalizationForm.FormD);
+        var builder = new StringBuilder(capacity: normalized.Length);
+
+        foreach (var character in normalized)
+        {
+            if (CharUnicodeInfo.GetUnicodeCategory(character) != UnicodeCategory.NonSpacingMark)
+            {
+                builder.Append(character);
+            }
+        }
+
+        return builder.ToString().Normalize(NormalizationForm.FormC);
     }
 }
