@@ -2,13 +2,14 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
 import '../theme/app_radius.dart';
+import '../theme/app_spacing.dart';
 
 class PremiumCard extends StatelessWidget {
   const PremiumCard({
     super.key,
     required this.child,
     this.onTap,
-    this.padding = const EdgeInsets.all(20),
+    this.padding = const EdgeInsets.all(AppSpacing.cardPadding),
     this.margin,
   });
 
@@ -27,9 +28,9 @@ class PremiumCard extends StatelessWidget {
         border: Border.all(color: AppColors.border.withValues(alpha: 0.35)),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primaryDark.withValues(alpha: 0.08),
-            blurRadius: 28,
-            offset: const Offset(0, 12),
+            color: AppColors.primaryDark.withValues(alpha: 0.06),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
           ),
         ],
       ),

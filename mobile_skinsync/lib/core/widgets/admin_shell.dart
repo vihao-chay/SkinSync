@@ -27,7 +27,17 @@ class AdminShell extends StatelessWidget {
     ];
 
     return Scaffold(
-      appBar: GlassHeader(currentRoute: currentRoute),
+      appBar: GlassHeader(
+        currentRoute: currentRoute,
+        leading: Responsive.isMobile(context)
+            ? Builder(
+                builder: (context) => IconButton(
+                  onPressed: () => Scaffold.of(context).openDrawer(),
+                  icon: const Icon(Icons.menu_rounded),
+                ),
+              )
+            : null,
+      ),
       drawer: Responsive.isMobile(context)
           ? Drawer(
               child: ListView(
@@ -41,6 +51,7 @@ class AdminShell extends StatelessWidget {
             )
           : null,
       body: ResponsiveContainer(
+        maxWidth: 1200,
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 28),
           child: Responsive.isDesktop(context)

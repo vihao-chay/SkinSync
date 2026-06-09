@@ -64,17 +64,25 @@ class AppTheme {
       dividerColor: AppColors.border.withValues(alpha: 0.6),
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: Colors.white.withValues(alpha: 0.94),
-        height: 76,
+        height: 68,
         elevation: 0,
-        indicatorColor: AppColors.secondary,
+        indicatorColor: AppColors.secondary.withValues(alpha: 0.9),
+        iconTheme: WidgetStateProperty.resolveWith((states) {
+          final color = states.contains(WidgetState.selected)
+              ? AppColors.primaryDark
+              : AppColors.mutedText;
+          return IconThemeData(color: color, size: 22);
+        }),
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
             return const TextStyle(
+              fontSize: 12,
               fontWeight: FontWeight.w600,
               color: AppColors.foreground,
             );
           }
           return const TextStyle(
+            fontSize: 11,
             fontWeight: FontWeight.w500,
             color: AppColors.mutedText,
           );
@@ -83,11 +91,30 @@ class AppTheme {
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: AppColors.primaryDark,
+          backgroundColor: AppColors.secondary,
           side: const BorderSide(color: AppColors.border),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadius.pill),
           ),
+          minimumSize: const Size.fromHeight(52),
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: AppColors.primaryDark,
+          textStyle: const TextStyle(fontWeight: FontWeight.w600),
+        ),
+      ),
+      floatingActionButtonTheme: const FloatingActionButtonThemeData(
+        backgroundColor: AppColors.primaryDark,
+        foregroundColor: Colors.white,
+      ),
+      bottomSheetTheme: const BottomSheetThemeData(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
         ),
       ),
       chipTheme: ChipThemeData(
@@ -99,6 +126,7 @@ class AppTheme {
         ),
         labelStyle: const TextStyle(color: AppColors.primaryDark),
       ),
+      visualDensity: VisualDensity.standard,
     );
   }
 }

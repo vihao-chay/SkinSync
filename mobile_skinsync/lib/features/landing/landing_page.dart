@@ -19,6 +19,7 @@ class LandingPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final desktop = Responsive.isDesktop(context);
+    final mobile = Responsive.isMobile(context);
     return Scaffold(
       appBar: const GlassHeader(currentRoute: AppRoutes.landing),
       body: ListView(
@@ -33,7 +34,7 @@ class LandingPage extends StatelessWidget {
             ),
             child: ResponsiveContainer(
               child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 40),
+                padding: EdgeInsets.symmetric(vertical: mobile ? 18 : 40),
                 child: desktop
                     ? Row(
                         crossAxisAlignment: CrossAxisAlignment.center,
@@ -43,44 +44,72 @@ class LandingPage extends StatelessWidget {
                           Expanded(child: _HeroVisual()),
                         ],
                       )
-                    : const Column(
-                        children: [
-                          _HeroCopy(),
-                          SizedBox(height: 24),
-                          _HeroVisual(),
-                        ],
-                      ),
+                    : mobile
+                        ? const _MobileHero()
+                        : const Column(
+                            children: [
+                              _HeroCopy(),
+                              SizedBox(height: 24),
+                              _HeroVisual(),
+                            ],
+                          ),
               ),
             ),
           ),
           ResponsiveContainer(
             child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 24),
-              child: GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: Responsive.gridColumns(context, desktop: 4, tablet: 2, mobile: 2),
-                  crossAxisSpacing: 16,
-                  mainAxisSpacing: 16,
-                  childAspectRatio: 1.3,
-                ),
-                itemCount: MockSkinData.landingStats.length,
-                itemBuilder: (context, index) {
-                  final item = MockSkinData.landingStats[index];
-                  return MetricTile(
-                    icon: [
-                      Icons.people_alt_outlined,
-                      Icons.analytics_outlined,
-                      Icons.auto_awesome_motion_outlined,
-                      Icons.favorite_border_rounded,
-                    ][index],
-                    label: item.label,
-                    value: item.value,
-                    trend: item.trend,
-                  );
-                },
-              ),
+              padding: EdgeInsets.symmetric(vertical: mobile ? 18 : 24),
+              child: mobile
+                  ? SizedBox(
+                      height: 140,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: MockSkinData.landingStats.length,
+                        separatorBuilder: (_, _) => const SizedBox(width: 12),
+                        itemBuilder: (context, index) {
+                          final item = MockSkinData.landingStats[index];
+                          return SizedBox(
+                            width: 170,
+                            child: MetricTile(
+                              icon: [
+                                Icons.people_alt_outlined,
+                                Icons.analytics_outlined,
+                                Icons.auto_awesome_motion_outlined,
+                                Icons.favorite_border_rounded,
+                              ][index],
+                              label: item.label,
+                              value: item.value,
+                              trend: item.trend,
+                            ),
+                          );
+                        },
+                      ),
+                    )
+                  : GridView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: Responsive.gridColumns(context, desktop: 4, tablet: 2, mobile: 2),
+                        crossAxisSpacing: 16,
+                        mainAxisSpacing: 16,
+                        childAspectRatio: 1.3,
+                      ),
+                      itemCount: MockSkinData.landingStats.length,
+                      itemBuilder: (context, index) {
+                        final item = MockSkinData.landingStats[index];
+                        return MetricTile(
+                          icon: [
+                            Icons.people_alt_outlined,
+                            Icons.analytics_outlined,
+                            Icons.auto_awesome_motion_outlined,
+                            Icons.favorite_border_rounded,
+                          ][index],
+                          label: item.label,
+                          value: item.value,
+                          trend: item.trend,
+                        );
+                      },
+                    ),
             ),
           ),
           ResponsiveContainer(
@@ -98,36 +127,65 @@ class LandingPage extends StatelessWidget {
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                   const SizedBox(height: 24),
-                  GridView.count(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    crossAxisCount: Responsive.gridColumns(context, desktop: 4, tablet: 2, mobile: 1),
-                    mainAxisSpacing: 16,
-                    crossAxisSpacing: 16,
-                    childAspectRatio: Responsive.isMobile(context) ? 1.5 : 1.05,
-                    children: const [
-                      _FeatureCard(
-                        icon: Icons.psychology_alt_outlined,
-                        title: 'AI Skin Analysis',
-                        description: 'Computer vision insights with premium reporting surfaces.',
-                      ),
-                      _FeatureCard(
-                        icon: Icons.spa_outlined,
-                        title: 'Personalized Routine',
-                        description: 'Morning and evening rituals built around skin profile and concerns.',
-                      ),
-                      _FeatureCard(
-                        icon: Icons.insights_outlined,
-                        title: 'Progress Tracking',
-                        description: 'Logs, completion history, and routine consistency over time.',
-                      ),
-                      _FeatureCard(
-                        icon: Icons.shield_outlined,
-                        title: 'Ingredient Warnings',
-                        description: 'Conflict messaging and softer fallback guidance before API wiring.',
-                      ),
-                    ],
-                  ),
+                  if (mobile)
+                    const Column(
+                      children: [
+                        _FeatureCard(
+                          icon: Icons.psychology_alt_outlined,
+                          title: 'AI Skin Analysis',
+                          description: 'Computer vision insights with premium reporting surfaces.',
+                        ),
+                        SizedBox(height: 14),
+                        _FeatureCard(
+                          icon: Icons.spa_outlined,
+                          title: 'Personalized Routine',
+                          description: 'Morning and evening rituals built around skin profile and concerns.',
+                        ),
+                        SizedBox(height: 14),
+                        _FeatureCard(
+                          icon: Icons.insights_outlined,
+                          title: 'Progress Tracking',
+                          description: 'Logs, completion history, and routine consistency over time.',
+                        ),
+                        SizedBox(height: 14),
+                        _FeatureCard(
+                          icon: Icons.shield_outlined,
+                          title: 'Ingredient Warnings',
+                          description: 'Conflict messaging and softer fallback guidance before API wiring.',
+                        ),
+                      ],
+                    )
+                  else
+                    GridView.count(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      crossAxisCount: Responsive.gridColumns(context, desktop: 4, tablet: 2, mobile: 1),
+                      mainAxisSpacing: 16,
+                      crossAxisSpacing: 16,
+                      childAspectRatio: 1.05,
+                      children: const [
+                        _FeatureCard(
+                          icon: Icons.psychology_alt_outlined,
+                          title: 'AI Skin Analysis',
+                          description: 'Computer vision insights with premium reporting surfaces.',
+                        ),
+                        _FeatureCard(
+                          icon: Icons.spa_outlined,
+                          title: 'Personalized Routine',
+                          description: 'Morning and evening rituals built around skin profile and concerns.',
+                        ),
+                        _FeatureCard(
+                          icon: Icons.insights_outlined,
+                          title: 'Progress Tracking',
+                          description: 'Logs, completion history, and routine consistency over time.',
+                        ),
+                        _FeatureCard(
+                          icon: Icons.shield_outlined,
+                          title: 'Ingredient Warnings',
+                          description: 'Conflict messaging and softer fallback guidance before API wiring.',
+                        ),
+                      ],
+                    ),
                 ],
               ),
             ),
@@ -157,7 +215,10 @@ class LandingPage extends StatelessWidget {
                     Text(
                       'Ready to turn your skin data into a daily ritual?',
                       textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.displaySmall?.copyWith(color: Colors.white, fontSize: 40),
+                      style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                            color: Colors.white,
+                            fontSize: mobile ? 28 : 40,
+                          ),
                     ),
                     const SizedBox(height: 16),
                     Text(
@@ -222,6 +283,47 @@ class _HeroCopy extends StatelessWidget {
               child: const Text('View Demo'),
             ),
           ],
+        ),
+      ],
+    );
+  }
+}
+
+class _MobileHero extends StatelessWidget {
+  const _MobileHero();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const _HeroCopy(),
+        const SizedBox(height: 18),
+        PremiumCard(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(22),
+                child: AspectRatio(
+                  aspectRatio: 0.95,
+                  child: Image.network(
+                    MockSkinData.analysis.imageUrl!,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, _, _) => Container(color: AppColors.secondary),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Row(
+                children: [
+                  Expanded(child: _FloatingInsight(title: 'Skin Score', value: '87/100')),
+                  SizedBox(width: 10),
+                  Expanded(child: _FloatingInsight(title: 'AI Analysis', value: 'Ready in 30s')),
+                ],
+              ),
+            ],
+          ),
         ),
       ],
     );
@@ -317,6 +419,7 @@ class _FeatureCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final mobile = Responsive.isMobile(context);
     return PremiumCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -326,7 +429,7 @@ class _FeatureCard extends StatelessWidget {
             backgroundColor: AppColors.secondary,
             child: Icon(icon, color: AppColors.primaryDark),
           ),
-          const SizedBox(height: 18),
+          SizedBox(height: mobile ? 14 : 18),
           Text(title, style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 8),
           Text(description, style: Theme.of(context).textTheme.bodySmall),

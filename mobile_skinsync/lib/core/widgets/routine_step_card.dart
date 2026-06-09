@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../mock/mock_skin_data.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_radius.dart';
+import '../theme/app_spacing.dart';
 import 'premium_card.dart';
 
 class RoutineStepCard extends StatelessWidget {
@@ -13,8 +14,7 @@ class RoutineStepCard extends StatelessWidget {
     required this.isCompleted,
     required this.onToggleComplete,
     required this.onDetail,
-    this.onEdit,
-    this.onDelete,
+    this.editMode = false,
   });
 
   final RoutineStep step;
@@ -22,110 +22,118 @@ class RoutineStepCard extends StatelessWidget {
   final bool isCompleted;
   final VoidCallback onToggleComplete;
   final VoidCallback onDetail;
-  final VoidCallback? onEdit;
-  final VoidCallback? onDelete;
+  final bool editMode;
 
   @override
   Widget build(BuildContext context) {
-    return PremiumCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              GestureDetector(
-                onTap: onToggleComplete,
-                child: Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    color: isCompleted ? AppColors.primary : AppColors.secondary,
-                    borderRadius: BorderRadius.circular(AppRadius.medium),
-                  ),
-                  alignment: Alignment.center,
-                  child: isCompleted
-                      ? const Icon(Icons.check_rounded, color: Colors.white)
-                      : Text('${index + 1}'),
+    return Opacity(
+      opacity: isCompleted ? 0.78 : 1,
+      child: PremiumCard(
+        onTap: onDetail,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            GestureDetector(
+              onTap: onToggleComplete,
+              child: Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: isCompleted ? AppColors.primary : AppColors.secondary,
+                  borderRadius: BorderRadius.circular(16),
                 ),
+                alignment: Alignment.center,
+                child: isCompleted
+                    ? const Icon(Icons.check_rounded, color: Colors.white, size: 22)
+                    : Text(
+                        '${index + 1}',
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              color: AppColors.primaryDark,
+                            ),
+                      ),
               ),
-              const SizedBox(width: 14),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(AppRadius.medium),
-                child: Container(
-                  width: 72,
-                  height: 72,
-                  color: AppColors.secondary,
-                  child: step.imageUrl != null
-                      ? Image.network(
-                          step.imageUrl!,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, _, _) => const Icon(Icons.spa_outlined),
-                        )
-                      : const Icon(Icons.spa_outlined, color: AppColors.primaryDark),
-                ),
+            ),
+            const SizedBox(width: 12),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(AppRadius.medium),
+              child: Container(
+                width: 56,
+                height: 56,
+                color: AppColors.secondary,
+                child: step.imageUrl != null
+                    ? Image.network(
+                        step.imageUrl!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) => const Icon(Icons.spa_rounded),
+                      )
+                    : const Icon(Icons.spa_rounded, color: AppColors.primaryDark),
               ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(step.category, style: Theme.of(context).textTheme.labelMedium),
-                    const SizedBox(height: 4),
-                    Text(step.productName, style: Theme.of(context).textTheme.titleMedium),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${step.brand} · ${step.price}',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Text(step.instruction, style: Theme.of(context).textTheme.bodyMedium),
-          if (step.warning != null) ...[
-            const SizedBox(height: 14),
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFF3E6),
-                borderRadius: BorderRadius.circular(AppRadius.medium),
-                border: Border.all(color: AppColors.warning.withValues(alpha: 0.4)),
-              ),
-              child: Row(
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.warning_amber_rounded, color: AppColors.warning),
-                  const SizedBox(width: 10),
-                  Expanded(child: Text(step.warning!, style: Theme.of(context).textTheme.bodySmall)),
+                  Text(step.category, style: Theme.of(context).textTheme.labelMedium),
+                  const SizedBox(height: 4),
+                  Text(step.productName, style: Theme.of(context).textTheme.titleMedium),
+                  const SizedBox(height: 4),
+                  Text(
+                    step.instruction,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Text(
+                        step.brand,
+                        style: Theme.of(context).textTheme.labelSmall,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(step.price, style: Theme.of(context).textTheme.labelSmall),
+                      if (step.warning != null) ...[
+                        const SizedBox(width: 8),
+                        const Icon(
+                          Icons.warning_amber_rounded,
+                          size: 16,
+                          color: AppColors.warning,
+                        ),
+                      ],
+                    ],
+                  ),
                 ],
               ),
             ),
+            const SizedBox(width: 8),
+            Column(
+              children: [
+                if (editMode)
+                  const Padding(
+                    padding: EdgeInsets.only(bottom: AppSpacing.smallGap),
+                    child: Icon(Icons.drag_handle_rounded, color: AppColors.subtleText),
+                  ),
+                InkWell(
+                  borderRadius: BorderRadius.circular(14),
+                  onTap: onDetail,
+                  child: Ink(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: AppColors.secondary,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Icon(
+                      editMode ? Icons.delete_outline_rounded : Icons.more_horiz_rounded,
+                      color: AppColors.primaryDark,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ],
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              OutlinedButton.icon(
-                onPressed: onDetail,
-                icon: const Icon(Icons.visibility_outlined, size: 16),
-                label: const Text('Detail'),
-              ),
-              const SizedBox(width: 8),
-              OutlinedButton.icon(
-                onPressed: onEdit,
-                icon: const Icon(Icons.edit_outlined, size: 16),
-                label: const Text('Edit'),
-              ),
-              const SizedBox(width: 8),
-              OutlinedButton.icon(
-                onPressed: onDelete,
-                icon: const Icon(Icons.delete_outline, size: 16),
-                label: const Text('Delete'),
-              ),
-            ],
-          ),
-        ],
+        ),
       ),
     );
   }

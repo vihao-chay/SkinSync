@@ -15,8 +15,17 @@ class UserShell extends StatelessWidget {
   final String currentRoute;
   final Widget child;
 
+  void _navigateToRootSection(BuildContext context, String route) {
+    if (route == currentRoute) {
+      return;
+    }
+
+    Navigator.of(context).pushNamedAndRemoveUntil(route, (page) => false);
+  }
+
   @override
   Widget build(BuildContext context) {
+    final isMobile = Responsive.isMobile(context);
     final navRoutes = const [
       AppRoutes.dashboard,
       AppRoutes.analysis,
@@ -28,8 +37,18 @@ class UserShell extends StatelessWidget {
     final selectedIndex = routeIndex < 0 ? 0 : routeIndex;
 
     return Scaffold(
-      appBar: GlassHeader(currentRoute: currentRoute),
-      drawer: Responsive.isMobile(context)
+      appBar: GlassHeader(
+        currentRoute: currentRoute,
+        leading: isMobile
+            ? Builder(
+                builder: (context) => IconButton(
+                  onPressed: () => Scaffold.of(context).openDrawer(),
+                  icon: const Icon(Icons.menu_rounded),
+                ),
+              )
+            : null,
+      ),
+      drawer: isMobile
           ? Drawer(
               child: ListView(
                 children: [
@@ -44,7 +63,11 @@ class UserShell extends StatelessWidget {
                   ].map(
                     (item) => ListTile(
                       title: Text(item.$1),
-                      onTap: () => Navigator.pushNamed(context, item.$2),
+                      selected: item.$2 == currentRoute,
+                      onTap: () {
+                        Navigator.of(context).pop();
+                        _navigateToRootSection(context, item.$2);
+                      },
                     ),
                   ),
                 ],
@@ -59,10 +82,12 @@ class UserShell extends StatelessWidget {
           ),
         ),
       ),
-      bottomNavigationBar: Responsive.isMobile(context)
+      bottomNavigationBar: isMobile
           ? NavigationBar(
               selectedIndex: selectedIndex,
-              onDestinationSelected: (index) => Navigator.pushNamed(context, navRoutes[index]),
+              onDestinationSelected: (index) =>
+                  _navigateToRootSection(context, navRoutes[index]),
+              labelBehavior: NavigationDestinationLabelBehavior.onlyShowSelected,
               destinations: const [
                 NavigationDestination(icon: Icon(Icons.dashboard_outlined), label: 'Dashboard'),
                 NavigationDestination(icon: Icon(Icons.auto_awesome_outlined), label: 'Analysis'),

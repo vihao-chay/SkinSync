@@ -1,5 +1,7 @@
 class AppRoutes {
   static const landing = '/';
+  static const onboarding = '/onboarding';
+  static const login = '/login';
   static const quiz = '/quiz';
   static const upload = '/upload';
   static const analysis = '/analysis';

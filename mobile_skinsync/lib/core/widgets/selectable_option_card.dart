@@ -26,7 +26,8 @@ class SelectableOptionCard extends StatelessWidget {
       borderRadius: BorderRadius.circular(AppRadius.card),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 220),
-        padding: const EdgeInsets.all(20),
+        constraints: const BoxConstraints(minHeight: 84),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           gradient: selected
               ? const LinearGradient(
@@ -47,15 +48,16 @@ class SelectableOptionCard extends StatelessWidget {
           children: [
             if (icon != null) ...[
               CircleAvatar(
-                radius: 22,
+                radius: 20,
                 backgroundColor: selected ? Colors.white : AppColors.secondary,
                 child: Icon(icon, color: AppColors.primaryDark),
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: 12),
             ],
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(title, style: Theme.of(context).textTheme.titleMedium),
                   const SizedBox(height: 6),

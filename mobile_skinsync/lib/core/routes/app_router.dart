@@ -5,20 +5,26 @@ import '../../features/admin/admin_dashboard_page.dart';
 import '../../features/admin/admin_products_page.dart';
 import '../../features/admin/admin_profile_page.dart';
 import '../../features/admin/admin_users_page.dart';
-import '../../features/analysis/skin_analysis_page.dart';
-import '../../features/dashboard/dashboard_page.dart';
+import '../../features/auth/login_page.dart';
 import '../../features/landing/landing_page.dart';
-import '../../features/profile/profile_page.dart';
-import '../../features/progress/progress_page.dart';
+import '../../features/onboarding/onboarding_page.dart';
 import '../../features/quiz/quiz_page.dart';
-import '../../features/routine/routine_page.dart';
 import '../../features/upload/upload_page.dart';
+import '../widgets/main_shell.dart';
 import 'app_routes.dart';
 
 class AppRouter {
   static Route<dynamic> onGenerateRoute(RouteSettings settings) {
+    final name = settings.name ?? AppRoutes.onboarding;
     final Widget page;
-    switch (settings.name) {
+
+    switch (name) {
+      case AppRoutes.onboarding:
+        page = const OnboardingPage();
+        break;
+      case AppRoutes.login:
+        page = const LoginPage();
+        break;
       case AppRoutes.landing:
         page = const LandingPage();
         break;
@@ -28,20 +34,12 @@ class AppRouter {
       case AppRoutes.upload:
         page = const UploadPage();
         break;
-      case AppRoutes.analysis:
-        page = const SkinAnalysisPage();
-        break;
       case AppRoutes.dashboard:
-        page = const DashboardPage();
-        break;
+      case AppRoutes.analysis:
       case AppRoutes.routine:
-        page = const RoutinePage();
-        break;
       case AppRoutes.progress:
-        page = const ProgressPage();
-        break;
       case AppRoutes.profile:
-        page = const ProfilePage();
+        page = MainShell(initialRoute: name);
         break;
       case AppRoutes.admin:
         page = const AdminDashboardPage();
@@ -59,20 +57,21 @@ class AppRouter {
         page = const AdminProfilePage();
         break;
       default:
-        page = const LandingPage();
+        page = const OnboardingPage();
         break;
     }
 
     return PageRouteBuilder<void>(
       settings: settings,
-      transitionDuration: const Duration(milliseconds: 260),
-      pageBuilder: (_, animation, _) => FadeTransition(
-        opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
-        child: SlideTransition(
-          position: Tween<Offset>(
-            begin: const Offset(0.02, 0),
-            end: Offset.zero,
-          ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
+      transitionDuration: const Duration(milliseconds: 240),
+      reverseTransitionDuration: const Duration(milliseconds: 220),
+      pageBuilder: (_, animation, _) => SlideTransition(
+        position: Tween<Offset>(
+          begin: const Offset(0.08, 0),
+          end: Offset.zero,
+        ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
+        child: FadeTransition(
+          opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
           child: page,
         ),
       ),

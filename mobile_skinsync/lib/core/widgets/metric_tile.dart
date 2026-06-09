@@ -24,14 +24,14 @@ class MetricTile extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           CircleAvatar(
-            radius: 20,
+            radius: 18,
             backgroundColor: AppColors.secondary,
             child: Icon(icon, color: AppColors.primaryDark),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
           Text(label, style: Theme.of(context).textTheme.labelMedium),
           const SizedBox(height: 6),
-          Text(value, style: Theme.of(context).textTheme.headlineSmall),
+          Text(value, style: Theme.of(context).textTheme.titleLarge),
           if (trend != null) ...[
             const SizedBox(height: 6),
             Text(

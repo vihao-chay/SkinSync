@@ -2,146 +2,230 @@ import 'package:flutter/material.dart';
 
 import '../../core/mock/mock_skin_data.dart';
 import '../../core/routes/app_routes.dart';
-import '../../core/utils/responsive.dart';
+import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_spacing.dart';
 import '../../core/widgets/gradient_pill_button.dart';
-import '../../core/widgets/metric_tile.dart';
 import '../../core/widgets/premium_card.dart';
-import '../../core/widgets/section_badge.dart';
-import '../../core/widgets/user_shell.dart';
+import '../../core/widgets/skin_chip.dart';
 
 class DashboardPage extends StatelessWidget {
   const DashboardPage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return UserShell(
-      currentRoute: AppRoutes.dashboard,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SectionBadge(label: 'Daily Overview', icon: Icons.sunny),
-          const SizedBox(height: 14),
-          Text(
-            'Good morning, ${MockSkinData.user.name.split(' ').first}',
-            style: Theme.of(context).textTheme.headlineMedium,
-          ),
-          const SizedBox(height: 8),
-          Text('Here is your skin journey today.', style: Theme.of(context).textTheme.bodySmall),
-          const SizedBox(height: 22),
-          GridView.count(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            crossAxisCount: Responsive.gridColumns(context, desktop: 4, tablet: 2, mobile: 1),
-            crossAxisSpacing: 16,
-            mainAxisSpacing: 16,
-            childAspectRatio: Responsive.isMobile(context) ? 2.4 : 1.2,
-            children: const [
-              MetricTile(icon: Icons.auto_awesome_rounded, label: 'Skin Score', value: '82', trend: '+4 this week'),
-              MetricTile(icon: Icons.check_circle_outline_rounded, label: 'Routine Completion', value: '86%', trend: '5 of 7 days'),
-              MetricTile(icon: Icons.local_fire_department_outlined, label: 'Streak', value: '12 days', trend: 'Strong consistency'),
-              MetricTile(icon: Icons.notifications_active_outlined, label: 'Next Reminder', value: '07:00 AM', trend: 'Morning routine'),
-            ],
-          ),
-          const SizedBox(height: 20),
-          Responsive.isDesktop(context)
-              ? Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                    Expanded(flex: 2, child: _DashboardPrimaryColumn()),
-                    SizedBox(width: 16),
-                    Expanded(child: _DashboardSecondaryColumn()),
-                  ],
-                )
-              : const Column(
-                  children: [
-                    _DashboardPrimaryColumn(),
-                    SizedBox(height: 16),
-                    _DashboardSecondaryColumn(),
-                  ],
-                ),
-        ],
-      ),
-    );
-  }
-}
+    final firstName = MockSkinData.user.name.split(' ').first;
 
-class _DashboardPrimaryColumn extends StatelessWidget {
-  const _DashboardPrimaryColumn();
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        PremiumCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Current Skin Status', style: Theme.of(context).textTheme.titleLarge),
-              const SizedBox(height: 12),
-              Text('Skin type: ${MockSkinData.user.skinType}', style: Theme.of(context).textTheme.bodyMedium),
-              const SizedBox(height: 6),
-              Text('Main concerns: ${MockSkinData.user.concerns.join(', ')}', style: Theme.of(context).textTheme.bodyMedium),
-              const SizedBox(height: 6),
-              Text('Current goal: ${MockSkinData.user.goal}', style: Theme.of(context).textTheme.bodyMedium),
-            ],
+    return CustomScrollView(
+      physics: const BouncingScrollPhysics(),
+      slivers: [
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.pagePadding,
+            AppSpacing.pagePadding,
+            AppSpacing.pagePadding,
+            120,
           ),
-        ),
-        const SizedBox(height: 16),
-        PremiumCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Today\'s Suggestions', style: Theme.of(context).textTheme.titleLarge),
-              const SizedBox(height: 12),
-              const _Bullet(text: 'Keep the morning routine simple and barrier-friendly.'),
-              const _Bullet(text: 'Prioritize hydration before introducing stronger actives tonight.'),
-              const _Bullet(text: 'Reapply sunscreen if you are outdoors for more than 2 hours.'),
-              const SizedBox(height: 16),
-              GradientPillButton(
-                label: 'Open Analysis',
-                onPressed: () => Navigator.pushNamed(context, AppRoutes.analysis),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _DashboardSecondaryColumn extends StatelessWidget {
-  const _DashboardSecondaryColumn();
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        PremiumCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Skin Profile', style: Theme.of(context).textTheme.titleLarge),
-              const SizedBox(height: 12),
-              Text(MockSkinData.user.email, style: Theme.of(context).textTheme.bodySmall),
-              const SizedBox(height: 8),
-              Text(MockSkinData.user.goal, style: Theme.of(context).textTheme.bodyMedium),
-            ],
-          ),
-        ),
-        const SizedBox(height: 16),
-        PremiumCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Current Routine', style: Theme.of(context).textTheme.titleLarge),
-              const SizedBox(height: 12),
-              ...MockSkinData.morningRoutine.take(3).map(
-                    (step) => Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: Text('- ${step.productName}', style: Theme.of(context).textTheme.bodyMedium),
+          sliver: SliverList(
+            delegate: SliverChildListDelegate([
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Good morning, $firstName 👋',
+                          style: Theme.of(context).textTheme.headlineMedium,
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'How is your skin today?',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: AppColors.mutedText,
+                              ),
+                        ),
+                      ],
                     ),
                   ),
-            ],
+                  const SizedBox(width: 12),
+                  const _TopIcon(icon: Icons.notifications_none_rounded),
+                  const SizedBox(width: 10),
+                  const CircleAvatar(
+                    radius: 20,
+                    backgroundColor: AppColors.softPink,
+                    child: Icon(Icons.person_rounded, color: AppColors.primaryDark),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.sectionGap),
+              Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(24),
+                  gradient: const LinearGradient(
+                    colors: [AppColors.secondary, Colors.white],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                ),
+                child: PremiumCard(
+                  padding: const EdgeInsets.all(AppSpacing.cardPadding),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Skin Score', style: Theme.of(context).textTheme.labelMedium),
+                                const SizedBox(height: 8),
+                                Text(
+                                  '${MockSkinData.analysis.score}',
+                                  style: Theme.of(context).textTheme.displayLarge,
+                                ),
+                              ],
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Text(
+                              MockSkinData.analysis.skinType,
+                              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                                    color: AppColors.primaryDark,
+                                  ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Main concerns',
+                        style: Theme.of(context).textTheme.labelMedium,
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: MockSkinData.user.concerns
+                            .map((concern) => SkinChip(label: concern))
+                            .toList(),
+                      ),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        width: 160,
+                        child: GradientPillButton(
+                          label: 'View Analysis',
+                          expanded: true,
+                          onPressed: () => Navigator.pushReplacementNamed(
+                            context,
+                            AppRoutes.analysis,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sectionGap),
+              _SectionTitle(
+                title: 'Quick Actions',
+                subtitle: 'Shortcuts for the tasks you use most.',
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 140,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  children: const [
+                    _QuickActionCard(
+                      icon: Icons.auto_awesome_rounded,
+                      title: 'Analyze Skin',
+                      route: AppRoutes.quiz,
+                    ),
+                    SizedBox(width: 12),
+                    _QuickActionCard(
+                      icon: Icons.edit_note_rounded,
+                      title: 'Add Log',
+                      route: AppRoutes.progress,
+                    ),
+                    SizedBox(width: 12),
+                    _QuickActionCard(
+                      icon: Icons.spa_rounded,
+                      title: 'View Routine',
+                      route: AppRoutes.routine,
+                    ),
+                    SizedBox(width: 12),
+                    _QuickActionCard(
+                      icon: Icons.search_rounded,
+                      title: 'Check Product',
+                      route: AppRoutes.routine,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sectionGap),
+              _SectionTitle(
+                title: 'Today Routine',
+                subtitle: 'Stay consistent with your morning and evening plan.',
+              ),
+              const SizedBox(height: 12),
+              PremiumCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const _RoutineProgressRow(label: 'Morning', completed: 3, total: 4),
+                    const SizedBox(height: 12),
+                    const _RoutineProgressRow(label: 'Evening', completed: 1, total: 3),
+                    const SizedBox(height: 16),
+                    GradientPillButton(
+                      label: 'Continue Routine',
+                      expanded: true,
+                      onPressed: () => Navigator.pushReplacementNamed(
+                        context,
+                        AppRoutes.routine,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sectionGap),
+              PremiumCard(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: AppColors.secondary,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: const Icon(Icons.auto_awesome_rounded, color: AppColors.primaryDark),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Daily Tip', style: Theme.of(context).textTheme.titleMedium),
+                          const SizedBox(height: 6),
+                          Text(
+                            'Keep tonight gentle and focus on hydration before introducing stronger actives.',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ]),
           ),
         ),
       ],
@@ -149,22 +233,121 @@ class _DashboardSecondaryColumn extends StatelessWidget {
   }
 }
 
-class _Bullet extends StatelessWidget {
-  const _Bullet({required this.text});
+class _TopIcon extends StatelessWidget {
+  const _TopIcon({required this.icon});
 
-  final String text;
+  final IconData icon;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('- '),
-          Expanded(child: Text(text, style: Theme.of(context).textTheme.bodyMedium)),
-        ],
+    return Container(
+      width: 44,
+      height: 44,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
       ),
+      child: Icon(icon, color: AppColors.primaryDark),
+    );
+  }
+}
+
+class _SectionTitle extends StatelessWidget {
+  const _SectionTitle({
+    required this.title,
+    required this.subtitle,
+  });
+
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: Theme.of(context).textTheme.titleLarge),
+        const SizedBox(height: 4),
+        Text(
+          subtitle,
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+      ],
+    );
+  }
+}
+
+class _QuickActionCard extends StatelessWidget {
+  const _QuickActionCard({
+    required this.icon,
+    required this.title,
+    required this.route,
+  });
+
+  final IconData icon;
+  final String title;
+  final String route;
+
+  @override
+  Widget build(BuildContext context) {
+    return PremiumCard(
+      onTap: () => Navigator.pushNamed(context, route),
+      padding: const EdgeInsets.all(AppSpacing.cardPadding),
+      child: SizedBox(
+        width: 126,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            CircleAvatar(
+              radius: 22,
+              backgroundColor: AppColors.secondary,
+              child: Icon(icon, color: AppColors.primaryDark),
+            ),
+            const Spacer(),
+            Text(title, style: Theme.of(context).textTheme.titleMedium),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RoutineProgressRow extends StatelessWidget {
+  const _RoutineProgressRow({
+    required this.label,
+    required this.completed,
+    required this.total,
+  });
+
+  final String label;
+  final int completed;
+  final int total;
+
+  @override
+  Widget build(BuildContext context) {
+    final progress = completed / total;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(label, style: Theme.of(context).textTheme.titleMedium),
+            const Spacer(),
+            Text('$completed/$total', style: Theme.of(context).textTheme.bodySmall),
+          ],
+        ),
+        const SizedBox(height: 8),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(999),
+          child: LinearProgressIndicator(
+            value: progress,
+            minHeight: 10,
+            backgroundColor: AppColors.secondary,
+            color: AppColors.primary,
+          ),
+        ),
+      ],
     );
   }
 }

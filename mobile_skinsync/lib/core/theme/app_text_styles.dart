@@ -5,37 +5,37 @@ import 'app_colors.dart';
 class AppTextStyles {
   static TextTheme textTheme = const TextTheme(
     displayLarge: TextStyle(
-      fontSize: 64,
+      fontSize: 32,
       fontWeight: FontWeight.w700,
-      height: 1.05,
+      height: 1.1,
       color: AppColors.foreground,
     ),
     displayMedium: TextStyle(
-      fontSize: 52,
+      fontSize: 30,
       fontWeight: FontWeight.w700,
-      height: 1.08,
-      color: AppColors.foreground,
-    ),
-    displaySmall: TextStyle(
-      fontSize: 42,
-      fontWeight: FontWeight.w600,
       height: 1.12,
       color: AppColors.foreground,
     ),
-    headlineLarge: TextStyle(
-      fontSize: 32,
+    displaySmall: TextStyle(
+      fontSize: 26,
       fontWeight: FontWeight.w600,
       height: 1.15,
       color: AppColors.foreground,
     ),
+    headlineLarge: TextStyle(
+      fontSize: 28,
+      fontWeight: FontWeight.w700,
+      height: 1.15,
+      color: AppColors.foreground,
+    ),
     headlineMedium: TextStyle(
-      fontSize: 30,
+      fontSize: 24,
       fontWeight: FontWeight.w600,
       height: 1.2,
       color: AppColors.foreground,
     ),
     headlineSmall: TextStyle(
-      fontSize: 24,
+      fontSize: 22,
       fontWeight: FontWeight.w600,
       height: 1.2,
       color: AppColors.foreground,
@@ -61,23 +61,23 @@ class AppTextStyles {
     bodyLarge: TextStyle(
       fontSize: 16,
       fontWeight: FontWeight.w400,
-      height: 1.55,
+      height: 1.45,
       color: AppColors.foreground,
     ),
     bodyMedium: TextStyle(
-      fontSize: 15,
+      fontSize: 14,
       fontWeight: FontWeight.w400,
-      height: 1.55,
+      height: 1.45,
       color: AppColors.foreground,
     ),
     bodySmall: TextStyle(
-      fontSize: 14,
+      fontSize: 13,
       fontWeight: FontWeight.w400,
-      height: 1.5,
+      height: 1.4,
       color: AppColors.mutedText,
     ),
     labelLarge: TextStyle(
-      fontSize: 14,
+      fontSize: 15,
       fontWeight: FontWeight.w600,
       height: 1.3,
       color: AppColors.foreground,

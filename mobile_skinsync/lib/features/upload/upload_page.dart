@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../../core/routes/app_routes.dart';
+import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_spacing.dart';
 import '../../core/widgets/glass_header.dart';
 import '../../core/widgets/gradient_pill_button.dart';
-import '../../core/widgets/premium_card.dart';
 import '../../core/widgets/responsive_container.dart';
-import '../../core/widgets/section_badge.dart';
 
 class UploadPage extends StatelessWidget {
   const UploadPage({super.key});
@@ -13,69 +13,84 @@ class UploadPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const GlassHeader(currentRoute: AppRoutes.analysis),
-      body: SingleChildScrollView(
-        child: ResponsiveContainer(
+      backgroundColor: AppColors.pageBackground,
+      appBar: const GlassHeader(currentRoute: AppRoutes.upload),
+      body: ResponsiveContainer(
+        child: SafeArea(
+          top: false,
           child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 28),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.pagePadding,
+              AppSpacing.pagePadding,
+              AppSpacing.pagePadding,
+              AppSpacing.pagePadding,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SectionBadge(label: 'Upload', icon: Icons.camera_alt_outlined),
-                const SizedBox(height: 14),
-                Text('Upload Your Skin Photo', style: Theme.of(context).textTheme.headlineMedium),
+                Text('Upload your skin photo', style: Theme.of(context).textTheme.headlineMedium),
                 const SizedBox(height: 8),
                 Text(
-                  'Use clear lighting, face forward, and avoid heavy makeup or filters when possible.',
+                  'Use a clear portrait in natural light for the best AI read.',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
-                const SizedBox(height: 24),
-                PremiumCard(
-                  child: Column(
-                    children: [
-                      Container(
-                        width: double.infinity,
-                        height: 280,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF5F0E8),
-                          borderRadius: BorderRadius.circular(24),
+                const SizedBox(height: AppSpacing.sectionGap),
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      children: [
+                        Container(
+                          width: double.infinity,
+                          height: 300,
+                          decoration: BoxDecoration(
+                            color: AppColors.secondary,
+                            borderRadius: BorderRadius.circular(24),
+                            border: Border.all(color: AppColors.border),
+                          ),
+                          child: const Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.add_a_photo_outlined, size: 52, color: AppColors.primaryDark),
+                              SizedBox(height: 12),
+                              Text('Take a photo or choose from gallery'),
+                            ],
+                          ),
                         ),
-                        alignment: Alignment.center,
-                        child: const Icon(Icons.add_a_photo_outlined, size: 60),
-                      ),
-                      const SizedBox(height: 18),
-                      Wrap(
-                        spacing: 12,
-                        runSpacing: 12,
-                        children: const [
-                          _TipCard(icon: Icons.light_mode_outlined, text: 'Good lighting'),
-                          _TipCard(icon: Icons.face_retouching_natural_outlined, text: 'Face forward'),
-                          _TipCard(icon: Icons.filter_alt_off_outlined, text: 'No heavy filter'),
-                        ],
-                      ),
-                      const SizedBox(height: 18),
-                      Wrap(
-                        spacing: 12,
-                        runSpacing: 12,
-                        children: [
-                          OutlinedButton.icon(
-                            onPressed: () {},
-                            icon: const Icon(Icons.camera_alt_outlined),
-                            label: const Text('Take Photo'),
-                          ),
-                          OutlinedButton.icon(
-                            onPressed: () {},
-                            icon: const Icon(Icons.photo_library_outlined),
-                            label: const Text('Choose from Gallery'),
-                          ),
-                          GradientPillButton(
-                            label: 'Analyze Skin',
-                            onPressed: () => Navigator.pushNamed(context, AppRoutes.analysis),
-                          ),
-                        ],
-                      ),
-                    ],
+                        const SizedBox(height: 16),
+                        const _TipRow(icon: Icons.light_mode_outlined, text: 'Good lighting'),
+                        const SizedBox(height: 10),
+                        const _TipRow(icon: Icons.face_rounded, text: 'Face forward'),
+                        const SizedBox(height: 10),
+                        const _TipRow(icon: Icons.filter_alt_off_outlined, text: 'No heavy filter'),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: () {},
+                                icon: const Icon(Icons.camera_alt_outlined),
+                                label: const Text('Take Photo'),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: () {},
+                                icon: const Icon(Icons.photo_library_outlined),
+                                label: const Text('Choose Gallery'),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
+                ),
+                const SizedBox(height: 16),
+                GradientPillButton(
+                  label: 'Analyze Skin',
+                  expanded: true,
+                  onPressed: () => Navigator.pushReplacementNamed(context, AppRoutes.analysis),
                 ),
               ],
             ),
@@ -86,22 +101,29 @@ class UploadPage extends StatelessWidget {
   }
 }
 
-class _TipCard extends StatelessWidget {
-  const _TipCard({required this.icon, required this.text});
+class _TipRow extends StatelessWidget {
+  const _TipRow({
+    required this.icon,
+    required this.text,
+  });
 
   final IconData icon;
   final String text;
 
   @override
   Widget build(BuildContext context) {
-    return PremiumCard(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+      ),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 18),
+          Icon(icon, color: AppColors.primaryDark, size: 20),
           const SizedBox(width: 10),
-          Text(text),
+          Text(text, style: Theme.of(context).textTheme.bodyMedium),
         ],
       ),
     );
