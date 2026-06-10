@@ -475,6 +475,44 @@ class AiReminderSuggestResponse {
       );
 }
 
+class AiChatLaunchArgs {
+  const AiChatLaunchArgs({
+    this.conversationId,
+    this.entryPoint,
+    this.referenceId,
+    this.prefillMessage,
+    this.prefillContext,
+  });
+
+  final String? conversationId;
+  final String? entryPoint;
+  final String? referenceId;
+  final String? prefillMessage;
+  final String? prefillContext;
+}
+
+class AiSuggestedAction {
+  const AiSuggestedAction({
+    required this.type,
+    required this.label,
+    required this.route,
+    this.referenceId,
+  });
+
+  final String type;
+  final String label;
+  final String route;
+  final String? referenceId;
+
+  factory AiSuggestedAction.fromJson(Map<String, dynamic> json) =>
+      AiSuggestedAction(
+        type: (json['type'] ?? '') as String,
+        label: (json['label'] ?? '') as String,
+        route: (json['route'] ?? '') as String,
+        referenceId: json['referenceId']?.toString(),
+      );
+}
+
 class AiChatReply {
   const AiChatReply({
     this.conversationId,
@@ -487,7 +525,7 @@ class AiChatReply {
 
   final String? conversationId;
   final String reply;
-  final List<String> suggestedActions;
+  final List<AiSuggestedAction> suggestedActions;
   final bool needMoreInfo;
   final List<String> missingInfoQuestions;
   final String? safetyWarning;
@@ -496,7 +534,8 @@ class AiChatReply {
     conversationId: json['conversationId']?.toString(),
     reply: (json['reply'] ?? '') as String,
     suggestedActions: ((json['suggestedActions'] as List?) ?? const [])
-        .map((e) => e.toString())
+        .whereType<Map<String, dynamic>>()
+        .map(AiSuggestedAction.fromJson)
         .toList(),
     needMoreInfo: (json['needMoreInfo'] ?? false) as bool,
     missingInfoQuestions: ((json['missingInfoQuestions'] as List?) ?? const [])
@@ -714,6 +753,111 @@ class AiRecommendedProduct {
             .map((e) => e.toString())
             .toList(),
       );
+}
+
+class AiRoutineConflictWarning {
+  const AiRoutineConflictWarning({
+    required this.productAId,
+    required this.productAName,
+    required this.productBId,
+    required this.productBName,
+    required this.ingredientA,
+    required this.ingredientB,
+    required this.severity,
+    required this.message,
+    required this.recommendation,
+  });
+
+  final String productAId;
+  final String productAName;
+  final String productBId;
+  final String productBName;
+  final String ingredientA;
+  final String ingredientB;
+  final String severity;
+  final String message;
+  final String recommendation;
+
+  factory AiRoutineConflictWarning.fromJson(Map<String, dynamic> json) =>
+      AiRoutineConflictWarning(
+        productAId: json['productAId'].toString(),
+        productAName: (json['productAName'] ?? '') as String,
+        productBId: json['productBId'].toString(),
+        productBName: (json['productBName'] ?? '') as String,
+        ingredientA: (json['ingredientA'] ?? '') as String,
+        ingredientB: (json['ingredientB'] ?? '') as String,
+        severity: (json['severity'] ?? '') as String,
+        message: (json['message'] ?? '') as String,
+        recommendation: (json['recommendation'] ?? '') as String,
+      );
+}
+
+class AiAddProductToRoutineResponse {
+  const AiAddProductToRoutineResponse({
+    required this.added,
+    required this.requiresConfirmation,
+    required this.message,
+    this.routine,
+    this.warnings = const [],
+  });
+
+  final bool added;
+  final bool requiresConfirmation;
+  final String message;
+  final CurrentRegimen? routine;
+  final List<AiRoutineConflictWarning> warnings;
+
+  factory AiAddProductToRoutineResponse.fromJson(Map<String, dynamic> json) =>
+      AiAddProductToRoutineResponse(
+        added: (json['added'] ?? false) as bool,
+        requiresConfirmation: (json['requiresConfirmation'] ?? false) as bool,
+        message: (json['message'] ?? '') as String,
+        routine: json['routine'] is Map<String, dynamic>
+            ? CurrentRegimen.fromJson(json['routine'] as Map<String, dynamic>)
+            : null,
+        warnings: ((json['warnings'] as List?) ?? const [])
+            .whereType<Map<String, dynamic>>()
+            .map(AiRoutineConflictWarning.fromJson)
+            .toList(),
+      );
+}
+
+class AiSavedProduct {
+  const AiSavedProduct({
+    required this.productId,
+    required this.name,
+    required this.brand,
+    required this.category,
+    required this.isCustom,
+  });
+
+  final String productId;
+  final String name;
+  final String brand;
+  final String category;
+  final bool isCustom;
+
+  factory AiSavedProduct.fromJson(Map<String, dynamic> json) => AiSavedProduct(
+    productId: json['productId'].toString(),
+    name: (json['name'] ?? '') as String,
+    brand: (json['brand'] ?? 'My Product') as String,
+    category: (json['category'] ?? 'Custom') as String,
+    isCustom: (json['isCustom'] ?? false) as bool,
+  );
+}
+
+class ProductsPageArgs {
+  const ProductsPageArgs({
+    this.initialCategory,
+    this.initialConcern,
+    this.initialBudget,
+    this.referenceId,
+  });
+
+  final String? initialCategory;
+  final String? initialConcern;
+  final double? initialBudget;
+  final String? referenceId;
 }
 
 class AiProductRecommendResponse {

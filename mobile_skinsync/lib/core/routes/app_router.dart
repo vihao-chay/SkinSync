@@ -15,10 +15,13 @@ import '../../features/chat/ai_chat_conversation_page.dart';
 import '../../features/checkup/today_checkup_page.dart';
 import '../../features/landing/landing_page.dart';
 import '../../features/onboarding/onboarding_page.dart';
+import '../../features/products/products_page.dart';
 import '../../features/quiz/quiz_page.dart';
 import '../../features/upload/upload_page.dart';
+import '../../features/analysis/skin_analysis_page.dart';
 import '../widgets/main_shell.dart';
 import 'app_routes.dart';
+import '../models/app_models.dart';
 
 class AppRouter {
   static Route<dynamic> onGenerateRoute(RouteSettings settings) {
@@ -52,11 +55,17 @@ class AppRouter {
         break;
       case AppRoutes.aiChatConversation:
         page = AiChatConversationPage(
-          conversationId: settings.arguments as String?,
+          launchArgs: settings.arguments as AiChatLaunchArgs?,
         );
         break;
       case AppRoutes.aiProductRecommend:
-        page = const AiProductRecommendPage();
+        final args = settings.arguments as ProductsPageArgs?;
+        page = ProductsPage(
+          initialCategory: args?.initialCategory,
+          initialConcern: args?.initialConcern,
+          initialBudget: args?.initialBudget,
+          referenceId: args?.referenceId,
+        );
         break;
       case AppRoutes.aiIngredientCheck:
         page = const AiIngredientCheckPage();
@@ -68,11 +77,14 @@ class AppRouter {
         page = const AiReportsPage();
         break;
       case AppRoutes.dashboard:
-      case AppRoutes.analysis:
       case AppRoutes.routine:
+      case AppRoutes.products:
       case AppRoutes.progress:
       case AppRoutes.profile:
         page = MainShell(initialRoute: name);
+        break;
+      case AppRoutes.analysis:
+        page = const SkinAnalysisPage();
         break;
       case AppRoutes.admin:
         page = const AdminDashboardPage();

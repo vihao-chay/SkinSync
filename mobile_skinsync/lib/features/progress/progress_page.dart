@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/config/app_config.dart';
+import '../../core/models/app_models.dart';
 import '../../core/routes/app_routes.dart';
 import '../../core/state/app_state.dart';
 import '../../core/theme/app_colors.dart';
@@ -257,8 +258,15 @@ class _ProgressContent extends StatelessWidget {
                     Navigator.pushNamed(context, AppRoutes.todayCheckup),
                 onOpenScan: () =>
                     Navigator.pushNamed(context, AppRoutes.upload),
-                onOpenChat: () =>
-                    Navigator.pushNamed(context, AppRoutes.aiChat),
+                onOpenChat: () => Navigator.pushNamed(
+                  context,
+                  AppRoutes.aiChatConversation,
+                  arguments: const AiChatLaunchArgs(
+                    entryPoint: 'progress_dashboard',
+                    prefillMessage:
+                        'Can you help me understand my recent progress?',
+                  ),
+                ),
               ),
             ],
           ),

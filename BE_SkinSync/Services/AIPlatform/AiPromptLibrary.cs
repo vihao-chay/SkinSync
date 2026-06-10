@@ -190,7 +190,7 @@ Return JSON:
 }}";
     }
 
-    public static string BuildChatPrompt(string userProfileJson, string currentRoutineJson, string latestAnalysisJson, string recentDailyLogsJson, string message)
+    public static string BuildChatPrompt(string userProfileJson, string currentRoutineJson, string latestAnalysisJson, string recentDailyLogsJson, string message, string? entryPoint, string? referenceId, string? prefillContext)
     {
         return $@"You are SkinSync AI Chatbot.
 
@@ -205,6 +205,15 @@ Latest skin analysis:
 
 Recent daily logs:
 {recentDailyLogsJson}
+
+Entry point:
+{(string.IsNullOrWhiteSpace(entryPoint) ? "unknown" : entryPoint.Trim())}
+
+Reference ID:
+{(string.IsNullOrWhiteSpace(referenceId) ? "none" : referenceId.Trim())}
+
+Prefill context:
+{(string.IsNullOrWhiteSpace(prefillContext) ? "none" : prefillContext.Trim())}
 
 User message:
 {message}

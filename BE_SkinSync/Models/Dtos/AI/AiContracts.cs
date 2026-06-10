@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Http;
+using SkinSync.Models.Dtos;
 
 namespace SkinSync.Models.Dtos.AI;
 
@@ -135,13 +136,24 @@ public class AiChatRequestDto
 {
     public string Message { get; set; } = string.Empty;
     public Guid? ConversationId { get; set; }
+    public string? EntryPoint { get; set; }
+    public string? ReferenceId { get; set; }
+    public string? PrefillContext { get; set; }
+}
+
+public class AiSuggestedActionDto
+{
+    public string Type { get; set; } = string.Empty;
+    public string Label { get; set; } = string.Empty;
+    public string Route { get; set; } = string.Empty;
+    public string? ReferenceId { get; set; }
 }
 
 public class AiChatResponseDto
 {
     public Guid ConversationId { get; set; }
     public string Reply { get; set; } = string.Empty;
-    public IReadOnlyCollection<string> SuggestedActions { get; set; } = Array.Empty<string>();
+    public IReadOnlyCollection<AiSuggestedActionDto> SuggestedActions { get; set; } = Array.Empty<AiSuggestedActionDto>();
     public bool NeedMoreInfo { get; set; }
     public IReadOnlyCollection<string> MissingInfoQuestions { get; set; } = Array.Empty<string>();
     public string SafetyWarning { get; set; } = string.Empty;
@@ -228,4 +240,48 @@ public class AiReminderSuggestResponseDto
 {
     public IReadOnlyCollection<AiReminderSuggestionDto> Suggestions { get; set; } = Array.Empty<AiReminderSuggestionDto>();
     public string OverallAdvice { get; set; } = string.Empty;
+}
+
+public class AiAddProductToRoutineRequestDto
+{
+    public string RoutineType { get; set; } = "Evening";
+    public bool AllowConflicts { get; set; }
+}
+
+public class AiRoutineConflictWarningDto
+{
+    public Guid ProductAId { get; set; }
+    public string ProductAName { get; set; } = string.Empty;
+    public Guid ProductBId { get; set; }
+    public string ProductBName { get; set; } = string.Empty;
+    public string IngredientA { get; set; } = string.Empty;
+    public string IngredientB { get; set; } = string.Empty;
+    public string Severity { get; set; } = string.Empty;
+    public string Message { get; set; } = string.Empty;
+    public string Recommendation { get; set; } = string.Empty;
+}
+
+public class AiAddProductToRoutineResponseDto
+{
+    public bool Added { get; set; }
+    public bool RequiresConfirmation { get; set; }
+    public string Message { get; set; } = string.Empty;
+    public CurrentRegimenResponseDto? Routine { get; set; }
+    public IReadOnlyCollection<AiRoutineConflictWarningDto> Warnings { get; set; } = Array.Empty<AiRoutineConflictWarningDto>();
+}
+
+public class AiSaveIngredientProductRequestDto
+{
+    public string ProductName { get; set; } = string.Empty;
+    public string IngredientsText { get; set; } = string.Empty;
+    public string Category { get; set; } = "Custom";
+}
+
+public class AiSavedProductDto
+{
+    public Guid ProductId { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string Brand { get; set; } = "My Product";
+    public string Category { get; set; } = "Custom";
+    public bool IsCustom { get; set; }
 }

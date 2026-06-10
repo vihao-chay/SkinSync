@@ -82,14 +82,17 @@ public class AiChatService : IAiChatService
 
         _dbContext.AiChatMessages.Add(userMessage);
 
-        var aiResult = await _openAiService.GenerateJsonAsync<AiChatResponseDto>(
+        var aiResult = await _openAiService.GenerateJsonAsync<AiChatAiModel>(
             AiPromptLibrary.CommonSystemPrompt,
             AiPromptLibrary.BuildChatPrompt(
                 AiContextMapper.SerializeUserProfile(user.Profile),
                 JsonSerializer.Serialize(currentRoutine?.ToCurrentRegimenDto() ?? new object()),
                 AiContextMapper.SerializeAnalysis(latestAnalysis?.ToDetailDto()),
                 AiContextMapper.SerializeDailyLogs(recentLogs),
-                BuildConversationContext(recentMessages, request.Message)),
+                BuildConversationContext(recentMessages, request.Message),
+                request.EntryPoint,
+                request.ReferenceId,
+                request.PrefillContext),
             cancellationToken: cancellationToken);
 
         if (string.IsNullOrWhiteSpace(aiResult.Value.SafetyWarning))
@@ -119,8 +122,15 @@ public class AiChatService : IAiChatService
         await _dbContext.SaveChangesAsync(cancellationToken);
         await _aiUsageService.LogUsageAsync(userId, "ai_chat", aiResult.Model, aiResult.InputTokens, aiResult.OutputTokens, cancellationToken);
 
-        aiResult.Value.ConversationId = conversation.Id;
-        return aiResult.Value;
+        return new AiChatResponseDto
+        {
+            ConversationId = conversation.Id,
+            Reply = aiResult.Value.Reply,
+            NeedMoreInfo = aiResult.Value.NeedMoreInfo,
+            MissingInfoQuestions = aiResult.Value.MissingInfoQuestions,
+            SafetyWarning = aiResult.Value.SafetyWarning,
+            SuggestedActions = MapSuggestedActions(aiResult.Value.SuggestedActions, request.ReferenceId)
+        };
     }
 
     public async Task<IReadOnlyCollection<AiChatConversationSummaryDto>> GetConversationsAsync(Guid userId, CancellationToken cancellationToken)
@@ -220,4 +230,68 @@ public class AiChatService : IAiChatService
 
         return $"{normalized[..57].TrimEnd()}...";
     }
+
+    private static IReadOnlyCollection<AiSuggestedActionDto> MapSuggestedActions(IEnumerable<string>? actions, string? referenceId)
+    {
+        var mapped = new List<AiSuggestedActionDto>();
+        foreach (var action in actions ?? Array.Empty<string>())
+        {
+            var normalized = action.Trim();
+            if (string.IsNullOrWhiteSpace(normalized))
+            {
+                continue;
+            }
+
+            if (normalized.Contains("scan", StringComparison.OrdinalIgnoreCase) ||
+                normalized.Contains("analysis", StringComparison.OrdinalIgnoreCase))
+            {
+                mapped.Add(new AiSuggestedActionDto { Type = "scan_skin", Label = "Open skin scan", Route = "/upload", ReferenceId = referenceId });
+                continue;
+            }
+
+            if (normalized.Contains("routine", StringComparison.OrdinalIgnoreCase))
+            {
+                mapped.Add(new AiSuggestedActionDto { Type = "open_routine", Label = "Open routine", Route = "/routine", ReferenceId = referenceId });
+                continue;
+            }
+
+            if (normalized.Contains("ingredient", StringComparison.OrdinalIgnoreCase))
+            {
+                mapped.Add(new AiSuggestedActionDto { Type = "check_ingredients", Label = "Check ingredients", Route = "/ai/ingredient-check", ReferenceId = referenceId });
+                continue;
+            }
+
+            if (normalized.Contains("product", StringComparison.OrdinalIgnoreCase))
+            {
+                mapped.Add(new AiSuggestedActionDto { Type = "view_products", Label = "View products", Route = "/products", ReferenceId = referenceId });
+                continue;
+            }
+
+            if (normalized.Contains("report", StringComparison.OrdinalIgnoreCase))
+            {
+                mapped.Add(new AiSuggestedActionDto { Type = "open_reports", Label = "Open reports", Route = "/ai/reports", ReferenceId = referenceId });
+                continue;
+            }
+
+            if (normalized.Contains("progress", StringComparison.OrdinalIgnoreCase))
+            {
+                mapped.Add(new AiSuggestedActionDto { Type = "open_progress", Label = "Open progress", Route = "/progress", ReferenceId = referenceId });
+                continue;
+            }
+        }
+
+        return mapped
+            .GroupBy(x => $"{x.Type}|{x.Route}|{x.ReferenceId}", StringComparer.OrdinalIgnoreCase)
+            .Select(x => x.First())
+            .ToList();
+    }
+}
+
+internal sealed class AiChatAiModel
+{
+    public string Reply { get; set; } = string.Empty;
+    public List<string> SuggestedActions { get; set; } = [];
+    public bool NeedMoreInfo { get; set; }
+    public List<string> MissingInfoQuestions { get; set; } = [];
+    public string SafetyWarning { get; set; } = string.Empty;
 }

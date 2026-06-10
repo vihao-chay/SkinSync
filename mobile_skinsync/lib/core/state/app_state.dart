@@ -271,6 +271,9 @@ class AppState extends ChangeNotifier {
   Future<AiChatReply> sendAiChatInConversation(
     String message, {
     String? conversationId,
+    String? entryPoint,
+    String? referenceId,
+    String? prefillContext,
   }) async {
     final response = await _apiClient.post(
       '/api/ai/chat',
@@ -278,6 +281,11 @@ class AppState extends ChangeNotifier {
         'message': message,
         if (conversationId != null && conversationId.isNotEmpty)
           'conversationId': conversationId,
+        if (entryPoint != null && entryPoint.isNotEmpty) 'entryPoint': entryPoint,
+        if (referenceId != null && referenceId.isNotEmpty)
+          'referenceId': referenceId,
+        if (prefillContext != null && prefillContext.isNotEmpty)
+          'prefillContext': prefillContext,
       },
     );
     final data = _readAiData(response);
@@ -372,6 +380,47 @@ class AppState extends ChangeNotifier {
     );
     final data = _readAiData(response);
     return AiIngredientCheckResponse.fromJson(data);
+  }
+
+  Future<AiSavedProduct> saveIngredientProduct({
+    required String productName,
+    required String ingredientsText,
+    String category = 'Custom',
+  }) async {
+    final response = await _apiClient.post(
+      '/api/ai/ingredient-check/save-product',
+      body: {
+        'productName': productName,
+        'ingredientsText': ingredientsText,
+        'category': category,
+      },
+    );
+    final data = _readAiData(response);
+    return AiSavedProduct.fromJson(data);
+  }
+
+  Future<AiAddProductToRoutineResponse> addProductToRoutine({
+    required String productId,
+    required String routineType,
+    bool allowConflicts = false,
+  }) async {
+    final response = await _apiClient.post(
+      '/api/ai/products/$productId/add-to-routine',
+      body: {
+        'routineType': routineType,
+        'allowConflicts': allowConflicts,
+      },
+    );
+    final data = _readAiData(response);
+    final parsed = AiAddProductToRoutineResponse.fromJson(data);
+    if (parsed.routine != null) {
+      regimen = parsed.routine;
+      notifyListeners();
+    } else {
+      await _loadRegimen();
+      notifyListeners();
+    }
+    return parsed;
   }
 
   Future<AiRoutineConflictCheckResponse> checkRoutineConflicts({

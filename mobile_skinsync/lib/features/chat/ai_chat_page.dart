@@ -33,17 +33,10 @@ class _AiChatPageState extends State<AiChatPage> {
   }
 
   Future<void> _newChat() async {
-    final conversation = await context
-        .read<AppState>()
-        .createAiChatConversation();
-    if (!mounted) {
-      return;
-    }
-
     await Navigator.pushNamed(
       context,
       AppRoutes.aiChatConversation,
-      arguments: conversation.conversationId,
+      arguments: const AiChatLaunchArgs(entryPoint: 'chat_sessions'),
     );
     if (mounted) {
       _refresh();
@@ -106,7 +99,9 @@ class _AiChatPageState extends State<AiChatPage> {
                       await Navigator.pushNamed(
                         context,
                         AppRoutes.aiChatConversation,
-                        arguments: item.conversationId,
+                        arguments: AiChatLaunchArgs(
+                          conversationId: item.conversationId,
+                        ),
                       );
                       if (mounted) {
                         _refresh();

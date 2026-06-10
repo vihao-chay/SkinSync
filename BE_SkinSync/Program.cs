@@ -93,6 +93,7 @@ builder.Services.AddScoped<IConflictCheckService, ConflictCheckService>();
 builder.Services.AddScoped<IAiChatService, AiChatService>();
 builder.Services.AddScoped<IAiReportService, AiReportService>();
 builder.Services.AddScoped<IAiSmartReminderService, AiSmartReminderService>();
+builder.Services.AddScoped<IProductRoutineService, ProductRoutineService>();
 builder.Services.AddScoped<ISkinProgressService, SkinProgressService>();
 builder.Services.AddScoped<ISkinProgressAnalysisService, SkinProgressAnalysisService>();
 builder.Services.AddScoped<ISkinProgressComparisonService, SkinProgressComparisonService>();

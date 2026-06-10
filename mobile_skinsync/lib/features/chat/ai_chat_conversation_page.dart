@@ -2,13 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/models/app_models.dart';
+import '../../core/routes/app_routes.dart';
 import '../../core/state/app_state.dart';
 import '../../core/theme/app_colors.dart';
 
 class AiChatConversationPage extends StatefulWidget {
-  const AiChatConversationPage({super.key, this.conversationId});
+  const AiChatConversationPage({super.key, this.launchArgs});
 
-  final String? conversationId;
+  final AiChatLaunchArgs? launchArgs;
 
   @override
   State<AiChatConversationPage> createState() => _AiChatConversationPageState();
@@ -17,18 +18,27 @@ class AiChatConversationPage extends StatefulWidget {
 class _AiChatConversationPageState extends State<AiChatConversationPage> {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  final List<String> _quickActions = [];
+  final List<AiSuggestedAction> _quickActions = [];
   List<AiChatMessageItem> _messages = const [];
   String? _conversationId;
   String _title = 'SkinSync AI';
   String? _safetyWarning;
+  String? _entryPoint;
+  String? _referenceId;
+  String? _prefillContext;
   bool _loading = true;
   bool _sending = false;
 
   @override
   void initState() {
     super.initState();
-    _conversationId = widget.conversationId;
+    _conversationId = widget.launchArgs?.conversationId;
+    _entryPoint = widget.launchArgs?.entryPoint;
+    _referenceId = widget.launchArgs?.referenceId;
+    _prefillContext = widget.launchArgs?.prefillContext;
+    if ((widget.launchArgs?.prefillMessage ?? '').trim().isNotEmpty) {
+      _controller.text = widget.launchArgs!.prefillMessage!;
+    }
     _bootstrap();
   }
 
@@ -92,6 +102,9 @@ class _AiChatConversationPageState extends State<AiChatConversationPage> {
       final reply = await context.read<AppState>().sendAiChatInConversation(
         text,
         conversationId: _conversationId,
+        entryPoint: _entryPoint,
+        referenceId: _referenceId,
+        prefillContext: _prefillContext,
       );
       if (!mounted) {
         return;
@@ -242,10 +255,10 @@ class _AiChatConversationPageState extends State<AiChatConversationPage> {
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         scrollDirection: Axis.horizontal,
                         itemBuilder: (context, index) {
-                          final label = _quickActions[index];
+                          final action = _quickActions[index];
                           return ActionChip(
-                            label: Text(label),
-                            onPressed: () => _sendMessage(label),
+                            label: Text(action.label),
+                            onPressed: () => _handleAction(action),
                           );
                         },
                         separatorBuilder: (_, __) => const SizedBox(width: 8),
@@ -308,5 +321,28 @@ class _AiChatConversationPageState extends State<AiChatConversationPage> {
               ),
       ),
     );
+  }
+
+  Future<void> _handleAction(AiSuggestedAction action) async {
+    if (action.route.isEmpty) {
+      return;
+    }
+
+    if (action.route == AppRoutes.aiIngredientCheck ||
+        action.route == AppRoutes.routine ||
+        action.route == AppRoutes.progress ||
+        action.route == AppRoutes.upload ||
+        action.route == AppRoutes.aiReports) {
+      await Navigator.pushNamed(context, action.route);
+      return;
+    }
+
+    if (action.route == AppRoutes.products) {
+      await Navigator.pushNamed(
+        context,
+        AppRoutes.aiProductRecommend,
+        arguments: ProductsPageArgs(referenceId: action.referenceId),
+      );
+    }
   }
 }

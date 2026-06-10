@@ -20,6 +20,7 @@ public class AIController : ControllerBase
     private readonly IAiChatService _aiChatService;
     private readonly IAiReportService _aiReportService;
     private readonly IAiSmartReminderService _aiSmartReminderService;
+    private readonly IProductRoutineService _productRoutineService;
     private readonly ISkinProgressAnalysisService _skinProgressAnalysisService;
     private readonly ISkinProgressComparisonService _skinProgressComparisonService;
     private readonly ISkinProgressReportService _skinProgressReportService;
@@ -33,6 +34,7 @@ public class AIController : ControllerBase
         IAiChatService aiChatService,
         IAiReportService aiReportService,
         IAiSmartReminderService aiSmartReminderService,
+        IProductRoutineService productRoutineService,
         ISkinProgressAnalysisService skinProgressAnalysisService,
         ISkinProgressComparisonService skinProgressComparisonService,
         ISkinProgressReportService skinProgressReportService)
@@ -45,6 +47,7 @@ public class AIController : ControllerBase
         _aiChatService = aiChatService;
         _aiReportService = aiReportService;
         _aiSmartReminderService = aiSmartReminderService;
+        _productRoutineService = productRoutineService;
         _skinProgressAnalysisService = skinProgressAnalysisService;
         _skinProgressComparisonService = skinProgressComparisonService;
         _skinProgressReportService = skinProgressReportService;
@@ -115,6 +118,18 @@ public class AIController : ControllerBase
     public async Task<AiApiResponse<AiReminderSuggestResponseDto>> SuggestReminders([FromBody] AiReminderSuggestRequestDto request, CancellationToken cancellationToken)
     {
         return await ExecuteAsync(() => _aiSmartReminderService.SuggestAsync(GetUserId(), request, cancellationToken), "AI reminder suggestions generated successfully.");
+    }
+
+    [HttpPost("products/{productId:guid}/add-to-routine")]
+    public async Task<AiApiResponse<AiAddProductToRoutineResponseDto>> AddProductToRoutine(Guid productId, [FromBody] AiAddProductToRoutineRequestDto request, CancellationToken cancellationToken)
+    {
+        return await ExecuteAsync(() => _productRoutineService.AddToRoutineAsync(GetUserId(), productId, request, cancellationToken), "Product add-to-routine request processed successfully.");
+    }
+
+    [HttpPost("ingredient-check/save-product")]
+    public async Task<AiApiResponse<AiSavedProductDto>> SaveIngredientProduct([FromBody] AiSaveIngredientProductRequestDto request, CancellationToken cancellationToken)
+    {
+        return await ExecuteAsync(() => _productRoutineService.SaveIngredientProductAsync(GetUserId(), request, cancellationToken), "Ingredient product saved successfully.");
     }
 
     [HttpGet("reports")]

@@ -110,6 +110,19 @@ class _RoutinePageState extends State<RoutinePage> {
                     Navigator.pushNamed(context, AppRoutes.aiConflictCheck),
                 child: const Text('Check Conflicts'),
               ),
+              OutlinedButton(
+                onPressed: () => Navigator.pushNamed(
+                  context,
+                  AppRoutes.aiChatConversation,
+                  arguments: AiChatLaunchArgs(
+                    entryPoint: 'routine',
+                    referenceId: regimen?.regimenId,
+                    prefillMessage:
+                        'Can you review my routine and tell me what to improve?',
+                  ),
+                ),
+                child: const Text('Ask SkinSync AI'),
+              ),
             ],
           ),
           const SizedBox(height: 18),

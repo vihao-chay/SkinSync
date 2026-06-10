@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../features/analysis/skin_analysis_page.dart';
 import '../../features/dashboard/dashboard_page.dart';
 import '../../features/profile/profile_page.dart';
 import '../../features/progress/progress_page.dart';
+import '../../features/products/products_page.dart';
 import '../../features/routine/routine_page.dart';
+import '../models/app_models.dart';
 import '../routes/app_routes.dart';
 import '../state/app_state.dart';
 import '../theme/app_colors.dart';
@@ -22,16 +23,16 @@ class MainShell extends StatefulWidget {
 class _MainShellState extends State<MainShell> {
   static const _navRoutes = [
     AppRoutes.dashboard,
-    AppRoutes.analysis,
     AppRoutes.routine,
+    AppRoutes.products,
     AppRoutes.progress,
     AppRoutes.profile,
   ];
 
   static const _destinations = [
     _ShellDestination('Home', Icons.home_rounded),
-    _ShellDestination('AI Scan', Icons.auto_awesome_rounded),
     _ShellDestination('Routine', Icons.spa_rounded),
+    _ShellDestination('Products', Icons.shopping_bag_outlined),
     _ShellDestination('Progress', Icons.insights_rounded),
     _ShellDestination('Profile', Icons.person_rounded),
   ];
@@ -70,17 +71,17 @@ class _MainShellState extends State<MainShell> {
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 520),
             child: SizedBox.expand(
-              child: IndexedStack(
-                index: _selectedIndex,
-                children: const [
-                  DashboardPage(),
-                  SkinAnalysisPage(),
-                  RoutinePage(),
-                  ProgressPage(),
-                  ProfilePage(),
-                ],
+                child: IndexedStack(
+                  index: _selectedIndex,
+                  children: const [
+                    DashboardPage(),
+                    RoutinePage(),
+                    ProductsPage(),
+                    ProgressPage(),
+                    ProfilePage(),
+                  ],
+                ),
               ),
-            ),
           ),
         ),
       ),
@@ -170,6 +171,17 @@ class _MainShellState extends State<MainShell> {
             ),
           ),
         ),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => Navigator.pushNamed(
+          context,
+          AppRoutes.aiChatConversation,
+          arguments: const AiChatLaunchArgs(entryPoint: 'shell_fab'),
+        ),
+        backgroundColor: AppColors.primaryDark,
+        foregroundColor: Colors.white,
+        icon: const Icon(Icons.chat_bubble_outline_rounded),
+        label: const Text('SkinSync AI'),
       ),
     );
   }

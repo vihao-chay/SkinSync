@@ -89,10 +89,24 @@ class DashboardPage extends StatelessWidget {
           _ActionRow(
             onCheckup: () =>
                 Navigator.pushNamed(context, AppRoutes.todayCheckup),
-            onChat: () => Navigator.pushNamed(context, AppRoutes.aiChat),
+            onChat: () => Navigator.pushNamed(
+              context,
+              AppRoutes.aiChatConversation,
+              arguments: const AiChatLaunchArgs(entryPoint: 'home'),
+            ),
             onScan: () => Navigator.pushNamed(
               context,
-              analysis == null ? AppRoutes.upload : AppRoutes.analysis,
+              AppRoutes.upload,
+            ),
+            onProducts: () => Navigator.pushNamed(
+              context,
+              AppRoutes.aiProductRecommend,
+              arguments: ProductsPageArgs(
+                initialConcern: analysis?.issues.isNotEmpty == true
+                    ? analysis!.issues.first.issueType
+                    : 'any',
+                referenceId: analysis?.id,
+              ),
             ),
           ),
         ],
@@ -559,11 +573,13 @@ class _ActionRow extends StatelessWidget {
     required this.onCheckup,
     required this.onChat,
     required this.onScan,
+    required this.onProducts,
   });
 
   final VoidCallback onCheckup;
   final VoidCallback onChat;
   final VoidCallback onScan;
+  final VoidCallback onProducts;
 
   @override
   Widget build(BuildContext context) {
@@ -591,9 +607,17 @@ class _ActionRow extends StatelessWidget {
         SizedBox(
           width: 154,
           child: _ActionButton(
-            label: 'Open AI Scan',
+            label: 'Scan Skin',
             icon: Icons.auto_awesome_rounded,
             onTap: onScan,
+          ),
+        ),
+        SizedBox(
+          width: 154,
+          child: _ActionButton(
+            label: 'View Products',
+            icon: Icons.shopping_bag_outlined,
+            onTap: onProducts,
           ),
         ),
       ],
