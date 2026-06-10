@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/models/app_models.dart';
+import '../../core/routes/app_routes.dart';
 import '../../core/state/app_state.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
@@ -16,6 +17,20 @@ class RoutinePage extends StatefulWidget {
 
 class _RoutinePageState extends State<RoutinePage> {
   bool morning = true;
+  bool _generating = false;
+
+  Future<void> _generateRoutine(AppState appState) async {
+    setState(() => _generating = true);
+    try {
+      await appState.generateRoutine(
+        budgetMax: appState.profile?.monthlyBudget,
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _generating = false);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -54,6 +69,22 @@ class _RoutinePageState extends State<RoutinePage> {
             style: Theme.of(
               context,
             ).textTheme.labelSmall?.copyWith(color: AppColors.foreground),
+          ),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              FilledButton(
+                onPressed: _generating ? null : () => _generateRoutine(appState),
+                child: Text(_generating ? 'Generating...' : 'Regenerate Routine'),
+              ),
+              OutlinedButton(
+                onPressed: () =>
+                    Navigator.pushNamed(context, AppRoutes.aiConflictCheck),
+                child: const Text('Check Conflicts'),
+              ),
+            ],
           ),
           const SizedBox(height: 18),
           _SegmentedControl(

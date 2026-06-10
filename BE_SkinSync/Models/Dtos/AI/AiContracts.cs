@@ -139,11 +139,45 @@ public class AiChatRequestDto
 
 public class AiChatResponseDto
 {
+    public Guid ConversationId { get; set; }
     public string Reply { get; set; } = string.Empty;
     public IReadOnlyCollection<string> SuggestedActions { get; set; } = Array.Empty<string>();
     public bool NeedMoreInfo { get; set; }
     public IReadOnlyCollection<string> MissingInfoQuestions { get; set; } = Array.Empty<string>();
     public string SafetyWarning { get; set; } = string.Empty;
+}
+
+public class AiChatConversationCreateRequestDto
+{
+    public string? Title { get; set; }
+}
+
+public class AiChatMessageDto
+{
+    public Guid Id { get; set; }
+    public string Role { get; set; } = string.Empty;
+    public string Content { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; }
+}
+
+public class AiChatConversationSummaryDto
+{
+    public Guid ConversationId { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public string? LastMessagePreview { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+    public DateTime LastMessageAt { get; set; }
+}
+
+public class AiChatConversationDetailDto
+{
+    public Guid ConversationId { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+    public DateTime LastMessageAt { get; set; }
+    public IReadOnlyCollection<AiChatMessageDto> Messages { get; set; } = Array.Empty<AiChatMessageDto>();
 }
 
 public class AiReportGenerateRequestDto
@@ -154,6 +188,8 @@ public class AiReportGenerateRequestDto
 public class AiReportGenerateResponseDto
 {
     public Guid ReportId { get; set; }
+    public string ReportType { get; set; } = "after_analysis";
+    public DateTime CreatedAt { get; set; }
     public string Summary { get; set; } = string.Empty;
     public string ProgressEvaluation { get; set; } = "insufficient_data";
     public IReadOnlyCollection<string> MainFindings { get; set; } = Array.Empty<string>();
@@ -161,4 +197,13 @@ public class AiReportGenerateResponseDto
     public string? ProductFeedback { get; set; }
     public IReadOnlyCollection<string> NextPlan { get; set; } = Array.Empty<string>();
     public IReadOnlyCollection<string> Warnings { get; set; } = Array.Empty<string>();
+}
+
+public class AiReportSummaryDto
+{
+    public Guid ReportId { get; set; }
+    public string ReportType { get; set; } = "after_analysis";
+    public string Summary { get; set; } = string.Empty;
+    public string ProgressEvaluation { get; set; } = "insufficient_data";
+    public DateTime CreatedAt { get; set; }
 }

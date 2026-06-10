@@ -23,4 +23,5 @@ public class User
     public ICollection<Reminder> Reminders { get; set; } = new List<Reminder>();
     public ICollection<AiReport> AiReports { get; set; } = new List<AiReport>();
     public ICollection<AiUsageLog> AiUsageLogs { get; set; } = new List<AiUsageLog>();
+    public ICollection<AiChatConversation> AiChatConversations { get; set; } = new List<AiChatConversation>();
 }

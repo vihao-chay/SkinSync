@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../features/ai_hub/ai_hub_page.dart';
 import '../../features/analysis/skin_analysis_page.dart';
 import '../../features/dashboard/dashboard_page.dart';
 import '../../features/profile/profile_page.dart';
@@ -22,6 +23,7 @@ class MainShell extends StatefulWidget {
 class _MainShellState extends State<MainShell> {
   static const _navRoutes = [
     AppRoutes.dashboard,
+    AppRoutes.aiHub,
     AppRoutes.analysis,
     AppRoutes.routine,
     AppRoutes.progress,
@@ -30,6 +32,7 @@ class _MainShellState extends State<MainShell> {
 
   static const _destinations = [
     _ShellDestination('Home', Icons.home_rounded),
+    _ShellDestination('AI Hub', Icons.hub_outlined),
     _ShellDestination('AI Scan', Icons.auto_awesome_rounded),
     _ShellDestination('Routine', Icons.spa_rounded),
     _ShellDestination('Progress', Icons.insights_rounded),
@@ -74,6 +77,7 @@ class _MainShellState extends State<MainShell> {
                 index: _selectedIndex,
                 children: const [
                   DashboardPage(),
+                  AiHubPage(),
                   SkinAnalysisPage(),
                   RoutinePage(),
                   ProgressPage(),

@@ -25,6 +25,8 @@ public class AppDbContext : DbContext
     public DbSet<Reminder> Reminders => Set<Reminder>();
     public DbSet<AiReport> AiReports => Set<AiReport>();
     public DbSet<AiUsageLog> AiUsageLogs => Set<AiUsageLog>();
+    public DbSet<AiChatConversation> AiChatConversations => Set<AiChatConversation>();
+    public DbSet<AiChatMessage> AiChatMessages => Set<AiChatMessage>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -393,6 +395,38 @@ public class AppDbContext : DbContext
             entity.HasOne(x => x.User)
                 .WithMany(x => x.AiUsageLogs)
                 .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<AiChatConversation>(entity =>
+        {
+            entity.ToTable("ai_chat_conversations");
+            entity.HasKey(x => x.Id);
+            entity.HasIndex(x => new { x.UserId, x.LastMessageAt }).IsDescending(false, true);
+            entity.Property(x => x.Title).HasMaxLength(120).IsRequired();
+            entity.Property(x => x.CreatedAt).HasColumnType("timestamp with time zone").HasDefaultValueSql("timezone('utc', now())");
+            entity.Property(x => x.UpdatedAt).HasColumnType("timestamp with time zone").HasDefaultValueSql("timezone('utc', now())");
+            entity.Property(x => x.LastMessageAt).HasColumnType("timestamp with time zone").HasDefaultValueSql("timezone('utc', now())");
+            entity.HasOne(x => x.User)
+                .WithMany(x => x.AiChatConversations)
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<AiChatMessage>(entity =>
+        {
+            entity.ToTable("ai_chat_messages", table =>
+            {
+                table.HasCheckConstraint("ck_ai_chat_messages_role", "\"Role\" IN ('user', 'assistant', 'system')");
+            });
+            entity.HasKey(x => x.Id);
+            entity.HasIndex(x => new { x.ConversationId, x.CreatedAt });
+            entity.Property(x => x.Role).HasMaxLength(20).IsRequired();
+            entity.Property(x => x.Content).HasColumnType("text").IsRequired();
+            entity.Property(x => x.CreatedAt).HasColumnType("timestamp with time zone").HasDefaultValueSql("timezone('utc', now())");
+            entity.HasOne(x => x.Conversation)
+                .WithMany(x => x.Messages)
+                .HasForeignKey(x => x.ConversationId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
     }

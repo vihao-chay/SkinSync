@@ -10,6 +10,8 @@ namespace SkinSync.Services.AIPlatform;
 public interface IAiReportService
 {
     Task<AiReportGenerateResponseDto> GenerateAsync(Guid userId, AiReportGenerateRequestDto request, CancellationToken cancellationToken);
+    Task<IReadOnlyCollection<AiReportSummaryDto>> GetReportsAsync(Guid userId, CancellationToken cancellationToken);
+    Task<AiReportGenerateResponseDto> GetReportAsync(Guid userId, Guid reportId, CancellationToken cancellationToken);
 }
 
 public class AiReportService : IAiReportService
@@ -92,6 +94,8 @@ public class AiReportService : IAiReportService
         return new AiReportGenerateResponseDto
         {
             ReportId = report.Id,
+            ReportType = report.ReportType,
+            CreatedAt = report.CreatedAt,
             Summary = report.Summary,
             ProgressEvaluation = report.ProgressEvaluation,
             MainFindings = aiResult.Value.MainFindings,
@@ -100,6 +104,27 @@ public class AiReportService : IAiReportService
             NextPlan = aiResult.Value.NextPlan,
             Warnings = aiResult.Value.Warnings
         };
+    }
+
+    public async Task<IReadOnlyCollection<AiReportSummaryDto>> GetReportsAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        var reports = await _dbContext.AiReports
+            .AsNoTracking()
+            .Where(x => x.UserId == userId)
+            .OrderByDescending(x => x.CreatedAt)
+            .ToListAsync(cancellationToken);
+
+        return reports.Select(x => x.ToSummaryDto()).ToList();
+    }
+
+    public async Task<AiReportGenerateResponseDto> GetReportAsync(Guid userId, Guid reportId, CancellationToken cancellationToken)
+    {
+        var report = await _dbContext.AiReports
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == reportId && x.UserId == userId, cancellationToken)
+            ?? throw new AiFeatureException("REPORT_NOT_FOUND", "Report not found.", 404);
+
+        return report.ToDto();
     }
 
     private static string NormalizeReportType(string reportType)

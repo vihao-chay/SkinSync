@@ -249,22 +249,159 @@ class AppState extends ChangeNotifier {
   Future<void> analyzeSkin(File imageFile) async {
     await _runBusy(() async {
       final response = await _apiClient.multipart(
-        '/api/analysis/scan',
+        '/api/ai/skin-analysis',
         file: imageFile,
-        fields: const {},
+        fields: const {'additionalNote': ''},
       );
+      final data = _readAiData(response);
+      latestAnalysis = _analysisResultFromAiResponse(data);
 
-      latestAnalysis = AnalysisResult.fromJson(
-        response['analysis'] as Map<String, dynamic>,
-      );
-      regimen = CurrentRegimen(
-        regimenId: response['regimenId'].toString(),
-        name: 'AI generated routine',
-      );
+      await _generateRoutineFromLatestProfile();
       await _loadRegimen();
       await _loadTracking();
       await _loadProgress();
     });
+  }
+
+  Future<AiChatReply> sendAiChat(String message) async {
+    return sendAiChatInConversation(message);
+  }
+
+  Future<AiChatReply> sendAiChatInConversation(
+    String message, {
+    String? conversationId,
+  }) async {
+    final response = await _apiClient.post(
+      '/api/ai/chat',
+      body: {
+        'message': message,
+        if (conversationId != null && conversationId.isNotEmpty)
+          'conversationId': conversationId,
+      },
+    );
+    final data = _readAiData(response);
+    return AiChatReply.fromJson(data);
+  }
+
+  Future<List<AiChatConversationSummary>> fetchAiChatConversations() async {
+    final response = await _apiClient.get('/api/ai/chat/conversations');
+    final data = _readAiCollection(response);
+    return data
+        .whereType<Map<String, dynamic>>()
+        .map(AiChatConversationSummary.fromJson)
+        .toList();
+  }
+
+  Future<AiChatConversationSummary> createAiChatConversation({
+    String? title,
+  }) async {
+    final response = await _apiClient.post(
+      '/api/ai/chat/conversations',
+      body: {'title': title ?? ''},
+    );
+    final data = _readAiData(response);
+    return AiChatConversationSummary.fromJson(data);
+  }
+
+  Future<AiChatConversationDetail> fetchAiChatConversationDetail(
+    String conversationId,
+  ) async {
+    final response = await _apiClient.get(
+      '/api/ai/chat/conversations/$conversationId',
+    );
+    final data = _readAiData(response);
+    return AiChatConversationDetail.fromJson(data);
+  }
+
+  Future<AiRoutinePlan> generateRoutine({
+    String? routinePreference,
+    double? budgetMax,
+  }) async {
+    final response = await _apiClient.post(
+      '/api/ai/routine/generate',
+      body: {
+        'routinePreference':
+            routinePreference ?? _mapRoutinePreference(profile?.currentRoutineLevel),
+        if (budgetMax != null)
+          'budgetRange': {'min': 0, 'max': budgetMax.round(), 'currency': 'VND'},
+      },
+    );
+    final data = _readAiData(response);
+    await _loadRegimen();
+    await _loadTracking();
+    await _loadProgress();
+    notifyListeners();
+    return AiRoutinePlan.fromJson(data);
+  }
+
+  Future<AiProductRecommendResponse> recommendProducts({
+    required String category,
+    required String concern,
+    double? budgetMax,
+  }) async {
+    final response = await _apiClient.post(
+      '/api/ai/products/recommend',
+      body: {
+        'category': category,
+        'concern': concern,
+        if (budgetMax != null)
+          'budgetRange': {'min': 0, 'max': budgetMax.round(), 'currency': 'VND'},
+      },
+    );
+    final data = _readAiData(response);
+    return AiProductRecommendResponse.fromJson(data);
+  }
+
+  Future<AiIngredientCheckResponse> checkIngredients({
+    required String productName,
+    required String ingredientsText,
+  }) async {
+    final response = await _apiClient.post(
+      '/api/ai/ingredient-check',
+      body: {'productName': productName, 'ingredientsText': ingredientsText},
+    );
+    final data = _readAiData(response);
+    return AiIngredientCheckResponse.fromJson(data);
+  }
+
+  Future<AiRoutineConflictCheckResponse> checkRoutineConflicts({
+    String? routineId,
+  }) async {
+    final activeRoutineId = routineId ?? regimen?.regimenId;
+    if (activeRoutineId == null || activeRoutineId.isEmpty) {
+      throw ApiException('Generate a routine before checking conflicts.', 400);
+    }
+
+    final response = await _apiClient.post(
+      '/api/ai/routine/conflict-check',
+      body: {'routineId': activeRoutineId},
+    );
+    final data = _readAiData(response);
+    return AiRoutineConflictCheckResponse.fromJson(data);
+  }
+
+  Future<List<AiReportSummary>> fetchAiReports() async {
+    final response = await _apiClient.get('/api/ai/reports');
+    final data = _readAiCollection(response);
+    return data
+        .whereType<Map<String, dynamic>>()
+        .map(AiReportSummary.fromJson)
+        .toList();
+  }
+
+  Future<AiReportGenerateResponse> generateAiReport(String reportType) async {
+    final response = await _apiClient.post(
+      '/api/ai/report/generate',
+      body: {'reportType': reportType},
+    );
+    final data = _readAiData(response);
+    return AiReportGenerateResponse.fromJson(data);
+  }
+
+  Future<AiReportGenerateResponse> fetchAiReport(String reportId) async {
+    final response = await _apiClient.get('/api/ai/reports/$reportId');
+    final data = _readAiData(response);
+    return AiReportGenerateResponse.fromJson(data);
   }
 
   Future<void> toggleRoutineStep(String stepId, bool completed) async {
@@ -596,6 +733,141 @@ class AppState extends ChangeNotifier {
       return value;
     }
     return null;
+  }
+
+  Future<void> _generateRoutineFromLatestProfile() async {
+    try {
+      final routinePreference = _mapRoutinePreference(
+        profile?.currentRoutineLevel,
+      );
+      final monthlyBudget = profile?.monthlyBudget;
+      await _apiClient.post(
+        '/api/ai/routine/generate',
+        body: {
+          'routinePreference': routinePreference,
+          if (monthlyBudget != null)
+            'budgetRange': {
+              'min': 0,
+              'max': monthlyBudget.round(),
+              'currency': 'VND',
+            },
+        },
+      );
+    } catch (_) {
+      // Keep the analysis result even if routine generation is temporarily unavailable.
+    }
+  }
+
+  Map<String, dynamic> _readAiData(Map<String, dynamic> response) {
+    final data = response['data'];
+    if (data is Map<String, dynamic>) {
+      return data;
+    }
+    return response;
+  }
+
+  List<dynamic> _readAiCollection(Map<String, dynamic> response) {
+    final data = response['data'];
+    if (data is List) {
+      return data;
+    }
+
+    final items = response['items'];
+    if (items is List) {
+      return items;
+    }
+
+    return const [];
+  }
+
+  AnalysisResult _analysisResultFromAiResponse(Map<String, dynamic> data) {
+    final concerns = ((data['detectedConcerns'] as List?) ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .toList();
+    final recommendations = ((data['recommendations'] as List?) ?? const [])
+        .map((item) => item.toString())
+        .toList();
+    final warnings = ((data['riskFlags'] as List?) ?? const [])
+        .map((item) => item.toString())
+        .toList();
+
+    final issues = concerns
+        .map(
+          (item) => AnalysisIssue(
+            issueType: (item['concern'] ?? 'unknown').toString(),
+            severityScore: _severityToScore(
+              (item['severity'] ?? 'low').toString(),
+            ),
+            description: item['description']?.toString(),
+          ),
+        )
+        .toList();
+
+    final confidenceScore = (concerns.isEmpty
+        ? 80
+        : (concerns
+                    .map(
+                      (item) =>
+                          (((item['confidence'] as num?) ?? 0.8) * 100).round(),
+                    )
+                    .reduce((a, b) => a + b) ~/
+                concerns.length)
+            .clamp(0, 100))
+        .toInt();
+    final overallScore = (issues.isEmpty
+        ? 88
+        : (100 -
+                  (issues
+                              .map((item) => item.severityScore)
+                              .reduce((a, b) => a + b) ~/
+                          issues.length))
+            .clamp(0, 100))
+        .toInt();
+
+    return AnalysisResult(
+      id: (data['analysisId'] ?? DateTime.now().millisecondsSinceEpoch)
+          .toString(),
+      imageUrl: '',
+      skinType: profile?.skinType ?? 'Unknown',
+      overallScore: overallScore,
+      confidenceScore: confidenceScore,
+      overview: data['skinSummary']?.toString(),
+      disclaimer: data['disclaimer']?.toString(),
+      warnings: warnings,
+      issues: issues,
+      recommendations: recommendations
+          .asMap()
+          .entries
+          .map(
+            (entry) => AnalysisRecommendation(
+              title: 'Recommendation ${entry.key + 1}',
+              content: entry.value,
+            ),
+          )
+          .toList(),
+    );
+  }
+
+  int _severityToScore(String severity) {
+    switch (severity.trim().toLowerCase()) {
+      case 'high':
+        return 85;
+      case 'medium':
+        return 60;
+      default:
+        return 35;
+    }
+  }
+
+  String _mapRoutinePreference(String? value) {
+    final normalized = value?.trim().toLowerCase() ?? '';
+    if (normalized.contains('simple') || normalized.contains('beginner')) {
+      return 'simple';
+    }
+    if (normalized.contains('advanced')) {
+      return 'advanced';
+    }
+    return 'balanced';
   }
 
   void _setError(String message, {int? statusCode}) {

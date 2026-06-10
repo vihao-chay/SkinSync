@@ -192,6 +192,76 @@ namespace SkinSync.Migrations
                         });
                 });
 
+            modelBuilder.Entity("SkinSync.Models.Entities.AiChatConversation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("timezone('utc', now())");
+
+                    b.Property<DateTime>("LastMessageAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("timezone('utc', now())");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("timezone('utc', now())");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "LastMessageAt")
+                        .IsDescending(false, true);
+
+                    b.ToTable("ai_chat_conversations", (string)null);
+                });
+
+            modelBuilder.Entity("SkinSync.Models.Entities.AiChatMessage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("ConversationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("timezone('utc', now())");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ConversationId", "CreatedAt");
+
+                    b.ToTable("ai_chat_messages", (string)null, t =>
+                        {
+                            t.HasCheckConstraint("ck_ai_chat_messages_role", "\"Role\" IN ('user', 'assistant', 'system')");
+                        });
+                });
+
             modelBuilder.Entity("SkinSync.Models.Entities.AiReport", b =>
                 {
                     b.Property<Guid>("Id")
@@ -961,6 +1031,28 @@ namespace SkinSync.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("SkinSync.Models.Entities.AiChatConversation", b =>
+                {
+                    b.HasOne("SkinSync.Models.Entities.User", "User")
+                        .WithMany("AiChatConversations")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("SkinSync.Models.Entities.AiChatMessage", b =>
+                {
+                    b.HasOne("SkinSync.Models.Entities.AiChatConversation", "Conversation")
+                        .WithMany("Messages")
+                        .HasForeignKey("ConversationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Conversation");
+                });
+
             modelBuilder.Entity("SkinSync.Models.Entities.AiReport", b =>
                 {
                     b.HasOne("SkinSync.Models.Entities.User", "User")
@@ -1117,6 +1209,11 @@ namespace SkinSync.Migrations
                     b.Navigation("Regimens");
                 });
 
+            modelBuilder.Entity("SkinSync.Models.Entities.AiChatConversation", b =>
+                {
+                    b.Navigation("Messages");
+                });
+
             modelBuilder.Entity("SkinSync.Models.Entities.Ingredient", b =>
                 {
                     b.Navigation("ConflictingConflictRules");
@@ -1140,6 +1237,8 @@ namespace SkinSync.Migrations
 
             modelBuilder.Entity("SkinSync.Models.Entities.User", b =>
                 {
+                    b.Navigation("AiChatConversations");
+
                     b.Navigation("AiReports");
 
                     b.Navigation("AiUsageLogs");

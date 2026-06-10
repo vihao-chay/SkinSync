@@ -5,7 +5,13 @@ import '../../features/admin/admin_dashboard_page.dart';
 import '../../features/admin/admin_products_page.dart';
 import '../../features/admin/admin_profile_page.dart';
 import '../../features/admin/admin_users_page.dart';
+import '../../features/ai_hub/ai_conflict_check_page.dart';
+import '../../features/ai_hub/ai_ingredient_check_page.dart';
+import '../../features/ai_hub/ai_product_recommend_page.dart';
+import '../../features/ai_hub/ai_reports_page.dart';
 import '../../features/auth/login_page.dart';
+import '../../features/chat/ai_chat_page.dart';
+import '../../features/chat/ai_chat_conversation_page.dart';
 import '../../features/landing/landing_page.dart';
 import '../../features/onboarding/onboarding_page.dart';
 import '../../features/quiz/quiz_page.dart';
@@ -34,7 +40,28 @@ class AppRouter {
       case AppRoutes.upload:
         page = const UploadPage();
         break;
+      case AppRoutes.aiChat:
+        page = const AiChatPage();
+        break;
+      case AppRoutes.aiChatConversation:
+        page = AiChatConversationPage(
+          conversationId: settings.arguments as String?,
+        );
+        break;
+      case AppRoutes.aiProductRecommend:
+        page = const AiProductRecommendPage();
+        break;
+      case AppRoutes.aiIngredientCheck:
+        page = const AiIngredientCheckPage();
+        break;
+      case AppRoutes.aiConflictCheck:
+        page = const AiConflictCheckPage();
+        break;
+      case AppRoutes.aiReports:
+        page = const AiReportsPage();
+        break;
       case AppRoutes.dashboard:
+      case AppRoutes.aiHub:
       case AppRoutes.analysis:
       case AppRoutes.routine:
       case AppRoutes.progress:

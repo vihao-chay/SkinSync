@@ -75,10 +75,40 @@ public class AIController : ControllerBase
         return await ExecuteAsync(() => _aiChatService.ChatAsync(GetUserId(), request, cancellationToken), "AI chat response generated successfully.");
     }
 
+    [HttpGet("chat/conversations")]
+    public async Task<AiApiResponse<IReadOnlyCollection<AiChatConversationSummaryDto>>> GetChatConversations(CancellationToken cancellationToken)
+    {
+        return await ExecuteAsync(() => _aiChatService.GetConversationsAsync(GetUserId(), cancellationToken), "Chat conversations fetched successfully.");
+    }
+
+    [HttpGet("chat/conversations/{conversationId:guid}")]
+    public async Task<AiApiResponse<AiChatConversationDetailDto>> GetChatConversation(Guid conversationId, CancellationToken cancellationToken)
+    {
+        return await ExecuteAsync(() => _aiChatService.GetConversationAsync(GetUserId(), conversationId, cancellationToken), "Chat conversation fetched successfully.");
+    }
+
+    [HttpPost("chat/conversations")]
+    public async Task<AiApiResponse<AiChatConversationSummaryDto>> CreateChatConversation([FromBody] AiChatConversationCreateRequestDto request, CancellationToken cancellationToken)
+    {
+        return await ExecuteAsync(() => _aiChatService.CreateConversationAsync(GetUserId(), request, cancellationToken), "Chat conversation created successfully.");
+    }
+
     [HttpPost("report/generate")]
     public async Task<AiApiResponse<AiReportGenerateResponseDto>> GenerateReport([FromBody] AiReportGenerateRequestDto request, CancellationToken cancellationToken)
     {
         return await ExecuteAsync(() => _aiReportService.GenerateAsync(GetUserId(), request, cancellationToken), "AI report generated successfully.");
+    }
+
+    [HttpGet("reports")]
+    public async Task<AiApiResponse<IReadOnlyCollection<AiReportSummaryDto>>> GetReports(CancellationToken cancellationToken)
+    {
+        return await ExecuteAsync(() => _aiReportService.GetReportsAsync(GetUserId(), cancellationToken), "AI reports fetched successfully.");
+    }
+
+    [HttpGet("reports/{reportId:guid}")]
+    public async Task<AiApiResponse<AiReportGenerateResponseDto>> GetReport(Guid reportId, CancellationToken cancellationToken)
+    {
+        return await ExecuteAsync(() => _aiReportService.GetReportAsync(GetUserId(), reportId, cancellationToken), "AI report fetched successfully.");
     }
 
     private Guid GetUserId()
