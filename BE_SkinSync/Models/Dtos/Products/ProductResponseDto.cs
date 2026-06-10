@@ -11,6 +11,7 @@ public class ProductResponseDto
     public string? UsageGuide { get; set; }
     public decimal Price { get; set; }
     public string? SuitableSkinTypes { get; set; }
+    public IReadOnlyCollection<string> SuitableFor { get; set; } = Array.Empty<string>();
     public string? ImageUrl { get; set; }
     public decimal? Rating { get; set; }
     public string Status { get; set; } = string.Empty;

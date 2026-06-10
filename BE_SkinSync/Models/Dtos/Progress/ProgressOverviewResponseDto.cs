@@ -8,6 +8,8 @@ public class ProgressOverviewResponseDto
     public int CompletedDaysLast28 { get; set; }
     public decimal CompletionRateLast28 { get; set; }
     public int CurrentStreak { get; set; }
+    public string? DailyTip { get; set; }
+    public string? ProgressInsight { get; set; }
 }
 
 public class ProgressChartPointDto

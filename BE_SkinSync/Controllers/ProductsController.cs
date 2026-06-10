@@ -23,6 +23,10 @@ public class ProductsController : ControllerBase
     public async Task<ResponseEntity<IEnumerable<ProductResponseDto>>> GetProducts(
         [FromQuery] string? search,
         [FromQuery] string? category,
+        [FromQuery] string? brand,
+        [FromQuery] string? skinType,
+        [FromQuery] decimal? minPrice,
+        [FromQuery] decimal? maxPrice,
         CancellationToken cancellationToken)
     {
         var products = await _productRepository.GetAllAsync(cancellationToken);
@@ -42,6 +46,26 @@ public class ProductsController : ControllerBase
         if (!string.IsNullOrWhiteSpace(category))
         {
             source = source.Where(x => x.Category.Equals(category.Trim(), StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (!string.IsNullOrWhiteSpace(brand))
+        {
+            source = source.Where(x => x.Brand.Equals(brand.Trim(), StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (!string.IsNullOrWhiteSpace(skinType))
+        {
+            source = source.Where(x => (x.SuitableSkinTypes ?? string.Empty).Contains(skinType.Trim(), StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (minPrice.HasValue)
+        {
+            source = source.Where(x => x.Price >= minPrice.Value);
+        }
+
+        if (maxPrice.HasValue)
+        {
+            source = source.Where(x => x.Price <= maxPrice.Value);
         }
 
         return ResponseEntity<IEnumerable<ProductResponseDto>>.Ok(

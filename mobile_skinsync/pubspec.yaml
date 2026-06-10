@@ -34,6 +34,12 @@ dependencies:
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
+  provider: ^6.1.5
+  shared_preferences: ^2.5.3
+  http: ^1.5.0
+  image_picker: ^1.2.0
+  intl: ^0.20.2
+  flutter_web_auth_2: ^4.1.0
 
 dev_dependencies:
   flutter_test:
@@ -56,6 +62,22 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+
+  assets:
+    - logo.jpg
+    - login_register.png
+
+  fonts:
+    - family: CormorantGaramond
+      fonts:
+        - asset: assets/fonts/CormorantGaramond.ttf
+        - asset: assets/fonts/CormorantGaramond-Italic.ttf
+          style: italic
+    - family: DMSans
+      fonts:
+        - asset: assets/fonts/DMSans.ttf
+        - asset: assets/fonts/DMSans-Italic.ttf
+          style: italic
 
   # To add assets to your application, add an assets section, like this:
   # assets:

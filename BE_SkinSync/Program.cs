@@ -153,6 +153,10 @@ var app = builder.Build();
 
 var shouldSeedOnStartup = builder.Configuration.GetValue<bool>("Startup:SeedOnStartup");
 var shouldEnableSwagger = builder.Configuration.GetValue<bool>("Swagger:Enabled");
+var aspNetCoreUrls = builder.Configuration["ASPNETCORE_URLS"] ?? Environment.GetEnvironmentVariable("ASPNETCORE_URLS") ?? string.Empty;
+var shouldUseHttpsRedirection = aspNetCoreUrls
+    .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+    .Any(url => url.StartsWith("https://", StringComparison.OrdinalIgnoreCase));
 if (app.Environment.IsDevelopment() || shouldSeedOnStartup)
 {
     using var scope = app.Services.CreateScope();
@@ -169,7 +173,10 @@ if (app.Environment.IsDevelopment() || shouldEnableSwagger)
 
 app.UseCors("AllowFrontend");
 app.UseForwardedHeaders();
-app.UseHttpsRedirection();
+if (shouldUseHttpsRedirection)
+{
+    app.UseHttpsRedirection();
+}
 app.UseStaticFiles();
 
 app.UseAuthentication();

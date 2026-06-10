@@ -23,14 +23,14 @@ class PremiumCard extends StatelessWidget {
     final card = Container(
       margin: margin,
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.9),
+        color: Colors.white.withValues(alpha: 0.96),
         borderRadius: BorderRadius.circular(AppRadius.card),
-        border: Border.all(color: AppColors.border.withValues(alpha: 0.35)),
+        border: Border.all(color: AppColors.border.withValues(alpha: 0.8)),
         boxShadow: [
           BoxShadow(
             color: AppColors.primaryDark.withValues(alpha: 0.06),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
+            blurRadius: 24,
+            offset: const Offset(0, 10),
           ),
         ],
       ),

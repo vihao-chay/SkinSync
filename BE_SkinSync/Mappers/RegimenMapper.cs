@@ -21,6 +21,9 @@ public static class RegimenMapper
                 Ingredient = i.Product.Ingredient,
                 UsageGuide = i.Product.UsageGuide,
                 Instruction = i.Instruction,
+                Purpose = BuildPurpose(i.Product.Category),
+                Frequency = string.IsNullOrWhiteSpace(i.Frequency) ? "Daily" : i.Frequency,
+                Caution = BuildCaution(i.Product.Ingredient),
                 Price = i.Product.Price,
                 ImageUrl = i.Product.ImageUrl,
                 StepOrder = i.StepOrder
@@ -41,6 +44,9 @@ public static class RegimenMapper
                 Ingredient = i.Product.Ingredient,
                 UsageGuide = i.Product.UsageGuide,
                 Instruction = i.Instruction,
+                Purpose = BuildPurpose(i.Product.Category),
+                Frequency = string.IsNullOrWhiteSpace(i.Frequency) ? "Daily" : i.Frequency,
+                Caution = BuildCaution(i.Product.Ingredient),
                 Price = i.Product.Price,
                 ImageUrl = i.Product.ImageUrl,
                 StepOrder = i.StepOrder
@@ -58,5 +64,40 @@ public static class RegimenMapper
             Morning = morning,
             Evening = evening
         };
+    }
+
+    private static string BuildPurpose(string category)
+    {
+        return category.ToLowerInvariant() switch
+        {
+            "cleanser" => "Remove oil, sweat, and sunscreen buildup.",
+            "toner" => "Prep skin and support hydration layering.",
+            "serum" => "Target focused concerns with concentrated actives.",
+            "treatment" => "Address acne, texture, or pigmentation concerns.",
+            "moisturizer" => "Seal in hydration and support the skin barrier.",
+            "sunscreen" => "Protect skin from UV damage during the day.",
+            _ => "Support your personalized skincare routine."
+        };
+    }
+
+    private static string? BuildCaution(string? ingredient)
+    {
+        if (string.IsNullOrWhiteSpace(ingredient))
+        {
+            return null;
+        }
+
+        var value = ingredient.ToLowerInvariant();
+        if (value.Contains("retinol") || value.Contains("aha") || value.Contains("bha"))
+        {
+            return "Introduce slowly and avoid stacking with other strong exfoliating actives.";
+        }
+
+        if (value.Contains("fragrance"))
+        {
+            return "Monitor for irritation if your skin is sensitive.";
+        }
+
+        return null;
     }
 }

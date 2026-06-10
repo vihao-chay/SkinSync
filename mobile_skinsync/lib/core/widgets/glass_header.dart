@@ -19,7 +19,7 @@ class GlassHeader extends StatelessWidget implements PreferredSizeWidget {
   final List<Widget>? actions;
 
   @override
-  Size get preferredSize => const Size.fromHeight(64);
+  Size get preferredSize => const Size.fromHeight(60);
 
   @override
   Widget build(BuildContext context) {
@@ -41,16 +41,16 @@ class GlassHeader extends StatelessWidget implements PreferredSizeWidget {
             )
           : showBack && canPop
               ? Padding(
-              padding: const EdgeInsets.only(left: 8),
-              child: _HeaderIconButton(
-                icon: Icons.arrow_back_ios_new_rounded,
-                onPressed: () => Navigator.of(context).maybePop(),
-              ),
-            )
+                  padding: const EdgeInsets.only(left: 8),
+                  child: _HeaderIconButton(
+                    icon: Icons.arrow_back_ios_new_rounded,
+                    onPressed: () => Navigator.of(context).maybePop(),
+                  ),
+                )
               : null,
       title: Text(
         title ?? _resolveTitle(currentRoute),
-        style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontSize: 22),
+        style: Theme.of(context).textTheme.titleLarge?.copyWith(fontSize: 20, fontWeight: FontWeight.w700),
       ),
       actions: [
         ...?actions,
@@ -97,15 +97,15 @@ class _HeaderIconButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(18),
+      color: Colors.white.withValues(alpha: 0.92),
+      borderRadius: BorderRadius.circular(16),
       child: InkWell(
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(16),
         onTap: onPressed,
         child: SizedBox(
-          width: 44,
-          height: 44,
-          child: Icon(icon, size: 18),
+          width: 42,
+          height: 42,
+          child: Icon(icon, size: 18, color: AppColors.primaryDark),
         ),
       ),
     );
