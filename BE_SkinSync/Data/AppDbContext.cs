@@ -23,6 +23,8 @@ public class AppDbContext : DbContext
     public DbSet<DailyLog> DailyLogs => Set<DailyLog>();
     public DbSet<RoutineTracking> RoutineTrackings => Set<RoutineTracking>();
     public DbSet<Reminder> Reminders => Set<Reminder>();
+    public DbSet<AiReport> AiReports => Set<AiReport>();
+    public DbSet<AiUsageLog> AiUsageLogs => Set<AiUsageLog>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -32,6 +34,7 @@ public class AppDbContext : DbContext
             {
                 table.HasCheckConstraint("ck_users_role", "role IN ('user', 'admin', 'expert')");
                 table.HasCheckConstraint("ck_users_status", "status IN ('active', 'inactive', 'banned')");
+                table.HasCheckConstraint("ck_users_plan_type", "\"PlanType\" IN ('free', 'premium')");
             });
             entity.HasKey(x => x.Id);
             entity.HasIndex(x => x.Email).IsUnique();
@@ -42,6 +45,7 @@ public class AppDbContext : DbContext
             entity.Property(x => x.AvatarUrl).HasMaxLength(500);
             entity.Property(x => x.Role).HasMaxLength(20).HasDefaultValue("user").IsRequired();
             entity.Property(x => x.Status).HasMaxLength(20).HasDefaultValue("active").IsRequired();
+            entity.Property(x => x.PlanType).HasMaxLength(20).HasDefaultValue("free").IsRequired();
             entity.Property(x => x.CreatedAt).HasColumnType("timestamp with time zone").HasDefaultValueSql("timezone('utc', now())");
             entity.Property(x => x.UpdatedAt).HasColumnType("timestamp with time zone");
         });
@@ -54,12 +58,17 @@ public class AppDbContext : DbContext
                 table.HasCheckConstraint("ck_user_profiles_monthly_budget", "monthly_budget IS NULL OR monthly_budget >= 0");
                 table.HasCheckConstraint("ck_user_profiles_age", "age IS NULL OR age >= 0");
                 table.HasCheckConstraint("ck_user_profiles_sensitivity_level", "sensitivity_level IS NULL OR sensitivity_level BETWEEN 1 AND 5");
+                table.HasCheckConstraint("ck_user_profiles_routine_preference", "\"RoutinePreference\" IS NULL OR \"RoutinePreference\" IN ('simple', 'balanced', 'advanced')");
             });
             entity.HasKey(x => x.UserId);
             entity.Property(x => x.SkinType).HasMaxLength(30);
             entity.Property(x => x.SkinConcerns).HasColumnType("jsonb");
             entity.Property(x => x.MonthlyBudget).HasPrecision(12, 2);
             entity.Property(x => x.Gender).HasMaxLength(20);
+            entity.Property(x => x.Allergies).HasColumnType("jsonb");
+            entity.Property(x => x.SensitiveIngredients).HasColumnType("jsonb");
+            entity.Property(x => x.SkinGoals).HasColumnType("jsonb");
+            entity.Property(x => x.RoutinePreference).HasMaxLength(20);
             entity.Property(x => x.CreatedAt).HasColumnType("timestamp with time zone").HasDefaultValueSql("timezone('utc', now())");
             entity.Property(x => x.UpdatedAt).HasColumnType("timestamp with time zone");
             entity.HasOne(x => x.User)
@@ -156,8 +165,12 @@ public class AppDbContext : DbContext
             entity.Property(x => x.Category).HasMaxLength(50).IsRequired();
             entity.Property(x => x.Description).HasColumnType("text");
             entity.Property(x => x.Ingredient).HasColumnType("jsonb");
+            entity.Property(x => x.KeyIngredients).HasColumnType("jsonb");
+            entity.Property(x => x.TargetConcerns).HasColumnType("jsonb");
+            entity.Property(x => x.AvoidForConcerns).HasColumnType("jsonb");
             entity.Property(x => x.UsageGuide).HasColumnType("text");
             entity.Property(x => x.Price).HasPrecision(12, 2).IsRequired();
+            entity.Property(x => x.Currency).HasMaxLength(10).HasDefaultValue("VND").IsRequired();
             entity.Property(x => x.SuitableSkinTypes).HasColumnType("jsonb");
             entity.Property(x => x.ImageUrl).HasMaxLength(500);
             entity.Property(x => x.Rating).HasPrecision(3, 2);
@@ -336,6 +349,49 @@ public class AppDbContext : DbContext
             entity.Property(x => x.UpdatedAt).HasColumnType("timestamp with time zone");
             entity.HasOne(x => x.User)
                 .WithMany(x => x.DailyLogs)
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<AiReport>(entity =>
+        {
+            entity.ToTable("ai_reports", table =>
+            {
+                table.HasCheckConstraint("ck_ai_reports_report_type", "\"ReportType\" IN ('weekly', 'monthly', 'after_analysis')");
+                table.HasCheckConstraint("ck_ai_reports_progress_evaluation", "\"ProgressEvaluation\" IN ('improved', 'stable', 'worse', 'insufficient_data')");
+            });
+            entity.HasKey(x => x.Id);
+            entity.HasIndex(x => new { x.UserId, x.CreatedAt }).IsDescending(false, true);
+            entity.Property(x => x.ReportType).HasMaxLength(30).IsRequired();
+            entity.Property(x => x.Summary).HasColumnType("text").IsRequired();
+            entity.Property(x => x.ProgressEvaluation).HasMaxLength(30).IsRequired();
+            entity.Property(x => x.MainFindings).HasColumnType("jsonb").IsRequired();
+            entity.Property(x => x.RoutineFeedback).HasColumnType("text");
+            entity.Property(x => x.ProductFeedback).HasColumnType("text");
+            entity.Property(x => x.NextPlan).HasColumnType("jsonb").IsRequired();
+            entity.Property(x => x.Warnings).HasColumnType("jsonb").IsRequired();
+            entity.Property(x => x.RawAiResponse).HasColumnType("jsonb");
+            entity.Property(x => x.CreatedAt).HasColumnType("timestamp with time zone").HasDefaultValueSql("timezone('utc', now())");
+            entity.HasOne(x => x.User)
+                .WithMany(x => x.AiReports)
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<AiUsageLog>(entity =>
+        {
+            entity.ToTable("ai_usage_logs", table =>
+            {
+                table.HasCheckConstraint("ck_ai_usage_logs_feature_name", "\"FeatureName\" IN ('skin_analysis', 'ai_chat', 'routine_generation', 'product_recommendation', 'ingredient_check', 'report_generation', 'conflict_check')");
+            });
+            entity.HasKey(x => x.Id);
+            entity.HasIndex(x => new { x.UserId, x.FeatureName, x.UsedAt }).IsDescending(false, false, true);
+            entity.Property(x => x.FeatureName).HasMaxLength(50).IsRequired();
+            entity.Property(x => x.Model).HasMaxLength(100);
+            entity.Property(x => x.CostEstimate).HasPrecision(12, 4);
+            entity.Property(x => x.UsedAt).HasColumnType("timestamp with time zone").HasDefaultValueSql("timezone('utc', now())");
+            entity.HasOne(x => x.User)
+                .WithMany(x => x.AiUsageLogs)
                 .HasForeignKey(x => x.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
         });

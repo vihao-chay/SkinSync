@@ -10,6 +10,10 @@ public class UserProfile
     public int? BirthYear { get; set; }
     public string? Gender { get; set; }
     public int? SensitivityLevel { get; set; }
+    public string? Allergies { get; set; }
+    public string? SensitiveIngredients { get; set; }
+    public string? SkinGoals { get; set; }
+    public string? RoutinePreference { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
 
