@@ -7,17 +7,35 @@ import '../../core/state/app_state.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/widgets/brand_logo.dart';
+import 'product_ingredient_analysis_page.dart';
+import 'widgets/analysis_mode_tabs.dart';
 
-class SkinAnalysisPage extends StatelessWidget {
+class SkinAnalysisPage extends StatefulWidget {
   const SkinAnalysisPage({super.key});
+
+  @override
+  State<SkinAnalysisPage> createState() => _SkinAnalysisPageState();
+}
+
+class _SkinAnalysisPageState extends State<SkinAnalysisPage> {
+  AnalysisMode _selectedMode = AnalysisMode.skin;
 
   @override
   Widget build(BuildContext context) {
     final appState = context.watch<AppState>();
     final result = appState.latestAnalysis;
 
+    if (_selectedMode == AnalysisMode.product) {
+      return ProductIngredientAnalysisPage(
+        selectedMode: _selectedMode,
+        onModeChanged: (mode) => setState(() => _selectedMode = mode),
+      );
+    }
+
     if (result == null) {
       return _EmptyAnalysis(
+        selectedMode: _selectedMode,
+        onModeChanged: (mode) => setState(() => _selectedMode = mode),
         onStart: () => Navigator.pushNamed(context, AppRoutes.quiz),
       );
     }
@@ -38,6 +56,11 @@ class SkinAnalysisPage extends StatelessWidget {
               ),
               children: [
                 const _MiniTopBar(),
+                const SizedBox(height: 14),
+                AnalysisModeTabs(
+                  selectedMode: _selectedMode,
+                  onChanged: (mode) => setState(() => _selectedMode = mode),
+                ),
                 const SizedBox(height: 18),
                 Text(
                   'Skin Analysis',
@@ -134,8 +157,14 @@ class SkinAnalysisPage extends StatelessWidget {
 }
 
 class _EmptyAnalysis extends StatelessWidget {
-  const _EmptyAnalysis({required this.onStart});
+  const _EmptyAnalysis({
+    required this.selectedMode,
+    required this.onModeChanged,
+    required this.onStart,
+  });
 
+  final AnalysisMode selectedMode;
+  final ValueChanged<AnalysisMode> onModeChanged;
   final VoidCallback onStart;
 
   @override
@@ -145,7 +174,9 @@ class _EmptyAnalysis extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 6, 16, 106),
       children: [
         const _MiniTopBar(),
-        const SizedBox(height: 42),
+        const SizedBox(height: 14),
+        AnalysisModeTabs(selectedMode: selectedMode, onChanged: onModeChanged),
+        const SizedBox(height: 28),
         _SoftCard(
           padding: const EdgeInsets.all(22),
           child: Column(
