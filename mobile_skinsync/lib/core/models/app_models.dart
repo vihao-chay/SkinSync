@@ -366,6 +366,7 @@ class DailyLog {
     this.rednessLevel,
     this.irritationLevel,
     this.hydrationLevel,
+    this.dailyImageUrl,
   });
 
   final String date;
@@ -376,6 +377,7 @@ class DailyLog {
   final int? rednessLevel;
   final int? irritationLevel;
   final int? hydrationLevel;
+  final String? dailyImageUrl;
 
   factory DailyLog.fromJson(Map<String, dynamic> json) => DailyLog(
     date: json['date'].toString(),
@@ -386,6 +388,7 @@ class DailyLog {
     rednessLevel: json['rednessLevel'] as int?,
     irritationLevel: json['irritationLevel'] as int?,
     hydrationLevel: json['hydrationLevel'] as int?,
+    dailyImageUrl: json['dailyImageUrl'] as String?,
   );
 }
 
@@ -463,13 +466,15 @@ class AiChatConversationSummary {
         conversationId: json['conversationId'].toString(),
         title: (json['title'] ?? 'New chat') as String,
         lastMessagePreview: json['lastMessagePreview'] as String?,
-        createdAt: DateTime.tryParse(json['createdAt']?.toString() ?? '') ??
+        createdAt:
+            DateTime.tryParse(json['createdAt']?.toString() ?? '') ??
             DateTime.now(),
-        updatedAt: DateTime.tryParse(json['updatedAt']?.toString() ?? '') ??
+        updatedAt:
+            DateTime.tryParse(json['updatedAt']?.toString() ?? '') ??
             DateTime.now(),
         lastMessageAt:
             DateTime.tryParse(json['lastMessageAt']?.toString() ?? '') ??
-                DateTime.now(),
+            DateTime.now(),
       );
 }
 
@@ -493,7 +498,8 @@ class AiChatMessageItem {
         id: json['id'].toString(),
         role: (json['role'] ?? 'assistant') as String,
         content: (json['content'] ?? '') as String,
-        createdAt: DateTime.tryParse(json['createdAt']?.toString() ?? '') ??
+        createdAt:
+            DateTime.tryParse(json['createdAt']?.toString() ?? '') ??
             DateTime.now(),
       );
 }
@@ -519,13 +525,15 @@ class AiChatConversationDetail {
       AiChatConversationDetail(
         conversationId: json['conversationId'].toString(),
         title: (json['title'] ?? 'New chat') as String,
-        createdAt: DateTime.tryParse(json['createdAt']?.toString() ?? '') ??
+        createdAt:
+            DateTime.tryParse(json['createdAt']?.toString() ?? '') ??
             DateTime.now(),
-        updatedAt: DateTime.tryParse(json['updatedAt']?.toString() ?? '') ??
+        updatedAt:
+            DateTime.tryParse(json['updatedAt']?.toString() ?? '') ??
             DateTime.now(),
         lastMessageAt:
             DateTime.tryParse(json['lastMessageAt']?.toString() ?? '') ??
-                DateTime.now(),
+            DateTime.now(),
         messages: ((json['messages'] as List?) ?? const [])
             .whereType<Map<String, dynamic>>()
             .map(AiChatMessageItem.fromJson)
@@ -587,24 +595,24 @@ class AiRoutinePlan {
   final String? overallAdvice;
 
   factory AiRoutinePlan.fromJson(Map<String, dynamic> json) => AiRoutinePlan(
-        routineId: json['routineId'].toString(),
-        routineName: (json['routineName'] ?? '') as String,
-        morning: ((json['morning'] as List?) ?? const [])
-            .whereType<Map<String, dynamic>>()
-            .map(AiRoutineStepPlan.fromJson)
-            .toList(),
-        night: ((json['night'] as List?) ?? const [])
-            .whereType<Map<String, dynamic>>()
-            .map(AiRoutineStepPlan.fromJson)
-            .toList(),
-        warnings: ((json['warnings'] as List?) ?? const [])
-            .map((e) => e.toString())
-            .toList(),
-        missingCategories: ((json['missingCategories'] as List?) ?? const [])
-            .map((e) => e.toString())
-            .toList(),
-        overallAdvice: json['overallAdvice'] as String?,
-      );
+    routineId: json['routineId'].toString(),
+    routineName: (json['routineName'] ?? '') as String,
+    morning: ((json['morning'] as List?) ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map(AiRoutineStepPlan.fromJson)
+        .toList(),
+    night: ((json['night'] as List?) ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map(AiRoutineStepPlan.fromJson)
+        .toList(),
+    warnings: ((json['warnings'] as List?) ?? const [])
+        .map((e) => e.toString())
+        .toList(),
+    missingCategories: ((json['missingCategories'] as List?) ?? const [])
+        .map((e) => e.toString())
+        .toList(),
+    overallAdvice: json['overallAdvice'] as String?,
+  );
 }
 
 class AiRecommendedProduct {
@@ -698,11 +706,10 @@ class AiIngredientCheckResponse {
                 .whereType<Map<String, dynamic>>()
                 .map(AiIngredientReason.fromJson)
                 .toList(),
-        cautionIngredients:
-            ((json['cautionIngredients'] as List?) ?? const [])
-                .whereType<Map<String, dynamic>>()
-                .map(AiIngredientReason.fromJson)
-                .toList(),
+        cautionIngredients: ((json['cautionIngredients'] as List?) ?? const [])
+            .whereType<Map<String, dynamic>>()
+            .map(AiIngredientReason.fromJson)
+            .toList(),
         overallExplanation: (json['overallExplanation'] ?? '') as String,
         usageSuggestion: (json['usageSuggestion'] ?? '') as String,
         warnings: ((json['warnings'] as List?) ?? const [])
@@ -727,12 +734,12 @@ class AiConflictItem {
   final String recommendation;
 
   factory AiConflictItem.fromJson(Map<String, dynamic> json) => AiConflictItem(
-        ingredientA: (json['ingredientA'] ?? '') as String,
-        ingredientB: (json['ingredientB'] ?? '') as String,
-        severity: (json['severity'] ?? 'low') as String,
-        reason: (json['reason'] ?? '') as String,
-        recommendation: (json['recommendation'] ?? '') as String,
-      );
+    ingredientA: (json['ingredientA'] ?? '') as String,
+    ingredientB: (json['ingredientB'] ?? '') as String,
+    severity: (json['severity'] ?? 'low') as String,
+    reason: (json['reason'] ?? '') as String,
+    recommendation: (json['recommendation'] ?? '') as String,
+  );
 }
 
 class AiRoutineConflictCheckResponse {
@@ -772,13 +779,15 @@ class AiReportSummary {
   final String progressEvaluation;
   final DateTime createdAt;
 
-  factory AiReportSummary.fromJson(Map<String, dynamic> json) => AiReportSummary(
+  factory AiReportSummary.fromJson(Map<String, dynamic> json) =>
+      AiReportSummary(
         reportId: json['reportId'].toString(),
         reportType: (json['reportType'] ?? 'after_analysis') as String,
         summary: (json['summary'] ?? '') as String,
         progressEvaluation:
             (json['progressEvaluation'] ?? 'insufficient_data') as String,
-        createdAt: DateTime.tryParse(json['createdAt']?.toString() ?? '') ??
+        createdAt:
+            DateTime.tryParse(json['createdAt']?.toString() ?? '') ??
             DateTime.now(),
       );
 }
@@ -812,7 +821,8 @@ class AiReportGenerateResponse {
       AiReportGenerateResponse(
         reportId: json['reportId'].toString(),
         reportType: (json['reportType'] ?? 'after_analysis') as String,
-        createdAt: DateTime.tryParse(json['createdAt']?.toString() ?? '') ??
+        createdAt:
+            DateTime.tryParse(json['createdAt']?.toString() ?? '') ??
             DateTime.now(),
         summary: (json['summary'] ?? '') as String,
         progressEvaluation:

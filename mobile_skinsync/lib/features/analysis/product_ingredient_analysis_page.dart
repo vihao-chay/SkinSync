@@ -102,7 +102,8 @@ class _ProductIngredientAnalysisPageState
         if (_result == null)
           const _InfoCard(
             title: 'Backend-powered recommendations',
-            body: 'The old mock catalog has been removed. This tab now renders product cards from `/api/ai/products/recommend`.',
+            body:
+                'The old mock catalog has been removed. This tab now renders product cards from `/api/ai/products/recommend`.',
           )
         else if (_result!.products.isEmpty)
           const _InfoCard(
@@ -172,9 +173,9 @@ class _ProductCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   item.name,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
               Text('${item.matchScore}%'),
@@ -191,9 +192,9 @@ class _ProductCard extends StatelessWidget {
             ...item.warnings.map(
               (warning) => Text(
                 warning,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: AppColors.warning,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: AppColors.warning),
               ),
             ),
           ],

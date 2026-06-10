@@ -12,6 +12,7 @@ import '../../features/ai_hub/ai_reports_page.dart';
 import '../../features/auth/login_page.dart';
 import '../../features/chat/ai_chat_page.dart';
 import '../../features/chat/ai_chat_conversation_page.dart';
+import '../../features/checkup/today_checkup_page.dart';
 import '../../features/landing/landing_page.dart';
 import '../../features/onboarding/onboarding_page.dart';
 import '../../features/quiz/quiz_page.dart';
@@ -40,6 +41,12 @@ class AppRouter {
       case AppRoutes.upload:
         page = const UploadPage();
         break;
+      case AppRoutes.todayCheckup:
+        page = const TodayCheckupPage();
+        break;
+      case AppRoutes.aiHub:
+        page = const MainShell(initialRoute: AppRoutes.dashboard);
+        break;
       case AppRoutes.aiChat:
         page = const AiChatPage();
         break;
@@ -61,7 +68,6 @@ class AppRouter {
         page = const AiReportsPage();
         break;
       case AppRoutes.dashboard:
-      case AppRoutes.aiHub:
       case AppRoutes.analysis:
       case AppRoutes.routine:
       case AppRoutes.progress:
@@ -93,10 +99,10 @@ class AppRouter {
       transitionDuration: const Duration(milliseconds: 240),
       reverseTransitionDuration: const Duration(milliseconds: 220),
       pageBuilder: (_, animation, _) => SlideTransition(
-        position: Tween<Offset>(
-          begin: const Offset(0.08, 0),
-          end: Offset.zero,
-        ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
+        position: Tween<Offset>(begin: const Offset(0.08, 0), end: Offset.zero)
+            .animate(
+              CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+            ),
         child: FadeTransition(
           opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
           child: page,

@@ -17,14 +17,25 @@ class AdminDashboardPage extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SectionBadge(label: 'Admin', icon: Icons.admin_panel_settings_outlined),
+          const SectionBadge(
+            label: 'Admin',
+            icon: Icons.admin_panel_settings_outlined,
+          ),
           const SizedBox(height: 14),
-          Text('Admin Dashboard', style: Theme.of(context).textTheme.headlineMedium),
+          Text(
+            'Admin Dashboard',
+            style: Theme.of(context).textTheme.headlineMedium,
+          ),
           const SizedBox(height: 20),
           GridView.count(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            crossAxisCount: Responsive.gridColumns(context, desktop: 4, tablet: 2, mobile: 1),
+            crossAxisCount: Responsive.gridColumns(
+              context,
+              desktop: 4,
+              tablet: 2,
+              mobile: 1,
+            ),
             crossAxisSpacing: 16,
             mainAxisSpacing: 16,
             childAspectRatio: Responsive.isMobile(context) ? 2.2 : 1.25,
@@ -34,9 +45,15 @@ class AdminDashboardPage extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(metric.label, style: Theme.of(context).textTheme.labelMedium),
+                        Text(
+                          metric.label,
+                          style: Theme.of(context).textTheme.labelMedium,
+                        ),
                         const SizedBox(height: 10),
-                        Text(metric.value, style: Theme.of(context).textTheme.headlineSmall),
+                        Text(
+                          metric.value,
+                          style: Theme.of(context).textTheme.headlineSmall,
+                        ),
                       ],
                     ),
                   ),

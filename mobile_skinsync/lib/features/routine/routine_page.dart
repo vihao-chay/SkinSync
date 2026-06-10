@@ -76,8 +76,12 @@ class _RoutinePageState extends State<RoutinePage> {
             runSpacing: 8,
             children: [
               FilledButton(
-                onPressed: _generating ? null : () => _generateRoutine(appState),
-                child: Text(_generating ? 'Generating...' : 'Regenerate Routine'),
+                onPressed: _generating
+                    ? null
+                    : () => _generateRoutine(appState),
+                child: Text(
+                  _generating ? 'Generating...' : 'Regenerate Routine',
+                ),
               ),
               OutlinedButton(
                 onPressed: () =>

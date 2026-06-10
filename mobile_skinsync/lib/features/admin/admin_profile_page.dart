@@ -14,7 +14,10 @@ class AdminProfilePage extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Admin Profile', style: Theme.of(context).textTheme.headlineMedium),
+          Text(
+            'Admin Profile',
+            style: Theme.of(context).textTheme.headlineMedium,
+          ),
           const SizedBox(height: 16),
           const PremiumCard(
             child: Column(
@@ -24,7 +27,9 @@ class AdminProfilePage extends StatelessWidget {
                   contentPadding: EdgeInsets.zero,
                   title: Text('Admin User'),
                   subtitle: Text('ops@skinsync.app'),
-                  leading: CircleAvatar(child: Icon(Icons.admin_panel_settings_outlined)),
+                  leading: CircleAvatar(
+                    child: Icon(Icons.admin_panel_settings_outlined),
+                  ),
                 ),
                 Divider(),
                 ListTile(

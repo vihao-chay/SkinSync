@@ -6,11 +6,7 @@ import 'glass_header.dart';
 import 'responsive_container.dart';
 
 class UserShell extends StatelessWidget {
-  const UserShell({
-    super.key,
-    required this.currentRoute,
-    required this.child,
-  });
+  const UserShell({super.key, required this.currentRoute, required this.child});
 
   final String currentRoute;
   final Widget child;
@@ -87,14 +83,30 @@ class UserShell extends StatelessWidget {
               selectedIndex: selectedIndex,
               onDestinationSelected: (index) =>
                   _navigateToRootSection(context, navRoutes[index]),
-              labelBehavior: NavigationDestinationLabelBehavior.onlyShowSelected,
+              labelBehavior:
+                  NavigationDestinationLabelBehavior.onlyShowSelected,
               height: 60,
               destinations: const [
-                NavigationDestination(icon: Icon(Icons.dashboard_outlined), label: 'Dashboard'),
-                NavigationDestination(icon: Icon(Icons.auto_awesome_outlined), label: 'Analysis'),
-                NavigationDestination(icon: Icon(Icons.checklist_rtl_outlined), label: 'Routine'),
-                NavigationDestination(icon: Icon(Icons.insights_outlined), label: 'Progress'),
-                NavigationDestination(icon: Icon(Icons.person_outline), label: 'Profile'),
+                NavigationDestination(
+                  icon: Icon(Icons.dashboard_outlined),
+                  label: 'Dashboard',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.auto_awesome_outlined),
+                  label: 'Analysis',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.checklist_rtl_outlined),
+                  label: 'Routine',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.insights_outlined),
+                  label: 'Progress',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.person_outline),
+                  label: 'Profile',
+                ),
               ],
             )
           : null,

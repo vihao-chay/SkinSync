@@ -38,7 +38,9 @@ class GradientPillButton extends StatelessWidget {
                   : const LinearGradient(
                       colors: [AppColors.primary, AppColors.primaryDark],
                     ),
-              color: disabled ? AppColors.subtleText.withValues(alpha: 0.25) : null,
+              color: disabled
+                  ? AppColors.subtleText.withValues(alpha: 0.25)
+                  : null,
               borderRadius: BorderRadius.circular(AppRadius.pill),
               boxShadow: disabled
                   ? null
@@ -56,19 +58,22 @@ class GradientPillButton extends StatelessWidget {
                   ? const SizedBox(
                       width: 20,
                       height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
                     )
                   : Row(
-                      mainAxisSize: expanded ? MainAxisSize.max : MainAxisSize.min,
+                      mainAxisSize: expanded
+                          ? MainAxisSize.max
+                          : MainAxisSize.min,
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        if (icon != null) ...[
-                          icon!,
-                          const SizedBox(width: 10),
-                        ],
+                        if (icon != null) ...[icon!, const SizedBox(width: 10)],
                         Text(
                           label,
-                          style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                          style: Theme.of(context).textTheme.labelLarge
+                              ?.copyWith(
                                 color: Colors.white,
                                 fontWeight: FontWeight.w600,
                               ),

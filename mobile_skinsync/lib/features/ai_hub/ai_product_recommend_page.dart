@@ -80,12 +80,14 @@ class _AiProductRecommendPageState extends State<AiProductRecommendPage> {
           if (_result == null)
             const _HintCard(
               title: 'Real catalog recommendations',
-              body: 'This page now calls `/api/ai/products/recommend` and renders product cards from backend data instead of mock content.',
+              body:
+                  'This page now calls `/api/ai/products/recommend` and renders product cards from backend data instead of mock content.',
             )
           else if (_result!.products.isEmpty)
             const _HintCard(
               title: 'No products matched',
-              body: 'Try a broader category, a different concern, or remove the budget limit.',
+              body:
+                  'Try a broader category, a different concern, or remove the budget limit.',
             )
           else
             ..._result!.products.map(
@@ -121,9 +123,9 @@ class _ProductCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   item.name,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
               _ScoreBadge(score: item.matchScore),
@@ -142,9 +144,9 @@ class _ProductCard extends StatelessWidget {
                 padding: const EdgeInsets.only(bottom: 6),
                 child: Text(
                   warning,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppColors.warning,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: AppColors.warning),
                 ),
               ),
             ),

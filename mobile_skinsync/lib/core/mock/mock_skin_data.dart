@@ -116,9 +116,11 @@ class MockSkinData {
       AnalysisMetric('Texture', 83),
       AnalysisMetric('Pores', 58),
     ],
-    recommendation: 'Keep the routine gentle, repair the barrier, and introduce actives slowly.',
+    recommendation:
+        'Keep the routine gentle, repair the barrier, and introduce actives slowly.',
     score: 82,
-    imageUrl: 'https://images.unsplash.com/photo-1590110348915-993aca51ea03?w=900',
+    imageUrl:
+        'https://images.unsplash.com/photo-1590110348915-993aca51ea03?w=900',
   );
 
   static const morningRoutine = [
@@ -127,15 +129,18 @@ class MockSkinData {
       productName: 'Gentle Cloud Cleanser',
       brand: 'SkinSync Lab',
       price: '\$22',
-      instruction: 'Massage on damp skin for 60 seconds, then rinse with lukewarm water.',
-      imageUrl: 'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=500',
+      instruction:
+          'Massage on damp skin for 60 seconds, then rinse with lukewarm water.',
+      imageUrl:
+          'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=500',
     ),
     RoutineStep(
       category: 'Serum',
       productName: 'Balance Niacinamide Serum',
       brand: 'SkinSync Lab',
       price: '\$36',
-      instruction: 'Apply 2-3 drops across cheeks and forehead before moisturizer.',
+      instruction:
+          'Apply 2-3 drops across cheeks and forehead before moisturizer.',
     ),
     RoutineStep(
       category: 'Moisturizer',
@@ -149,8 +154,10 @@ class MockSkinData {
       productName: 'Daily Veil SPF 50',
       brand: 'SkinSync Lab',
       price: '\$28',
-      instruction: 'Finish with two finger lengths of sunscreen before leaving indoors.',
-      warning: 'Avoid layering with exfoliating acids in the same morning if your skin feels irritated.',
+      instruction:
+          'Finish with two finger lengths of sunscreen before leaving indoors.',
+      warning:
+          'Avoid layering with exfoliating acids in the same morning if your skin feels irritated.',
     ),
   ];
 
@@ -180,9 +187,24 @@ class MockSkinData {
   ];
 
   static const progressLogs = [
-    ProgressLog(date: 'Mon, Jun 08', skinFeeling: 'Calm', acneLevel: '2/5', hydration: '4/5'),
-    ProgressLog(date: 'Tue, Jun 09', skinFeeling: 'Balanced', acneLevel: '2/5', hydration: '4/5'),
-    ProgressLog(date: 'Wed, Jun 10', skinFeeling: 'Slight redness', acneLevel: '3/5', hydration: '3/5'),
+    ProgressLog(
+      date: 'Mon, Jun 08',
+      skinFeeling: 'Calm',
+      acneLevel: '2/5',
+      hydration: '4/5',
+    ),
+    ProgressLog(
+      date: 'Tue, Jun 09',
+      skinFeeling: 'Balanced',
+      acneLevel: '2/5',
+      hydration: '4/5',
+    ),
+    ProgressLog(
+      date: 'Wed, Jun 10',
+      skinFeeling: 'Slight redness',
+      acneLevel: '3/5',
+      hydration: '3/5',
+    ),
   ];
 
   static const adminMetrics = [
@@ -192,23 +214,9 @@ class MockSkinData {
     AdminMetric('AI analyses', '31,204'),
   ];
 
-  static const quizSkinTypes = [
-    'Oily',
-    'Dry',
-    'Combination',
-    'Sensitive',
-  ];
+  static const quizSkinTypes = ['Oily', 'Dry', 'Combination', 'Sensitive'];
 
-  static const quizConcerns = [
-    'Acne',
-    'Redness',
-    'Dark Spots',
-    'Dryness',
-  ];
+  static const quizConcerns = ['Acne', 'Redness', 'Dark Spots', 'Dryness'];
 
-  static const budgets = [
-    'Budget-friendly',
-    'Mid-range',
-    'Premium',
-  ];
+  static const budgets = ['Budget-friendly', 'Mid-range', 'Premium'];
 }

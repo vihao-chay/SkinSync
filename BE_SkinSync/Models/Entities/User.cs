@@ -24,4 +24,8 @@ public class User
     public ICollection<AiReport> AiReports { get; set; } = new List<AiReport>();
     public ICollection<AiUsageLog> AiUsageLogs { get; set; } = new List<AiUsageLog>();
     public ICollection<AiChatConversation> AiChatConversations { get; set; } = new List<AiChatConversation>();
+    public ICollection<SkinProgressPhoto> SkinProgressPhotos { get; set; } = new List<SkinProgressPhoto>();
+    public ICollection<SkinProgressAnalysis> SkinProgressAnalyses { get; set; } = new List<SkinProgressAnalysis>();
+    public ICollection<SkinPhotoComparison> SkinPhotoComparisons { get; set; } = new List<SkinPhotoComparison>();
+    public ICollection<SkinProgressReport> SkinProgressReports { get; set; } = new List<SkinProgressReport>();
 }

@@ -140,8 +140,15 @@ public sealed class OpenAiService : IOpenAiService
                 var body = await response.Content.ReadAsStringAsync(cancellationToken);
                 if (!response.IsSuccessStatusCode)
                 {
-                    _logger.LogWarning("OpenAI request failed with status {StatusCode}.", response.StatusCode);
-                    throw new AiFeatureException("AI_SERVICE_ERROR", "AI service is temporarily unavailable.", 502);
+                    var errorSummary = ExtractErrorSummary(body);
+                    _logger.LogWarning(
+                        "OpenAI request failed with status {StatusCode}. Error: {ErrorSummary}",
+                        response.StatusCode,
+                        errorSummary);
+                    throw new AiFeatureException(
+                        "AI_SERVICE_ERROR",
+                        $"AI service request failed: {errorSummary}",
+                        502);
                 }
 
                 using var doc = JsonDocument.Parse(body);
@@ -188,6 +195,45 @@ public sealed class OpenAiService : IOpenAiService
             .GetProperty("message")
             .GetProperty("content")
             .GetString() ?? "{}";
+    }
+
+    private static string ExtractErrorSummary(string rawBody)
+    {
+        if (string.IsNullOrWhiteSpace(rawBody))
+        {
+            return "Empty error response.";
+        }
+
+        try
+        {
+            using var doc = JsonDocument.Parse(rawBody);
+            if (doc.RootElement.TryGetProperty("error", out var errorElement))
+            {
+                var type = errorElement.TryGetProperty("type", out var typeElement)
+                    ? typeElement.GetString()
+                    : null;
+                var code = errorElement.TryGetProperty("code", out var codeElement)
+                    ? codeElement.GetString()
+                    : null;
+                var message = errorElement.TryGetProperty("message", out var messageElement)
+                    ? messageElement.GetString()
+                    : null;
+
+                var parts = new[] { type, code, message }
+                    .Where(x => !string.IsNullOrWhiteSpace(x));
+
+                var combined = string.Join(" | ", parts);
+                if (!string.IsNullOrWhiteSpace(combined))
+                {
+                    return combined;
+                }
+            }
+        }
+        catch (JsonException)
+        {
+        }
+
+        return rawBody.Length <= 800 ? rawBody : $"{rawBody[..800]}...";
     }
 
     private static string ResolveModel(string? requested, string fallback)

@@ -33,7 +33,9 @@ class _AiChatPageState extends State<AiChatPage> {
   }
 
   Future<void> _newChat() async {
-    final conversation = await context.read<AppState>().createAiChatConversation();
+    final conversation = await context
+        .read<AppState>()
+        .createAiChatConversation();
     if (!mounted) {
       return;
     }
@@ -52,7 +54,10 @@ class _AiChatPageState extends State<AiChatPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.pageBackground,
-      appBar: const GlassHeader(currentRoute: AppRoutes.aiChat, title: 'AI Chat'),
+      appBar: const GlassHeader(
+        currentRoute: AppRoutes.aiChat,
+        title: 'SkinSync AI',
+      ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _newChat,
         backgroundColor: AppColors.primaryDark,
@@ -75,7 +80,8 @@ class _AiChatPageState extends State<AiChatPage> {
               if (snapshot.hasError) {
                 return _StateMessage(
                   title: 'Could not load chat sessions',
-                  body: context.read<AppState>().errorMessage ??
+                  body:
+                      context.read<AppState>().errorMessage ??
                       'Please try again in a moment.',
                 );
               }
@@ -84,7 +90,8 @@ class _AiChatPageState extends State<AiChatPage> {
               if (conversations.isEmpty) {
                 return const _StateMessage(
                   title: 'No chat sessions yet',
-                  body: 'Start a new chat to ask about your skin, routine, products, or irritation concerns.',
+                  body:
+                      'Start a new chat to ask about your skin, routine, products, or irritation concerns.',
                 );
               }
 
@@ -158,9 +165,9 @@ class _ConversationTile extends StatelessWidget {
               const SizedBox(height: 10),
               Text(
                 _formatDate(item.lastMessageAt),
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: AppColors.foreground,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.labelSmall?.copyWith(color: AppColors.foreground),
               ),
             ],
           ),

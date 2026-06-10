@@ -40,7 +40,7 @@ class DashboardPage extends StatelessWidget {
           const SizedBox(height: 16),
           _PrimaryPromptCard(
             overview: _overviewText(analysis?.overview),
-            onTap: () => Navigator.pushNamed(context, AppRoutes.aiHub),
+            onTap: () => Navigator.pushNamed(context, AppRoutes.todayCheckup),
           ),
           const SizedBox(height: 14),
           Row(
@@ -50,7 +50,7 @@ class DashboardPage extends StatelessWidget {
                 child: _MiniInsightCard(
                   title: 'Index UV',
                   value: _uvIndexLabel(analysis),
-                  subtitle: 'Don\'t forget to use SPF',
+                  subtitle: 'Do not forget to use SPF',
                   accent: const Color(0xFFD1EA8B),
                 ),
               ),
@@ -87,6 +87,8 @@ class DashboardPage extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           _ActionRow(
+            onCheckup: () =>
+                Navigator.pushNamed(context, AppRoutes.todayCheckup),
             onChat: () => Navigator.pushNamed(context, AppRoutes.aiChat),
             onScan: () => Navigator.pushNamed(
               context,
@@ -122,9 +124,9 @@ class DashboardPage extends StatelessWidget {
 
   static String _quoteText(AnalysisResult? analysis) {
     if (analysis?.warnings.isNotEmpty == true) {
-      return '“Stay gentle and consistent while your skin calms down.”';
+      return '"Stay gentle and consistent while your skin calms down."';
     }
-    return '“You’re doing great. Keep going with the routine.”';
+    return '"You are doing great. Keep going with the routine."';
   }
 
   static String _reminderLabel(
@@ -155,7 +157,9 @@ class _GreetingRow extends StatelessWidget {
         CircleAvatar(
           radius: 21,
           backgroundColor: const Color(0xFFF3D8E8),
-          backgroundImage: url == null || url.isEmpty ? null : NetworkImage(url),
+          backgroundImage: url == null || url.isEmpty
+              ? null
+              : NetworkImage(url),
           child: url == null || url.isEmpty
               ? Text(
                   name.isEmpty ? 'S' : name[0].toUpperCase(),
@@ -184,9 +188,9 @@ class _GreetingRow extends StatelessWidget {
           ),
           child: Text(
             'Day 2',
-            style: Theme.of(context).textTheme.labelMedium?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w700),
           ),
         ),
       ],
@@ -201,7 +205,10 @@ class _DayStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final items = List.generate(6, (index) => currentDate.add(Duration(days: index)));
+    final items = List.generate(
+      6,
+      (index) => currentDate.add(Duration(days: index)),
+    );
 
     return SizedBox(
       height: 72,
@@ -229,9 +236,9 @@ class _DayStrip extends StatelessWidget {
               children: [
                 Text(
                   _weekday(day.weekday),
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: AppColors.mutedText,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.labelSmall?.copyWith(color: AppColors.mutedText),
                 ),
                 const SizedBox(height: 6),
                 Text(
@@ -288,7 +295,10 @@ class _PrimaryPromptCard extends StatelessWidget {
               color: const Color(0xFFF7F7F2),
               borderRadius: BorderRadius.circular(14),
             ),
-            child: const Icon(Icons.menu_book_outlined, color: AppColors.foreground),
+            child: const Icon(
+              Icons.menu_book_outlined,
+              color: AppColors.foreground,
+            ),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -297,18 +307,18 @@ class _PrimaryPromptCard extends StatelessWidget {
               children: [
                 Text(
                   'How is your skin today?',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   overview,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppColors.mutedText,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: AppColors.mutedText),
                 ),
               ],
             ),
@@ -365,9 +375,9 @@ class _MiniInsightCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   title,
-                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: AppColors.mutedText,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.labelMedium?.copyWith(color: AppColors.mutedText),
                 ),
               ),
               Container(
@@ -392,21 +402,26 @@ class _MiniInsightCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          Container(
-            height: isQuote ? 0 : 6,
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFFF0ED92), Color(0xFFEFC1D8), Color(0xFFE5A85B)],
+          if (!isQuote)
+            Container(
+              height: 6,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [
+                    Color(0xFFF0ED92),
+                    Color(0xFFEFC1D8),
+                    Color(0xFFE5A85B),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(999),
               ),
-              borderRadius: BorderRadius.circular(999),
             ),
-          ),
           SizedBox(height: isQuote ? 0 : 12),
           Text(
             subtitle,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: AppColors.mutedText,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: AppColors.mutedText),
           ),
         ],
       ),
@@ -464,7 +479,9 @@ class _RoutineSummaryCard extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: completed ? activeColor : Colors.white,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppColors.border.withValues(alpha: 0.35)),
+                    border: Border.all(
+                      color: AppColors.border.withValues(alpha: 0.35),
+                    ),
                   ),
                   child: Icon(
                     completed ? Icons.check_rounded : Icons.circle_outlined,
@@ -477,9 +494,9 @@ class _RoutineSummaryCard extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               timeLabel,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: AppColors.mutedText,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: AppColors.mutedText),
             ),
             const SizedBox(height: 12),
             Wrap(
@@ -529,38 +546,54 @@ class _RoutineChip extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-          fontWeight: FontWeight.w600,
-        ),
+        style: Theme.of(
+          context,
+        ).textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w600),
       ),
     );
   }
 }
 
 class _ActionRow extends StatelessWidget {
-  const _ActionRow({required this.onChat, required this.onScan});
+  const _ActionRow({
+    required this.onCheckup,
+    required this.onChat,
+    required this.onScan,
+  });
 
+  final VoidCallback onCheckup;
   final VoidCallback onChat;
   final VoidCallback onScan;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return Wrap(
+      spacing: 12,
+      runSpacing: 12,
       children: [
-        Expanded(
+        SizedBox(
+          width: 154,
+          child: _ActionButton(
+            label: 'Today Check-up',
+            icon: Icons.checklist_rounded,
+            onTap: onCheckup,
+            accent: const Color(0xFFD1EA8B),
+          ),
+        ),
+        SizedBox(
+          width: 172,
           child: _ActionButton(
             label: 'Chat with SkinSync AI',
             icon: Icons.chat_bubble_outline_rounded,
             onTap: onChat,
           ),
         ),
-        const SizedBox(width: 12),
-        Expanded(
+        SizedBox(
+          width: 154,
           child: _ActionButton(
             label: 'Open AI Scan',
             icon: Icons.auto_awesome_rounded,
             onTap: onScan,
-            accent: const Color(0xFFD1EA8B),
           ),
         ),
       ],

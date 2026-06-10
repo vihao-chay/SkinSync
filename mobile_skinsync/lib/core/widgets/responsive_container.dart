@@ -18,7 +18,9 @@ class ResponsiveContainer extends StatelessWidget {
       child: ConstrainedBox(
         constraints: BoxConstraints(maxWidth: maxWidth),
         child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: Responsive.horizontalPadding(context)),
+          padding: EdgeInsets.symmetric(
+            horizontal: Responsive.horizontalPadding(context),
+          ),
           child: child,
         ),
       ),

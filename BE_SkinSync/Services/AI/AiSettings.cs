@@ -28,6 +28,9 @@ public class AiQuotaSettings
     public Dictionary<string, int> FreePlanMonthlyLimits { get; set; } = new(StringComparer.OrdinalIgnoreCase)
     {
         ["skin_analysis"] = 3,
+        ["skin_progress_analysis"] = 12,
+        ["skin_progress_compare"] = 12,
+        ["skin_progress_report"] = 4,
         ["ai_chat"] = 20,
         ["routine_generation"] = 1,
         ["product_recommendation"] = 10,
@@ -39,6 +42,9 @@ public class AiQuotaSettings
     public Dictionary<string, int> PremiumPlanMonthlyLimits { get; set; } = new(StringComparer.OrdinalIgnoreCase)
     {
         ["skin_analysis"] = 1000,
+        ["skin_progress_analysis"] = 1000,
+        ["skin_progress_compare"] = 1000,
+        ["skin_progress_report"] = 200,
         ["ai_chat"] = 1000,
         ["routine_generation"] = 100,
         ["product_recommendation"] = 1000,

@@ -89,7 +89,10 @@ class _AiIngredientCheckPageState extends State<AiIngredientCheckPage> {
               child: Text(_result!.overallExplanation),
             ),
             const SizedBox(height: 12),
-            _ReasonCard(title: 'Beneficial', items: _result!.beneficialIngredients),
+            _ReasonCard(
+              title: 'Beneficial',
+              items: _result!.beneficialIngredients,
+            ),
             const SizedBox(height: 12),
             _ReasonCard(title: 'Caution', items: _result!.cautionIngredients),
             const SizedBox(height: 12),
@@ -104,10 +107,12 @@ class _AiIngredientCheckPageState extends State<AiIngredientCheckPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: _result!.warnings
-                      .map((item) => Padding(
-                            padding: const EdgeInsets.only(bottom: 6),
-                            child: Text(item),
-                          ))
+                      .map(
+                        (item) => Padding(
+                          padding: const EdgeInsets.only(bottom: 6),
+                          child: Text(item),
+                        ),
+                      )
                       .toList(),
                 ),
               ),

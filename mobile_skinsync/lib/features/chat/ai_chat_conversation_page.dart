@@ -20,7 +20,7 @@ class _AiChatConversationPageState extends State<AiChatConversationPage> {
   final List<String> _quickActions = [];
   List<AiChatMessageItem> _messages = const [];
   String? _conversationId;
-  String _title = 'AI Chat';
+  String _title = 'SkinSync AI';
   String? _safetyWarning;
   bool _loading = true;
   bool _sending = false;
@@ -46,9 +46,9 @@ class _AiChatConversationPageState extends State<AiChatConversationPage> {
     }
 
     try {
-      final detail = await context.read<AppState>().fetchAiChatConversationDetail(
-        _conversationId!,
-      );
+      final detail = await context
+          .read<AppState>()
+          .fetchAiChatConversationDetail(_conversationId!);
       if (!mounted) {
         return;
       }
@@ -115,9 +115,9 @@ class _AiChatConversationPageState extends State<AiChatConversationPage> {
       });
 
       if (_conversationId != null) {
-        final detail = await context.read<AppState>().fetchAiChatConversationDetail(
-          _conversationId!,
-        );
+        final detail = await context
+            .read<AppState>()
+            .fetchAiChatConversationDetail(_conversationId!);
         if (!mounted) {
           return;
         }
@@ -131,7 +131,8 @@ class _AiChatConversationPageState extends State<AiChatConversationPage> {
       if (!mounted) {
         return;
       }
-      final message = context.read<AppState>().errorMessage ??
+      final message =
+          context.read<AppState>().errorMessage ??
           'Could not get a reply right now.';
       setState(() {
         _messages = [
@@ -221,10 +222,13 @@ class _AiChatConversationPageState extends State<AiChatConversationPage> {
                             ),
                             child: Text(
                               message.content,
-                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: isUser ? Colors.white : AppColors.foreground,
-                                height: 1.35,
-                              ),
+                              style: Theme.of(context).textTheme.bodyMedium
+                                  ?.copyWith(
+                                    color: isUser
+                                        ? Colors.white
+                                        : AppColors.foreground,
+                                    height: 1.35,
+                                  ),
                             ),
                           ),
                         );
@@ -268,7 +272,8 @@ class _AiChatConversationPageState extends State<AiChatConversationPage> {
                             textInputAction: TextInputAction.send,
                             onSubmitted: (_) => _sendMessage(),
                             decoration: InputDecoration(
-                              hintText: 'Ask about your skin, routine, or products...',
+                              hintText:
+                                  'Ask about your skin, routine, or products...',
                               filled: true,
                               fillColor: AppColors.secondary,
                               border: OutlineInputBorder(

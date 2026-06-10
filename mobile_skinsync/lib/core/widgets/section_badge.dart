@@ -4,11 +4,7 @@ import '../theme/app_colors.dart';
 import '../theme/app_radius.dart';
 
 class SectionBadge extends StatelessWidget {
-  const SectionBadge({
-    super.key,
-    required this.label,
-    this.icon,
-  });
+  const SectionBadge({super.key, required this.label, this.icon});
 
   final String label;
   final IconData? icon;

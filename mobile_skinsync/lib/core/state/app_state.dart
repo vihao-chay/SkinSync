@@ -42,6 +42,7 @@ class AppState extends ChangeNotifier {
       hasPendingOnboarding &&
       profile?.isOnboardingCompleted != true;
   AppUser? get user => session?.user;
+  ApiClient get apiClient => _apiClient;
   String get onboardingDisplayNameSeed {
     final fullName = user?.fullName.trim() ?? '';
     if (fullName.isNotEmpty && !_looksLikeEmail(fullName)) {
@@ -321,9 +322,14 @@ class AppState extends ChangeNotifier {
       '/api/ai/routine/generate',
       body: {
         'routinePreference':
-            routinePreference ?? _mapRoutinePreference(profile?.currentRoutineLevel),
+            routinePreference ??
+            _mapRoutinePreference(profile?.currentRoutineLevel),
         if (budgetMax != null)
-          'budgetRange': {'min': 0, 'max': budgetMax.round(), 'currency': 'VND'},
+          'budgetRange': {
+            'min': 0,
+            'max': budgetMax.round(),
+            'currency': 'VND',
+          },
       },
     );
     final data = _readAiData(response);
@@ -345,7 +351,11 @@ class AppState extends ChangeNotifier {
         'category': category,
         'concern': concern,
         if (budgetMax != null)
-          'budgetRange': {'min': 0, 'max': budgetMax.round(), 'currency': 'VND'},
+          'budgetRange': {
+            'min': 0,
+            'max': budgetMax.round(),
+            'currency': 'VND',
+          },
       },
     );
     final data = _readAiData(response);
@@ -440,6 +450,7 @@ class AppState extends ChangeNotifier {
     required String notes,
     required int acneLevel,
     required int hydrationLevel,
+    File? imageFile,
   }) async {
     await _runBusy(() async {
       await _apiClient.multipart(
@@ -455,6 +466,7 @@ class AppState extends ChangeNotifier {
           'acneLevel': acneLevel.toString(),
           'hydrationLevel': hydrationLevel.toString(),
         },
+        file: imageFile,
       );
       await _loadTodayLog();
       await _loadProgress();
@@ -803,26 +815,30 @@ class AppState extends ChangeNotifier {
         )
         .toList();
 
-    final confidenceScore = (concerns.isEmpty
-        ? 80
-        : (concerns
-                    .map(
-                      (item) =>
-                          (((item['confidence'] as num?) ?? 0.8) * 100).round(),
-                    )
-                    .reduce((a, b) => a + b) ~/
-                concerns.length)
-            .clamp(0, 100))
-        .toInt();
-    final overallScore = (issues.isEmpty
-        ? 88
-        : (100 -
-                  (issues
-                              .map((item) => item.severityScore)
+    final confidenceScore =
+        (concerns.isEmpty
+                ? 80
+                : (concerns
+                              .map(
+                                (item) =>
+                                    (((item['confidence'] as num?) ?? 0.8) *
+                                            100)
+                                        .round(),
+                              )
                               .reduce((a, b) => a + b) ~/
-                          issues.length))
-            .clamp(0, 100))
-        .toInt();
+                          concerns.length)
+                      .clamp(0, 100))
+            .toInt();
+    final overallScore =
+        (issues.isEmpty
+                ? 88
+                : (100 -
+                          (issues
+                                  .map((item) => item.severityScore)
+                                  .reduce((a, b) => a + b) ~/
+                              issues.length))
+                      .clamp(0, 100))
+            .toInt();
 
     return AnalysisResult(
       id: (data['analysisId'] ?? DateTime.now().millisecondsSinceEpoch)

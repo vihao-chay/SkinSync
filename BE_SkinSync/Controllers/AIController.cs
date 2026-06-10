@@ -19,6 +19,9 @@ public class AIController : ControllerBase
     private readonly IConflictCheckService _conflictCheckService;
     private readonly IAiChatService _aiChatService;
     private readonly IAiReportService _aiReportService;
+    private readonly ISkinProgressAnalysisService _skinProgressAnalysisService;
+    private readonly ISkinProgressComparisonService _skinProgressComparisonService;
+    private readonly ISkinProgressReportService _skinProgressReportService;
 
     public AIController(
         ISkinAnalysisService skinAnalysisService,
@@ -27,7 +30,10 @@ public class AIController : ControllerBase
         IIngredientCheckService ingredientCheckService,
         IConflictCheckService conflictCheckService,
         IAiChatService aiChatService,
-        IAiReportService aiReportService)
+        IAiReportService aiReportService,
+        ISkinProgressAnalysisService skinProgressAnalysisService,
+        ISkinProgressComparisonService skinProgressComparisonService,
+        ISkinProgressReportService skinProgressReportService)
     {
         _skinAnalysisService = skinAnalysisService;
         _routineGenerationService = routineGenerationService;
@@ -36,6 +42,9 @@ public class AIController : ControllerBase
         _conflictCheckService = conflictCheckService;
         _aiChatService = aiChatService;
         _aiReportService = aiReportService;
+        _skinProgressAnalysisService = skinProgressAnalysisService;
+        _skinProgressComparisonService = skinProgressComparisonService;
+        _skinProgressReportService = skinProgressReportService;
     }
 
     [HttpPost("skin-analysis")]
@@ -109,6 +118,24 @@ public class AIController : ControllerBase
     public async Task<AiApiResponse<AiReportGenerateResponseDto>> GetReport(Guid reportId, CancellationToken cancellationToken)
     {
         return await ExecuteAsync(() => _aiReportService.GetReportAsync(GetUserId(), reportId, cancellationToken), "AI report fetched successfully.");
+    }
+
+    [HttpPost("skin-progress/analyze")]
+    public async Task<AiApiResponse<SkinProgressAnalysisResponseDto>> AnalyzeSkinProgress([FromBody] SkinProgressAnalyzeRequestDto request, CancellationToken cancellationToken)
+    {
+        return await ExecuteAsync(() => _skinProgressAnalysisService.AnalyzeAsync(GetUserId(), request, cancellationToken), "Skin progress analyzed successfully.");
+    }
+
+    [HttpPost("skin-progress/compare")]
+    public async Task<AiApiResponse<SkinProgressCompareResponseDto>> CompareSkinProgress([FromBody] SkinProgressCompareRequestDto request, CancellationToken cancellationToken)
+    {
+        return await ExecuteAsync(() => _skinProgressComparisonService.CompareAsync(GetUserId(), request, cancellationToken), "Skin progress comparison completed successfully.");
+    }
+
+    [HttpPost("skin-progress/report")]
+    public async Task<AiApiResponse<SkinProgressReportResponseDto>> GenerateSkinProgressReport([FromBody] SkinProgressReportGenerateRequestDto request, CancellationToken cancellationToken)
+    {
+        return await ExecuteAsync(() => _skinProgressReportService.GenerateAsync(GetUserId(), request, cancellationToken), "Skin progress report generated successfully.");
     }
 
     private Guid GetUserId()

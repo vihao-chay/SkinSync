@@ -5,7 +5,8 @@ import 'package:http/http.dart' as http;
 
 import '../models/app_models.dart';
 
-typedef RefreshSessionHandler = Future<AuthSession?> Function(String refreshToken);
+typedef RefreshSessionHandler =
+    Future<AuthSession?> Function(String refreshToken);
 typedef SessionChangedHandler = Future<void> Function(AuthSession? session);
 
 class ApiClient {
@@ -30,14 +31,21 @@ class ApiClient {
   }
 
   Uri _uri(String path, [Map<String, dynamic>? query]) {
-    final normalizedBase = baseUrl.endsWith('/') ? baseUrl.substring(0, baseUrl.length - 1) : baseUrl;
+    final normalizedBase = baseUrl.endsWith('/')
+        ? baseUrl.substring(0, baseUrl.length - 1)
+        : baseUrl;
     final normalizedPath = path.startsWith('/') ? path : '/$path';
     return Uri.parse('$normalizedBase$normalizedPath').replace(
-      queryParameters: query?.map((key, value) => MapEntry(key, value?.toString())),
+      queryParameters: query?.map(
+        (key, value) => MapEntry(key, value?.toString()),
+      ),
     );
   }
 
-  Future<Map<String, dynamic>> get(String path, {Map<String, dynamic>? query}) async {
+  Future<Map<String, dynamic>> get(
+    String path, {
+    Map<String, dynamic>? query,
+  }) async {
     final response = await _sendWithRefresh(
       () => http.get(_uri(path, query), headers: _headers()),
     );
@@ -46,12 +54,19 @@ class ApiClient {
 
   Future<Map<String, dynamic>> post(String path, {Object? body}) async {
     final response = await _sendWithRefresh(
-      () => http.post(_uri(path), headers: _headers(), body: jsonEncode(body ?? const {})),
+      () => http.post(
+        _uri(path),
+        headers: _headers(),
+        body: jsonEncode(body ?? const {}),
+      ),
     );
     return _decodeResponse(response);
   }
 
-  Future<Map<String, dynamic>> postWithoutRefresh(String path, {Object? body}) async {
+  Future<Map<String, dynamic>> postWithoutRefresh(
+    String path, {
+    Object? body,
+  }) async {
     final response = await http.post(
       _uri(path),
       headers: _headers(),
@@ -62,14 +77,22 @@ class ApiClient {
 
   Future<Map<String, dynamic>> put(String path, {Object? body}) async {
     final response = await _sendWithRefresh(
-      () => http.put(_uri(path), headers: _headers(), body: jsonEncode(body ?? const {})),
+      () => http.put(
+        _uri(path),
+        headers: _headers(),
+        body: jsonEncode(body ?? const {}),
+      ),
     );
     return _decodeResponse(response);
   }
 
   Future<Map<String, dynamic>> patch(String path, {Object? body}) async {
     final response = await _sendWithRefresh(
-      () => http.patch(_uri(path), headers: _headers(), body: jsonEncode(body ?? const {})),
+      () => http.patch(
+        _uri(path),
+        headers: _headers(),
+        body: jsonEncode(body ?? const {}),
+      ),
     );
     return _decodeResponse(response);
   }
@@ -94,7 +117,9 @@ class ApiClient {
       request.headers.addAll(_headers(isJson: false));
       request.fields.addAll(fields);
       if (file != null) {
-        request.files.add(await http.MultipartFile.fromPath(fileField, file.path));
+        request.files.add(
+          await http.MultipartFile.fromPath(fileField, file.path),
+        );
       }
 
       final streamed = await request.send();
@@ -111,9 +136,13 @@ class ApiClient {
     };
   }
 
-  Future<http.Response> _sendWithRefresh(Future<http.Response> Function() send) async {
+  Future<http.Response> _sendWithRefresh(
+    Future<http.Response> Function() send,
+  ) async {
     var response = await send();
-    if (response.statusCode != 401 || _session == null || _refreshSessionHandler == null) {
+    if (response.statusCode != 401 ||
+        _session == null ||
+        _refreshSessionHandler == null) {
       return response;
     }
 
@@ -132,7 +161,9 @@ class ApiClient {
     }
 
     final refreshToken = _session?.refreshToken;
-    if (refreshToken == null || refreshToken.isEmpty || _refreshSessionHandler == null) {
+    if (refreshToken == null ||
+        refreshToken.isEmpty ||
+        _refreshSessionHandler == null) {
       return null;
     }
 
@@ -178,10 +209,10 @@ class ApiClient {
     try {
       final decoded = jsonDecode(body);
       if (decoded is Map<String, dynamic>) {
-        return (decoded['message'] ?? decoded['title'] ?? 'Request failed').toString();
+        return (decoded['message'] ?? decoded['title'] ?? 'Request failed')
+            .toString();
       }
-    } catch (_) {
-    }
+    } catch (_) {}
     return body;
   }
 }

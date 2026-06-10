@@ -63,7 +63,10 @@ class _AiReportsPageState extends State<AiReportsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.pageBackground,
-      appBar: const GlassHeader(currentRoute: '/ai/reports', title: 'AI Reports'),
+      appBar: const GlassHeader(
+        currentRoute: '/ai/reports',
+        title: 'AI Reports',
+      ),
       body: SafeArea(
         top: false,
         child: RefreshIndicator(
@@ -76,10 +79,16 @@ class _AiReportsPageState extends State<AiReportsPage> {
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  for (final type in const ['weekly', 'monthly', 'after_analysis'])
+                  for (final type in const [
+                    'weekly',
+                    'monthly',
+                    'after_analysis',
+                  ])
                     FilledButton(
                       onPressed: _generating ? null : () => _generate(type),
-                      child: Text(_generating ? 'Working...' : 'Generate $type'),
+                      child: Text(
+                        _generating ? 'Working...' : 'Generate $type',
+                      ),
                     ),
                 ],
               ),
@@ -93,9 +102,8 @@ class _AiReportsPageState extends State<AiReportsPage> {
                     children: [
                       Text(
                         'Saved reports',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w800,
-                        ),
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w800),
                       ),
                       const SizedBox(height: 10),
                       if (snapshot.connectionState == ConnectionState.waiting)
@@ -103,7 +111,8 @@ class _AiReportsPageState extends State<AiReportsPage> {
                       else if (reports.isEmpty)
                         const _ReportCard(
                           title: 'No reports yet',
-                          body: 'Generate a report after you have enough analysis and routine data.',
+                          body:
+                              'Generate a report after you have enough analysis and routine data.',
                         )
                       else
                         ...reports.map(
@@ -113,7 +122,8 @@ class _AiReportsPageState extends State<AiReportsPage> {
                               onTap: () => _open(item.reportId),
                               borderRadius: BorderRadius.circular(18),
                               child: _ReportCard(
-                                title: '${item.reportType} • ${item.progressEvaluation}',
+                                title:
+                                    '${item.reportType} • ${item.progressEvaluation}',
                                 body: item.summary,
                               ),
                             ),
@@ -133,19 +143,27 @@ class _AiReportsPageState extends State<AiReportsPage> {
                     children: [
                       if (_selected!.mainFindings.isNotEmpty) ...[
                         const SizedBox(height: 10),
-                        ..._selected!.mainFindings.map((item) => Text('• $item')),
+                        ..._selected!.mainFindings.map(
+                          (item) => Text('• $item'),
+                        ),
                       ],
-                      if ((_selected!.routineFeedback ?? '').trim().isNotEmpty) ...[
+                      if ((_selected!.routineFeedback ?? '')
+                          .trim()
+                          .isNotEmpty) ...[
                         const SizedBox(height: 10),
                         Text('Routine: ${_selected!.routineFeedback!}'),
                       ],
-                      if ((_selected!.productFeedback ?? '').trim().isNotEmpty) ...[
+                      if ((_selected!.productFeedback ?? '')
+                          .trim()
+                          .isNotEmpty) ...[
                         const SizedBox(height: 6),
                         Text('Products: ${_selected!.productFeedback!}'),
                       ],
                       if (_selected!.nextPlan.isNotEmpty) ...[
                         const SizedBox(height: 10),
-                        ..._selected!.nextPlan.map((item) => Text('Next: $item')),
+                        ..._selected!.nextPlan.map(
+                          (item) => Text('Next: $item'),
+                        ),
                       ],
                     ],
                   ),
@@ -160,11 +178,7 @@ class _AiReportsPageState extends State<AiReportsPage> {
 }
 
 class _ReportCard extends StatelessWidget {
-  const _ReportCard({
-    required this.title,
-    required this.body,
-    this.extra,
-  });
+  const _ReportCard({required this.title, required this.body, this.extra});
 
   final String title;
   final String body;

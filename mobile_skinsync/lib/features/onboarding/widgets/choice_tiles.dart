@@ -25,9 +25,14 @@ class SingleChoiceTile extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
-          color: selected ? AppColors.primary.withValues(alpha: 0.12) : Colors.white,
+          color: selected
+              ? AppColors.primary.withValues(alpha: 0.12)
+              : Colors.white,
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: selected ? AppColors.primary : AppColors.border, width: 1.2),
+          border: Border.all(
+            color: selected ? AppColors.primary : AppColors.border,
+            width: 1.2,
+          ),
         ),
         child: Row(
           children: [
@@ -35,16 +40,34 @@ class SingleChoiceTile extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.foreground)),
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.foreground,
+                    ),
+                  ),
                   if (subtitle != null) ...[
                     const SizedBox(height: 4),
-                    Text(subtitle!, style: const TextStyle(color: AppColors.mutedText, fontSize: 13)),
+                    Text(
+                      subtitle!,
+                      style: const TextStyle(
+                        color: AppColors.mutedText,
+                        fontSize: 13,
+                      ),
+                    ),
                   ],
                 ],
               ),
             ),
             const SizedBox(width: 12),
-            Icon(selected ? Icons.radio_button_checked_rounded : Icons.radio_button_off_rounded, color: AppColors.primary),
+            Icon(
+              selected
+                  ? Icons.radio_button_checked_rounded
+                  : Icons.radio_button_off_rounded,
+              color: AppColors.primary,
+            ),
           ],
         ),
       ),
@@ -73,17 +96,34 @@ class MultipleChoiceTile extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
-          color: selected ? AppColors.primary.withValues(alpha: 0.12) : Colors.white,
+          color: selected
+              ? AppColors.primary.withValues(alpha: 0.12)
+              : Colors.white,
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: selected ? AppColors.primary : AppColors.border, width: 1.2),
+          border: Border.all(
+            color: selected ? AppColors.primary : AppColors.border,
+            width: 1.2,
+          ),
         ),
         child: Row(
           children: [
             Expanded(
-              child: Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.foreground)),
+              child: Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.foreground,
+                ),
+              ),
             ),
             const SizedBox(width: 12),
-            Icon(selected ? Icons.check_circle_rounded : Icons.radio_button_off_rounded, color: AppColors.primary),
+            Icon(
+              selected
+                  ? Icons.check_circle_rounded
+                  : Icons.radio_button_off_rounded,
+              color: AppColors.primary,
+            ),
           ],
         ),
       ),

@@ -48,7 +48,8 @@ class _AiConflictCheckPageState extends State<AiConflictCheckPage> {
           if (!hasRoutine)
             _EmptyCard(
               title: 'No active routine yet',
-              body: 'Generate a routine first so the backend can evaluate conflicts from your current steps.',
+              body:
+                  'Generate a routine first so the backend can evaluate conflicts from your current steps.',
               actionLabel: 'Open routine',
               onTap: () => Navigator.pushNamed(context, AppRoutes.routine),
             )
@@ -63,7 +64,8 @@ class _AiConflictCheckPageState extends State<AiConflictCheckPage> {
             else
               const _EmptyCard(
                 title: 'Ready to scan your routine',
-                body: 'This uses `/api/ai/routine/conflict-check` and shows conflicts plus overall advice you can act on directly.',
+                body:
+                    'This uses `/api/ai/routine/conflict-check` and shows conflicts plus overall advice you can act on directly.',
               ),
           ],
         ],
@@ -89,7 +91,9 @@ class _ResultCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            result.hasConflict ? 'Conflicts found' : 'No high-risk conflicts found',
+            result.hasConflict
+                ? 'Conflicts found'
+                : 'No high-risk conflicts found',
             style: Theme.of(
               context,
             ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),

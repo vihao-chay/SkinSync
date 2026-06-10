@@ -17,7 +17,7 @@ class AiHubPage extends StatelessWidget {
 
     final options = [
       _HubOption(
-        title: 'AI Chat',
+        title: 'SkinSync AI',
         subtitle: 'Open saved sessions or start a new skincare conversation.',
         icon: Icons.chat_bubble_outline_rounded,
         status: 'Ready',
@@ -46,23 +46,19 @@ class AiHubPage extends StatelessWidget {
       ),
       _HubOption(
         title: 'Product Recommendation',
-        subtitle: 'Match products from your backend catalog by concern and budget.',
+        subtitle:
+            'Match products from your backend catalog by concern and budget.',
         icon: Icons.shopping_bag_outlined,
         status: 'Catalog search',
-        onTap: () => Navigator.pushNamed(
-          context,
-          AppRoutes.aiProductRecommend,
-        ),
+        onTap: () => Navigator.pushNamed(context, AppRoutes.aiProductRecommend),
       ),
       _HubOption(
         title: 'Ingredient Check',
-        subtitle: 'Paste ingredient lists and see beneficial, caution, and warning notes.',
+        subtitle:
+            'Paste ingredient lists and see beneficial, caution, and warning notes.',
         icon: Icons.biotech_outlined,
         status: 'Text input',
-        onTap: () => Navigator.pushNamed(
-          context,
-          AppRoutes.aiIngredientCheck,
-        ),
+        onTap: () => Navigator.pushNamed(context, AppRoutes.aiIngredientCheck),
       ),
       _HubOption(
         title: 'Conflict Check',
@@ -71,10 +67,7 @@ class AiHubPage extends StatelessWidget {
             : 'Generate a routine first, then scan it for conflicts.',
         icon: Icons.warning_amber_rounded,
         status: hasRoutine ? 'Routine ready' : 'Needs routine',
-        onTap: () => Navigator.pushNamed(
-          context,
-          AppRoutes.aiConflictCheck,
-        ),
+        onTap: () => Navigator.pushNamed(context, AppRoutes.aiConflictCheck),
       ),
       _HubOption(
         title: 'AI Reports',
@@ -87,7 +80,10 @@ class AiHubPage extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: AppColors.pageBackground,
-      appBar: const GlassHeader(currentRoute: AppRoutes.aiHub, title: 'AI Hub'),
+      appBar: const GlassHeader(
+        currentRoute: AppRoutes.aiHub,
+        title: 'AI Tools',
+      ),
       body: SafeArea(
         top: false,
         child: RefreshIndicator(
@@ -97,10 +93,7 @@ class AiHubPage extends StatelessWidget {
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
             children: [
-              _HeroCard(
-                hasAnalysis: hasAnalysis,
-                hasRoutine: hasRoutine,
-              ),
+              _HeroCard(hasAnalysis: hasAnalysis, hasRoutine: hasRoutine),
               const SizedBox(height: 18),
               Text(
                 'All AI Tools',
@@ -162,7 +155,7 @@ class _HeroCard extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Text(
-            'Current status: ${hasAnalysis ? 'analysis ready' : 'no analysis yet'} • ${hasRoutine ? 'routine ready' : 'no routine yet'}',
+            'Current status: ${hasAnalysis ? 'analysis ready' : 'no analysis yet'} - ${hasRoutine ? 'routine ready' : 'no routine yet'}',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
               color: const Color(0xFF603127),
               height: 1.35,
