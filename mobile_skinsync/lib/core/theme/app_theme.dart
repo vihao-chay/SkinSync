@@ -6,23 +6,25 @@ import 'app_text_styles.dart';
 
 class AppTheme {
   static ThemeData get lightTheme {
-    final colorScheme = ColorScheme.fromSeed(
-      brightness: Brightness.light,
-      seedColor: AppColors.primary,
-    ).copyWith(
-      primary: AppColors.primary,
-      onPrimary: Colors.white,
-      secondary: AppColors.secondary,
-      onSecondary: AppColors.foreground,
-      error: AppColors.error,
-      onError: Colors.white,
-      surface: Colors.white,
-      onSurface: AppColors.foreground,
-      outline: AppColors.border,
-    );
+    final colorScheme =
+        ColorScheme.fromSeed(
+          brightness: Brightness.light,
+          seedColor: AppColors.primary,
+        ).copyWith(
+          primary: AppColors.primary,
+          onPrimary: Colors.white,
+          secondary: AppColors.secondary,
+          onSecondary: AppColors.foreground,
+          error: AppColors.error,
+          onError: Colors.white,
+          surface: Colors.white,
+          onSurface: AppColors.foreground,
+          outline: AppColors.border,
+        );
 
     return ThemeData(
       useMaterial3: true,
+      fontFamily: 'DMSans',
       colorScheme: colorScheme,
       scaffoldBackgroundColor: AppColors.pageBackground,
       textTheme: AppTextStyles.textTheme,
@@ -44,17 +46,22 @@ class AppTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: Colors.white,
+        fillColor: AppColors.cream,
         hintStyle: const TextStyle(color: AppColors.subtleText),
         labelStyle: const TextStyle(color: AppColors.mutedText),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 18,
+          vertical: 16,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadius.medium),
           borderSide: const BorderSide(color: AppColors.border),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadius.medium),
-          borderSide: const BorderSide(color: AppColors.border),
+          borderSide: BorderSide(
+            color: AppColors.border.withValues(alpha: 0.8),
+          ),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadius.medium),

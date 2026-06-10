@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/brand_logo.dart';
 
 class OnboardingLayout extends StatelessWidget {
   const OnboardingLayout({
@@ -41,7 +42,28 @@ class OnboardingLayout extends StatelessWidget {
                         )
                       else
                         const SizedBox(width: 48),
-                      Expanded(child: Text('SkinSync', style: Theme.of(context).textTheme.titleMedium?.copyWith(color: AppColors.primaryDark, fontWeight: FontWeight.w700))),
+                      Expanded(
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const BrandLogo(
+                              size: 26,
+                              radius: 8,
+                              showShadow: false,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'SkinSync',
+                              style: Theme.of(context).textTheme.titleMedium
+                                  ?.copyWith(
+                                    color: AppColors.primaryDark,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                            ),
+                          ],
+                        ),
+                      ),
                       const SizedBox(width: 48),
                     ],
                   ),
@@ -50,12 +72,21 @@ class OnboardingLayout extends StatelessWidget {
                   const SizedBox(height: 20),
                   Text(
                     title,
-                    style: const TextStyle(fontSize: 28, height: 1.1, fontWeight: FontWeight.w800, color: AppColors.foreground),
+                    style: const TextStyle(
+                      fontSize: 28,
+                      height: 1.1,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.foreground,
+                    ),
                   ),
                   const SizedBox(height: 10),
                   Text(
                     subtitle,
-                    style: const TextStyle(fontSize: 15, height: 1.45, color: AppColors.mutedText),
+                    style: const TextStyle(
+                      fontSize: 15,
+                      height: 1.45,
+                      color: AppColors.mutedText,
+                    ),
                   ),
                 ],
               ),

@@ -63,6 +63,22 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
+  assets:
+    - logo.jpg
+    - login_register.png
+
+  fonts:
+    - family: CormorantGaramond
+      fonts:
+        - asset: assets/fonts/CormorantGaramond.ttf
+        - asset: assets/fonts/CormorantGaramond-Italic.ttf
+          style: italic
+    - family: DMSans
+      fonts:
+        - asset: assets/fonts/DMSans.ttf
+        - asset: assets/fonts/DMSans-Italic.ttf
+          style: italic
+
   # To add assets to your application, add an assets section, like this:
   # assets:
   #   - images/a_dot_burr.jpeg
