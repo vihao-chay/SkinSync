@@ -18,6 +18,7 @@ class RoutinePage extends StatefulWidget {
 class _RoutinePageState extends State<RoutinePage> {
   bool morning = true;
   bool _generating = false;
+  bool _optimizingReminders = false;
 
   Future<void> _generateRoutine(AppState appState) async {
     setState(() => _generating = true);
@@ -28,6 +29,27 @@ class _RoutinePageState extends State<RoutinePage> {
     } finally {
       if (mounted) {
         setState(() => _generating = false);
+      }
+    }
+  }
+
+  Future<void> _optimizeReminders(AppState appState) async {
+    setState(() => _optimizingReminders = true);
+    try {
+      final result = await appState.optimizeAiReminders();
+      if (!mounted) {
+        return;
+      }
+
+      await showModalBottomSheet<void>(
+        context: context,
+        backgroundColor: Colors.transparent,
+        isScrollControlled: true,
+        builder: (context) => _ReminderSuggestionSheet(result: result),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _optimizingReminders = false);
       }
     }
   }
@@ -100,6 +122,8 @@ class _RoutinePageState extends State<RoutinePage> {
             reminders: reminders,
             onMorning: () => appState.saveReminder('Morning', '07:00', true),
             onEvening: () => appState.saveReminder('Evening', '21:00', true),
+            optimizing: _optimizingReminders,
+            onOptimize: () => _optimizeReminders(appState),
           ),
           const SizedBox(height: 16),
           if (regimen == null || steps.isEmpty)
@@ -232,11 +256,15 @@ class _RemindersCard extends StatelessWidget {
     required this.reminders,
     required this.onMorning,
     required this.onEvening,
+    required this.optimizing,
+    required this.onOptimize,
   });
 
   final List<ReminderItem> reminders;
   final VoidCallback onMorning;
   final VoidCallback onEvening;
+  final bool optimizing;
+  final VoidCallback onOptimize;
 
   @override
   Widget build(BuildContext context) {
@@ -246,6 +274,7 @@ class _RemindersCard extends StatelessWidget {
           reminderId: 'm',
           time: '07:00',
           routineType: 'Morning',
+          frequency: 'daily',
           isEnabled: true,
         );
     final eveningReminder =
@@ -254,6 +283,7 @@ class _RemindersCard extends StatelessWidget {
           reminderId: 'e',
           time: '21:00',
           routineType: 'Evening',
+          frequency: 'daily',
           isEnabled: true,
         );
 
@@ -268,6 +298,13 @@ class _RemindersCard extends StatelessWidget {
               context,
             ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
           ),
+          const SizedBox(height: 4),
+          Text(
+            'Manual reminders still work. AI can optimize the timing based on your routine consistency.',
+            style: Theme.of(
+              context,
+            ).textTheme.labelSmall?.copyWith(color: AppColors.mutedText),
+          ),
           const SizedBox(height: 12),
           _ReminderRow(item: morningReminder),
           const SizedBox(height: 8),
@@ -281,6 +318,14 @@ class _RemindersCard extends StatelessWidget {
           _ReminderButton(
             label: 'Set Evening Reminder 21:00',
             onPressed: onEvening,
+          ),
+          const SizedBox(height: 8),
+          _ReminderButton(
+            label: optimizing ? 'Optimizing with AI...' : 'Optimize with SkinSync AI',
+            onPressed: optimizing ? () {} : onOptimize,
+            filled: true,
+            backgroundColor: const Color(0xFFD1EA8B),
+            foregroundColor: AppColors.foreground,
           ),
         ],
       ),
@@ -315,19 +360,56 @@ class _ReminderRow extends StatelessWidget {
         ),
         const SizedBox(width: 8),
         Expanded(
-          child: Text(
-            '${item.routineType}: ${item.time}',
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: AppColors.foreground,
-              fontWeight: FontWeight.w700,
-            ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '${item.routineType}: ${item.time}',
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: AppColors.foreground,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              if ((item.reason ?? '').trim().isNotEmpty) ...[
+                const SizedBox(height: 3),
+                Text(
+                  item.reason!,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: AppColors.mutedText,
+                    height: 1.35,
+                  ),
+                ),
+              ],
+            ],
           ),
         ),
-        Text(
-          item.isEnabled ? 'On' : 'Off',
-          style: Theme.of(
-            context,
-          ).textTheme.labelSmall?.copyWith(color: AppColors.foreground),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text(
+              item.isEnabled ? 'On' : 'Off',
+              style: Theme.of(
+                context,
+              ).textTheme.labelSmall?.copyWith(color: AppColors.foreground),
+            ),
+            if (item.isAdaptive) ...[
+              const SizedBox(height: 4),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFD1EA8B),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  item.priority.toUpperCase(),
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.foreground,
+                  ),
+                ),
+              ),
+            ],
+          ],
         ),
       ],
     );
@@ -335,28 +417,153 @@ class _ReminderRow extends StatelessWidget {
 }
 
 class _ReminderButton extends StatelessWidget {
-  const _ReminderButton({required this.label, required this.onPressed});
+  const _ReminderButton({
+    required this.label,
+    required this.onPressed,
+    this.filled = true,
+    this.backgroundColor = const Color(0xFF4B5568),
+    this.foregroundColor = Colors.white,
+  });
 
   final String label;
   final VoidCallback onPressed;
+  final bool filled;
+  final Color backgroundColor;
+  final Color foregroundColor;
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
       width: double.infinity,
       height: 30,
-      child: FilledButton(
-        style: FilledButton.styleFrom(
-          backgroundColor: const Color(0xFF4B5568),
-          foregroundColor: Colors.white,
-          textStyle: Theme.of(
-            context,
-          ).textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w800),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),
-          padding: EdgeInsets.zero,
+      child: filled
+          ? FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: backgroundColor,
+                foregroundColor: foregroundColor,
+                textStyle: Theme.of(
+                  context,
+                ).textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w800),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(7),
+                ),
+                padding: EdgeInsets.zero,
+              ),
+              onPressed: onPressed,
+              child: Text(label),
+            )
+          : OutlinedButton(
+              onPressed: onPressed,
+              child: Text(label),
+            ),
+    );
+  }
+}
+
+class _ReminderSuggestionSheet extends StatelessWidget {
+  const _ReminderSuggestionSheet({required this.result});
+
+  final AiReminderSuggestResponse result;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
+      child: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 42,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.border,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'SkinSync AI Reminder Plan',
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              result.overallAdvice,
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: AppColors.mutedText),
+            ),
+            const SizedBox(height: 16),
+            ...result.suggestions.map(
+              (item) => Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8F8F3),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: AppColors.border.withValues(alpha: 0.25),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              '${item.routineType} - ${item.time}',
+                              style: Theme.of(context).textTheme.titleSmall
+                                  ?.copyWith(fontWeight: FontWeight.w800),
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFD1EA8B),
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Text(
+                              item.priority.toUpperCase(),
+                              style: Theme.of(context).textTheme.labelSmall
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.foreground,
+                                  ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        item.reason,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppColors.foreground,
+                          height: 1.4,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
-        onPressed: onPressed,
-        child: Text(label),
       ),
     );
   }

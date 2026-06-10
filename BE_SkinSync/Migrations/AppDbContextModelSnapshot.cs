@@ -364,7 +364,7 @@ namespace SkinSync.Migrations
 
                     b.ToTable("ai_usage_logs", null, t =>
                         {
-                            t.HasCheckConstraint("ck_ai_usage_logs_feature_name", "\"FeatureName\" IN ('skin_analysis', 'skin_progress_analysis', 'skin_progress_compare', 'skin_progress_report', 'ai_chat', 'routine_generation', 'product_recommendation', 'ingredient_check', 'report_generation', 'conflict_check')");
+                            t.HasCheckConstraint("ck_ai_usage_logs_feature_name", "\"FeatureName\" IN ('skin_analysis', 'skin_progress_analysis', 'skin_progress_compare', 'skin_progress_report', 'ai_chat', 'routine_generation', 'product_recommendation', 'ingredient_check', 'report_generation', 'conflict_check', 'smart_reminder')");
                         });
                 });
 
@@ -721,6 +721,28 @@ namespace SkinSync.Migrations
                         .HasColumnType("boolean")
                         .HasDefaultValue(true);
 
+                    b.Property<string>("Frequency")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasDefaultValue("daily");
+
+                    b.Property<bool>("IsAdaptive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
+                    b.Property<string>("Priority")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("medium");
+
+                    b.Property<string>("Reason")
+                        .HasColumnType("text");
+
                     b.Property<string>("RoutineType")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -742,6 +764,7 @@ namespace SkinSync.Migrations
 
                     b.ToTable("reminders", null, t =>
                         {
+                            t.HasCheckConstraint("ck_reminders_priority", "\"Priority\" IN ('low', 'medium', 'high')");
                             t.HasCheckConstraint("ck_reminders_routine_type", "routine_type IN ('Morning', 'Evening')");
                         });
                 });

@@ -20,6 +20,7 @@ public class OpenAiSettings
     public string IngredientModel { get; set; } = "gpt-4o-mini";
     public string ReportModel { get; set; } = "gpt-4o-mini";
     public string ConflictModel { get; set; } = "gpt-4o-mini";
+    public string ReminderModel { get; set; } = "gpt-4o-mini";
     public double Temperature { get; set; } = 0.2d;
 }
 
@@ -36,7 +37,8 @@ public class AiQuotaSettings
         ["product_recommendation"] = 10,
         ["ingredient_check"] = 10,
         ["report_generation"] = 1,
-        ["conflict_check"] = 5
+        ["conflict_check"] = 5,
+        ["smart_reminder"] = 10
     };
 
     public Dictionary<string, int> PremiumPlanMonthlyLimits { get; set; } = new(StringComparer.OrdinalIgnoreCase)
@@ -50,6 +52,7 @@ public class AiQuotaSettings
         ["product_recommendation"] = 1000,
         ["ingredient_check"] = 1000,
         ["report_generation"] = 100,
-        ["conflict_check"] = 100
+        ["conflict_check"] = 100,
+        ["smart_reminder"] = 100
     };
 }

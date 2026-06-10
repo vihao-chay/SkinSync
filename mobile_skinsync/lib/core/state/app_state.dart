@@ -445,6 +445,20 @@ class AppState extends ChangeNotifier {
     }, showBusy: false);
   }
 
+  Future<AiReminderSuggestResponse> optimizeAiReminders({
+    bool applySuggestions = true,
+  }) async {
+    final response = await _apiClient.post(
+      '/api/ai/reminders/suggest',
+      body: {'applySuggestions': applySuggestions},
+    );
+    final data = _readAiData(response);
+    final parsed = AiReminderSuggestResponse.fromJson(data);
+    await _loadReminders();
+    notifyListeners();
+    return parsed;
+  }
+
   Future<void> saveDailyLog({
     required String skinFeeling,
     required String notes,

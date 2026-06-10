@@ -19,6 +19,7 @@ public class AIController : ControllerBase
     private readonly IConflictCheckService _conflictCheckService;
     private readonly IAiChatService _aiChatService;
     private readonly IAiReportService _aiReportService;
+    private readonly IAiSmartReminderService _aiSmartReminderService;
     private readonly ISkinProgressAnalysisService _skinProgressAnalysisService;
     private readonly ISkinProgressComparisonService _skinProgressComparisonService;
     private readonly ISkinProgressReportService _skinProgressReportService;
@@ -31,6 +32,7 @@ public class AIController : ControllerBase
         IConflictCheckService conflictCheckService,
         IAiChatService aiChatService,
         IAiReportService aiReportService,
+        IAiSmartReminderService aiSmartReminderService,
         ISkinProgressAnalysisService skinProgressAnalysisService,
         ISkinProgressComparisonService skinProgressComparisonService,
         ISkinProgressReportService skinProgressReportService)
@@ -42,6 +44,7 @@ public class AIController : ControllerBase
         _conflictCheckService = conflictCheckService;
         _aiChatService = aiChatService;
         _aiReportService = aiReportService;
+        _aiSmartReminderService = aiSmartReminderService;
         _skinProgressAnalysisService = skinProgressAnalysisService;
         _skinProgressComparisonService = skinProgressComparisonService;
         _skinProgressReportService = skinProgressReportService;
@@ -106,6 +109,12 @@ public class AIController : ControllerBase
     public async Task<AiApiResponse<AiReportGenerateResponseDto>> GenerateReport([FromBody] AiReportGenerateRequestDto request, CancellationToken cancellationToken)
     {
         return await ExecuteAsync(() => _aiReportService.GenerateAsync(GetUserId(), request, cancellationToken), "AI report generated successfully.");
+    }
+
+    [HttpPost("reminders/suggest")]
+    public async Task<AiApiResponse<AiReminderSuggestResponseDto>> SuggestReminders([FromBody] AiReminderSuggestRequestDto request, CancellationToken cancellationToken)
+    {
+        return await ExecuteAsync(() => _aiSmartReminderService.SuggestAsync(GetUserId(), request, cancellationToken), "AI reminder suggestions generated successfully.");
     }
 
     [HttpGet("reports")]

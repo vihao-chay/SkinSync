@@ -323,11 +323,16 @@ public class AppDbContext : DbContext
             entity.ToTable("reminders", table =>
             {
                 table.HasCheckConstraint("ck_reminders_routine_type", "routine_type IN ('Morning', 'Evening')");
+                table.HasCheckConstraint("ck_reminders_priority", "\"Priority\" IN ('low', 'medium', 'high')");
             });
             entity.HasKey(x => x.Id);
             entity.HasIndex(x => new { x.UserId, x.RoutineType }).IsUnique();
             entity.Property(x => x.Time).HasColumnType("time without time zone");
             entity.Property(x => x.RoutineType).HasMaxLength(20).IsRequired();
+            entity.Property(x => x.Frequency).HasMaxLength(30).HasDefaultValue("daily").IsRequired();
+            entity.Property(x => x.Reason).HasColumnType("text");
+            entity.Property(x => x.Priority).HasMaxLength(20).HasDefaultValue("medium").IsRequired();
+            entity.Property(x => x.IsAdaptive).HasDefaultValue(false);
             entity.Property(x => x.IsEnabled).HasDefaultValue(true);
             entity.Property(x => x.CreatedAt).HasColumnType("timestamp with time zone").HasDefaultValueSql("timezone('utc', now())");
             entity.Property(x => x.UpdatedAt).HasColumnType("timestamp with time zone");
@@ -514,7 +519,7 @@ public class AppDbContext : DbContext
         {
             entity.ToTable("ai_usage_logs", table =>
             {
-                table.HasCheckConstraint("ck_ai_usage_logs_feature_name", "\"FeatureName\" IN ('skin_analysis', 'skin_progress_analysis', 'skin_progress_compare', 'skin_progress_report', 'ai_chat', 'routine_generation', 'product_recommendation', 'ingredient_check', 'report_generation', 'conflict_check')");
+                table.HasCheckConstraint("ck_ai_usage_logs_feature_name", "\"FeatureName\" IN ('skin_analysis', 'skin_progress_analysis', 'skin_progress_compare', 'skin_progress_report', 'ai_chat', 'routine_generation', 'product_recommendation', 'ingredient_check', 'report_generation', 'conflict_check', 'smart_reminder')");
             });
             entity.HasKey(x => x.Id);
             entity.HasIndex(x => new { x.UserId, x.FeatureName, x.UsedAt }).IsDescending(false, false, true);

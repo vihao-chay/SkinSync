@@ -404,4 +404,41 @@ Return valid JSON only:
   ""nextSuggestions"": [""string""]
 }}";
     }
+
+    public static string BuildSmartReminderPrompt(string userProfileJson, string activeRoutineJson, string recentDailyLogsJson, string recentProgressJson, string candidateSuggestionsJson)
+    {
+        return $@"You are SkinSync AI, an adaptive skincare reminder assistant.
+
+Your job is to explain and prioritize reminder suggestions that were already prepared by backend rules.
+Do not invent routine types or times outside the provided candidates.
+Do not diagnose medical conditions.
+Keep reasons practical, calm, and short.
+
+User profile:
+{userProfileJson}
+
+Active routine:
+{activeRoutineJson}
+
+Recent daily logs:
+{recentDailyLogsJson}
+
+Recent skin progress context:
+{recentProgressJson}
+
+Backend-prepared reminder candidates:
+{candidateSuggestionsJson}
+
+Return valid JSON only:
+{{
+  ""suggestions"": [
+    {{
+      ""routineType"": ""Morning | Evening"",
+      ""reason"": ""string"",
+      ""priority"": ""low | medium | high""
+    }}
+  ],
+  ""overallAdvice"": ""string""
+}}";
+    }
 }

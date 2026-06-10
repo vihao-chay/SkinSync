@@ -397,20 +397,82 @@ class ReminderItem {
     required this.reminderId,
     required this.time,
     required this.routineType,
+    this.frequency = 'daily',
+    this.reason,
+    this.priority = 'medium',
+    this.isAdaptive = false,
     required this.isEnabled,
   });
 
   final String reminderId;
   final String time;
   final String routineType;
+  final String frequency;
+  final String? reason;
+  final String priority;
+  final bool isAdaptive;
   final bool isEnabled;
 
   factory ReminderItem.fromJson(Map<String, dynamic> json) => ReminderItem(
     reminderId: json['reminderId'].toString(),
     time: (json['time'] ?? '') as String,
     routineType: (json['routineType'] ?? '') as String,
+    frequency: (json['frequency'] ?? 'daily') as String,
+    reason: json['reason'] as String?,
+    priority: (json['priority'] ?? 'medium') as String,
+    isAdaptive: (json['isAdaptive'] ?? false) as bool,
     isEnabled: (json['isEnabled'] ?? false) as bool,
   );
+}
+
+class AiReminderSuggestion {
+  const AiReminderSuggestion({
+    required this.routineType,
+    required this.time,
+    required this.frequency,
+    required this.reason,
+    required this.priority,
+    required this.isAdaptive,
+    required this.isEnabled,
+  });
+
+  final String routineType;
+  final String time;
+  final String frequency;
+  final String reason;
+  final String priority;
+  final bool isAdaptive;
+  final bool isEnabled;
+
+  factory AiReminderSuggestion.fromJson(Map<String, dynamic> json) =>
+      AiReminderSuggestion(
+        routineType: (json['routineType'] ?? 'Morning') as String,
+        time: (json['time'] ?? '07:00') as String,
+        frequency: (json['frequency'] ?? 'daily') as String,
+        reason: (json['reason'] ?? '') as String,
+        priority: (json['priority'] ?? 'medium') as String,
+        isAdaptive: (json['isAdaptive'] ?? false) as bool,
+        isEnabled: (json['isEnabled'] ?? true) as bool,
+      );
+}
+
+class AiReminderSuggestResponse {
+  const AiReminderSuggestResponse({
+    this.suggestions = const [],
+    this.overallAdvice = '',
+  });
+
+  final List<AiReminderSuggestion> suggestions;
+  final String overallAdvice;
+
+  factory AiReminderSuggestResponse.fromJson(Map<String, dynamic> json) =>
+      AiReminderSuggestResponse(
+        suggestions: ((json['suggestions'] as List?) ?? const [])
+            .whereType<Map<String, dynamic>>()
+            .map(AiReminderSuggestion.fromJson)
+            .toList(),
+        overallAdvice: (json['overallAdvice'] ?? '') as String,
+      );
 }
 
 class AiChatReply {

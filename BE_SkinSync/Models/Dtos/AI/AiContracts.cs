@@ -207,3 +207,25 @@ public class AiReportSummaryDto
     public string ProgressEvaluation { get; set; } = "insufficient_data";
     public DateTime CreatedAt { get; set; }
 }
+
+public class AiReminderSuggestRequestDto
+{
+    public bool ApplySuggestions { get; set; } = true;
+}
+
+public class AiReminderSuggestionDto
+{
+    public string RoutineType { get; set; } = "Morning";
+    public string Time { get; set; } = "07:00";
+    public string Frequency { get; set; } = "daily";
+    public string Reason { get; set; } = string.Empty;
+    public string Priority { get; set; } = "medium";
+    public bool IsAdaptive { get; set; }
+    public bool IsEnabled { get; set; } = true;
+}
+
+public class AiReminderSuggestResponseDto
+{
+    public IReadOnlyCollection<AiReminderSuggestionDto> Suggestions { get; set; } = Array.Empty<AiReminderSuggestionDto>();
+    public string OverallAdvice { get; set; } = string.Empty;
+}
