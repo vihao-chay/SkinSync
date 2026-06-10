@@ -9,6 +9,8 @@ class AppTextField extends StatelessWidget {
     this.controller,
     this.keyboardType,
     this.obscureText = false,
+    this.onChanged,
+    this.autofocus = false,
   });
 
   final String label;
@@ -17,6 +19,8 @@ class AppTextField extends StatelessWidget {
   final TextEditingController? controller;
   final TextInputType? keyboardType;
   final bool obscureText;
+  final ValueChanged<String>? onChanged;
+  final bool autofocus;
 
   @override
   Widget build(BuildContext context) {
@@ -25,6 +29,8 @@ class AppTextField extends StatelessWidget {
       maxLines: maxLines,
       keyboardType: keyboardType,
       obscureText: obscureText,
+      autofocus: autofocus,
+      onChanged: onChanged,
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,

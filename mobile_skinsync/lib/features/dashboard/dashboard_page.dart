@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
-import '../../core/mock/mock_skin_data.dart';
 import '../../core/routes/app_routes.dart';
+import '../../core/state/app_state.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/widgets/gradient_pill_button.dart';
@@ -13,298 +14,337 @@ class DashboardPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final firstName = MockSkinData.user.name.split(' ').first;
+    final appState = context.watch<AppState>();
+    final name = appState.user?.fullName ?? 'bạn';
+    final firstName = _firstName(name);
+    final analysis = appState.latestAnalysis;
+    final overview = analysis?.overview ?? '';
+    final tracking = appState.trackingToday;
+    final concerns = _normalizedConcerns(appState.profile?.concerns ?? const <String>[]);
+    final routineCompleted = tracking?.completedSteps ?? 0;
+    final routineTotal = tracking?.totalSteps ?? 0;
+    final progressValue = routineTotal == 0 ? 0.0 : (routineCompleted / routineTotal).clamp(0.0, 1.0);
 
-    return CustomScrollView(
-      physics: const BouncingScrollPhysics(),
-      slivers: [
-        SliverPadding(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.pagePadding,
-            AppSpacing.pagePadding,
-            AppSpacing.pagePadding,
-            120,
+    return RefreshIndicator(
+      onRefresh: appState.refreshHome,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.pagePadding,
+          AppSpacing.pagePadding,
+          AppSpacing.pagePadding,
+          120,
+        ),
+        children: [
+          _HeroCard(
+            name: firstName,
+            analysis: analysis,
+            overview: overview,
+            onAnalyze: () => Navigator.pushNamed(context, AppRoutes.analysis),
           ),
-          sliver: SliverList(
-            delegate: SliverChildListDelegate([
+          const SizedBox(height: AppSpacing.sectionGap),
+          Row(
+            children: [
+              Expanded(
+                child: _QuickActionCard(
+                  title: 'Chat với SkinDex',
+                  subtitle: 'Hỏi nhanh về da, routine và sản phẩm.',
+                  icon: Icons.chat_bubble_outline_rounded,
+                  onTap: () => Navigator.pushNamed(context, AppRoutes.analysis),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _QuickActionCard(
+                  title: 'Sản phẩm phù hợp',
+                  subtitle: 'Xem routine và sản phẩm đang dùng.',
+                  icon: Icons.camera_alt_outlined,
+                  onTap: () => Navigator.pushNamed(context, AppRoutes.routine),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sectionGap),
+          _SectionHeader(
+            title: 'Skin concerns',
+            actionLabel: concerns.isEmpty ? 'Cập nhật hồ sơ' : null,
+            onAction: concerns.isEmpty ? () => Navigator.pushNamed(context, AppRoutes.profile) : null,
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: concerns.isEmpty
+                ? [
+                    const SkinChip(label: 'No concerns yet', icon: Icons.sentiment_satisfied_rounded),
+                  ]
+                : concerns.map((concern) => SkinChip(label: concern)).toList(),
+          ),
+          const SizedBox(height: AppSpacing.sectionGap),
+          PremiumCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text('Daily skin check-in', style: Theme.of(context).textTheme.titleLarge),
+                    const Spacer(),
+                    const Icon(Icons.today_outlined, color: AppColors.primary),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Hôm nay da bạn thế nào?',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.mutedText),
+                ),
+                const SizedBox(height: 14),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: const [
+                    _FeelingChip(label: 'Ổn định'),
+                    _FeelingChip(label: 'Khô'),
+                    _FeelingChip(label: 'Dầu'),
+                    _FeelingChip(label: 'Mụn'),
+                    _FeelingChip(label: 'Kích ứng'),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sectionGap),
+          PremiumCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text('Routine hôm nay', style: Theme.of(context).textTheme.titleLarge),
+                    const Spacer(),
+                    Text(
+                      '${tracking?.completedSteps ?? 0}/${tracking?.totalSteps ?? 0}',
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(color: AppColors.primary),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Morning routine: ${tracking?.morningCompleted == true ? 'đã xong' : 'chưa xong'}',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.mutedText),
+                ),
+                const SizedBox(height: 12),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(999),
+                  child: LinearProgressIndicator(
+                    minHeight: 10,
+                    value: progressValue,
+                    backgroundColor: AppColors.secondary,
+                    color: AppColors.primary,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                GradientPillButton(
+                  label: 'Xem routine',
+                  expanded: true,
+                  onPressed: () => Navigator.pushNamed(context, AppRoutes.routine),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _firstName(String fullName) {
+    final parts = fullName.trim().split(RegExp(r'\s+'));
+    if (parts.isEmpty || parts.first.isEmpty) {
+      return 'Bạn';
+    }
+    return parts.first;
+  }
+
+  List<String> _normalizedConcerns(List<String> concerns) {
+    if (concerns.isEmpty) {
+      return concerns;
+    }
+
+    final mapped = concerns
+        .map((item) {
+          switch (item.toLowerCase()) {
+            case 'acne':
+              return 'Acne';
+            case 'oilyskin':
+            case 'oily_skin':
+            case 'oily':
+              return 'Oily skin';
+            case 'dryskin':
+            case 'dry_skin':
+            case 'dry':
+              return 'Dryness';
+            case 'sensitiveskin':
+            case 'sensitive_skin':
+            case 'sensitive':
+              return 'Sensitive skin';
+            case 'darkspots':
+            case 'dark_spots':
+              return 'Dark spots';
+            case 'redness':
+              return 'Redness';
+            default:
+              return item;
+          }
+        })
+        .toSet()
+        .toList();
+
+    return mapped;
+  }
+}
+
+class _HeroCard extends StatelessWidget {
+  const _HeroCard({
+    required this.name,
+    required this.analysis,
+    required this.overview,
+    required this.onAnalyze,
+  });
+
+  final String name;
+  final dynamic analysis;
+  final String overview;
+  final VoidCallback onAnalyze;
+
+  @override
+  Widget build(BuildContext context) {
+    final greeting = _greeting();
+    return PremiumCard(
+      padding: EdgeInsets.zero,
+      child: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFFF6F4FF), Color(0xFFFFFFFF)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
               Row(
                 children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Good morning, $firstName 👋',
-                          style: Theme.of(context).textTheme.headlineMedium,
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'How is your skin today?',
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: AppColors.mutedText,
-                              ),
-                        ),
-                      ],
+                  CircleAvatar(
+                    radius: 22,
+                    backgroundColor: const Color(0xFFF5A4B6),
+                    child: Text(
+                      name.isNotEmpty ? name[0].toUpperCase() : 'K',
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  const _TopIcon(icon: Icons.notifications_none_rounded),
                   const SizedBox(width: 10),
-                  const CircleAvatar(
-                    radius: 20,
-                    backgroundColor: AppColors.softPink,
-                    child: Icon(Icons.person_rounded, color: AppColors.primaryDark),
+                  _Badge(label: 'Premium', icon: Icons.diamond_rounded, outlined: true),
+                  const Spacer(),
+                  _Badge(label: '1', icon: Icons.local_fire_department_rounded, compact: true),
+                  const SizedBox(width: 8),
+                  CircleAvatar(
+                    radius: 22,
+                    backgroundColor: Colors.white.withValues(alpha: 0.94),
+                    child: const Icon(Icons.notifications_none_rounded, color: AppColors.foreground),
                   ),
                 ],
               ),
-              const SizedBox(height: AppSpacing.sectionGap),
-              Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(24),
-                  gradient: const LinearGradient(
-                    colors: [AppColors.secondary, Colors.white],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
+              const SizedBox(height: 18),
+              Text(
+                '$greeting, $name',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(color: AppColors.mutedText),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Hôm nay da bạn thế nào?',
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w800),
+              ),
+              if (overview.trim().isNotEmpty) ...[
+                const SizedBox(height: 10),
+                Text(
+                  overview,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.mutedText),
                 ),
-                child: PremiumCard(
-                  padding: const EdgeInsets.all(AppSpacing.cardPadding),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('Skin Score', style: Theme.of(context).textTheme.labelMedium),
-                                const SizedBox(height: 8),
-                                Text(
-                                  '${MockSkinData.analysis.score}',
-                                  style: Theme.of(context).textTheme.displayLarge,
-                                ),
-                              ],
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(999),
-                            ),
-                            child: Text(
-                              MockSkinData.analysis.skinType,
-                              style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                                    color: AppColors.primaryDark,
-                                  ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        'Main concerns',
-                        style: Theme.of(context).textTheme.labelMedium,
-                      ),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: MockSkinData.user.concerns
-                            .map((concern) => SkinChip(label: concern))
-                            .toList(),
-                      ),
-                      const SizedBox(height: 16),
-                      SizedBox(
-                        width: 160,
-                        child: GradientPillButton(
-                          label: 'View Analysis',
-                          expanded: true,
-                          onPressed: () => Navigator.pushReplacementNamed(
-                            context,
-                            AppRoutes.analysis,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+              ],
+              const SizedBox(height: 18),
+              GradientPillButton(
+                label: 'Phân tích da với AI',
+                expanded: true,
+                onPressed: onAnalyze,
               ),
-              const SizedBox(height: AppSpacing.sectionGap),
-              _SectionTitle(
-                title: 'Quick Actions',
-                subtitle: 'Shortcuts for the tasks you use most.',
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                height: 140,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  children: const [
-                    _QuickActionCard(
-                      icon: Icons.auto_awesome_rounded,
-                      title: 'Analyze Skin',
-                      route: AppRoutes.quiz,
-                    ),
-                    SizedBox(width: 12),
-                    _QuickActionCard(
-                      icon: Icons.edit_note_rounded,
-                      title: 'Add Log',
-                      route: AppRoutes.progress,
-                    ),
-                    SizedBox(width: 12),
-                    _QuickActionCard(
-                      icon: Icons.spa_rounded,
-                      title: 'View Routine',
-                      route: AppRoutes.routine,
-                    ),
-                    SizedBox(width: 12),
-                    _QuickActionCard(
-                      icon: Icons.search_rounded,
-                      title: 'Check Product',
-                      route: AppRoutes.routine,
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: AppSpacing.sectionGap),
-              _SectionTitle(
-                title: 'Today Routine',
-                subtitle: 'Stay consistent with your morning and evening plan.',
-              ),
-              const SizedBox(height: 12),
-              PremiumCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const _RoutineProgressRow(label: 'Morning', completed: 3, total: 4),
-                    const SizedBox(height: 12),
-                    const _RoutineProgressRow(label: 'Evening', completed: 1, total: 3),
-                    const SizedBox(height: 16),
-                    GradientPillButton(
-                      label: 'Continue Routine',
-                      expanded: true,
-                      onPressed: () => Navigator.pushReplacementNamed(
-                        context,
-                        AppRoutes.routine,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: AppSpacing.sectionGap),
-              PremiumCard(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: AppColors.secondary,
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: const Icon(Icons.auto_awesome_rounded, color: AppColors.primaryDark),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Daily Tip', style: Theme.of(context).textTheme.titleMedium),
-                          const SizedBox(height: 6),
-                          Text(
-                            'Keep tonight gentle and focus on hydration before introducing stronger actives.',
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ]),
+            ],
           ),
         ),
-      ],
-    );
-  }
-}
-
-class _TopIcon extends StatelessWidget {
-  const _TopIcon({required this.icon});
-
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 44,
-      height: 44,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
       ),
-      child: Icon(icon, color: AppColors.primaryDark),
     );
   }
-}
 
-class _SectionTitle extends StatelessWidget {
-  const _SectionTitle({
-    required this.title,
-    required this.subtitle,
-  });
-
-  final String title;
-  final String subtitle;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(title, style: Theme.of(context).textTheme.titleLarge),
-        const SizedBox(height: 4),
-        Text(
-          subtitle,
-          style: Theme.of(context).textTheme.bodySmall,
-        ),
-      ],
-    );
+  String _greeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return 'Chào buổi sáng';
+    if (hour < 18) return 'Chào buổi chiều';
+    return 'Chào buổi tối';
   }
 }
 
 class _QuickActionCard extends StatelessWidget {
   const _QuickActionCard({
-    required this.icon,
     required this.title,
-    required this.route,
+    required this.subtitle,
+    required this.icon,
+    required this.onTap,
   });
 
-  final IconData icon;
   final String title;
-  final String route;
+  final String subtitle;
+  final IconData icon;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     return PremiumCard(
-      onTap: () => Navigator.pushNamed(context, route),
-      padding: const EdgeInsets.all(AppSpacing.cardPadding),
+      onTap: onTap,
       child: SizedBox(
-        width: 126,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        height: 128,
+        child: Stack(
           children: [
-            CircleAvatar(
-              radius: 22,
-              backgroundColor: AppColors.secondary,
-              child: Icon(icon, color: AppColors.primaryDark),
+            Positioned(
+              top: 0,
+              right: 0,
+              child: Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: AppColors.secondary,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Icon(icon, color: AppColors.primaryDark, size: 24),
+              ),
             ),
-            const Spacer(),
-            Text(title, style: Theme.of(context).textTheme.titleMedium),
+            Align(
+              alignment: Alignment.bottomLeft,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.end,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    subtitle,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.mutedText),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),
@@ -312,42 +352,81 @@ class _QuickActionCard extends StatelessWidget {
   }
 }
 
-class _RoutineProgressRow extends StatelessWidget {
-  const _RoutineProgressRow({
-    required this.label,
-    required this.completed,
-    required this.total,
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader({
+    required this.title,
+    this.actionLabel,
+    this.onAction,
   });
 
-  final String label;
-  final int completed;
-  final int total;
+  final String title;
+  final String? actionLabel;
+  final VoidCallback? onAction;
 
   @override
   Widget build(BuildContext context) {
-    final progress = completed / total;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Row(
-          children: [
-            Text(label, style: Theme.of(context).textTheme.titleMedium),
-            const Spacer(),
-            Text('$completed/$total', style: Theme.of(context).textTheme.bodySmall),
-          ],
-        ),
-        const SizedBox(height: 8),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(999),
-          child: LinearProgressIndicator(
-            value: progress,
-            minHeight: 10,
-            backgroundColor: AppColors.secondary,
-            color: AppColors.primary,
+        Text(title, style: Theme.of(context).textTheme.headlineSmall),
+        if (actionLabel != null)
+          TextButton(
+            onPressed: onAction,
+            child: Text(actionLabel!, style: const TextStyle(color: AppColors.primary)),
           ),
-        ),
       ],
+    );
+  }
+}
+
+class _FeelingChip extends StatelessWidget {
+  const _FeelingChip({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.pageBackground,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: AppColors.border.withValues(alpha: 0.9)),
+      ),
+      child: Text(label, style: Theme.of(context).textTheme.labelLarge?.copyWith(color: AppColors.primaryDark)),
+    );
+  }
+}
+
+class _Badge extends StatelessWidget {
+  const _Badge({
+    required this.label,
+    required this.icon,
+    this.compact = false,
+    this.outlined = false,
+  });
+
+  final String label;
+  final IconData icon;
+  final bool compact;
+  final bool outlined;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: compact ? 10 : 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: outlined ? Colors.transparent : Colors.white.withValues(alpha: 0.94),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: AppColors.primary.withValues(alpha: outlined ? 0.9 : 0.14)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: compact ? AppColors.warning : AppColors.error),
+          const SizedBox(width: 6),
+          Text(label, style: Theme.of(context).textTheme.labelLarge),
+        ],
+      ),
     );
   }
 }

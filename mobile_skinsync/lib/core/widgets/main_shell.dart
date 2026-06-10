@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../features/analysis/skin_analysis_page.dart';
 import '../../features/dashboard/dashboard_page.dart';
@@ -6,6 +7,7 @@ import '../../features/profile/profile_page.dart';
 import '../../features/progress/progress_page.dart';
 import '../../features/routine/routine_page.dart';
 import '../routes/app_routes.dart';
+import '../state/app_state.dart';
 import '../theme/app_colors.dart';
 import 'responsive_container.dart';
 
@@ -54,6 +56,13 @@ class _MainShellState extends State<MainShell> {
 
   @override
   Widget build(BuildContext context) {
+    final isAuthenticated = context.watch<AppState>().isAuthenticated;
+    if (!isAuthenticated) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Navigator.pushReplacementNamed(context, AppRoutes.login);
+      });
+    }
+
     return Scaffold(
       backgroundColor: AppColors.pageBackground,
       body: ResponsiveContainer(
@@ -73,18 +82,19 @@ class _MainShellState extends State<MainShell> {
       ),
       bottomNavigationBar: SafeArea(
         top: false,
+        minimum: const EdgeInsets.fromLTRB(12, 0, 12, 8),
         child: Container(
-          margin: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+          margin: const EdgeInsets.fromLTRB(2, 0, 2, 0),
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(28),
+            borderRadius: BorderRadius.circular(24),
             border: Border.all(color: AppColors.border.withValues(alpha: 0.75)),
             boxShadow: [
               BoxShadow(
-                color: AppColors.primaryDark.withValues(alpha: 0.08),
-                blurRadius: 24,
-                offset: const Offset(0, 10),
+                color: AppColors.primaryDark.withValues(alpha: 0.06),
+                blurRadius: 18,
+                offset: const Offset(0, 6),
               ),
             ],
           ),
@@ -98,23 +108,23 @@ class _MainShellState extends State<MainShell> {
                   duration: const Duration(milliseconds: 220),
                   curve: Curves.easeOutCubic,
                   decoration: BoxDecoration(
-                    color: selected ? AppColors.secondary : Colors.transparent,
-                    borderRadius: BorderRadius.circular(20),
+                    color: selected ? AppColors.primary.withValues(alpha: 0.10) : Colors.transparent,
+                    borderRadius: BorderRadius.circular(18),
                   ),
                   child: InkWell(
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(18),
                     onTap: () => _onTap(index),
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      padding: const EdgeInsets.symmetric(vertical: 6),
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(
                             destination.icon,
                             color: selected ? AppColors.primary : AppColors.subtleText,
-                            size: 22,
+                            size: 20,
                           ),
-                          const SizedBox(height: 4),
+                          const SizedBox(height: 1),
                           Text(
                             destination.label,
                             maxLines: 1,

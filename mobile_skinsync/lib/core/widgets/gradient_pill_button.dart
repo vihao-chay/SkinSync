@@ -44,8 +44,8 @@ class GradientPillButton extends StatelessWidget {
                   ? null
                   : [
                       BoxShadow(
-                        color: AppColors.primary.withValues(alpha: 0.18),
-                        blurRadius: 18,
+                        color: AppColors.primary.withValues(alpha: 0.22),
+                        blurRadius: 20,
                         offset: const Offset(0, 8),
                       ),
                     ],

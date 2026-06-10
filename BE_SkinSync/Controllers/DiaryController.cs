@@ -89,6 +89,16 @@ public class DiaryController : ControllerBase
 
         if (existing is null)
         {
+            var payload = new DailyLogPayload
+            {
+                Note = request.Notes,
+                AcneLevel = request.AcneLevel,
+                DrynessLevel = request.DrynessLevel,
+                RednessLevel = request.RednessLevel,
+                IrritationLevel = request.IrritationLevel,
+                HydrationLevel = request.HydrationLevel
+            };
+
             var newLog = new DailyLog
             {
                 Id = Guid.NewGuid(),
@@ -98,7 +108,7 @@ public class DiaryController : ControllerBase
                 EveningCompleted = request.EveningCompleted,
                 SkinFeeling = request.SkinFeeling,
                 IsIrritated = request.IsIrritated,
-                Notes = request.Notes,
+                Notes = DailyLogPayloadHelper.Serialize(payload),
                 DailyImageUrl = imageUrl
             };
 
@@ -106,11 +116,21 @@ public class DiaryController : ControllerBase
             return ResponseEntity<DiaryCheckInResponseDto>.Ok(newLog.ToCheckInDto(), "Cáº­p nháº­t check-in thÃ nh cÃ´ng.");
         }
 
+        var updatedPayload = new DailyLogPayload
+        {
+            Note = request.Notes,
+            AcneLevel = request.AcneLevel,
+            DrynessLevel = request.DrynessLevel,
+            RednessLevel = request.RednessLevel,
+            IrritationLevel = request.IrritationLevel,
+            HydrationLevel = request.HydrationLevel
+        };
+
         existing.MorningCompleted = request.MorningCompleted;
         existing.EveningCompleted = request.EveningCompleted;
         existing.SkinFeeling = request.SkinFeeling;
         existing.IsIrritated = request.IsIrritated;
-        existing.Notes = request.Notes;
+        existing.Notes = DailyLogPayloadHelper.Serialize(updatedPayload);
         existing.DailyImageUrl = imageUrl;
 
         await _diaryRepository.UpdateAsync(existing, cancellationToken);

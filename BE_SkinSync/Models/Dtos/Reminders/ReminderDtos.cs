@@ -8,6 +8,7 @@ public class ReminderResponseDto
     public string Time { get; set; } = string.Empty;
     public string RoutineType { get; set; } = string.Empty;
     public bool IsEnabled { get; set; }
+    public IReadOnlyCollection<string> RepeatDays { get; set; } = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 }
 
 public class ReminderUpsertRequestDto
@@ -20,4 +21,5 @@ public class ReminderUpsertRequestDto
     public string RoutineType { get; set; } = "Morning";
 
     public bool IsEnabled { get; set; } = true;
+    public IEnumerable<string>? RepeatDays { get; set; }
 }

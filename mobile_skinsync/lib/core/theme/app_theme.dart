@@ -64,14 +64,14 @@ class AppTheme {
       dividerColor: AppColors.border.withValues(alpha: 0.6),
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: Colors.white.withValues(alpha: 0.94),
-        height: 68,
+        height: 64,
         elevation: 0,
-        indicatorColor: AppColors.secondary.withValues(alpha: 0.9),
+        indicatorColor: AppColors.primary.withValues(alpha: 0.12),
         iconTheme: WidgetStateProperty.resolveWith((states) {
           final color = states.contains(WidgetState.selected)
-              ? AppColors.primaryDark
+              ? AppColors.primary
               : AppColors.mutedText;
-          return IconThemeData(color: color, size: 22);
+          return IconThemeData(color: color, size: 21);
         }),
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
@@ -96,7 +96,7 @@ class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadius.pill),
           ),
-          minimumSize: const Size.fromHeight(52),
+          minimumSize: const Size.fromHeight(50),
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         ),
       ),

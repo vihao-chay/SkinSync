@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
-import '../../core/mock/mock_skin_data.dart';
+import '../../core/state/app_state.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/widgets/app_text_field.dart';
@@ -12,12 +13,13 @@ class ProgressPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final weekDays = const ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+    final appState = context.watch<AppState>();
+    final progress = appState.progress;
+    final log = appState.todayLog;
 
     return Stack(
       children: [
         ListView(
-          physics: const BouncingScrollPhysics(),
           padding: const EdgeInsets.fromLTRB(
             AppSpacing.pagePadding,
             AppSpacing.pagePadding,
@@ -26,78 +28,19 @@ class ProgressPage extends StatelessWidget {
           ),
           children: [
             Text('Your Progress', style: Theme.of(context).textTheme.headlineMedium),
-            const SizedBox(height: 4),
-            Text(
-              'See how your routine consistency is shaping your skin journey.',
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-            const SizedBox(height: AppSpacing.sectionGap),
+            const SizedBox(height: 8),
             PremiumCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Weekly Summary', style: Theme.of(context).textTheme.titleLarge),
+                  Text('Current score', style: Theme.of(context).textTheme.labelMedium),
+                  const SizedBox(height: 6),
+                  Text('${progress?.currentScore ?? 0}', style: Theme.of(context).textTheme.displaySmall),
                   const SizedBox(height: 12),
-                  Row(
-                    children: const [
-                      Expanded(child: _SummaryMetric(title: 'Completion', value: '86%')),
-                      SizedBox(width: 12),
-                      Expanded(child: _SummaryMetric(title: 'Streak', value: '12 days')),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(999),
-                    child: const LinearProgressIndicator(
-                      value: 0.86,
-                      minHeight: 10,
-                      backgroundColor: AppColors.secondary,
-                      color: AppColors.primary,
-                    ),
-                  ),
+                  Text('Streak: ${progress?.currentStreak ?? 0} days'),
+                  const SizedBox(height: 6),
+                  Text('Improvement: ${progress?.improvementPercent?.toStringAsFixed(1) ?? '0.0'}%'),
                 ],
-              ),
-            ),
-            const SizedBox(height: AppSpacing.sectionGap),
-            Text('This Week', style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: 12),
-            SizedBox(
-              height: 92,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: weekDays.length,
-                separatorBuilder: (_, _) => const SizedBox(width: 10),
-                itemBuilder: (context, index) {
-                  final selected = index == 3;
-                  final complete = index < 5;
-                  return Container(
-                    width: 58,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    decoration: BoxDecoration(
-                      color: selected ? AppColors.secondary : Colors.white,
-                      borderRadius: BorderRadius.circular(18),
-                      border: Border.all(
-                        color: selected ? AppColors.primary : AppColors.border.withValues(alpha: 0.6),
-                      ),
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(weekDays[index], style: Theme.of(context).textTheme.labelMedium),
-                        const SizedBox(height: 8),
-                        CircleAvatar(
-                          radius: 13,
-                          backgroundColor: complete ? AppColors.primary : AppColors.secondary,
-                          child: Icon(
-                            complete ? Icons.check_rounded : Icons.remove_rounded,
-                            size: 14,
-                            color: complete ? Colors.white : AppColors.primaryDark,
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
               ),
             ),
             const SizedBox(height: AppSpacing.sectionGap),
@@ -105,41 +48,39 @@ class ProgressPage extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Skin Trend', style: Theme.of(context).textTheme.titleLarge),
-                  const SizedBox(height: 14),
-                  const _TrendRow(label: 'Acne improved', value: '+18%'),
+                  Text('Insight', style: Theme.of(context).textTheme.titleLarge),
                   const SizedBox(height: 10),
-                  const _TrendRow(label: 'Hydration stable', value: '4/5'),
-                  const SizedBox(height: 10),
-                  const _TrendRow(label: 'Redness reduced', value: '-12%'),
+                  Text(progress?.progressInsight ?? 'Track more activity to unlock stronger insights.'),
                 ],
               ),
             ),
             const SizedBox(height: AppSpacing.sectionGap),
-            Text('Daily Logs', style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: 12),
-            ...MockSkinData.progressLogs.map(
-              (log) => Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: PremiumCard(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(log.date, style: Theme.of(context).textTheme.titleMedium),
-                      const SizedBox(height: 8),
-                      Text(log.skinFeeling, style: Theme.of(context).textTheme.bodyMedium),
-                      const SizedBox(height: 10),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          _LogTag(label: 'Acne ${log.acneLevel}'),
-                          _LogTag(label: 'Hydration ${log.hydration}'),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
+            PremiumCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Today log', style: Theme.of(context).textTheme.titleLarge),
+                  const SizedBox(height: 10),
+                  Text(log?.skinFeeling ?? 'No log yet'),
+                  if ((log?.notes ?? '').isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Text(log!.notes!),
+                  ],
+                  const SizedBox(height: 10),
+                  Text('Acne: ${log?.acneLevel ?? '-'}'),
+                  Text('Hydration: ${log?.hydrationLevel ?? '-'}'),
+                ],
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sectionGap),
+            PremiumCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Daily tip', style: Theme.of(context).textTheme.titleLarge),
+                  const SizedBox(height: 10),
+                  Text(progress?.dailyTip ?? 'Add a daily log to get a tailored tip.'),
+                ],
               ),
             ),
           ],
@@ -162,6 +103,12 @@ class ProgressPage extends StatelessWidget {
   }
 
   Future<void> _showAddLogSheet(BuildContext context) async {
+    final skinFeelingController = TextEditingController();
+    final acneController = TextEditingController();
+    final hydrationController = TextEditingController();
+    final notesController = TextEditingController();
+    final appState = context.read<AppState>();
+
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -173,41 +120,35 @@ class ProgressPage extends StatelessWidget {
         return SafeArea(
           top: false,
           child: Padding(
-            padding: EdgeInsets.fromLTRB(
-              20,
-              12,
-              20,
-              20 + MediaQuery.of(context).viewInsets.bottom,
-            ),
+            padding: EdgeInsets.fromLTRB(20, 12, 20, 20 + MediaQuery.of(context).viewInsets.bottom),
             child: SingleChildScrollView(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Center(
-                    child: Container(
-                      width: 44,
-                      height: 5,
-                      decoration: BoxDecoration(
-                        color: AppColors.border,
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
                   Text('Add Daily Log', style: Theme.of(context).textTheme.titleLarge),
                   const SizedBox(height: 16),
-                  const AppTextField(label: 'How does your skin feel?', hint: 'Calm, balanced, dry...'),
+                  AppTextField(label: 'How does your skin feel?', controller: skinFeelingController),
                   const SizedBox(height: 12),
-                  const AppTextField(label: 'Acne level', hint: '2/5'),
+                  AppTextField(label: 'Acne level (0-100)', controller: acneController, keyboardType: TextInputType.number),
                   const SizedBox(height: 12),
-                  const AppTextField(label: 'Hydration', hint: '4/5'),
+                  AppTextField(label: 'Hydration level (0-100)', controller: hydrationController, keyboardType: TextInputType.number),
                   const SizedBox(height: 12),
-                  const AppTextField(label: 'Notes', hint: 'What changed today?', maxLines: 3),
+                  AppTextField(label: 'Notes', controller: notesController, maxLines: 3),
                   const SizedBox(height: 20),
                   GradientPillButton(
                     label: 'Save Daily Log',
                     expanded: true,
-                    onPressed: () => Navigator.of(context).pop(),
+                    onPressed: () async {
+                      await appState.saveDailyLog(
+                        skinFeeling: skinFeelingController.text.trim(),
+                        notes: notesController.text.trim(),
+                        acneLevel: int.tryParse(acneController.text) ?? 0,
+                        hydrationLevel: int.tryParse(hydrationController.text) ?? 0,
+                      );
+                      if (context.mounted) {
+                        Navigator.of(context).pop();
+                      }
+                    },
                   ),
                 ],
               ),
@@ -215,71 +156,6 @@ class ProgressPage extends StatelessWidget {
           ),
         );
       },
-    );
-  }
-}
-
-class _SummaryMetric extends StatelessWidget {
-  const _SummaryMetric({
-    required this.title,
-    required this.value,
-  });
-
-  final String title;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(title, style: Theme.of(context).textTheme.bodySmall),
-        const SizedBox(height: 6),
-        Text(value, style: Theme.of(context).textTheme.titleLarge),
-      ],
-    );
-  }
-}
-
-class _TrendRow extends StatelessWidget {
-  const _TrendRow({
-    required this.label,
-    required this.value,
-  });
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(child: Text(label, style: Theme.of(context).textTheme.bodyMedium)),
-        Text(
-          value,
-          style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                color: AppColors.primaryDark,
-              ),
-        ),
-      ],
-    );
-  }
-}
-
-class _LogTag extends StatelessWidget {
-  const _LogTag({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: AppColors.secondary,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(label, style: Theme.of(context).textTheme.labelSmall),
     );
   }
 }
