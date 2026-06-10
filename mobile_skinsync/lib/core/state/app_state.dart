@@ -10,11 +10,10 @@ import '../services/api_client.dart';
 import '../services/session_store.dart';
 
 class AppState extends ChangeNotifier {
-  AppState({
-    required ApiClient apiClient,
-    required SessionStore sessionStore,
-  })  : _apiClient = apiClient,
-        _sessionStore = sessionStore {
+  AppState({required ApiClient apiClient, required SessionStore sessionStore})
+    : this._(apiClient, sessionStore);
+
+  AppState._(this._apiClient, this._sessionStore) {
     _apiClient.configureAuth(
       refreshSessionHandler: _refreshSession,
       sessionChangedHandler: _persistSessionChange,
@@ -33,19 +32,52 @@ class AppState extends ChangeNotifier {
   DailyLog? todayLog;
   List<ReminderItem> reminders = const [];
   bool isBusy = false;
+  bool hasPendingOnboarding = false;
   String? errorMessage;
   int _messageVersion = 0;
 
   bool get isAuthenticated => session != null;
+  bool get shouldShowOnboarding =>
+      isAuthenticated &&
+      hasPendingOnboarding &&
+      profile?.isOnboardingCompleted != true;
   AppUser? get user => session?.user;
+  String get onboardingDisplayNameSeed {
+    final fullName = user?.fullName.trim() ?? '';
+    if (fullName.isNotEmpty && !_looksLikeEmail(fullName)) {
+      return fullName;
+    }
+
+    final displayName = profile?.displayName?.trim() ?? '';
+    return displayName.isEmpty ? '' : displayName;
+  }
+
+  String get profileDisplayName {
+    final seededName = onboardingDisplayNameSeed;
+    if (seededName.isNotEmpty) {
+      return seededName;
+    }
+
+    final fullName = user?.fullName.trim() ?? '';
+    if (fullName.isNotEmpty) {
+      return fullName;
+    }
+
+    return user?.email.trim() ?? 'SkinSync user';
+  }
+
   int get messageVersion => _messageVersion;
 
   Future<void> bootstrap() async {
     session = await _sessionStore.read();
     _apiClient.attachSession(session);
     if (session != null) {
-      await refreshProfileState();
+      hasPendingOnboarding = await _sessionStore.isOnboardingPendingFor(
+        session!.user.id,
+      );
+      await _loadProfile();
       if (profile?.isOnboardingCompleted == true) {
+        await _clearOnboardingPendingForCurrentUser();
         await refreshHome();
       }
     }
@@ -60,10 +92,10 @@ class AppState extends ChangeNotifier {
     }
 
     await _runBusy(() async {
-      final data = await _apiClient.postWithoutRefresh('/api/auth/login', body: {
-        'email': email,
-        'password': password,
-      });
+      final data = await _apiClient.postWithoutRefresh(
+        '/api/auth/login',
+        body: {'email': email, 'password': password},
+      );
 
       await _applySessionFromLoginPayload(data);
       await refreshHome();
@@ -83,52 +115,65 @@ class AppState extends ChangeNotifier {
     }
 
     await _runBusy(() async {
-      await _apiClient.post('/api/auth/register', body: {
-        'fullName': fullName?.trim() ?? '',
-        'email': email,
-        'password': password,
-        'phone': phone,
-      });
+      await _apiClient.post(
+        '/api/auth/register',
+        body: {
+          'fullName': fullName?.trim() ?? '',
+          'email': email,
+          'password': password,
+          'phone': phone,
+        },
+      );
       await login(email, password);
+      await _replaceCurrentUserFullName(fullName);
+      await markOnboardingPendingForCurrentUser();
     });
   }
 
   Future<void> loginWithGoogle() async {
-    await _runBusy(() async {
-      final googleUrlData = await _apiClient.get(
-        '/api/auth/google/url',
-        query: {
-          'redirectTo': AppConfig.authCallbackUrl,
-        },
-      );
+    await _runBusy(
+      () async {
+        final googleUrlData = await _apiClient.get(
+          '/api/auth/google/url',
+          query: {'redirectTo': AppConfig.authCallbackUrl},
+        );
 
-      final authUrl = (googleUrlData['url'] ?? '').toString();
-      if (authUrl.isEmpty) {
-        throw ApiException('Could not start Google login.', 500);
-      }
-
-      final callbackUrl = await FlutterWebAuth2.authenticate(url: authUrl, callbackUrlScheme: AppConfig.authCallbackScheme);
-
-      _throwIfOAuthReturnedError(callbackUrl);
-      final accessToken = _extractAccessToken(callbackUrl);
-      if (accessToken == null || accessToken.isEmpty) {
-        throw ApiException('Google login completed but no Supabase access token was returned.', 401);
-      }
-
-      final data = await _apiClient.postWithoutRefresh('/api/auth/google', body: {
-        'supabaseAccessToken': accessToken,
-      });
-
-      await _applySessionFromLoginPayload(data);
-      await refreshHome();
-    }, onError: (error) {
-      if (error is PlatformException) {
-        if ((error.code).toLowerCase().contains('cancel')) {
-          _setError('Google sign-in was cancelled.');
-          return;
+        final authUrl = (googleUrlData['url'] ?? '').toString();
+        if (authUrl.isEmpty) {
+          throw ApiException('Could not start Google login.', 500);
         }
-      }
-    });
+
+        final callbackUrl = await FlutterWebAuth2.authenticate(
+          url: authUrl,
+          callbackUrlScheme: AppConfig.authCallbackScheme,
+        );
+
+        _throwIfOAuthReturnedError(callbackUrl);
+        final accessToken = _extractAccessToken(callbackUrl);
+        if (accessToken == null || accessToken.isEmpty) {
+          throw ApiException(
+            'Google login completed but no Supabase access token was returned.',
+            401,
+          );
+        }
+
+        final data = await _apiClient.postWithoutRefresh(
+          '/api/auth/google',
+          body: {'supabaseAccessToken': accessToken},
+        );
+
+        await _applySessionFromLoginPayload(data);
+        await refreshHome();
+      },
+      onError: (error) {
+        if (error is PlatformException) {
+          if ((error.code).toLowerCase().contains('cancel')) {
+            _setError('Google sign-in was cancelled.');
+            return;
+          }
+        }
+      },
+    );
   }
 
   Future<void> logout() async {
@@ -140,6 +185,7 @@ class AppState extends ChangeNotifier {
     progress = null;
     todayLog = null;
     reminders = const [];
+    hasPendingOnboarding = false;
     _apiClient.attachSession(null);
     await _sessionStore.clear();
     notifyListeners();
@@ -160,6 +206,9 @@ class AppState extends ChangeNotifier {
         _loadReminders(),
         _loadTodayLog(),
       ]);
+      if (profile?.isOnboardingCompleted == true) {
+        await _clearOnboardingPendingForCurrentUser();
+      }
     }, showBusy: false);
   }
 
@@ -177,15 +226,18 @@ class AppState extends ChangeNotifier {
         _ => 500000,
       };
 
-      await _apiClient.post('/api/user-profiles/onboarding', body: {
-        'skinType': skinType.toLowerCase(),
-        'monthlyBudget': monthlyBudget,
-        'budgetLabel': budgetLabel,
-        'concerns': concerns,
-        'goals': ['Healthy skin barrier', 'Consistent skincare'],
-        'allergies': const [],
-        'avoidIngredients': const [],
-      });
+      await _apiClient.post(
+        '/api/user-profiles/onboarding',
+        body: {
+          'skinType': skinType.toLowerCase(),
+          'monthlyBudget': monthlyBudget,
+          'budgetLabel': budgetLabel,
+          'concerns': concerns,
+          'goals': ['Healthy skin barrier', 'Consistent skincare'],
+          'allergies': const [],
+          'avoidIngredients': const [],
+        },
+      );
 
       await _loadProfile();
       if (imageFile != null) {
@@ -202,7 +254,9 @@ class AppState extends ChangeNotifier {
         fields: const {},
       );
 
-      latestAnalysis = AnalysisResult.fromJson(response['analysis'] as Map<String, dynamic>);
+      latestAnalysis = AnalysisResult.fromJson(
+        response['analysis'] as Map<String, dynamic>,
+      );
       regimen = CurrentRegimen(
         regimenId: response['regimenId'].toString(),
         name: 'AI generated routine',
@@ -226,13 +280,20 @@ class AppState extends ChangeNotifier {
     }, showBusy: false);
   }
 
-  Future<void> saveReminder(String routineType, String time, bool isEnabled) async {
+  Future<void> saveReminder(
+    String routineType,
+    String time,
+    bool isEnabled,
+  ) async {
     await _runBusy(() async {
-      await _apiClient.put('/api/reminders', body: {
-        'time': time,
-        'routineType': routineType,
-        'isEnabled': isEnabled,
-      });
+      await _apiClient.put(
+        '/api/reminders',
+        body: {
+          'time': time,
+          'routineType': routineType,
+          'isEnabled': isEnabled,
+        },
+      );
       await _loadReminders();
     }, showBusy: false);
   }
@@ -244,15 +305,20 @@ class AppState extends ChangeNotifier {
     required int hydrationLevel,
   }) async {
     await _runBusy(() async {
-      await _apiClient.multipart('/api/diary/check-in', fields: {
-        'skinFeeling': skinFeeling,
-        'notes': notes,
-        'morningCompleted': trackingToday?.morningCompleted.toString() ?? 'false',
-        'eveningCompleted': trackingToday?.eveningCompleted.toString() ?? 'false',
-        'isIrritated': 'false',
-        'acneLevel': acneLevel.toString(),
-        'hydrationLevel': hydrationLevel.toString(),
-      });
+      await _apiClient.multipart(
+        '/api/diary/check-in',
+        fields: {
+          'skinFeeling': skinFeeling,
+          'notes': notes,
+          'morningCompleted':
+              trackingToday?.morningCompleted.toString() ?? 'false',
+          'eveningCompleted':
+              trackingToday?.eveningCompleted.toString() ?? 'false',
+          'isIrritated': 'false',
+          'acneLevel': acneLevel.toString(),
+          'hydrationLevel': hydrationLevel.toString(),
+        },
+      );
       await _loadTodayLog();
       await _loadProgress();
     });
@@ -260,10 +326,14 @@ class AppState extends ChangeNotifier {
 
   Future<void> _loadProfile() async {
     try {
-      profile = SkinProfile.fromJson(await _apiClient.get('/api/user-profiles/onboarding'));
+      profile = SkinProfile.fromJson(
+        await _apiClient.get('/api/user-profiles/onboarding'),
+      );
     } catch (_) {
       try {
-        profile = SkinProfile.fromJson(await _apiClient.get('/api/users/survey'));
+        profile = SkinProfile.fromJson(
+          await _apiClient.get('/api/users/survey'),
+        );
       } catch (_) {
         profile = null;
       }
@@ -277,15 +347,43 @@ class AppState extends ChangeNotifier {
 
   Future<void> submitOnboarding(Map<String, dynamic> payload) async {
     await _runBusy(() async {
-      final response = await _apiClient.post('/api/user-profiles/onboarding', body: payload);
+      final response = await _apiClient.post(
+        '/api/user-profiles/onboarding',
+        body: payload,
+      );
       profile = SkinProfile.fromJson(response);
+      await _clearOnboardingPendingForCurrentUser();
       await refreshHome();
     });
   }
 
+  Future<void> markOnboardingPendingForCurrentUser() async {
+    final currentUserId = session?.user.id;
+    if (currentUserId == null || currentUserId.isEmpty) {
+      return;
+    }
+
+    hasPendingOnboarding = true;
+    await _sessionStore.markOnboardingPendingFor(currentUserId);
+    notifyListeners();
+  }
+
+  Future<void> _clearOnboardingPendingForCurrentUser() async {
+    final currentUserId = session?.user.id;
+    if (currentUserId == null || currentUserId.isEmpty) {
+      hasPendingOnboarding = false;
+      return;
+    }
+
+    hasPendingOnboarding = false;
+    await _sessionStore.clearOnboardingPendingFor(currentUserId);
+  }
+
   Future<void> _loadLatestAnalysis() async {
     try {
-      latestAnalysis = AnalysisResult.fromJson(await _apiClient.get('/api/analysis/latest'));
+      latestAnalysis = AnalysisResult.fromJson(
+        await _apiClient.get('/api/analysis/latest'),
+      );
     } catch (_) {
       latestAnalysis = null;
     }
@@ -293,7 +391,9 @@ class AppState extends ChangeNotifier {
 
   Future<void> _loadRegimen() async {
     try {
-      regimen = CurrentRegimen.fromJson(await _apiClient.get('/api/regimens/current'));
+      regimen = CurrentRegimen.fromJson(
+        await _apiClient.get('/api/regimens/current'),
+      );
     } catch (_) {
       regimen = null;
     }
@@ -301,7 +401,9 @@ class AppState extends ChangeNotifier {
 
   Future<void> _loadTracking() async {
     try {
-      trackingToday = RoutineTrackingToday.fromJson(await _apiClient.get('/api/routine-tracking/today'));
+      trackingToday = RoutineTrackingToday.fromJson(
+        await _apiClient.get('/api/routine-tracking/today'),
+      );
     } catch (_) {
       trackingToday = null;
     }
@@ -309,7 +411,9 @@ class AppState extends ChangeNotifier {
 
   Future<void> _loadProgress() async {
     try {
-      progress = ProgressOverview.fromJson(await _apiClient.get('/api/progress/overview'));
+      progress = ProgressOverview.fromJson(
+        await _apiClient.get('/api/progress/overview'),
+      );
     } catch (_) {
       progress = null;
     }
@@ -350,7 +454,7 @@ class AppState extends ChangeNotifier {
     try {
       await action();
     } on ApiException catch (error) {
-      _setError(error.message);
+      _setError(error.message, statusCode: error.statusCode);
       onError?.call(error);
       rethrow;
     } on PlatformException catch (error) {
@@ -377,9 +481,10 @@ class AppState extends ChangeNotifier {
 
   Future<AuthSession?> _refreshSession(String refreshToken) async {
     try {
-      final data = await _apiClient.postWithoutRefresh('/api/auth/refresh', body: {
-        'refreshToken': refreshToken,
-      });
+      final data = await _apiClient.postWithoutRefresh(
+        '/api/auth/refresh',
+        body: {'refreshToken': refreshToken},
+      );
 
       final refreshed = _sessionFromPayload(data);
       return refreshed;
@@ -392,10 +497,14 @@ class AppState extends ChangeNotifier {
     session = nextSession;
     _apiClient.attachSession(nextSession);
     if (nextSession == null) {
+      hasPendingOnboarding = false;
       await _sessionStore.clear();
       return;
     }
 
+    hasPendingOnboarding = await _sessionStore.isOnboardingPendingFor(
+      nextSession.user.id,
+    );
     await _sessionStore.save(nextSession);
   }
 
@@ -427,6 +536,25 @@ class AppState extends ChangeNotifier {
     session = _sessionFromPayload(data);
     _apiClient.attachSession(session);
     await _sessionStore.save(session!);
+    hasPendingOnboarding = await _sessionStore.isOnboardingPendingFor(
+      session!.user.id,
+    );
+  }
+
+  Future<void> _replaceCurrentUserFullName(String? fullName) async {
+    final trimmed = fullName?.trim() ?? '';
+    final currentSession = session;
+    if (trimmed.isEmpty || currentSession == null) {
+      return;
+    }
+
+    session = AuthSession(
+      accessToken: currentSession.accessToken,
+      refreshToken: currentSession.refreshToken,
+      user: currentSession.user.copyWith(fullName: trimmed),
+    );
+    _apiClient.attachSession(session);
+    await _sessionStore.save(session!);
   }
 
   AuthSession _sessionFromPayload(Map<String, dynamic> data) {
@@ -434,7 +562,11 @@ class AppState extends ChangeNotifier {
     final refreshToken = _readString(data, 'refreshToken', 'RefreshToken');
     final userJson = _readMap(data, 'user', 'User');
 
-    if (accessToken == null || accessToken.isEmpty || refreshToken == null || refreshToken.isEmpty || userJson == null) {
+    if (accessToken == null ||
+        accessToken.isEmpty ||
+        refreshToken == null ||
+        refreshToken.isEmpty ||
+        userJson == null) {
       throw ApiException('Unexpected login response from backend.', 500);
     }
 
@@ -445,12 +577,20 @@ class AppState extends ChangeNotifier {
     );
   }
 
-  String? _readString(Map<String, dynamic> data, String lowerKey, String upperKey) {
+  String? _readString(
+    Map<String, dynamic> data,
+    String lowerKey,
+    String upperKey,
+  ) {
     final value = data[lowerKey] ?? data[upperKey];
     return value?.toString();
   }
 
-  Map<String, dynamic>? _readMap(Map<String, dynamic> data, String lowerKey, String upperKey) {
+  Map<String, dynamic>? _readMap(
+    Map<String, dynamic> data,
+    String lowerKey,
+    String upperKey,
+  ) {
     final value = data[lowerKey] ?? data[upperKey];
     if (value is Map<String, dynamic>) {
       return value;
@@ -458,9 +598,39 @@ class AppState extends ChangeNotifier {
     return null;
   }
 
-  void _setError(String message) {
-    errorMessage = message;
+  void _setError(String message, {int? statusCode}) {
+    errorMessage = _friendlyErrorMessage(message, statusCode: statusCode);
     _messageVersion++;
+  }
+
+  bool _looksLikeEmail(String value) {
+    return RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(value);
+  }
+
+  String _friendlyErrorMessage(String message, {int? statusCode}) {
+    final raw = message.trim();
+    final lower = raw.toLowerCase();
+
+    if (statusCode == 401 ||
+        lower.contains('email') && lower.contains('password') ||
+        lower.contains('mật khẩu') ||
+        lower.contains('khẩu') ||
+        lower.contains('khÃ') ||
+        lower.contains('kháº©u')) {
+      return 'Email or password is incorrect.';
+    }
+
+    if (lower.contains('password should contain') ||
+        lower.contains('password must contain') ||
+        lower.contains('at least one character of each')) {
+      return 'Password must include lowercase, uppercase, number, and special character.';
+    }
+
+    if (lower.contains('already') && lower.contains('email')) {
+      return 'This email is already registered.';
+    }
+
+    return raw.isEmpty ? 'Something went wrong. Please try again.' : raw;
   }
 
   void clearError() {

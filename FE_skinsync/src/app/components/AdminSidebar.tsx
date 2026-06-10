@@ -5,11 +5,11 @@ import {
   Package,
   Users,
   Bot,
-  Sparkles,
   ChevronRight,
   LogOut,
   UserCircle,
 } from "lucide-react";
+import { BrandMark } from "./BrandMark";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { useAuth } from "../contexts/AuthContext";
 import { resolveUserAvatar } from "../utils/avatar";
@@ -66,9 +66,7 @@ export function AdminLayout({ children, title }: AdminLayoutProps) {
         {/* Logo */}
         <div className="px-5 py-5 border-b border-white/8">
           <Link to="/" className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#c4a882] to-[#8c6e52] flex items-center justify-center shadow-lg shadow-[#c4a882]/30">
-              <Sparkles className="w-4 h-4 text-white" />
-            </div>
+            <BrandMark className="w-9 h-9 rounded-xl ring-1 ring-white/10" />
             <div>
               <div className="text-white text-sm" style={{ fontWeight: 600 }}>SkinSync</div>
               <div className="text-[10px] text-white/40 tracking-wider uppercase">Admin Panel</div>

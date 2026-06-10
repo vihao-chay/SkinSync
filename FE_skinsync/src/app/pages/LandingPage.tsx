@@ -1,701 +1,518 @@
-import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router";
+import { motion } from "motion/react";
 import {
-  Sparkles,
-  Target,
-  TrendingUp,
-  Shield,
   ArrowRight,
-  Star,
-  CheckCircle2,
-  Zap,
-  Leaf,
+  Camera,
+  Check,
   FlaskConical,
-  Brain,
-  ChevronRight,
-  Play,
-  Users,
-  Award,
-  Clock,
+  MessageCircle,
+  Microscope,
+  ListChecks,
+  ScanLine,
+  Sparkles,
+  Star,
+  TrendingUp,
+  WalletCards,
 } from "lucide-react";
+import { Button } from "../components/ui/button";
+import { Card, CardContent } from "../components/ui/card";
+import { Footer } from "../components/SiteFooter";
 
-/* ─── tiny hook: animate number up ─── */
-function useCountUp(target: number, duration = 1800, start = false) {
-  const [val, setVal] = useState(0);
-  useEffect(() => {
-    if (!start) return;
-    let startTime: number | null = null;
-    const step = (ts: number) => {
-      if (!startTime) startTime = ts;
-      const progress = Math.min((ts - startTime) / duration, 1);
-      setVal(Math.floor(progress * target));
-      if (progress < 1) requestAnimationFrame(step);
-    };
-    requestAnimationFrame(step);
-  }, [start, target, duration]);
-  return val;
-}
+// [CẬP NHẬT]: Cấu hình menu "Về ứng dụng" để render dropdown con trong navbar.
+const aboutAppLinks = [
+  { label: "Tính năng AI", href: "#features" },
+  { label: "Lộ trình cá nhân", href: "#journey" },
+  { label: "Đội ngũ chuyên gia", href: "#experts" },
+];
+
+// [CẬP NHẬT]: Khai báo link điều hướng sang các trang độc lập để dùng trong Navbar và Footer.
+const resourceLinks = [
+  { label: "Blog", href: "/blog" },
+  { label: "Trung tâm hỗ trợ", href: "/tro-giup" },
+  { label: "Chính sách bảo mật", href: "/chinh-sach-bao-mat" },
+  { label: "Điều khoản sử dụng", href: "/dieu-khoan-su-dung" },
+];
+
+const featureChips = [
+  { label: "PHÂN TÍCH LỘ TRÌNH", icon: Sparkles },
+  { label: "KÍNH QUÉT THÀNH PHẦN", icon: ScanLine },
+  { label: "CHAT CHUYÊN GIA", icon: MessageCircle },
+  { label: "THEO DÕI DA", icon: Camera },
+];
+
+const featureCards = [
+  {
+    title: "LỘ TRÌNH HỢP TÚI TIỀN",
+    description: "SkinSync tự động tạo chu trình chăm sóc da hiệu quả, hợp túi tiền.",
+    icon: WalletCards,
+    image: "https://images.unsplash.com/photo-1620916566398-39f1143ab7be?auto=format&fit=crop&w=700&q=90",
+    className: "md:col-span-2 md:row-span-2",
+  },
+  {
+    title: "QUÉT DA AI",
+    description: "Nhận diện tình trạng da, điểm phục hồi và dấu hiệu cần chú ý chỉ trong vài giây.",
+    icon: Microscope,
+    image: "https://images.unsplash.com/photo-1598440947619-2c35fc9aa908?auto=format&fit=crop&w=700&q=90",
+  },
+  {
+    title: "KIỂM TRA THÀNH PHẦN",
+    description: "Đọc bảng thành phần mỹ phẩm và cảnh báo xung đột trong routine hiện tại.",
+    icon: FlaskConical,
+    image: "https://images.unsplash.com/photo-1612817288484-6f916006741a?auto=format&fit=crop&w=700&q=90",
+  },
+  {
+    title: "CHAT CHUYÊN GIA",
+    description: "Hỏi đáp nhanh với trợ lý AI chăm sóc da, có ngữ cảnh hồ sơ da của bạn.",
+    icon: MessageCircle,
+    image: "https://images.unsplash.com/photo-1576091160550-2173dba999ef?auto=format&fit=crop&w=700&q=90",
+  },
+];
+
+// [CẬP NHẬT]: Đổi icon timeline sang 4 biểu tượng khác nhau để tránh lặp lại và rõ ý nghĩa từng bước.
+const journeySteps = [
+  { title: "CHỤP ẢNH / QUÉT MỸ PHẨM", icon: Camera },
+  { title: "AI PHÂN TÍCH", icon: Sparkles },
+  { title: "NHẬN LỘ TRÌNH", icon: ListChecks },
+  { title: "THEO DÕI CẢI THIỆN", icon: TrendingUp },
+];
 
 const testimonials = [
   {
-    name: "Nguyễn Thị Lan",
-    role: "Kỹ sư phần mềm",
-    avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=80&h=80&fit=crop&crop=face",
-    text: "Sau 6 tuần theo lộ trình AI, mụn đầu đen giảm 80%! Chưa bao giờ dùng sản phẩm nào phù hợp đến vậy.",
-    rating: 5,
-    skin: "Da dầu mụn",
+    name: "Minh Anh",
+    image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=360&q=90",
+    review: "Routine tuyệt vời, da cải thiện rõ rệt!",
   },
   {
-    name: "Trần Minh Châu",
-    role: "Kiến trúc sư",
-    avatar: "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=80&h=80&fit=crop&crop=face",
-    text: "AI phân tích đúng ngay lần đầu — da tôi nhạy cảm với hương liệu. Lộ trình cực kỳ chính xác và an toàn.",
-    rating: 5,
-    skin: "Da nhạy cảm",
+    name: "Khánh Linh",
+    image: "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=360&q=90",
+    review: "App hiểu da mình hơn cả lúc tự mua mỹ phẩm.",
   },
   {
-    name: "Phạm Thu Hương",
-    role: "Bác sĩ nội trú",
-    avatar: "https://images.unsplash.com/photo-1502823403499-6ccfcf4fb453?w=80&h=80&fit=crop&crop=face",
-    text: "Tôi đã thử hàng chục app skincare nhưng đây là cái đầu tiên cho tôi thấy kết quả thực sự.",
-    rating: 5,
-    skin: "Da hỗn hợp",
+    name: "Phương Thảo",
+    image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=360&q=90",
+    review: "Quét thành phần rất tiện, mình tránh được nhiều sản phẩm không hợp.",
   },
 ];
 
-const skinTypes = [
-  { icon: "💧", label: "Da Dầu", sub: "Kiểm soát bã nhờn tối ưu", color: "from-sky-50 to-blue-50", border: "border-sky-100" },
-  { icon: "🌸", label: "Da Khô", sub: "Phục hồi độ ẩm sâu", color: "from-rose-50 to-pink-50", border: "border-rose-100" },
-  { icon: "🌿", label: "Da Hỗn Hợp", sub: "Cân bằng toàn diện", color: "from-emerald-50 to-teal-50", border: "border-emerald-100" },
-  { icon: "🌺", label: "Da Nhạy Cảm", sub: "Bảo vệ nhẹ nhàng", color: "from-amber-50 to-orange-50", border: "border-amber-100" },
-];
-
-const features = [
-  {
-    icon: Brain,
-    title: "AI Phân Tích Sâu",
-    desc: "Công nghệ Computer Vision phân tích 47 chỉ số da trong vòng 30 giây với độ chính xác 98%.",
-    tag: "Công nghệ",
-    gradient: "from-[#c4a882]/15 to-[#f5e6d3]/30",
-    iconBg: "from-[#c4a882] to-[#8c6e52]",
-  },
-  {
-    icon: Target,
-    title: "Cá Nhân Hóa 100%",
-    desc: "Lộ trình chăm sóc riêng biệt dựa trên DNA làn da, lối sống và mục tiêu của bạn.",
-    tag: "Chính xác",
-    gradient: "from-[#f5e6d3]/30 to-[#e8d5b7]/20",
-    iconBg: "from-[#8c6e52] to-[#c4a882]",
-  },
-  {
-    icon: TrendingUp,
-    title: "Theo Dõi Tiến Trình",
-    desc: "Biểu đồ trực quan so sánh da theo tuần/tháng. AI tự điều chỉnh lộ trình khi cần thiết.",
-    tag: "Thông minh",
-    gradient: "from-[#e8d5b7]/20 to-[#f5f0e8]/40",
-    iconBg: "from-[#c4a882] to-[#8c6e52]",
-  },
-  {
-    icon: Shield,
-    title: "An Toàn Tuyệt Đối",
-    desc: "Mọi gợi ý đều được kiểm duyệt bởi bác sĩ da liễu. Không có thành phần độc hại.",
-    tag: "Bảo mật",
-    gradient: "from-[#f5f0e8]/40 to-[#c4a882]/10",
-    iconBg: "from-[#8c6e52] to-[#c4a882]",
-  },
-];
-
-export function LandingPage() {
-  const [statsVisible, setStatsVisible] = useState(false);
-  const statsRef = useRef<HTMLDivElement>(null);
-  const accuracy = useCountUp(98, 1500, statsVisible);
-  const users = useCountUp(50, 1800, statsVisible);
-  const products = useCountUp(2400, 2000, statsVisible);
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => { if (entry.isIntersecting) setStatsVisible(true); },
-      { threshold: 0.3 }
-    );
-    if (statsRef.current) observer.observe(statsRef.current);
-    return () => observer.disconnect();
-  }, []);
+function QrCode() {
+  const cells = Array.from({ length: 121 }, (_, index) => {
+    const row = Math.floor(index / 11);
+    const col = index % 11;
+    const finder =
+      (row < 3 && col < 3) ||
+      (row < 3 && col > 7) ||
+      (row > 7 && col < 3);
+    const active = finder || (row * 7 + col * 5 + row * col) % 4 === 0;
+    return <span key={index} className={active ? "bg-[#606eea]" : "bg-transparent"} />;
+  });
 
   return (
-    <div className="min-h-screen bg-[#faf7f2] overflow-x-hidden">
+    <div className="w-32 h-32 rounded-[1.4rem] bg-white p-3 shadow-2xl shadow-[#6875e8]/20 ring-1 ring-[#dfe3ff]">
+      <div className="grid h-full w-full grid-cols-11 gap-1">{cells}</div>
+    </div>
+  );
+}
 
-      {/* ══════════════════════════════════════════
-          HERO SECTION
-      ══════════════════════════════════════════ */}
-      <section className="relative min-h-screen flex items-center pt-20 overflow-hidden">
-        {/* Background layers */}
-        <div className="absolute inset-0 bg-gradient-to-br from-[#faf7f2] via-[#f5f0e8] to-[#faf7f2]" />
-        <div className="absolute top-0 right-0 w-[60%] h-full bg-gradient-to-l from-[#e8d5b7]/25 to-transparent" />
-        <div className="absolute bottom-0 left-0 w-96 h-96 bg-[#c4a882]/8 rounded-full blur-3xl" />
-        <div className="absolute top-24 left-[40%] w-72 h-72 bg-[#f5e6d3]/40 rounded-full blur-3xl" />
+// [CẬP NHẬT]: Thay CTA download khối vuông bằng badge chuẩn App Store để hero trông cao cấp hơn.
+function AppStoreBadge() {
+  return (
+    <a
+      href="#download"
+      className="flex min-w-[200px] items-center gap-3 rounded-2xl bg-[#151827] px-4 py-3.5 text-white shadow-xl shadow-[#151827]/18 transition hover:-translate-y-0.5 hover:bg-[#21253a]"
+    >
+      <svg viewBox="0 0 24 24" className="h-8 w-8 shrink-0 fill-current" aria-hidden="true">
+        <path d="M16.365 1.43c0 1.14-.45 2.2-1.17 3.02-.84.97-2.2 1.72-3.54 1.62-.17-1.12.4-2.28 1.1-3.03.83-.91 2.26-1.57 3.61-1.61zM20.54 17.5c-.54 1.2-.81 1.74-1.51 2.83-.97 1.48-2.34 3.32-4.03 3.34-1.5.02-1.88-.99-3.9-.98-2.02.01-2.44 1-3.94.98-1.68-.02-2.97-1.66-3.94-3.14C1.82 17.97.82 14.46 2.35 11.94c1.06-1.74 2.98-2.84 5.07-2.87 1.58-.03 3.07 1.08 3.9 1.08.82 0 2.58-1.34 4.36-1.14.74.03 2.81.3 4.14 2.26-.11.07-2.47 1.45-2.45 4.23.03 3.32 2.91 4.42 2.17 5.99z" />
+      </svg>
+      <span className="leading-tight">
+        <span className="block text-[10px] font-semibold uppercase tracking-[0.18em] text-white/60">Download on the</span>
+        <span className="block text-sm font-semibold">App Store</span>
+      </span>
+    </a>
+  );
+}
 
-        {/* Decorative circles */}
-        <div className="absolute top-32 right-[35%] w-3 h-3 rounded-full bg-[#c4a882]/40" />
-        <div className="absolute top-48 right-[28%] w-1.5 h-1.5 rounded-full bg-[#8c6e52]/30" />
-        <div className="absolute bottom-40 left-16 w-2 h-2 rounded-full bg-[#c4a882]/50" />
+// [CẬP NHẬT]: Thay CTA download khối vuông bằng badge chuẩn Google Play để đồng bộ style mobile app.
+function GooglePlayBadge() {
+  return (
+    <a
+      href="#download"
+      className="flex min-w-[200px] items-center gap-3 rounded-2xl bg-white px-4 py-3.5 text-[#151827] shadow-xl shadow-[#9aa6ff]/12 ring-1 ring-white/80 transition hover:-translate-y-0.5 hover:bg-[#f8faff]"
+    >
+      <svg viewBox="0 0 24 24" className="h-8 w-8 shrink-0" aria-hidden="true">
+        <defs>
+          <linearGradient id="gpGreen" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#34d399" />
+            <stop offset="100%" stopColor="#0ea5e9" />
+          </linearGradient>
+          <linearGradient id="gpOrange" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#f59e0b" />
+            <stop offset="100%" stopColor="#ef4444" />
+          </linearGradient>
+        </defs>
+        <path d="M3.8 2.8c-.6.4-1 1.1-1 1.9v14.6c0 .8.4 1.5 1 1.9l8.6-8.7L3.8 2.8z" fill="url(#gpGreen)" />
+        <path d="M13.6 11.5 17 8.1l3.2 1.8c.8.4 1.3 1.2 1.3 2.1s-.5 1.7-1.3 2.1L17 15.9l-3.4-4.4z" fill="url(#gpOrange)" />
+        <path d="m12.4 12.4 1.1-1 3.2 4.5-4.3 2.5c-.4.2-.8.3-1.2.3V12.4z" fill="#8b5cf6" />
+        <path d="M12.4 11.6V2.8c.4 0 .8.1 1.2.3L17 5.6l-4.6 6z" fill="#22c55e" />
+      </svg>
+      <span className="leading-tight">
+        <span className="block text-[10px] font-semibold uppercase tracking-[0.18em] text-[#7d86a4]">GET IT ON</span>
+        <span className="block text-sm font-semibold">Google Play</span>
+      </span>
+    </a>
+  );
+}
 
-        <div className="relative max-w-7xl mx-auto px-6 lg:px-12 w-full py-20">
-          <div className="grid lg:grid-cols-2 gap-16 items-center">
-
-            {/* LEFT: Text */}
-            <div className="space-y-8 z-10">
-              {/* Pill badge */}
-              <div className="inline-flex items-center gap-2.5 px-4 py-2 bg-white/70 backdrop-blur-sm rounded-full border border-[#e8d5b7]/80 shadow-sm">
-                <span className="w-2 h-2 rounded-full bg-[#c4a882] animate-pulse" />
-                <span className="text-sm text-[#8c6e52]">✦ Công nghệ AI tiên tiến nhất Việt Nam</span>
-              </div>
-
-              {/* Headline */}
-              <div className="space-y-3">
-                <h1 className="text-5xl lg:text-[64px] text-[#1a1410] leading-[1.1] tracking-tight">
-                  Làn Da Hoàn Hảo
-                  <br />
-                  <span className="relative inline-block">
-                    <span className="bg-gradient-to-r from-[#c4a882] via-[#b8956e] to-[#8c6e52] bg-clip-text text-transparent">
-                      Bắt Đầu Từ AI
-                    </span>
-                    {/* underline accent */}
-                    <svg className="absolute -bottom-1 left-0 w-full" height="6" viewBox="0 0 300 6" fill="none" preserveAspectRatio="none">
-                      <path d="M0 4 Q75 1 150 4 Q225 7 300 4" stroke="url(#uGrad)" strokeWidth="2.5" strokeLinecap="round" fill="none"/>
-                      <defs>
-                        <linearGradient id="uGrad" x1="0" y1="0" x2="300" y2="0">
-                          <stop offset="0%" stopColor="#c4a882" stopOpacity="0.6"/>
-                          <stop offset="100%" stopColor="#8c6e52" stopOpacity="0.3"/>
-                        </linearGradient>
-                      </defs>
-                    </svg>
-                  </span>
-                </h1>
-                <p className="text-lg text-[#6b7280] leading-relaxed max-w-lg">
-                  Phân tích chuyên sâu, cá nhân hóa lộ trình, và theo dõi tiến trình mỗi ngày — tất cả trong một nền tảng thông minh duy nhất.
-                </p>
-              </div>
-
-              {/* CTA Buttons */}
-              <div className="flex flex-wrap gap-4 items-center">
-                <Link
-                  to="/quiz"
-                  className="group flex items-center gap-2.5 px-7 py-3.5 bg-gradient-to-r from-[#c4a882] to-[#8c6e52] text-white rounded-full shadow-lg shadow-[#c4a882]/30 hover:shadow-xl hover:shadow-[#c4a882]/40 hover:scale-[1.03] transition-all duration-300"
-                >
-                  <Sparkles className="w-4 h-4" />
-                  <span>Phân Tích Da Miễn Phí</span>
-                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                </Link>
-                <Link
-                  to="/analysis"
-                  className="flex items-center gap-2 px-6 py-3.5 bg-white/80 backdrop-blur-sm text-[#4b5563] rounded-full border border-[#e8d5b7]/80 hover:border-[#c4a882]/40 hover:bg-white transition-all duration-300 shadow-sm"
-                >
-                  <Play className="w-3.5 h-3.5 text-[#c4a882]" />
-                  <span className="text-sm">Xem Demo</span>
-                </Link>
-              </div>
-
-              {/* Social proof micro row */}
-              <div className="flex items-center gap-6 pt-2">
-                <div className="flex -space-x-2.5">
-                  {[
-                    "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=40&h=40&fit=crop&crop=face",
-                    "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=40&h=40&fit=crop&crop=face",
-                    "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=40&h=40&fit=crop&crop=face",
-                    "https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?w=40&h=40&fit=crop&crop=face",
-                  ].map((src, i) => (
-                    <img key={i} src={src} alt="" className="w-9 h-9 rounded-full border-2 border-white object-cover" />
-                  ))}
-                </div>
-                <div>
-                  <div className="flex items-center gap-1 mb-0.5">
-                    {Array(5).fill(0).map((_, i) => (
-                      <Star key={i} className="w-3.5 h-3.5 fill-[#f59e0b] text-[#f59e0b]" />
-                    ))}
-                    <span className="text-sm text-[#4b5563] ml-1">4.9</span>
-                  </div>
-                  <p className="text-xs text-[#9ca3af]">Hơn 50,000 người dùng tin tưởng</p>
-                </div>
-              </div>
-            </div>
-
-            {/* RIGHT: Hero Image with floating cards */}
-            <div className="relative z-10 hidden lg:block">
-              {/* Main image container */}
-              <div className="relative rounded-[2.5rem] overflow-hidden shadow-2xl shadow-[#8c6e52]/15">
-                <img
-                  src="https://images.unsplash.com/photo-1590110348915-993aca51ea03?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxsdXh1cnklMjBza2luY2FyZSUyMHdvbWFuJTIwZ2xvd2luZyUyMHNraW4lMjBjbG9zZSUyMHVwfGVufDF8fHx8MTc3NDA4MjI3MHww&ixlib=rb-4.1.0&q=80&w=1080"
-                  alt="AI Skincare Analysis"
-                  className="w-full h-[560px] object-cover"
-                />
-                {/* Gradient overlay bottom */}
-                <div className="absolute inset-0 bg-gradient-to-t from-[#2a1a0a]/20 via-transparent to-transparent" />
-
-                {/* Scan overlay lines */}
-                <div className="absolute inset-0">
-                  <div className="absolute top-[28%] left-[18%] w-8 h-8">
-                    <div className="absolute top-0 left-0 w-3 h-3 border-t-2 border-l-2 border-[#c4a882]/70" />
-                  </div>
-                  <div className="absolute top-[28%] right-[18%] w-8 h-8">
-                    <div className="absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2 border-[#c4a882]/70" />
-                  </div>
-                  <div className="absolute bottom-[28%] left-[18%] w-8 h-8">
-                    <div className="absolute bottom-0 left-0 w-3 h-3 border-b-2 border-l-2 border-[#c4a882]/70" />
-                  </div>
-                  <div className="absolute bottom-[28%] right-[18%] w-8 h-8">
-                    <div className="absolute bottom-0 right-0 w-3 h-3 border-b-2 border-r-2 border-[#c4a882]/70" />
-                  </div>
-                  {/* scan line */}
-                  <div className="absolute left-[18%] right-[18%] top-1/2 h-[1px] bg-gradient-to-r from-transparent via-[#c4a882]/50 to-transparent" />
-                </div>
-              </div>
-
-              {/* Floating card — Skin Score */}
-              <div className="absolute -left-8 top-12 bg-white/90 backdrop-blur-md rounded-2xl shadow-xl shadow-[#8c6e52]/10 p-4 border border-[#e8d5b7]/60 min-w-[160px]">
-                <div className="flex items-center gap-2.5 mb-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#c4a882] to-[#8c6e52] flex items-center justify-center">
-                    <Sparkles className="w-4 h-4 text-white" />
-                  </div>
-                  <div>
-                    <p className="text-[11px] text-[#9ca3af]">Điểm Da</p>
-                    <p className="text-lg text-[#2a2a2a]" style={{ fontWeight: 600 }}>87/100</p>
-                  </div>
-                </div>
-                <div className="h-1.5 bg-[#f5f0e8] rounded-full overflow-hidden">
-                  <div className="h-full w-[87%] bg-gradient-to-r from-[#c4a882] to-[#8c6e52] rounded-full" />
-                </div>
-              </div>
-
-              {/* Floating card — AI Result */}
-              <div className="absolute -right-6 bottom-20 bg-white/90 backdrop-blur-md rounded-2xl shadow-xl shadow-[#8c6e52]/10 p-4 border border-[#e8d5b7]/60 min-w-[180px]">
-                <p className="text-[11px] text-[#9ca3af] mb-2">✦ Phân tích AI</p>
-                <div className="space-y-1.5">
-                  {[
-                    { label: "Độ ẩm", val: 72, color: "from-sky-400 to-blue-500" },
-                    { label: "Dầu", val: 45, color: "from-amber-400 to-orange-500" },
-                    { label: "Độ đều màu", val: 83, color: "from-[#c4a882] to-[#8c6e52]" },
-                  ].map((item) => (
-                    <div key={item.label} className="flex items-center gap-2">
-                      <span className="text-[10px] text-[#6b7280] w-16">{item.label}</span>
-                      <div className="flex-1 h-1.5 bg-[#f5f0e8] rounded-full overflow-hidden">
-                        <div className={`h-full bg-gradient-to-r ${item.color} rounded-full`} style={{ width: `${item.val}%` }} />
-                      </div>
-                      <span className="text-[10px] text-[#9ca3af] w-6 text-right">{item.val}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Floating badge — instant */}
-              <div className="absolute left-4 bottom-8 flex items-center gap-2 px-3.5 py-2 bg-[#1a1410]/80 backdrop-blur-sm rounded-full text-white text-xs shadow-lg">
-                <Zap className="w-3.5 h-3.5 text-[#c4a882]" />
-                Phân tích trong 30 giây
-              </div>
-            </div>
+// [CẬP NHẬT]: Tăng chiều sâu 3D cho mockup điện thoại bằng rotate nhẹ, shadow sâu và hover trả về trạng thái thẳng.
+function PhoneMockup() {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 28, rotate: -2 }}
+      animate={{ opacity: 1, y: 0, rotate: -2 }}
+      whileHover={{ rotate: 0, y: -6 }}
+      transition={{ duration: 0.8, ease: "easeOut" }}
+      className="relative mx-auto h-[630px] w-[316px] rounded-[3.2rem] bg-[#191b26] p-3 drop-shadow-2xl shadow-[0_44px_110px_rgba(93,108,214,0.34)] ring-1 ring-white/40 transition-transform duration-500 lg:ml-auto"
+    >
+      <div className="absolute left-1/2 top-4 z-20 h-6 w-28 -translate-x-1/2 rounded-full bg-[#11131b]" />
+      <div className="relative h-full overflow-hidden rounded-[2.55rem] bg-[#f7f8ff]">
+        <img
+          src="https://images.unsplash.com/photo-1590110348915-993aca51ea03?auto=format&fit=crop&w=720&q=90"
+          alt="Ứng dụng SkinSync đang phân tích da"
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#eef1ff]/40 via-white/5 to-[#111827]/70" />
+        <div className="absolute inset-x-5 top-14 rounded-3xl border border-white/50 bg-white/60 p-4 shadow-xl shadow-[#6875e8]/15 backdrop-blur-2xl">
+          <div className="mb-3 flex items-center justify-between">
+            <span className="text-[11px] font-bold tracking-[0.22em] text-[#606eea]">MAGIC MOMENT</span>
+            <span className="rounded-full bg-[#d7fbeb] px-2.5 py-1 text-[10px] font-semibold text-[#189966]">LIVE</span>
           </div>
-        </div>
-
-        {/* Bottom wave */}
-        <div className="absolute bottom-0 left-0 right-0">
-          <svg viewBox="0 0 1440 60" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full">
-            <path d="M0 60V30 Q360 0 720 30 Q1080 60 1440 30V60H0Z" fill="white" fillOpacity="0.5"/>
-          </svg>
-        </div>
-      </section>
-
-      {/* ══════════════════════════════════════════
-          STATS BAR
-      ══════════════════════════════════════════ */}
-      <section ref={statsRef} className="relative py-12 bg-white border-y border-[#e8d5b7]/40">
-        <div className="max-w-5xl mx-auto px-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
-            {[
-              { value: `${accuracy}%`, label: "Độ chính xác AI", icon: Brain },
-              { value: `${users}K+`, label: "Người dùng tin tưởng", icon: Users },
-              { value: `${products}+`, label: "Sản phẩm được kiểm duyệt", icon: Award },
-              { value: "4.9★", label: "Đánh giá trung bình", icon: Star },
-            ].map((stat, i) => (
-              <div key={i} className="group flex flex-col items-center gap-1.5 py-4 px-3 rounded-2xl hover:bg-[#faf7f2] transition-colors">
-                <stat.icon className="w-5 h-5 text-[#c4a882] mb-1" />
-                <div className="text-3xl text-[#1a1410]" style={{ fontWeight: 700 }}>{stat.value}</div>
-                <div className="text-sm text-[#6b7280]">{stat.label}</div>
+          <div className="space-y-2">
+            {["Niacinamide", "Vitamin C", "BHA 2%"].map((item, index) => (
+              <div key={item} className="flex items-center justify-between rounded-2xl bg-white/70 px-3 py-2">
+                <span className="text-xs font-medium text-[#29304c]">{item}</span>
+                <span className="text-xs font-bold text-[#24a878]">{index === 1 ? "92%" : "Phù hợp"}</span>
               </div>
             ))}
           </div>
         </div>
-      </section>
-
-      {/* ══════════════════════════════════════════
-          BRAND PHILOSOPHY (Nature · Science · AI)
-      ══════════════════════════════════════════ */}
-      <section className="py-24 px-6 bg-[#faf7f2]">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid lg:grid-cols-2 gap-16 items-center">
-            {/* Images mosaic */}
-            <div className="relative grid grid-cols-2 gap-4 h-[480px]">
-              <div className="col-span-1 space-y-4">
-                <div className="rounded-3xl overflow-hidden h-56 shadow-lg">
-                  <img
-                    src="https://images.unsplash.com/photo-1760860991924-237b4160efbd?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxuYXR1cmFsJTIwYm90YW5pY2FsJTIwaW5ncmVkaWVudHMlMjBza2luY2FyZSUyMHNlcnVtJTIwYm90dGxlfGVufDF8fHx8MTc3NDA4MjI3MHww&ixlib=rb-4.1.0&q=80&w=600"
-                    alt="Natural ingredients"
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <div className="rounded-3xl overflow-hidden h-40 shadow-lg">
-                  <img
-                    src="https://images.unsplash.com/photo-1749137315928-bc96451fa4c0?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxtaW5pbWFsaXN0JTIwc2tpbmNhcmUlMjBwcm9kdWN0cyUyMGZsYXQlMjBsYXklMjBiZWlnZXxlbnwxfHx8fDE3NzQwODIyNzB8MA&ixlib=rb-4.1.0&q=80&w=600"
-                    alt="Skincare products"
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              </div>
-              <div className="col-span-1 pt-10 space-y-4">
-                <div className="rounded-3xl overflow-hidden h-40 shadow-lg">
-                  <img
-                    src="https://images.unsplash.com/photo-1663229049147-30f47be043ea?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxBSSUyMHRlY2hub2xvZ3klMjBza2luJTIwYW5hbHlzaXMlMjBmYWNlJTIwc2NhbnxlbnwxfHx8fDE3NzQwODIyNzN8MA&ixlib=rb-4.1.0&q=80&w=600"
-                    alt="AI skin scan"
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <div className="rounded-3xl overflow-hidden h-56 shadow-lg">
-                  <img
-                    src="https://images.unsplash.com/photo-1693004923522-806dafe5a1a0?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx3b21hbiUyMGFwcGx5aW5nJTIwc2VydW0lMjBtb2lzdHVyaXplciUyMGx1eHVyeSUyMHNwYXxlbnwxfHx8fDE3NzQwODIyNzN8MA&ixlib=rb-4.1.0&q=80&w=600"
-                    alt="Woman applying serum"
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              </div>
-              {/* Badge over images */}
-              <div className="absolute bottom-4 left-4 right-4 bg-white/90 backdrop-blur-md rounded-2xl p-4 border border-[#e8d5b7]/60 shadow-lg flex items-center gap-4">
-                <div className="flex -space-x-1">
-                  {["🌿", "🔬", "🤖"].map((e, i) => (
-                    <div key={i} className="w-9 h-9 rounded-full bg-gradient-to-br from-[#f5f0e8] to-[#e8d5b7] flex items-center justify-center text-base border-2 border-white">
-                      {e}
-                    </div>
-                  ))}
-                </div>
-                <div>
-                  <p className="text-sm text-[#2a2a2a]" style={{ fontWeight: 600 }}>Thiên Nhiên · Khoa Học · AI</p>
-                  <p className="text-xs text-[#9ca3af]">Ba trụ cột của làn da khỏe mạnh</p>
-                </div>
-              </div>
+        <motion.div
+          animate={{ y: [0, 245, 0] }}
+          transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute left-8 right-8 top-48 h-[2px] bg-gradient-to-r from-transparent via-[#8ff4d1] to-transparent shadow-[0_0_28px_rgba(143,244,209,0.9)]"
+        />
+        <div className="absolute inset-x-5 bottom-7 rounded-[2rem] border border-white/40 bg-white/75 p-4 shadow-2xl shadow-[#111827]/20 backdrop-blur-2xl">
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#7d86a4]">Điểm tương thích</p>
+              <p className="text-4xl font-black text-[#151827]">94</p>
             </div>
-
-            {/* Text */}
-            <div className="space-y-8">
-              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-[#f5f0e8] rounded-full border border-[#e8d5b7]/60">
-                <Leaf className="w-3.5 h-3.5 text-[#8c6e52]" />
-                <span className="text-xs text-[#8c6e52]">Triết lý của chúng tôi</span>
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-[#b7b9ff] to-[#7e8bff] text-white shadow-lg shadow-[#7e8bff]/30">
+              <Sparkles className="h-7 w-7" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {["Ít kích ứng", "Sáng da", "Cấp ẩm", "Dùng tối"].map((item) => (
+              <div key={item} className="rounded-2xl bg-[#f4f6ff] px-3 py-2 text-xs font-semibold text-[#4d5578]">
+                {item}
               </div>
-              <h2 className="text-4xl lg:text-5xl text-[#1a1410] leading-tight">
-                Nơi Thiên Nhiên<br />
-                Gặp Khoa Học &<br />
-                <span className="text-[#c4a882]">Trí Tuệ AI</span>
-              </h2>
-              <p className="text-[#6b7280] leading-relaxed">
-                Chúng tôi tin rằng mỗi làn da là duy nhất. Bằng cách kết hợp thành phần thiên nhiên thuần khiết, nghiên cứu khoa học tiên tiến và sức mạnh của AI, chúng tôi tạo ra lộ trình chăm sóc da thực sự phù hợp với bạn.
-              </p>
-              <div className="space-y-4">
-                {[
-                  { icon: Leaf, text: "Thành phần thiên nhiên được chứng nhận quốc tế", color: "text-emerald-600 bg-emerald-50" },
-                  { icon: FlaskConical, text: "Nghiên cứu lâm sàng với hơn 10,000 đối tượng da", color: "text-blue-600 bg-blue-50" },
-                  { icon: Brain, text: "Mô hình AI được huấn luyện trên 5 triệu ảnh da", color: "text-[#8c6e52] bg-[#f5f0e8]" },
-                ].map((item, i) => (
-                  <div key={i} className="flex items-center gap-3.5">
-                    <div className={`w-9 h-9 rounded-xl ${item.color} flex items-center justify-center flex-shrink-0`}>
-                      <item.icon className="w-4 h-4" />
-                    </div>
-                    <span className="text-sm text-[#4b5563]">{item.text}</span>
-                  </div>
+            ))}
+          </div>
+        </div>
+      </div>
+      <div className="absolute -bottom-8 left-10 right-10 h-9 rounded-full bg-[#5e6dde]/30 blur-2xl" />
+    </motion.div>
+  );
+}
+
+// [CẬP NHẬT]: Tách navbar thành component riêng và thêm dropdown hover cho mục "Về ứng dụng".
+function Navbar() {
+  return (
+    <header className="fixed left-0 right-0 top-0 z-50 px-4 py-4">
+      <nav className="mx-auto flex max-w-7xl items-center justify-between rounded-full border border-white/70 bg-white/70 px-4 py-3 shadow-xl shadow-[#9aa6ff]/10 backdrop-blur-2xl">
+        <Link to="/" className="flex items-center gap-3">
+          <span className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-[#b9b6ff] to-[#8ea7ff] text-sm font-black text-white shadow-lg shadow-[#8ea7ff]/30">
+            SS
+          </span>
+          <span className="text-lg font-black tracking-[0.2em] text-[#151827]">SKINSYNC</span>
+        </Link>
+
+        <div className="hidden items-center gap-8 text-sm font-semibold text-[#606982] md:flex">
+          <a href="#features" className="transition hover:text-[#606eea]">Tính Năng</a>
+
+          <div className="group relative py-2">
+            <button type="button" className="flex items-center gap-1 transition hover:text-[#606eea]">
+              Về ứng dụng
+              <ArrowRight className="h-3.5 w-3.5 rotate-90" />
+            </button>
+
+            <div className="invisible absolute left-1/2 top-full w-72 -translate-x-1/2 translate-y-2 opacity-0 transition-all duration-200 group-hover:visible group-hover:translate-y-0 group-hover:opacity-100">
+              <div className="overflow-hidden rounded-[1.5rem] border border-white/80 bg-white/95 p-2 shadow-2xl shadow-[#9aa6ff]/18 backdrop-blur-2xl">
+                {aboutAppLinks.map((item) => (
+                  <a
+                    key={item.label}
+                    href={item.href}
+                    className="flex items-center justify-between rounded-2xl px-4 py-3 text-sm text-[#29304c] transition hover:bg-[#f4f6ff] hover:text-[#606eea]"
+                  >
+                    <span>{item.label}</span>
+                    <ArrowRight className="h-4 w-4" />
+                  </a>
                 ))}
               </div>
-              <Link
-                to="/quiz"
-                className="inline-flex items-center gap-2 text-[#c4a882] hover:text-[#8c6e52] transition-colors group"
-              >
-                <span className="text-sm" style={{ fontWeight: 500 }}>Khám phá công nghệ</span>
-                <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-              </Link>
             </div>
           </div>
-        </div>
-      </section>
 
-      {/* ══════════════════════════════════════════
-          FEATURES
-      ══════════════════════════════════════════ */}
-      <section className="py-24 px-6 bg-white">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-[#f5f0e8] rounded-full border border-[#e8d5b7]/60 mb-4">
-              <Zap className="w-3.5 h-3.5 text-[#c4a882]" />
-              <span className="text-xs text-[#8c6e52]">Tính năng nổi bật</span>
-            </div>
-            <h2 className="text-4xl lg:text-5xl text-[#1a1410] mb-4">
-              Tại Sao Chọn <span className="text-[#c4a882]">SkinSync</span>
-            </h2>
-            <p className="text-[#6b7280] max-w-xl mx-auto">
-              Nền tảng kết hợp công nghệ AI tiên tiến với kiến thức chuyên sâu về da liễu để mang lại kết quả thực sự.
-            </p>
-          </div>
+          <div className="group relative py-2">
+            <button type="button" className="flex items-center gap-1 transition hover:text-[#606eea]">
+              Tài nguyên
+              <ArrowRight className="h-3.5 w-3.5 rotate-90" />
+            </button>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-5">
-            {features.map((f, i) => (
-              <div
-                key={i}
-                className={`group relative p-6 rounded-3xl bg-gradient-to-br ${f.gradient} border border-[#e8d5b7]/40 hover:border-[#c4a882]/30 hover:shadow-lg hover:shadow-[#c4a882]/8 transition-all duration-300 cursor-default`}
-              >
-                <div className="mb-5">
-                  <div className={`w-11 h-11 rounded-2xl bg-gradient-to-br ${f.iconBg} flex items-center justify-center shadow-md mb-4`}>
-                    <f.icon className="w-5 h-5 text-white" />
-                  </div>
-                  <span className="text-[10px] text-[#c4a882] bg-[#f5f0e8] px-2.5 py-0.5 rounded-full border border-[#e8d5b7]/60">
-                    {f.tag}
-                  </span>
-                </div>
-                <h3 className="text-[#1a1410] mb-2">{f.title}</h3>
-                <p className="text-sm text-[#6b7280] leading-relaxed">{f.desc}</p>
-                <div className="absolute bottom-5 right-5 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <ArrowRight className="w-4 h-4 text-[#c4a882]" />
-                </div>
+            <div className="invisible absolute left-1/2 top-full w-72 -translate-x-1/2 translate-y-2 opacity-0 transition-all duration-200 group-hover:visible group-hover:translate-y-0 group-hover:opacity-100">
+              <div className="overflow-hidden rounded-[1.5rem] border border-white/80 bg-white/95 p-2 shadow-2xl shadow-[#9aa6ff]/18 backdrop-blur-2xl">
+                {resourceLinks.map((item) => (
+                  <Link
+                    key={item.label}
+                    to={item.href}
+                    className="flex items-center justify-between rounded-2xl px-4 py-3 text-sm text-[#29304c] transition hover:bg-[#f4f6ff] hover:text-[#606eea]"
+                  >
+                    <span>{item.label}</span>
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                ))}
               </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ══════════════════════════════════════════
-          HOW IT WORKS
-      ══════════════════════════════════════════ */}
-      <section className="py-24 px-6 bg-[#faf7f2]">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-16">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-white rounded-full border border-[#e8d5b7]/60 mb-4 shadow-sm">
-              <Clock className="w-3.5 h-3.5 text-[#c4a882]" />
-              <span className="text-xs text-[#8c6e52]">Chỉ 3 bước đơn giản</span>
-            </div>
-            <h2 className="text-4xl lg:text-5xl text-[#1a1410] mb-4">
-              Quy Trình <span className="text-[#c4a882]">Hoạt Động</span>
-            </h2>
-            <p className="text-[#6b7280]">Từ lần đầu đăng ký đến lộ trình cá nhân hóa — chỉ trong vài phút</p>
-          </div>
-
-          <div className="relative">
-            {/* Connecting line (desktop) */}
-            <div className="hidden md:block absolute top-10 left-[16%] right-[16%] h-[2px] bg-gradient-to-r from-[#e8d5b7] via-[#c4a882]/40 to-[#e8d5b7]" />
-
-            <div className="grid md:grid-cols-3 gap-10">
-              {[
-                {
-                  step: "01",
-                  icon: "📋",
-                  title: "Khảo Sát Nhanh",
-                  desc: "Trả lời 12 câu hỏi về lối sống, môi trường sống và mục tiêu làn da của bạn.",
-                  time: "~3 phút",
-                  link: "/quiz",
-                },
-                {
-                  step: "02",
-                  icon: "📸",
-                  title: "Tải Ảnh & AI Phân Tích",
-                  desc: "Upload một ảnh tự chụp. AI sẽ quét và phân tích 47 chỉ số da chỉ trong 30 giây.",
-                  time: "~30 giây",
-                  link: "/upload",
-                },
-                {
-                  step: "03",
-                  icon: "✨",
-                  title: "Nhận Lộ Trình Riêng",
-                  desc: "Lộ trình sáng-tối cá nhân hóa cùng gợi ý sản phẩm phù hợp được cập nhật liên tục.",
-                  time: "Trọn đời",
-                  link: "/routine",
-                },
-              ].map((s, i) => (
-                <div key={i} className="flex flex-col items-center text-center group">
-                  {/* Step circle */}
-                  <div className="relative w-20 h-20 mb-6">
-                    <div className="absolute inset-0 rounded-full bg-gradient-to-br from-[#c4a882]/20 to-[#8c6e52]/10 group-hover:scale-110 transition-transform duration-300" />
-                    <div className="absolute inset-2 rounded-full bg-white shadow-md flex items-center justify-center text-2xl">
-                      {s.icon}
-                    </div>
-                    <div className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-gradient-to-br from-[#c4a882] to-[#8c6e52] flex items-center justify-center shadow-sm">
-                      <span className="text-[9px] text-white" style={{ fontWeight: 700 }}>{s.step}</span>
-                    </div>
-                  </div>
-                  <h3 className="text-[#1a1410] mb-2">{s.title}</h3>
-                  <p className="text-sm text-[#6b7280] leading-relaxed mb-4">{s.desc}</p>
-                  <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#f5f0e8] border border-[#e8d5b7]/60">
-                    <Clock className="w-3 h-3 text-[#c4a882]" />
-                    <span className="text-xs text-[#8c6e52]">{s.time}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="text-center mt-14">
-              <Link
-                to="/quiz"
-                className="inline-flex items-center gap-2.5 px-8 py-4 bg-gradient-to-r from-[#c4a882] to-[#8c6e52] text-white rounded-full shadow-lg shadow-[#c4a882]/25 hover:scale-[1.03] hover:shadow-xl hover:shadow-[#c4a882]/35 transition-all duration-300"
-              >
-                <Sparkles className="w-4 h-4" />
-                Bắt Đầu Ngay — Miễn Phí
-                <ArrowRight className="w-4 h-4" />
-              </Link>
             </div>
           </div>
+
+          <a href="#journey" className="transition hover:text-[#606eea]">Lộ Trình</a>
+          <a href="#experts" className="transition hover:text-[#606eea]">Chuyên Gia</a>
         </div>
-      </section>
 
-      {/* ══════════════════════════════════════════
-          SKIN TYPES
-      ══════════════════════════════════════════ */}
-      <section className="py-24 px-6 bg-white">
-        <div className="max-w-5xl mx-auto text-center">
-          <h2 className="text-4xl text-[#1a1410] mb-3">AI Hỗ Trợ Mọi Loại Da</h2>
-          <p className="text-[#6b7280] mb-12">Dù bạn có loại da nào, AI đều tìm ra giải pháp tối ưu.</p>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
-            {skinTypes.map((type, i) => (
-              <div
-                key={i}
-                className={`group p-6 rounded-3xl bg-gradient-to-b ${type.color} border ${type.border} hover:scale-[1.04] hover:shadow-md transition-all duration-300 cursor-default`}
-              >
-                <div className="text-4xl mb-4 group-hover:scale-110 transition-transform duration-300">{type.icon}</div>
-                <h3 className="text-[#1a1410] mb-1.5">{type.label}</h3>
-                <p className="text-xs text-[#6b7280]">{type.sub}</p>
-              </div>
-            ))}
+        <Button asChild className="h-12 rounded-full bg-[#151827] px-6 text-xs font-black tracking-[0.16em] text-white shadow-xl shadow-[#151827]/20 hover:bg-[#29304c]">
+          <a href="#download">TẢI APP NGAY</a>
+        </Button>
+      </nav>
+    </header>
+  );
+}
+
+// [CẬP NHẬT]: Tách hero thành component riêng, thay CTA cũ bằng badge App Store/Google Play và giữ QR download area.
+function Hero() {
+  return (
+    <section className="relative min-h-screen bg-[linear-gradient(135deg,#fffdfa_0%,#f5f1ff_38%,#eef3ff_68%,#f7fff9_100%)]">
+      <div className="mx-auto grid max-w-7xl gap-12 px-5 pb-20 pt-32 lg:grid-cols-[1.04fr_0.96fr] lg:px-8 lg:pb-24 lg:pt-36">
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, ease: "easeOut" }}
+          className="flex flex-col justify-center"
+        >
+          <div className="mb-7 inline-flex w-fit items-center gap-2 rounded-full border border-white/70 bg-white/65 px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] text-[#606eea] shadow-lg shadow-[#9aa6ff]/10 backdrop-blur-xl">
+            <Sparkles className="h-4 w-4" />
+            AI dermatology-tech cho thế hệ mới
           </div>
-        </div>
-      </section>
-
-      {/* ══════════════════════════════════════════
-          TESTIMONIALS
-      ══════════════════════════════════════════ */}
-      <section className="py-24 px-6 bg-[#faf7f2]">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-white rounded-full border border-[#e8d5b7]/60 mb-4 shadow-sm">
-              <Star className="w-3.5 h-3.5 fill-[#f59e0b] text-[#f59e0b]" />
-              <span className="text-xs text-[#8c6e52]">Câu chuyện thực tế</span>
-            </div>
-            <h2 className="text-4xl lg:text-5xl text-[#1a1410] mb-3">
-              Khách Hàng Nói Gì <span className="text-[#c4a882]">Về Chúng Tôi</span>
-            </h2>
-            <p className="text-[#6b7280]">Hơn 50,000 người dùng đã tin tưởng và thay đổi làn da của mình</p>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-6">
-            {testimonials.map((t, i) => (
-              <div
-                key={i}
-                className="group bg-white rounded-3xl p-6 border border-[#e8d5b7]/40 hover:border-[#c4a882]/30 hover:shadow-xl hover:shadow-[#c4a882]/8 transition-all duration-300"
-              >
-                {/* Stars */}
-                <div className="flex items-center gap-0.5 mb-4">
-                  {Array(t.rating).fill(0).map((_, j) => (
-                    <Star key={j} className="w-4 h-4 fill-[#f59e0b] text-[#f59e0b]" />
-                  ))}
-                </div>
-                <p className="text-sm text-[#4b5563] leading-relaxed mb-5 italic">"{t.text}"</p>
-                <div className="flex items-center gap-3 pt-4 border-t border-[#f5f0e8]">
-                  <img src={t.avatar} alt={t.name} className="w-10 h-10 rounded-full object-cover border-2 border-[#e8d5b7]/60" />
-                  <div className="flex-1">
-                    <p className="text-sm text-[#2a2a2a]" style={{ fontWeight: 600 }}>{t.name}</p>
-                    <p className="text-xs text-[#9ca3af]">{t.role}</p>
-                  </div>
-                  <span className="text-xs px-2.5 py-1 rounded-full bg-[#f5f0e8] text-[#8c6e52] border border-[#e8d5b7]/60">
-                    {t.skin}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Trust badges */}
-          <div className="mt-12 flex flex-wrap justify-center gap-6 items-center">
-            {[
-              { icon: Shield, text: "Kiểm duyệt bởi bác sĩ da liễu" },
-              { icon: Award, text: "Giải thưởng Healthtech 2025" },
-              { icon: CheckCircle2, text: "Chứng nhận ISO 27001" },
-              { icon: Users, text: "Cộng đồng 50K+ thành viên" },
-            ].map((b, i) => (
-              <div key={i} className="flex items-center gap-2 px-4 py-2 bg-white rounded-full border border-[#e8d5b7]/60 shadow-sm">
-                <b.icon className="w-3.5 h-3.5 text-[#c4a882]" />
-                <span className="text-xs text-[#4b5563]">{b.text}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ══════════════════════════════════════════
-          FINAL CTA
-      ══════════════════════════════════════════ */}
-      <section className="relative py-28 px-6 overflow-hidden">
-        {/* Background */}
-        <div className="absolute inset-0 bg-gradient-to-br from-[#2a1a0a] via-[#3d2a14] to-[#1a1410]" />
-        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNjNGE4ODIiIGZpbGwtb3BhY2l0eT0iMC4wNCI+PHBhdGggZD0iTTM2IDM0djZoNnYtNmgtNnptMC0zMHY2aDZ2LTZoLTZ6Ii8+PC9nPjwvZz48L3N2Zz4=')] opacity-40" />
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-[#c4a882]/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 right-1/4 w-72 h-72 bg-[#8c6e52]/15 rounded-full blur-3xl" />
-
-        <div className="relative max-w-4xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full border border-white/20 mb-6">
-            <Sparkles className="w-3.5 h-3.5 text-[#c4a882]" />
-            <span className="text-xs text-[#e8d5b7]">Bắt đầu hành trình ngay hôm nay</span>
-          </div>
-          <h2 className="text-5xl lg:text-6xl text-white mb-5 leading-tight">
-            Sẵn Sàng Cho<br />
-            <span className="text-[#c4a882]">Làn Da Hoàn Hảo?</span>
-          </h2>
-          <p className="text-[#d4b896] text-lg mb-10 max-w-xl mx-auto leading-relaxed">
-            Tham gia cùng 50,000+ người đã biến đổi làn da nhờ AI. Phân tích miễn phí — không cần thẻ tín dụng.
+          <h1 className="max-w-3xl text-5xl font-black leading-[1.04] tracking-normal text-[#151827] md:text-6xl xl:text-[72px]">
+            AI CHĂM SÓC DA CÁ NHÂN: ĐỒNG BỘ CÙNG LÀN DA BẠN
+          </h1>
+          <p className="mt-7 max-w-xl text-xl font-medium leading-8 text-[#68708a]">
+            Tối ưu ngân sách, Hiểu làn da, Đẹp mỗi ngày
           </p>
-          <div className="flex flex-wrap justify-center gap-4">
-            <Link
-              to="/quiz"
-              className="group flex items-center gap-2.5 px-8 py-4 bg-gradient-to-r from-[#c4a882] to-[#b8956e] text-white rounded-full shadow-xl shadow-[#c4a882]/30 hover:shadow-2xl hover:shadow-[#c4a882]/40 hover:scale-[1.04] transition-all duration-300"
-            >
-              <Sparkles className="w-4 h-4" />
-              Phân Tích Da Miễn Phí
-              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-            </Link>
-            <Link
-              to="/login"
-              className="flex items-center gap-2 px-7 py-4 bg-white/10 backdrop-blur-sm text-white rounded-full border border-white/20 hover:bg-white/20 transition-all duration-300"
-            >
-              Đăng Nhập
-            </Link>
+
+          <div id="download" className="mt-10 grid max-w-2xl gap-5 rounded-[2rem] border border-white/80 bg-white/55 p-5 shadow-2xl shadow-[#9aa6ff]/12 backdrop-blur-2xl sm:grid-cols-[auto_1fr] scroll-mt-28">
+            <div className="flex flex-col items-center gap-3">
+              <QrCode />
+              <span className="text-sm font-bold text-[#606982]">Quét mã để tải</span>
+            </div>
+            <div className="flex flex-col justify-center gap-3">
+              <div className="flex flex-wrap gap-3">
+                <AppStoreBadge />
+                <GooglePlayBadge />
+              </div>
+              <p className="max-w-md text-sm leading-6 text-[#7d86a4]">
+                Trải nghiệm ứng dụng AI skincare cá nhân hóa với giao diện mobile mượt, phân tích tức thì và lộ trình được đồng bộ mỗi ngày.
+              </p>
+            </div>
           </div>
-          {/* micro reassurances */}
-          <div className="flex flex-wrap justify-center gap-6 mt-10">
-            {["✓ Miễn phí mãi mãi", "✓ Không cần thẻ ngân hàng", "✓ Bảo mật dữ liệu 100%"].map((t) => (
-              <span key={t} className="text-sm text-[#a08060]">{t}</span>
+        </motion.div>
+
+        <div className="relative min-h-[680px]">
+          <img
+            src="https://images.unsplash.com/photo-1617897903246-719242758050?auto=format&fit=crop&w=460&q=90"
+            alt="Sản phẩm chăm sóc da cao cấp"
+            className="absolute right-0 top-10 hidden h-36 w-36 rotate-6 rounded-[2rem] object-cover shadow-2xl shadow-[#9aa6ff]/20 ring-1 ring-white/70 lg:block"
+          />
+          <img
+            src="https://images.unsplash.com/photo-1556228578-8c89e6adf883?auto=format&fit=crop&w=460&q=90"
+            alt="Kết cấu mỹ phẩm trong studio"
+            className="absolute bottom-14 left-0 hidden h-40 w-40 -rotate-6 rounded-[2rem] object-cover shadow-2xl shadow-[#fed7c3]/25 ring-1 ring-white/70 lg:block"
+          />
+          <PhoneMockup />
+        </div>
+      </div>
+
+      <div className="mx-auto grid max-w-5xl grid-cols-2 gap-3 px-5 pb-16 md:grid-cols-4">
+        {featureChips.map((feature) => (
+          <div key={feature.label} className="flex items-center gap-3 rounded-2xl border border-white/80 bg-white/65 p-4 shadow-lg shadow-[#9aa6ff]/10 backdrop-blur-xl">
+            <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#f0f3ff] text-[#606eea]">
+              <feature.icon className="h-5 w-5" />
+            </span>
+            <span className="text-xs font-black leading-5 tracking-[0.12em] text-[#29304c]">{feature.label}</span>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+// [CẬP NHẬT]: Tách timeline thành component riêng, đổi icon từng bước và đưa CTA xuống chính giữa bên dưới lưới.
+function Timeline() {
+  return (
+    <section id="journey" className="bg-[#fbfaf7] px-5 py-24 scroll-mt-28">
+      <div className="mx-auto max-w-7xl">
+        <div className="mb-14 flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+          <div>
+            <p className="mb-3 text-sm font-black uppercase tracking-[0.22em] text-[#24a878]">Lộ trình người dùng</p>
+            <h2 className="max-w-3xl text-4xl font-black tracking-normal md:text-5xl">Từ ảnh chụp đến routine cá nhân chỉ trong một hành trình mượt mà.</h2>
+          </div>
+        </div>
+
+        <div className="relative grid gap-5 md:grid-cols-4">
+          <div className="absolute left-[12%] right-[12%] top-16 hidden h-px bg-gradient-to-r from-[#b9b6ff] via-[#8ff4d1] to-[#fed7c3] md:block" />
+          {journeySteps.map((step, index) => (
+            <motion.div
+              key={step.title}
+              whileHover={{ y: -6 }}
+              className="relative rounded-[2rem] border border-white/80 bg-white/70 p-5 shadow-xl shadow-[#9aa6ff]/10 backdrop-blur-xl"
+            >
+              <div className="mb-5 flex h-24 items-center justify-center rounded-[1.5rem] bg-gradient-to-br from-[#f1f3ff] to-[#fff3eb]">
+                <div className="flex h-16 w-16 items-center justify-center rounded-[1.5rem] bg-white shadow-lg shadow-[#9aa6ff]/10">
+                  <step.icon className="h-7 w-7 text-[#606eea]" />
+                </div>
+              </div>
+              <div className="mb-4 flex items-center gap-3">
+                <span className="text-xs font-black text-[#7d86a4]">0{index + 1}</span>
+              </div>
+              <h3 className="text-base font-black leading-6 tracking-[0.08em] text-[#29304c]">{step.title}</h3>
+            </motion.div>
+          ))}
+        </div>
+
+        <div className="mt-10 flex justify-center">
+          <Button asChild className="h-12 w-fit rounded-full bg-[#606eea] px-6 font-bold text-white shadow-xl shadow-[#606eea]/25 hover:bg-[#4d5bd3]">
+            <Link to="/quiz">Bắt đầu phân tích <ArrowRight className="h-4 w-4" /></Link>
+          </Button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export function LandingPage() {
+  return (
+    <main className="min-h-screen overflow-hidden bg-[#fbfaf7] text-[#151827]">
+      {/* [CẬP NHẬT]: Thay toàn bộ hero/nav cũ bằng các component tái cấu trúc Navbar + Hero. */}
+      <Navbar />
+      <Hero />
+
+      <section id="features" className="bg-white px-5 py-24 scroll-mt-28">
+        <div className="mx-auto max-w-7xl">
+          <div className="mb-12 max-w-2xl">
+            <p className="mb-3 text-sm font-black uppercase tracking-[0.22em] text-[#7e8bff]">Tính năng nổi bật</p>
+            <h2 className="text-4xl font-black tracking-normal text-[#151827] md:text-5xl">Một hệ sinh thái chăm sóc da thông minh, đẹp và có căn cứ khoa học.</h2>
+          </div>
+          <div className="grid auto-rows-[260px] gap-5 md:grid-cols-4">
+            {featureCards.map((feature, index) => (
+              <motion.div
+                key={feature.title}
+                initial={{ opacity: 0, y: 22 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, amount: 0.25 }}
+                transition={{ duration: 0.55, delay: index * 0.06 }}
+                className={feature.className}
+              >
+                <Card className="group h-full overflow-hidden rounded-[2rem] border-white/70 bg-[#f8f8ff] shadow-xl shadow-[#9aa6ff]/10 transition hover:-translate-y-1 hover:shadow-2xl hover:shadow-[#9aa6ff]/16">
+                  <CardContent className="relative h-full p-0">
+                    <img src={feature.image} alt={feature.title} className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-105" />
+                    <div className="absolute inset-0 bg-gradient-to-br from-white/92 via-white/68 to-[#eef3ff]/25" />
+                    <div className="relative flex h-full flex-col justify-between p-7">
+                      <div className="flex h-16 w-16 items-center justify-center rounded-[1.4rem] bg-gradient-to-br from-[#f7f2ff] to-[#dff9ee] text-[#606eea] shadow-xl shadow-white/50">
+                        <feature.icon className="h-7 w-7" />
+                      </div>
+                      <div>
+                        <h3 className="max-w-md text-2xl font-black tracking-normal text-[#151827]">{feature.title}</h3>
+                        <p className="mt-3 max-w-md text-sm font-medium leading-6 text-[#5f6884]">{feature.description}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ══════════════════════════════════════════
-          FOOTER MINI
-      ══════════════════════════════════════════ */}
-      <footer className="py-8 px-6 bg-[#1a1410] border-t border-white/5">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-[#c4a882] to-[#8c6e52] flex items-center justify-center">
-              <Sparkles className="w-3.5 h-3.5 text-white" />
-            </div>
-            <span className="text-[#e8d5b7] text-sm" style={{ fontWeight: 600 }}>SkinSync</span>
+      {/* [CẬP NHẬT]: Thay timeline cũ bằng component Timeline để dùng icon mới và CTA nằm giữa bên dưới lưới. */}
+      <Timeline />
+
+      <section id="experts" className="bg-white px-5 py-24 scroll-mt-28">
+        <div className="mx-auto max-w-7xl">
+          <div className="mb-12 text-center">
+            <p className="mb-3 text-sm font-black uppercase tracking-[0.22em] text-[#7e8bff]">Người dùng tin tưởng</p>
+            <h2 className="text-4xl font-black tracking-normal md:text-5xl">Kết quả rõ ràng, trải nghiệm rất riêng.</h2>
           </div>
-          <p className="text-xs text-[#6b5540]">© 2026 SkinSync. Mọi quyền được bảo lưu.</p>
-          <div className="flex items-center gap-5">
-            {["Chính sách", "Điều khoản", "Liên hệ"].map((item) => (
-              <a key={item} href="#" className="text-xs text-[#6b5540] hover:text-[#c4a882] transition-colors">
-                {item}
-              </a>
+          <div className="flex gap-5 overflow-x-auto pb-4 [scrollbar-width:none]">
+            {testimonials.map((item) => (
+              <Card key={item.name} className="min-w-[320px] flex-1 rounded-[2rem] border-[#eef0ff] bg-white shadow-xl shadow-[#9aa6ff]/10">
+                <CardContent className="p-6">
+                  <div className="mb-5 flex items-center gap-4">
+                    <img src={item.image} alt={item.name} className="h-16 w-16 rounded-2xl object-cover" />
+                    <div>
+                      <p className="text-lg font-black text-[#151827]">{item.name}</p>
+                      <div className="mt-1 flex items-center gap-1">
+                        {Array.from({ length: 5 }).map((_, index) => (
+                          <Star key={index} className="h-4 w-4 fill-[#ffbd5c] text-[#ffbd5c]" />
+                        ))}
+                        <span className="ml-2 text-sm font-bold text-[#68708a]">4.9/5</span>
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-lg font-semibold leading-8 text-[#3b435f]">"{item.review}"</p>
+                </CardContent>
+              </Card>
             ))}
           </div>
         </div>
-      </footer>
-    </div>
+      </section>
+
+      <section className="px-5 py-20">
+        <div className="relative mx-auto max-w-7xl overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-[#c9b8ff] via-[#9eaaff] to-[#7f97ff] px-6 py-16 text-center shadow-2xl shadow-[#7f97ff]/25 md:px-12 md:py-24">
+          <img
+            src="https://images.unsplash.com/photo-1608248543803-ba4f8c70ae0b?auto=format&fit=crop&w=500&q=90"
+            alt="Kết cấu kem dưỡng cao cấp"
+            className="absolute -left-8 top-10 hidden h-40 w-40 -rotate-12 rounded-[2rem] object-cover opacity-85 shadow-2xl md:block"
+          />
+          <img
+            src="https://images.unsplash.com/photo-1596462502278-27bfdc403348?auto=format&fit=crop&w=500&q=90"
+            alt="Mỹ phẩm trong ánh sáng studio"
+            className="absolute -right-6 bottom-8 hidden h-44 w-44 rotate-12 rounded-[2rem] object-cover opacity-90 shadow-2xl md:block"
+          />
+          <div className="relative mx-auto max-w-3xl">
+            <div className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-white/25 text-white backdrop-blur-xl">
+              <Check className="h-7 w-7" />
+            </div>
+            <h2 className="text-4xl font-black leading-tight tracking-normal text-white md:text-6xl">
+              BẮT ĐẦU HÀNH TRÌNH CHĂM SÓC DA CÙNG SKINSYNC
+            </h2>
+            <p className="mx-auto mt-6 max-w-xl text-lg font-medium leading-8 text-white/82">
+              Tải ứng dụng, quét làn da và nhận lộ trình cá nhân hóa ngay hôm nay.
+            </p>
+            <Button asChild className="mt-9 h-14 rounded-full bg-white px-9 text-sm font-black tracking-[0.16em] text-[#606eea] shadow-2xl shadow-[#5264d8]/30 hover:bg-[#f6f7ff]">
+              <a href="#download">TẢI NGAY SKINSYNC</a>
+            </Button>
+          </div>
+        </div>
+      </section>
+
+      {/* [CẬP NHẬT]: Thay footer cũ bằng Footer 6 cột, đồng bộ link sang các trang độc lập và giữ copyright ở đáy. */}
+      <Footer />
+    </main>
   );
 }

@@ -5,13 +5,36 @@ enum OnboardingGender { male, female, other, preferNotToSay }
 String _enumValue(Object value) => value.toString().split('.').last;
 
 class OnboardingState extends ChangeNotifier {
+  OnboardingState({String initialDisplayName = ''})
+    : displayName = initialDisplayName;
+
   static const totalSteps = 4;
 
   int currentStep = 0;
-  String displayName = '';
+  String displayName;
   DateTime? dateOfBirth;
   OnboardingGender? gender;
   bool isSubmitting = false;
+
+  void setDisplayName(String value) {
+    displayName = value;
+    notifyListeners();
+  }
+
+  void setDateOfBirth(DateTime value) {
+    dateOfBirth = value;
+    notifyListeners();
+  }
+
+  void setGender(OnboardingGender value) {
+    gender = value;
+    notifyListeners();
+  }
+
+  void setSubmitting(bool value) {
+    isSubmitting = value;
+    notifyListeners();
+  }
 
   void back() {
     if (currentStep > 0) {
@@ -31,19 +54,19 @@ class OnboardingState extends ChangeNotifier {
   }
 
   bool get canContinue => switch (currentStep) {
-        0 => true,
-        1 => displayName.trim().isNotEmpty,
-        2 => dateOfBirth != null,
-        3 => gender != null,
-        _ => false,
-      };
+    0 => true,
+    1 => displayName.trim().isNotEmpty,
+    2 => dateOfBirth != null,
+    3 => gender != null,
+    _ => false,
+  };
 
   String? get validationMessage => switch (currentStep) {
-        1 => displayName.trim().isEmpty ? 'Vui lòng nhập tên hiển thị.' : null,
-        2 => dateOfBirth == null ? 'Vui lòng chọn ngày sinh.' : null,
-        3 => gender == null ? 'Vui lòng chọn giới tính.' : null,
-        _ => null,
-      };
+    1 => displayName.trim().isEmpty ? 'Please enter your display name.' : null,
+    2 => dateOfBirth == null ? 'Please select your date of birth.' : null,
+    3 => gender == null ? 'Please select your gender.' : null,
+    _ => null,
+  };
 
   int? get age {
     if (dateOfBirth == null) {
@@ -51,7 +74,8 @@ class OnboardingState extends ChangeNotifier {
     }
     final now = DateTime.now();
     var years = now.year - dateOfBirth!.year;
-    final hasHadBirthdayThisYear = now.month > dateOfBirth!.month ||
+    final hasHadBirthdayThisYear =
+        now.month > dateOfBirth!.month ||
         (now.month == dateOfBirth!.month && now.day >= dateOfBirth!.day);
     if (!hasHadBirthdayThisYear) {
       years--;

@@ -6,6 +6,7 @@ import '../../core/routes/app_routes.dart';
 import '../../core/state/app_state.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
+import '../../core/widgets/brand_logo.dart';
 import '../../core/widgets/gradient_pill_button.dart';
 import '../../core/widgets/premium_card.dart';
 import '../../core/widgets/responsive_container.dart';
@@ -16,7 +17,9 @@ class LandingPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final nextRoute = context.watch<AppState>().isAuthenticated ? AppRoutes.dashboard : AppRoutes.login;
+    final nextRoute = context.watch<AppState>().isAuthenticated
+        ? AppRoutes.dashboard
+        : AppRoutes.login;
 
     return Scaffold(
       backgroundColor: AppColors.pageBackground,
@@ -33,12 +36,16 @@ class LandingPage extends StatelessWidget {
             const SizedBox(height: 28),
             Text(
               'Skincare guidance that feels native to SkinSync.',
-              style: Theme.of(context).textTheme.headlineLarge?.copyWith(fontWeight: FontWeight.w800),
+              style: Theme.of(
+                context,
+              ).textTheme.headlineLarge?.copyWith(fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 10),
             Text(
               'Create an account or sign in first, then complete the skin quiz, upload a clear selfie, review AI insights, and follow a routine built for daily use.',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.mutedText),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: AppColors.mutedText),
             ),
             const SizedBox(height: AppSpacing.sectionGap),
             PremiumCard(
@@ -65,14 +72,19 @@ class LandingPage extends StatelessWidget {
                               Image.network(
                                 MockSkinData.analysis.imageUrl!,
                                 fit: BoxFit.cover,
-                                errorBuilder: (_, _, _) => Container(color: AppColors.secondary),
+                                errorBuilder: (_, _, _) =>
+                                    Container(color: AppColors.secondary),
                               ),
                               Container(
                                 decoration: BoxDecoration(
                                   gradient: LinearGradient(
                                     colors: [
-                                      AppColors.primaryDark.withValues(alpha: 0.02),
-                                      AppColors.primaryDark.withValues(alpha: 0.28),
+                                      AppColors.primaryDark.withValues(
+                                        alpha: 0.02,
+                                      ),
+                                      AppColors.primaryDark.withValues(
+                                        alpha: 0.28,
+                                      ),
                                     ],
                                     begin: Alignment.topCenter,
                                     end: Alignment.bottomCenter,
@@ -86,11 +98,17 @@ class LandingPage extends StatelessWidget {
                                 child: Row(
                                   children: const [
                                     Expanded(
-                                      child: _HeroMetric(title: 'Skin Score', value: '87/100'),
+                                      child: _HeroMetric(
+                                        title: 'Skin Score',
+                                        value: '87/100',
+                                      ),
                                     ),
                                     SizedBox(width: 10),
                                     Expanded(
-                                      child: _HeroMetric(title: 'Routine', value: 'AM + PM'),
+                                      child: _HeroMetric(
+                                        title: 'Routine',
+                                        value: 'AM + PM',
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -104,9 +122,18 @@ class LandingPage extends StatelessWidget {
                         spacing: 8,
                         runSpacing: 8,
                         children: const [
-                          SkinChip(label: 'AI Analysis', icon: Icons.auto_awesome_rounded),
-                          SkinChip(label: 'Routine Builder', icon: Icons.spa_outlined),
-                          SkinChip(label: 'Daily Progress', icon: Icons.insights_outlined),
+                          SkinChip(
+                            label: 'AI Analysis',
+                            icon: Icons.auto_awesome_rounded,
+                          ),
+                          SkinChip(
+                            label: 'Routine Builder',
+                            icon: Icons.spa_outlined,
+                          ),
+                          SkinChip(
+                            label: 'Daily Progress',
+                            icon: Icons.insights_outlined,
+                          ),
                         ],
                       ),
                     ],
@@ -118,7 +145,11 @@ class LandingPage extends StatelessWidget {
             GradientPillButton(
               label: 'Start SkinSync',
               expanded: true,
-              icon: const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 18),
+              icon: const Icon(
+                Icons.arrow_forward_rounded,
+                color: Colors.white,
+                size: 18,
+              ),
               onPressed: () => Navigator.pushNamed(context, nextRoute),
             ),
             const SizedBox(height: 10),
@@ -145,15 +176,7 @@ class _TopBrand extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         const _MiniBadge(label: 'SKINSYNC AI'),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(color: AppColors.border),
-          ),
-          child: const Icon(Icons.favorite_outline_rounded, size: 18, color: AppColors.primary),
-        ),
+        const BrandLogo(size: 38, radius: 14),
       ],
     );
   }
@@ -174,19 +197,16 @@ class _MiniBadge extends StatelessWidget {
       child: Text(
         label,
         style: Theme.of(context).textTheme.labelLarge?.copyWith(
-              color: AppColors.primaryDark,
-              letterSpacing: 1.1,
-            ),
+          color: AppColors.primaryDark,
+          letterSpacing: 1.1,
+        ),
       ),
     );
   }
 }
 
 class _HeroMetric extends StatelessWidget {
-  const _HeroMetric({
-    required this.title,
-    required this.value,
-  });
+  const _HeroMetric({required this.title, required this.value});
 
   final String title;
   final String value;

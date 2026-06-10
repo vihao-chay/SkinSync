@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { Lock, Eye, EyeOff, ArrowLeft, Sparkles, ShieldCheck, CheckCircle2 } from "lucide-react";
+import { BrandMark } from "../components/BrandMark";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 import { resetPasswordApi } from "../services/authService";
 import { useAuth } from "../contexts/AuthContext";
@@ -96,7 +97,7 @@ export function ResetPasswordPage() {
       <nav className="absolute top-0 left-0 right-0 z-50">
         <div className="px-12 py-5">
           <Link to="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#c4a882] to-[#8c6e52]" />
+            <BrandMark className="w-9 h-9 rounded-full ring-1 ring-white/40" />
             <span className="text-white/90 text-lg" style={{ textShadow: "0 1px 4px rgba(0,0,0,0.3)" }}>
               SkinSync
             </span>
