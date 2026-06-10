@@ -116,8 +116,9 @@ public class SkinAnalysisService : ISkinAnalysisService
             await using var stream = request.Image.OpenReadStream();
             using var memory = new MemoryStream();
             await stream.CopyToAsync(memory, cancellationToken);
-            var uploadContentType = string.IsNullOrWhiteSpace(request.Image.ContentType) ? "image/jpeg" : request.Image.ContentType;
-            return $"data:{uploadContentType};base64,{Convert.ToBase64String(memory.ToArray())}";
+            var uploadBytes = memory.ToArray();
+            var uploadContentType = ImageMimeTypeHelper.ResolveForUpload(request.Image, uploadBytes);
+            return $"data:{uploadContentType};base64,{Convert.ToBase64String(uploadBytes)}";
         }
 
         var imageUrl = request.ImageUrl!;
@@ -131,13 +132,7 @@ public class SkinAnalysisService : ISkinAnalysisService
         var webRoot = _environment.WebRootPath ?? Path.Combine(_environment.ContentRootPath, "wwwroot");
         var absolutePath = Path.Combine(webRoot, imageUrl.TrimStart('/'));
         var bytes = await File.ReadAllBytesAsync(absolutePath, cancellationToken);
-        var localContentType = Path.GetExtension(absolutePath).ToLowerInvariant() switch
-        {
-            ".png" => "image/png",
-            ".webp" => "image/webp",
-            ".gif" => "image/gif",
-            _ => "image/jpeg"
-        };
+        var localContentType = ImageMimeTypeHelper.ResolveForPath(absolutePath, bytes);
         return $"data:{localContentType};base64,{Convert.ToBase64String(bytes)}";
     }
 

@@ -1,6 +1,8 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using SkinSync.Data;
+using SkinSync.Helpers;
 using SkinSync.Mappers;
 using SkinSync.Models.Dtos.AI;
 using SkinSync.Models.Entities;
@@ -36,91 +38,98 @@ public class SkinProgressAnalysisService : ISkinProgressAnalysisService
 
     public async Task<SkinProgressAnalysisResponseDto> AnalyzeAsync(Guid userId, SkinProgressAnalyzeRequestDto request, CancellationToken cancellationToken)
     {
-        var photo = await _dbContext.SkinProgressPhotos
-            .AsNoTracking()
-            .FirstOrDefaultAsync(x => x.Id == request.PhotoId && x.UserId == userId, cancellationToken)
-            ?? throw new AiFeatureException("PHOTO_NOT_FOUND", "Progress photo not found.", 404);
-
-        var existing = await _dbContext.SkinProgressAnalyses
-            .AsNoTracking()
-            .FirstOrDefaultAsync(x => x.PhotoId == photo.Id && x.UserId == userId, cancellationToken);
-        if (existing is not null)
-        {
-            return existing.ToDto();
-        }
-
-        var user = await _dbContext.Users
-            .Include(x => x.Profile)
-            .FirstOrDefaultAsync(x => x.Id == userId, cancellationToken)
-            ?? throw new AiFeatureException("USER_NOT_FOUND", "User not found.", 404);
-
-        var regimen = await _dbContext.UserRegimens
-            .AsNoTracking()
-            .Include(x => x.Items)
-            .ThenInclude(x => x.Product)
-            .FirstOrDefaultAsync(x => x.UserId == userId && x.IsActive, cancellationToken);
-
-        await _aiUsageService.CheckLimitAsync(userId, "skin_progress_analysis", cancellationToken);
-
-        var imageSource = await BuildImageSourceAsync(photo.ImageUrl, cancellationToken);
-        var metadataJson = JsonSerializer.Serialize(new
-        {
-            photoDate = photo.PhotoDate,
-            timeOfDay = photo.TimeOfDay,
-            lightingCondition = photo.LightingCondition,
-            faceAngle = photo.FaceAngle,
-            note = photo.Note
-        });
-        object routineContext = regimen is null ? new { } : regimen.ToCurrentRegimenDto();
-
-        OpenAiResult<SkinProgressAnalyzeAiModel> aiResult;
         try
         {
-            aiResult = await _openAiService.AnalyzeImageAsync<SkinProgressAnalyzeAiModel>(
-                AiPromptLibrary.CommonSystemPrompt,
-                AiPromptLibrary.BuildSkinProgressAnalyzePrompt(
-                    AiContextMapper.SerializeUserProfile(user.Profile),
-                    JsonSerializer.Serialize(routineContext),
-                    metadataJson),
-                imageSource,
-                cancellationToken: cancellationToken);
+            var photo = await _dbContext.SkinProgressPhotos
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => x.Id == request.PhotoId && x.UserId == userId, cancellationToken)
+                ?? throw new AiFeatureException("PHOTO_NOT_FOUND", "Progress photo not found.", 404);
+
+            var existing = await _dbContext.SkinProgressAnalyses
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => x.PhotoId == photo.Id && x.UserId == userId, cancellationToken);
+            if (existing is not null)
+            {
+                return existing.ToDto();
+            }
+
+            var user = await _dbContext.Users
+                .Include(x => x.Profile)
+                .FirstOrDefaultAsync(x => x.Id == userId, cancellationToken)
+                ?? throw new AiFeatureException("USER_NOT_FOUND", "User not found.", 404);
+
+            var regimen = await _dbContext.UserRegimens
+                .AsNoTracking()
+                .Include(x => x.Items)
+                .ThenInclude(x => x.Product)
+                .FirstOrDefaultAsync(x => x.UserId == userId && x.IsActive, cancellationToken);
+
+            await _aiUsageService.CheckLimitAsync(userId, "skin_progress_analysis", cancellationToken);
+
+            var imageSource = await BuildImageSourceAsync(photo.ImageUrl, cancellationToken);
+            var metadataJson = JsonSerializer.Serialize(new
+            {
+                photoDate = photo.PhotoDate,
+                timeOfDay = photo.TimeOfDay,
+                lightingCondition = photo.LightingCondition,
+                faceAngle = photo.FaceAngle,
+                note = photo.Note
+            });
+            object routineContext = regimen is null ? new { } : regimen.ToCurrentRegimenDto();
+
+            OpenAiResult<SkinProgressAnalyzeAiModel> aiResult;
+            try
+            {
+                aiResult = await _openAiService.AnalyzeImageAsync<SkinProgressAnalyzeAiModel>(
+                    AiPromptLibrary.CommonSystemPrompt,
+                    AiPromptLibrary.BuildSkinProgressAnalyzePrompt(
+                        AiContextMapper.SerializeUserProfile(user.Profile),
+                        JsonSerializer.Serialize(routineContext),
+                        metadataJson),
+                    imageSource,
+                    cancellationToken: cancellationToken);
+            }
+            catch (Exception ex) when (ex is not AiFeatureException)
+            {
+                _logger.LogError(ex, "Skin progress analysis failed for user {UserId}, photo {PhotoId}.", userId, photo.Id);
+                throw new AiFeatureException("AI_SERVICE_ERROR", "AI progress analysis failed.", 502, ex);
+            }
+
+            var normalized = NormalizeAiResult(aiResult.Value);
+            var entity = new SkinProgressAnalysis
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                PhotoId = photo.Id,
+                SkinTypeEstimate = normalized.SkinTypeEstimate,
+                HydrationLevel = normalized.HydrationLevel,
+                OilinessLevel = normalized.OilinessLevel,
+                AcneScore = normalized.Scores.AcneScore,
+                RednessScore = normalized.Scores.RednessScore,
+                DarkSpotScore = normalized.Scores.DarkSpotScore,
+                OilinessScore = normalized.Scores.OilinessScore,
+                DrynessScore = normalized.Scores.DrynessScore,
+                TextureScore = normalized.Scores.TextureScore,
+                SensitivityScore = normalized.Scores.SensitivityScore,
+                OverallScore = normalized.Scores.OverallScore,
+                DetectedConcerns = JsonSerializer.Serialize(normalized.DetectedConcerns),
+                AiSummary = normalized.AiSummary,
+                Recommendations = JsonSerializer.Serialize(normalized.Recommendations),
+                RiskFlags = JsonSerializer.Serialize(normalized.RiskFlags),
+                RawAiResponse = aiResult.RawResponse,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            _dbContext.SkinProgressAnalyses.Add(entity);
+            await _dbContext.SaveChangesAsync(cancellationToken);
+            await _aiUsageService.LogUsageAsync(userId, "skin_progress_analysis", aiResult.Model, aiResult.InputTokens, aiResult.OutputTokens, cancellationToken);
+
+            return entity.ToDto();
         }
-        catch (Exception ex) when (ex is not AiFeatureException)
+        catch (PostgresException ex) when (IsMissingRelation(ex))
         {
-            _logger.LogError(ex, "Skin progress analysis failed for user {UserId}, photo {PhotoId}.", userId, photo.Id);
-            throw new AiFeatureException("AI_SERVICE_ERROR", "AI progress analysis failed.", 502, ex);
+            throw BuildSchemaMissingException(ex);
         }
-
-        var normalized = NormalizeAiResult(aiResult.Value);
-        var entity = new SkinProgressAnalysis
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            PhotoId = photo.Id,
-            SkinTypeEstimate = normalized.SkinTypeEstimate,
-            HydrationLevel = normalized.HydrationLevel,
-            OilinessLevel = normalized.OilinessLevel,
-            AcneScore = normalized.Scores.AcneScore,
-            RednessScore = normalized.Scores.RednessScore,
-            DarkSpotScore = normalized.Scores.DarkSpotScore,
-            OilinessScore = normalized.Scores.OilinessScore,
-            DrynessScore = normalized.Scores.DrynessScore,
-            TextureScore = normalized.Scores.TextureScore,
-            SensitivityScore = normalized.Scores.SensitivityScore,
-            OverallScore = normalized.Scores.OverallScore,
-            DetectedConcerns = JsonSerializer.Serialize(normalized.DetectedConcerns),
-            AiSummary = normalized.AiSummary,
-            Recommendations = JsonSerializer.Serialize(normalized.Recommendations),
-            RiskFlags = JsonSerializer.Serialize(normalized.RiskFlags),
-            RawAiResponse = aiResult.RawResponse,
-            CreatedAt = DateTime.UtcNow
-        };
-
-        _dbContext.SkinProgressAnalyses.Add(entity);
-        await _dbContext.SaveChangesAsync(cancellationToken);
-        await _aiUsageService.LogUsageAsync(userId, "skin_progress_analysis", aiResult.Model, aiResult.InputTokens, aiResult.OutputTokens, cancellationToken);
-
-        return entity.ToDto();
     }
 
     private async Task<string> BuildImageSourceAsync(string imageUrl, CancellationToken cancellationToken)
@@ -135,13 +144,7 @@ public class SkinProgressAnalysisService : ISkinProgressAnalysisService
         var webRoot = _environment.WebRootPath ?? Path.Combine(_environment.ContentRootPath, "wwwroot");
         var absolutePath = Path.Combine(webRoot, imageUrl.TrimStart('/').Replace('/', Path.DirectorySeparatorChar));
         var bytes = await File.ReadAllBytesAsync(absolutePath, cancellationToken);
-        var contentType = Path.GetExtension(absolutePath).ToLowerInvariant() switch
-        {
-            ".png" => "image/png",
-            ".webp" => "image/webp",
-            ".gif" => "image/gif",
-            _ => "image/jpeg"
-        };
+        var contentType = ImageMimeTypeHelper.ResolveForPath(absolutePath, bytes);
         return $"data:{contentType};base64,{Convert.ToBase64String(bytes)}";
     }
 
@@ -187,6 +190,11 @@ public class SkinProgressAnalysisService : ISkinProgressAnalysisService
     }
 
     private static int ClampScore(int value) => Math.Clamp(value, 0, 100);
+
+    private static bool IsMissingRelation(PostgresException ex) => ex.SqlState == PostgresErrorCodes.UndefinedTable;
+
+    private static AiFeatureException BuildSchemaMissingException(PostgresException ex) =>
+        new("SKIN_PROGRESS_SCHEMA_MISSING", "Skin progress tables are missing in the database. Apply the skin progress migration before using this feature.", 503, ex);
 }
 
 internal sealed class SkinProgressAnalyzeAiModel
