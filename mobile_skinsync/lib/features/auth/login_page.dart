@@ -26,6 +26,7 @@ class _LoginPageState extends State<LoginPage> {
   bool _showPassword = false;
   bool _showConfirmPassword = false;
   bool _acceptedTerms = false;
+  bool _isSubmittingAuth = false;
 
   @override
   void dispose() {
@@ -40,13 +41,15 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     final appState = context.watch<AppState>();
-    if (appState.isAuthenticated) {
-      final nextRoute = appState.profile?.isOnboardingCompleted == true
-          ? AppRoutes.dashboard
-          : AppRoutes.onboarding;
+    if (appState.isAuthenticated && !_isSubmittingAuth && !_isRegisterMode) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
-          Navigator.pushReplacementNamed(context, nextRoute);
+          Navigator.pushReplacementNamed(
+            context,
+            appState.shouldShowOnboarding
+                ? AppRoutes.onboarding
+                : AppRoutes.dashboard,
+          );
         }
       });
     }
@@ -119,6 +122,7 @@ class _LoginPageState extends State<LoginPage> {
       return;
     }
 
+    setState(() => _isSubmittingAuth = true);
     try {
       if (_isRegisterMode) {
         await appState.register(
@@ -138,35 +142,43 @@ class _LoginPageState extends State<LoginPage> {
         return;
       }
 
-      await appState.refreshProfileState();
-      if (!mounted) {
-        return;
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        appState.shouldShowOnboarding
+            ? AppRoutes.onboarding
+            : AppRoutes.dashboard,
+        (route) => false,
+      );
+    } catch (_) {
+      if (mounted) {
+        setState(() => _isSubmittingAuth = false);
       }
-
-      final nextRoute = appState.profile?.isOnboardingCompleted == true
-          ? AppRoutes.dashboard
-          : AppRoutes.onboarding;
-      Navigator.pushReplacementNamed(context, nextRoute);
-    } catch (_) {}
+    }
   }
 
   Future<void> _submitGoogle(AppState appState) async {
+    setState(() => _isSubmittingAuth = true);
     try {
       await appState.loginWithGoogle();
+      if (_isRegisterMode) {
+        await appState.markOnboardingPendingForCurrentUser();
+      }
       if (!mounted) {
         return;
       }
 
-      await appState.refreshProfileState();
-      if (!mounted) {
-        return;
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        appState.shouldShowOnboarding
+            ? AppRoutes.onboarding
+            : AppRoutes.dashboard,
+        (route) => false,
+      );
+    } catch (_) {
+      if (mounted) {
+        setState(() => _isSubmittingAuth = false);
       }
-
-      final nextRoute = appState.profile?.isOnboardingCompleted == true
-          ? AppRoutes.dashboard
-          : AppRoutes.onboarding;
-      Navigator.pushReplacementNamed(context, nextRoute);
-    } catch (_) {}
+    }
   }
 
   bool _validateInput() {

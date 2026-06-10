@@ -17,31 +17,52 @@ class DatePickerField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final text = value == null ? 'Chọn ngày sinh' : DateFormat('dd/MM/yyyy').format(value!);
+    final text = value == null
+        ? 'Select date of birth'
+        : DateFormat('dd/MM/yyyy').format(value!);
+
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(24),
+      borderRadius: BorderRadius.circular(14),
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(14),
           border: Border.all(color: AppColors.border),
         ),
         child: Row(
           children: [
+            const Icon(
+              Icons.calendar_month_outlined,
+              color: AppColors.primaryDark,
+            ),
+            const SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(label, style: const TextStyle(fontSize: 12, color: AppColors.mutedText, fontWeight: FontWeight.w600)),
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.mutedText,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                   const SizedBox(height: 6),
-                  Text(text, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.foreground)),
+                  Text(
+                    text,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.foreground,
+                    ),
+                  ),
                 ],
               ),
             ),
-            const Icon(Icons.calendar_month_rounded, color: AppColors.primary),
           ],
         ),
       ),

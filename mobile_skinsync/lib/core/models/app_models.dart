@@ -10,16 +10,16 @@ class AuthSession {
   final AppUser user;
 
   Map<String, dynamic> toJson() => {
-        'accessToken': accessToken,
-        'refreshToken': refreshToken,
-        'user': user.toJson(),
-      };
+    'accessToken': accessToken,
+    'refreshToken': refreshToken,
+    'user': user.toJson(),
+  };
 
   factory AuthSession.fromJson(Map<String, dynamic> json) => AuthSession(
-        accessToken: json['accessToken'] as String,
-        refreshToken: json['refreshToken'] as String,
-        user: AppUser.fromJson(json['user'] as Map<String, dynamic>),
-      );
+    accessToken: json['accessToken'] as String,
+    refreshToken: json['refreshToken'] as String,
+    user: AppUser.fromJson(json['user'] as Map<String, dynamic>),
+  );
 }
 
 class AppUser {
@@ -42,24 +42,44 @@ class AppUser {
   final String status;
 
   factory AppUser.fromJson(Map<String, dynamic> json) => AppUser(
-        id: json['id'].toString(),
-        fullName: (json['fullName'] ?? '') as String,
-        email: (json['email'] ?? '') as String,
-        phone: json['phone'] as String?,
-        avatarUrl: json['avatarUrl'] as String?,
-        role: (json['role'] ?? 'user') as String,
-        status: (json['status'] ?? 'active') as String,
-      );
+    id: json['id'].toString(),
+    fullName: (json['fullName'] ?? '') as String,
+    email: (json['email'] ?? '') as String,
+    phone: json['phone'] as String?,
+    avatarUrl: json['avatarUrl'] as String?,
+    role: (json['role'] ?? 'user') as String,
+    status: (json['status'] ?? 'active') as String,
+  );
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'fullName': fullName,
-        'email': email,
-        'phone': phone,
-        'avatarUrl': avatarUrl,
-        'role': role,
-        'status': status,
-      };
+    'id': id,
+    'fullName': fullName,
+    'email': email,
+    'phone': phone,
+    'avatarUrl': avatarUrl,
+    'role': role,
+    'status': status,
+  };
+
+  AppUser copyWith({
+    String? id,
+    String? fullName,
+    String? email,
+    String? phone,
+    String? avatarUrl,
+    String? role,
+    String? status,
+  }) {
+    return AppUser(
+      id: id ?? this.id,
+      fullName: fullName ?? this.fullName,
+      email: email ?? this.email,
+      phone: phone ?? this.phone,
+      avatarUrl: avatarUrl ?? this.avatarUrl,
+      role: role ?? this.role,
+      status: status ?? this.status,
+    );
+  }
 }
 
 class SkinProfile {
@@ -102,24 +122,36 @@ class SkinProfile {
   final bool isOnboardingCompleted;
 
   factory SkinProfile.fromJson(Map<String, dynamic> json) => SkinProfile(
-        displayName: json['displayName'] as String?,
-        dateOfBirth: json['dateOfBirth'] as String?,
-        gender: json['gender'] as String?,
-        healthIssues: ((json['healthIssues'] as List?) ?? const []).map((e) => e.toString()).toList(),
-        skinType: json['skinType'] as String?,
-        monthlyBudget: (json['monthlyBudget'] as num?)?.toDouble(),
-        budgetLabel: json['budgetLabel'] as String?,
-        concerns: ((json['concerns'] as List?) ?? const []).map((e) => e.toString()).toList(),
-        currentRoutineLevel: json['currentRoutineLevel'] as String?,
-        goals: ((json['goals'] as List?) ?? const []).map((e) => e.toString()).toList(),
-        allergies: ((json['allergies'] as List?) ?? const []).map((e) => e.toString()).toList(),
-        avoidIngredients: ((json['avoidIngredients'] as List?) ?? const []).map((e) => e.toString()).toList(),
-        skinGoals: ((json['skinGoals'] as List?) ?? const []).map((e) => e.toString()).toList(),
-        rednessWhenNewProducts: json['rednessWhenNewProducts'] as String?,
-        rednessWhenSunOrExercise: json['rednessWhenSunOrExercise'] as String?,
-        sensitivityLevel: json['sensitivityLevel'] as int?,
-        isOnboardingCompleted: (json['isOnboardingCompleted'] ?? false) as bool,
-      );
+    displayName: json['displayName'] as String?,
+    dateOfBirth: json['dateOfBirth'] as String?,
+    gender: json['gender'] as String?,
+    healthIssues: ((json['healthIssues'] as List?) ?? const [])
+        .map((e) => e.toString())
+        .toList(),
+    skinType: json['skinType'] as String?,
+    monthlyBudget: (json['monthlyBudget'] as num?)?.toDouble(),
+    budgetLabel: json['budgetLabel'] as String?,
+    concerns: ((json['concerns'] as List?) ?? const [])
+        .map((e) => e.toString())
+        .toList(),
+    currentRoutineLevel: json['currentRoutineLevel'] as String?,
+    goals: ((json['goals'] as List?) ?? const [])
+        .map((e) => e.toString())
+        .toList(),
+    allergies: ((json['allergies'] as List?) ?? const [])
+        .map((e) => e.toString())
+        .toList(),
+    avoidIngredients: ((json['avoidIngredients'] as List?) ?? const [])
+        .map((e) => e.toString())
+        .toList(),
+    skinGoals: ((json['skinGoals'] as List?) ?? const [])
+        .map((e) => e.toString())
+        .toList(),
+    rednessWhenNewProducts: json['rednessWhenNewProducts'] as String?,
+    rednessWhenSunOrExercise: json['rednessWhenSunOrExercise'] as String?,
+    sensitivityLevel: json['sensitivityLevel'] as int?,
+    isOnboardingCompleted: (json['isOnboardingCompleted'] ?? false) as bool,
+  );
 }
 
 class AnalysisIssue {
@@ -134,22 +166,20 @@ class AnalysisIssue {
   final String? description;
 
   factory AnalysisIssue.fromJson(Map<String, dynamic> json) => AnalysisIssue(
-        issueType: (json['issueType'] ?? '') as String,
-        severityScore: (json['severityScore'] ?? 0) as int,
-        description: json['description'] as String?,
-      );
+    issueType: (json['issueType'] ?? '') as String,
+    severityScore: (json['severityScore'] ?? 0) as int,
+    description: json['description'] as String?,
+  );
 }
 
 class AnalysisRecommendation {
-  const AnalysisRecommendation({
-    required this.title,
-    required this.content,
-  });
+  const AnalysisRecommendation({required this.title, required this.content});
 
   final String title;
   final String content;
 
-  factory AnalysisRecommendation.fromJson(Map<String, dynamic> json) => AnalysisRecommendation(
+  factory AnalysisRecommendation.fromJson(Map<String, dynamic> json) =>
+      AnalysisRecommendation(
         title: (json['title'] ?? '') as String,
         content: (json['content'] ?? '') as String,
       );
@@ -181,23 +211,25 @@ class AnalysisResult {
   final List<AnalysisRecommendation> recommendations;
 
   factory AnalysisResult.fromJson(Map<String, dynamic> json) => AnalysisResult(
-        id: json['id'].toString(),
-        imageUrl: (json['imageUrl'] ?? '') as String,
-        skinType: (json['skinType'] ?? 'Unknown') as String,
-        overallScore: (json['overallScore'] ?? 0) as int,
-        confidenceScore: (json['confidenceScore'] ?? 0) as int,
-        overview: json['overview'] as String?,
-        disclaimer: json['disclaimer'] as String?,
-        warnings: ((json['warnings'] as List?) ?? const []).map((e) => e.toString()).toList(),
-        issues: ((json['issues'] as List?) ?? const [])
-            .whereType<Map<String, dynamic>>()
-            .map(AnalysisIssue.fromJson)
-            .toList(),
-        recommendations: ((json['recommendations'] as List?) ?? const [])
-            .whereType<Map<String, dynamic>>()
-            .map(AnalysisRecommendation.fromJson)
-            .toList(),
-      );
+    id: json['id'].toString(),
+    imageUrl: (json['imageUrl'] ?? '') as String,
+    skinType: (json['skinType'] ?? 'Unknown') as String,
+    overallScore: (json['overallScore'] ?? 0) as int,
+    confidenceScore: (json['confidenceScore'] ?? 0) as int,
+    overview: json['overview'] as String?,
+    disclaimer: json['disclaimer'] as String?,
+    warnings: ((json['warnings'] as List?) ?? const [])
+        .map((e) => e.toString())
+        .toList(),
+    issues: ((json['issues'] as List?) ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map(AnalysisIssue.fromJson)
+        .toList(),
+    recommendations: ((json['recommendations'] as List?) ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map(AnalysisRecommendation.fromJson)
+        .toList(),
+  );
 }
 
 class RegimenStep {
@@ -230,19 +262,19 @@ class RegimenStep {
   final double? price;
 
   factory RegimenStep.fromJson(Map<String, dynamic> json) => RegimenStep(
-        stepId: json['stepId'].toString(),
-        productId: json['productId'].toString(),
-        name: (json['name'] ?? '') as String,
-        brand: (json['brand'] ?? '') as String,
-        category: (json['category'] ?? '') as String,
-        stepOrder: (json['stepOrder'] ?? 0) as int,
-        instruction: json['instruction'] as String?,
-        purpose: json['purpose'] as String?,
-        frequency: json['frequency'] as String?,
-        caution: json['caution'] as String?,
-        imageUrl: json['imageUrl'] as String?,
-        price: (json['price'] as num?)?.toDouble(),
-      );
+    stepId: json['stepId'].toString(),
+    productId: json['productId'].toString(),
+    name: (json['name'] ?? '') as String,
+    brand: (json['brand'] ?? '') as String,
+    category: (json['category'] ?? '') as String,
+    stepOrder: (json['stepOrder'] ?? 0) as int,
+    instruction: json['instruction'] as String?,
+    purpose: json['purpose'] as String?,
+    frequency: json['frequency'] as String?,
+    caution: json['caution'] as String?,
+    imageUrl: json['imageUrl'] as String?,
+    price: (json['price'] as num?)?.toDouble(),
+  );
 }
 
 class CurrentRegimen {
@@ -259,17 +291,17 @@ class CurrentRegimen {
   final List<RegimenStep> evening;
 
   factory CurrentRegimen.fromJson(Map<String, dynamic> json) => CurrentRegimen(
-        regimenId: json['regimenId'].toString(),
-        name: (json['name'] ?? '') as String,
-        morning: ((json['morning'] as List?) ?? const [])
-            .whereType<Map<String, dynamic>>()
-            .map(RegimenStep.fromJson)
-            .toList(),
-        evening: ((json['evening'] as List?) ?? const [])
-            .whereType<Map<String, dynamic>>()
-            .map(RegimenStep.fromJson)
-            .toList(),
-      );
+    regimenId: json['regimenId'].toString(),
+    name: (json['name'] ?? '') as String,
+    morning: ((json['morning'] as List?) ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map(RegimenStep.fromJson)
+        .toList(),
+    evening: ((json['evening'] as List?) ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map(RegimenStep.fromJson)
+        .toList(),
+  );
 }
 
 class RoutineTrackingToday {
@@ -287,7 +319,8 @@ class RoutineTrackingToday {
   final bool eveningCompleted;
   final List<String> completedStepIds;
 
-  factory RoutineTrackingToday.fromJson(Map<String, dynamic> json) => RoutineTrackingToday(
+  factory RoutineTrackingToday.fromJson(Map<String, dynamic> json) =>
+      RoutineTrackingToday(
         totalSteps: (json['totalSteps'] ?? 0) as int,
         completedSteps: (json['completedSteps'] ?? 0) as int,
         morningCompleted: (json['morningCompleted'] ?? false) as bool,
@@ -313,7 +346,8 @@ class ProgressOverview {
   final String? dailyTip;
   final String? progressInsight;
 
-  factory ProgressOverview.fromJson(Map<String, dynamic> json) => ProgressOverview(
+  factory ProgressOverview.fromJson(Map<String, dynamic> json) =>
+      ProgressOverview(
         currentScore: json['currentScore'] as int?,
         improvementPercent: (json['improvementPercent'] as num?)?.toDouble(),
         currentStreak: json['currentStreak'] as int?,
@@ -344,15 +378,15 @@ class DailyLog {
   final int? hydrationLevel;
 
   factory DailyLog.fromJson(Map<String, dynamic> json) => DailyLog(
-        date: json['date'].toString(),
-        skinFeeling: json['skinFeeling'] as String?,
-        notes: json['notes'] as String?,
-        acneLevel: json['acneLevel'] as int?,
-        drynessLevel: json['drynessLevel'] as int?,
-        rednessLevel: json['rednessLevel'] as int?,
-        irritationLevel: json['irritationLevel'] as int?,
-        hydrationLevel: json['hydrationLevel'] as int?,
-      );
+    date: json['date'].toString(),
+    skinFeeling: json['skinFeeling'] as String?,
+    notes: json['notes'] as String?,
+    acneLevel: json['acneLevel'] as int?,
+    drynessLevel: json['drynessLevel'] as int?,
+    rednessLevel: json['rednessLevel'] as int?,
+    irritationLevel: json['irritationLevel'] as int?,
+    hydrationLevel: json['hydrationLevel'] as int?,
+  );
 }
 
 class ReminderItem {
@@ -369,9 +403,9 @@ class ReminderItem {
   final bool isEnabled;
 
   factory ReminderItem.fromJson(Map<String, dynamic> json) => ReminderItem(
-        reminderId: json['reminderId'].toString(),
-        time: (json['time'] ?? '') as String,
-        routineType: (json['routineType'] ?? '') as String,
-        isEnabled: (json['isEnabled'] ?? false) as bool,
-      );
+    reminderId: json['reminderId'].toString(),
+    time: (json['time'] ?? '') as String,
+    routineType: (json['routineType'] ?? '') as String,
+    isEnabled: (json['isEnabled'] ?? false) as bool,
+  );
 }

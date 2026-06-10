@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/state/app_state.dart';
@@ -23,7 +24,7 @@ class ProfilePage extends StatelessWidget {
       ),
       children: [
         _ProfileHeaderCard(
-          name: user?.fullName ?? 'SkinSync user',
+          name: appState.profileDisplayName,
           email: user?.email ?? '',
           skinType: profile?.skinType ?? 'No skin type yet',
           avatarUrl: user?.avatarUrl,
@@ -31,6 +32,8 @@ class ProfilePage extends StatelessWidget {
         const SizedBox(height: 14),
         _SummaryCard(
           skinType: profile?.skinType,
+          dateOfBirth: profile?.dateOfBirth,
+          gender: profile?.gender,
           concerns: profile?.concerns ?? const [],
           goals: profile?.goals ?? const [],
           budget: profile?.budgetLabel,
@@ -120,12 +123,16 @@ class _ProfileHeaderCard extends StatelessWidget {
 class _SummaryCard extends StatelessWidget {
   const _SummaryCard({
     required this.skinType,
+    required this.dateOfBirth,
+    required this.gender,
     required this.concerns,
     required this.goals,
     required this.budget,
   });
 
   final String? skinType;
+  final String? dateOfBirth;
+  final String? gender;
   final List<String> concerns;
   final List<String> goals;
   final String? budget;
@@ -148,6 +155,13 @@ class _SummaryCard extends StatelessWidget {
           const SizedBox(height: 14),
           _SummaryRow(label: 'SKIN TYPE', value: _empty(skinType)),
           const SizedBox(height: 14),
+          _SummaryRow(
+            label: 'DATE OF BIRTH',
+            value: _formatDateOfBirth(dateOfBirth),
+          ),
+          const SizedBox(height: 14),
+          _SummaryRow(label: 'GENDER', value: _formatGender(gender)),
+          const SizedBox(height: 14),
           _SummaryRow(label: 'CONCERNS', value: _listValue(concerns)),
           const SizedBox(height: 14),
           _SummaryRow(label: 'GOALS', value: _listValue(goals)),
@@ -166,6 +180,37 @@ class _SummaryCard extends StatelessWidget {
   String _listValue(List<String> values) {
     final cleaned = values.where((item) => item.trim().isNotEmpty).toList();
     return cleaned.isEmpty ? '-' : cleaned.join(', ');
+  }
+
+  String _formatDateOfBirth(String? value) {
+    final trimmed = value?.trim() ?? '';
+    if (trimmed.isEmpty) {
+      return '-';
+    }
+
+    final parsed = DateTime.tryParse(trimmed);
+    if (parsed == null) {
+      return trimmed;
+    }
+
+    return DateFormat('dd/MM/yyyy').format(parsed);
+  }
+
+  String _formatGender(String? value) {
+    switch ((value ?? '').trim().toLowerCase()) {
+      case 'male':
+        return 'Male';
+      case 'female':
+        return 'Female';
+      case 'other':
+        return 'Other';
+      case 'prefernotosay':
+      case 'prefer_not_to_say':
+      case 'prefer not to say':
+        return 'Prefer not to say';
+      default:
+        return _empty(value);
+    }
   }
 }
 

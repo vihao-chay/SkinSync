@@ -13,7 +13,7 @@ class DashboardPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final appState = context.watch<AppState>();
     final user = appState.user;
-    final firstName = _firstName(user?.fullName ?? 'Dan');
+    final firstName = _firstName(appState.profileDisplayName);
     final analysis = appState.latestAnalysis;
     final concerns = _normalizedConcerns(
       appState.profile?.concerns ?? const <String>[],
