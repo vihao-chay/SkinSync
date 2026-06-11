@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
@@ -13,9 +16,11 @@ class OnboardingPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final appState = context.read<AppState>();
     return ChangeNotifierProvider(
-      create: (context) => OnboardingState(
-        initialDisplayName: context.read<AppState>().onboardingDisplayNameSeed,
+      create: (_) => OnboardingState(
+        initialDisplayName: appState.onboardingDisplayNameSeed,
+        initialProfile: appState.profile,
       ),
       child: const _OnboardingBody(),
     );
@@ -30,12 +35,13 @@ class _OnboardingBody extends StatefulWidget {
 }
 
 class _OnboardingBodyState extends State<_OnboardingBody> {
-  final PageController _controller = PageController();
+  final PageController _pageController = PageController();
   final TextEditingController _nameController = TextEditingController();
+  final ImagePicker _imagePicker = ImagePicker();
 
   @override
   void dispose() {
-    _controller.dispose();
+    _pageController.dispose();
     _nameController.dispose();
     super.dispose();
   }
@@ -53,31 +59,39 @@ class _OnboardingBodyState extends State<_OnboardingBody> {
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFAF6EF),
+      backgroundColor: AppColors.pageBackground,
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 430),
+            constraints: const BoxConstraints(maxWidth: 460),
             child: Column(
               children: [
                 _OnboardingHeader(
                   currentStep: state.currentStep,
-                  onClose: () => _closeOnboarding(context),
                   onBack: () => _back(state),
+                  onLogout: () => _logout(context),
                 ),
                 Expanded(
                   child: PageView(
-                    controller: _controller,
+                    controller: _pageController,
                     physics: const NeverScrollableScrollPhysics(),
                     children: [
-                      _introStep(context),
-                      _nameStep(context, state),
-                      _dateOfBirthStep(context, state),
-                      _genderStep(context, state),
+                      _BasicInfoStep(
+                        state: state,
+                        nameController: _nameController,
+                        onPickDate: () => _pickDate(context, state),
+                      ),
+                      _SkinProfileStep(state: state),
+                      _RoutineStep(state: state),
+                      _BudgetGoalsStep(state: state),
+                      _PhotoStep(
+                        state: state,
+                        onPickPhoto: () => _pickPhoto(state),
+                      ),
                     ],
                   ),
                 ),
-                _BottomAction(
+                _BottomActionBar(
                   state: state,
                   errorMessage: appState.errorMessage,
                   onPressed: () => _next(context, state),
@@ -90,348 +104,12 @@ class _OnboardingBodyState extends State<_OnboardingBody> {
     );
   }
 
-  Widget _introStep(BuildContext context) {
-    return _ScrollStep(
-      child: Column(
-        children: [
-          const SizedBox(height: 6),
-          const _ProgressBar(progress: 0.33),
-          const SizedBox(height: 18),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
-            decoration: _softCardDecoration(radius: 28),
-            child: Column(
-              children: [
-                const _IntroStillLife(),
-                const SizedBox(height: 24),
-                Text.rich(
-                  TextSpan(
-                    children: [
-                      const TextSpan(text: 'Have you truly\nunderstood your\n'),
-                      TextSpan(
-                        text: 'skin',
-                        style: Theme.of(context).textTheme.displayMedium
-                            ?.copyWith(
-                              color: AppColors.primaryDark,
-                              fontStyle: FontStyle.italic,
-                              fontWeight: FontWeight.w500,
-                            ),
-                      ),
-                      const TextSpan(text: '?'),
-                    ],
-                  ),
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.displayMedium?.copyWith(
-                    color: AppColors.foreground,
-                    fontSize: 34,
-                    height: 1.12,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 18),
-                Text(
-                  'Start a short journey so SkinSync can understand your skin and personalize your routine.',
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppColors.foreground.withValues(alpha: 0.76),
-                    height: 1.5,
-                  ),
-                ),
-                const SizedBox(height: 22),
-                const Row(
-                  children: [
-                    Expanded(
-                      child: _FeatureTile(
-                        icon: Icons.science_outlined,
-                        title: 'AI Analysis',
-                      ),
-                    ),
-                    SizedBox(width: 12),
-                    Expanded(
-                      child: _FeatureTile(
-                        icon: Icons.spa_outlined,
-                        title: 'Ingredient\nIntelligence',
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 22),
-                const _IntroPagerLabel(),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _nameStep(BuildContext context, OnboardingState state) {
-    return _ScrollStep(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const _StepMeta(
-            leading: 'Step 1 of 3',
-            trailing: 'Welcome',
-            progress: 1 / 3,
-          ),
-          const SizedBox(height: 34),
-          Text(
-            'What would you\nlike SkinSync to\ncall you?',
-            style: Theme.of(context).textTheme.displayLarge?.copyWith(
-              fontSize: 37,
-              height: 1.1,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 18),
-          Text(
-            'Your display name helps personalize greetings and your experience.',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: AppColors.foreground.withValues(alpha: 0.78),
-              height: 1.55,
-            ),
-          ),
-          const SizedBox(height: 44),
-          _InputPanel(
-            label: 'Display Name',
-            helper: 'Example: "Emily" or "My skincare name"',
-            child: TextField(
-              controller: _nameController,
-              autofocus: true,
-              textInputAction: TextInputAction.done,
-              onChanged: state.setDisplayName,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: AppColors.foreground,
-                fontWeight: FontWeight.w600,
-              ),
-              decoration: const InputDecoration(
-                hintText: 'Example: Emily',
-                prefixIcon: Icon(Icons.account_circle_outlined, size: 18),
-              ),
-            ),
-          ),
-          const SizedBox(height: 44),
-          const Center(child: _LotusSeal()),
-          const SizedBox(height: 18),
-          Center(
-            child: Text(
-              '"Beauty is the harmony of nature\nand precise science"',
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: AppColors.primaryDark.withValues(alpha: 0.76),
-                fontStyle: FontStyle.italic,
-                height: 1.4,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _dateOfBirthStep(BuildContext context, OnboardingState state) {
-    final formattedDate = state.dateOfBirth == null
-        ? 'dd/mm/yyyy'
-        : DateFormat('dd/MM/yyyy').format(state.dateOfBirth!);
-
-    return _ScrollStep(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const _StepMeta(
-            leading: 'Step 2 of 3',
-            trailing: '66% Complete',
-            progress: 2 / 3,
-          ),
-          const SizedBox(height: 34),
-          Text(
-            'What is your date of birth?',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              color: AppColors.foreground,
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
-              fontFamily: 'DMSans',
-            ),
-          ),
-          const SizedBox(height: 18),
-          Text(
-            'This information helps us understand your skin more accurately.',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: AppColors.foreground.withValues(alpha: 0.82),
-              height: 1.65,
-            ),
-          ),
-          const SizedBox(height: 38),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(20),
-            decoration: _softCardDecoration(radius: 24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Date of Birth',
-                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: AppColors.primaryDark,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                InkWell(
-                  borderRadius: BorderRadius.circular(12),
-                  onTap: () => _pickDate(context, state),
-                  child: Container(
-                    height: 58,
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFFFBF6),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFFE7D7C1)),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.calendar_month_outlined,
-                          size: 20,
-                          color: AppColors.primaryDark,
-                        ),
-                        const SizedBox(width: 14),
-                        Text(
-                          formattedDate,
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(
-                                color: state.dateOfBirth == null
-                                    ? AppColors.mutedText
-                                    : AppColors.foreground,
-                                fontWeight: FontWeight.w700,
-                              ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF6EFE6),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Icon(
-                        Icons.info_rounded,
-                        color: AppColors.primaryDark,
-                        size: 18,
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          'AI care insights work better when age helps estimate skin changes and routine needs.',
-                          style: Theme.of(context).textTheme.labelSmall
-                              ?.copyWith(
-                                color: AppColors.primaryDark,
-                                height: 1.45,
-                                fontStyle: FontStyle.italic,
-                                fontWeight: FontWeight.w700,
-                              ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _genderStep(BuildContext context, OnboardingState state) {
-    return _ScrollStep(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          const _StepMeta(
-            leading: 'Step 3 of 3',
-            trailing: 'Complete Profile',
-            progress: 1,
-          ),
-          const SizedBox(height: 28),
-          Text(
-            'Hello, what is\nyour gender?',
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.displaySmall?.copyWith(
-              color: AppColors.foreground,
-              fontSize: 30,
-              height: 1.12,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'This information helps us adjust routines to better fit you.',
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: AppColors.foreground.withValues(alpha: 0.78),
-              height: 1.55,
-            ),
-          ),
-          const SizedBox(height: 28),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(14),
-            decoration: _softCardDecoration(radius: 24),
-            child: Column(
-              children: [
-                _GenderOption(
-                  icon: Icons.male_rounded,
-                  title: 'Male',
-                  subtitle: 'Man',
-                  selected: state.gender == OnboardingGender.male,
-                  onTap: () => state.setGender(OnboardingGender.male),
-                ),
-                _GenderOption(
-                  icon: Icons.female_rounded,
-                  title: 'Female',
-                  subtitle: 'Woman',
-                  selected: state.gender == OnboardingGender.female,
-                  onTap: () => state.setGender(OnboardingGender.female),
-                ),
-                _GenderOption(
-                  icon: Icons.groups_2_outlined,
-                  title: 'Other',
-                  subtitle: 'Another identity',
-                  selected: state.gender == OnboardingGender.other,
-                  onTap: () => state.setGender(OnboardingGender.other),
-                ),
-                _GenderOption(
-                  icon: Icons.visibility_off_outlined,
-                  title: 'Prefer not to say',
-                  subtitle: 'Skip this question',
-                  selected: state.gender == OnboardingGender.preferNotToSay,
-                  onTap: () => state.setGender(OnboardingGender.preferNotToSay),
-                  isLast: true,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Future<void> _pickDate(BuildContext context, OnboardingState state) async {
     final now = DateTime.now();
     final picked = await showDatePicker(
       context: context,
       initialDate:
-          state.dateOfBirth ?? DateTime(now.year - 20, now.month, now.day),
+          state.dateOfBirth ?? DateTime(now.year - 22, now.month, now.day),
       firstDate: DateTime(1940),
       lastDate: now,
       builder: (context, child) {
@@ -454,6 +132,17 @@ class _OnboardingBodyState extends State<_OnboardingBody> {
     }
   }
 
+  Future<void> _pickPhoto(OnboardingState state) async {
+    final image = await _imagePicker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 88,
+    );
+    if (image == null) {
+      return;
+    }
+    state.setPhoto(File(image.path));
+  }
+
   Future<void> _next(BuildContext context, OnboardingState state) async {
     if (!state.canContinue) {
       final message =
@@ -466,7 +155,7 @@ class _OnboardingBodyState extends State<_OnboardingBody> {
 
     if (state.currentStep < OnboardingState.totalSteps - 1) {
       state.next();
-      await _controller.nextPage(
+      await _pageController.nextPage(
         duration: const Duration(milliseconds: 260),
         curve: Curves.easeOutCubic,
       );
@@ -474,11 +163,26 @@ class _OnboardingBodyState extends State<_OnboardingBody> {
     }
 
     state.setSubmitting(true);
+    final appState = context.read<AppState>();
     try {
-      await context.read<AppState>().submitOnboarding(state.toPayload());
+      await appState.submitOnboarding(state.toPayload());
+
+      try {
+        final photo = state.skinPhoto;
+        if (photo != null) {
+          await appState.analyzeSkin(photo);
+        } else {
+          await appState.generateRoutine(budgetMax: state.monthlyBudget);
+        }
+      } catch (_) {
+        appState.clearError();
+        await appState.refreshHome();
+      }
+
       if (!context.mounted) {
         return;
       }
+
       Navigator.pushNamedAndRemoveUntil(
         context,
         AppRoutes.dashboard,
@@ -492,7 +196,9 @@ class _OnboardingBodyState extends State<_OnboardingBody> {
         ..hideCurrentSnackBar()
         ..showSnackBar(
           const SnackBar(
-            content: Text('We could not save your profile. Please try again.'),
+            content: Text(
+              'We could not finish onboarding right now. Please try again.',
+            ),
           ),
         );
     } finally {
@@ -505,156 +211,378 @@ class _OnboardingBodyState extends State<_OnboardingBody> {
       return;
     }
     state.back();
-    _controller.previousPage(
+    _pageController.previousPage(
       duration: const Duration(milliseconds: 240),
       curve: Curves.easeOutCubic,
     );
   }
 
-  void _closeOnboarding(BuildContext context) {
-    Navigator.pushNamedAndRemoveUntil(
-      context,
-      AppRoutes.dashboard,
-      (route) => false,
-    );
+  Future<void> _logout(BuildContext context) async {
+    final appState = context.read<AppState>();
+    await appState.logout();
+    if (!context.mounted) {
+      return;
+    }
+    Navigator.pushNamedAndRemoveUntil(context, AppRoutes.login, (route) => false);
   }
 }
 
 class _OnboardingHeader extends StatelessWidget {
   const _OnboardingHeader({
     required this.currentStep,
-    required this.onClose,
     required this.onBack,
+    required this.onLogout,
   });
 
   final int currentStep;
-  final VoidCallback onClose;
   final VoidCallback onBack;
+  final VoidCallback onLogout;
 
   @override
   Widget build(BuildContext context) {
     final canGoBack = currentStep > 0;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 6, 8, 4),
-      child: SizedBox(
-        height: 42,
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            Align(
-              alignment: Alignment.centerLeft,
-              child: IconButton(
-                tooltip: canGoBack ? 'Back' : 'Close',
-                onPressed: canGoBack ? onBack : onClose,
-                icon: Icon(
-                  canGoBack ? Icons.arrow_back_rounded : Icons.close_rounded,
-                  size: 20,
-                  color: AppColors.foreground,
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+      child: Row(
+        children: [
+          if (canGoBack)
+            IconButton(
+              tooltip: 'Back',
+              onPressed: onBack,
+              icon: const Icon(
+                Icons.arrow_back_rounded,
+                color: AppColors.foreground,
+              ),
+            )
+          else
+            TextButton(
+              onPressed: onLogout,
+              child: const Text('Sign out'),
+            ),
+          const Spacer(),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const BrandLogo(size: 24, radius: 8, showShadow: false),
+              const SizedBox(width: 8),
+              Text(
+                'SkinSync',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  color: AppColors.primaryDark,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          const Spacer(),
+          SizedBox(
+            width: 72,
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: Text(
+                '${currentStep + 1}/${OnboardingState.totalSteps}',
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: AppColors.primaryDark,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             ),
-            Row(
-              mainAxisSize: MainAxisSize.min,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BasicInfoStep extends StatelessWidget {
+  const _BasicInfoStep({
+    required this.state,
+    required this.nameController,
+    required this.onPickDate,
+  });
+
+  final OnboardingState state;
+  final TextEditingController nameController;
+  final VoidCallback onPickDate;
+
+  @override
+  Widget build(BuildContext context) {
+    final dateLabel = state.dateOfBirth == null
+        ? 'Select your date of birth'
+        : DateFormat('dd/MM/yyyy').format(state.dateOfBirth!);
+
+    return _StepScrollView(
+      eyebrow: 'Step 1',
+      title: 'Tell SkinSync who you are.',
+      subtitle:
+          'Start with the basics so your skincare journey feels personal from the first dashboard refresh.',
+      child: Column(
+        children: [
+          _GlassPanel(
+            child: Column(
               children: [
-                const BrandLogo(size: 24, radius: 7, showShadow: false),
-                const SizedBox(width: 8),
-                Text(
-                  'SkinSync',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: AppColors.primaryDark,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
+                _TextFieldBlock(
+                  label: 'Display name',
+                  helper: 'This name is used in greetings and profile summaries.',
+                  child: TextField(
+                    controller: nameController,
+                    textInputAction: TextInputAction.next,
+                    onChanged: state.setDisplayName,
+                    decoration: const InputDecoration(
+                      hintText: 'Example: Kien',
+                      prefixIcon: Icon(Icons.person_outline_rounded),
+                    ),
                   ),
+                ),
+                const SizedBox(height: 18),
+                _ActionField(
+                  label: 'Date of birth',
+                  value: dateLabel,
+                  helper: 'Age helps SkinSync fine-tune context for routine planning.',
+                  icon: Icons.calendar_month_outlined,
+                  onTap: onPickDate,
+                  isPlaceholder: state.dateOfBirth == null,
+                ),
+                const SizedBox(height: 18),
+                _ChoiceWrap(
+                  label: 'Gender',
+                  helper: 'Choose the option that feels right for you.',
+                  children: OnboardingGender.values
+                      .map(
+                        (item) => _ChoiceChipCard(
+                          label: _genderLabel(item),
+                          selected: state.gender == item,
+                          onTap: () => state.setGender(item),
+                        ),
+                      )
+                      .toList(),
                 ),
               ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 }
 
-class _ScrollStep extends StatelessWidget {
-  const _ScrollStep({required this.child});
+class _SkinProfileStep extends StatelessWidget {
+  const _SkinProfileStep({required this.state});
 
-  final Widget child;
+  final OnboardingState state;
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-      padding: const EdgeInsets.fromLTRB(14, 8, 14, 20),
-      child: child,
+    return _StepScrollView(
+      eyebrow: 'Step 2',
+      title: 'Describe your skin profile.',
+      subtitle:
+          'Pick your skin type and the concerns you want SkinSync to pay attention to first.',
+      child: Column(
+        children: [
+          _GlassPanel(
+            child: Column(
+              children: [
+                _ChoiceWrap(
+                  label: 'Skin type',
+                  helper: 'This helps tailor the routine structure and product categories.',
+                  children: OnboardingState.skinTypeOptions
+                      .map(
+                        (item) => _ChoiceChipCard(
+                          label: item,
+                          selected: state.skinType == item,
+                          onTap: () => state.setSkinType(item),
+                        ),
+                      )
+                      .toList(),
+                ),
+                const SizedBox(height: 20),
+                _ChoiceWrap(
+                  label: 'Main concerns',
+                  helper: 'Choose any concerns you want the dashboard and AI to prioritize.',
+                  children: OnboardingState.concernOptions
+                      .map(
+                        (item) => _ChoiceChipCard(
+                          label: item,
+                          selected: state.concerns.contains(item),
+                          onTap: () => state.toggleConcern(item),
+                        ),
+                      )
+                      .toList(),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
 
-class _StepMeta extends StatelessWidget {
-  const _StepMeta({
-    required this.leading,
-    required this.trailing,
-    required this.progress,
+class _RoutineStep extends StatelessWidget {
+  const _RoutineStep({required this.state});
+
+  final OnboardingState state;
+
+  @override
+  Widget build(BuildContext context) {
+    return _StepScrollView(
+      eyebrow: 'Step 3',
+      title: 'How established is your current routine?',
+      subtitle:
+          'This lets SkinSync generate an initial plan that feels realistic instead of overwhelming.',
+      child: Column(
+        children: [
+          _GlassPanel(
+            child: Column(
+              children: OnboardingState.routineOptions
+                  .map(
+                    (item) => Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: _SelectableTile(
+                        title: item,
+                        subtitle: _routineSubtitle(item),
+                        selected: state.routineLevel == item,
+                        onTap: () => state.setRoutineLevel(item),
+                      ),
+                    ),
+                  )
+                  .toList(),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BudgetGoalsStep extends StatelessWidget {
+  const _BudgetGoalsStep({required this.state});
+
+  final OnboardingState state;
+
+  @override
+  Widget build(BuildContext context) {
+    return _StepScrollView(
+      eyebrow: 'Step 4',
+      title: 'Set your budget and skincare goals.',
+      subtitle:
+          'SkinSync will use this to keep recommendations aligned with your priorities and spend comfort.',
+      child: Column(
+        children: [
+          _GlassPanel(
+            child: Column(
+              children: [
+                _ChoiceWrap(
+                  label: 'Monthly budget',
+                  helper: 'Choose the level that feels sustainable for your routine.',
+                  children: OnboardingState.budgetOptions.entries
+                      .map(
+                        (entry) => _ChoiceChipCard(
+                          label: '${entry.key} · ${_formatCurrency(entry.value)}',
+                          selected: state.budgetLabel == entry.key,
+                          onTap: () => state.setBudgetLabel(entry.key),
+                        ),
+                      )
+                      .toList(),
+                ),
+                const SizedBox(height: 20),
+                _ChoiceWrap(
+                  label: 'Primary goals',
+                  helper: 'Pick the outcomes you care about most right now.',
+                  children: OnboardingState.goalOptions
+                      .map(
+                        (item) => _ChoiceChipCard(
+                          label: item,
+                          selected: state.goals.contains(item),
+                          onTap: () => state.toggleGoal(item),
+                        ),
+                      )
+                      .toList(),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PhotoStep extends StatelessWidget {
+  const _PhotoStep({
+    required this.state,
+    required this.onPickPhoto,
   });
 
-  final String leading;
-  final String trailing;
-  final double progress;
+  final OnboardingState state;
+  final VoidCallback onPickPhoto;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Row(
-          children: [
-            Text(
-              leading,
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: AppColors.primaryDark,
-                fontWeight: FontWeight.w800,
-              ),
+    final photo = state.skinPhoto;
+
+    return _StepScrollView(
+      eyebrow: 'Step 5',
+      title: 'Add a skin photo or skip for now.',
+      subtitle:
+          'A photo helps unlock AI analysis immediately. You can still finish onboarding without one and scan later from Dashboard or AI Hub.',
+      child: Column(
+        children: [
+          _GlassPanel(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                GestureDetector(
+                  onTap: onPickPhoto,
+                  child: Container(
+                    height: 240,
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(26),
+                      border: Border.all(
+                        color: AppColors.border,
+                        style: BorderStyle.solid,
+                      ),
+                    ),
+                    child: photo == null
+                        ? const _PhotoPlaceholder()
+                        : ClipRRect(
+                            borderRadius: BorderRadius.circular(26),
+                            child: Image.file(photo, fit: BoxFit.cover),
+                          ),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: [
+                    FilledButton.icon(
+                      onPressed: onPickPhoto,
+                      icon: const Icon(Icons.add_a_photo_outlined),
+                      label: Text(photo == null ? 'Choose photo' : 'Replace photo'),
+                    ),
+                    if (photo != null)
+                      OutlinedButton.icon(
+                        onPressed: () => state.setPhoto(null),
+                        icon: const Icon(Icons.delete_outline_rounded),
+                        label: const Text('Remove'),
+                      ),
+                  ],
+                ),
+              ],
             ),
-            const Spacer(),
-            Text(
-              trailing,
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: AppColors.primaryDark,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 10),
-        _ProgressBar(progress: progress),
-      ],
-    );
-  }
-}
-
-class _ProgressBar extends StatelessWidget {
-  const _ProgressBar({required this.progress});
-
-  final double progress;
-
-  @override
-  Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(999),
-      child: SizedBox(
-        height: 5,
-        child: LinearProgressIndicator(
-          value: progress.clamp(0, 1),
-          backgroundColor: const Color(0xFFF0E8DD),
-          valueColor: const AlwaysStoppedAnimation(Color(0xFFA6815C)),
-        ),
+          ),
+        ],
       ),
     );
   }
 }
 
-class _BottomAction extends StatelessWidget {
-  const _BottomAction({
+class _BottomActionBar extends StatelessWidget {
+  const _BottomActionBar({
     required this.state,
     required this.errorMessage,
     required this.onPressed,
@@ -667,58 +595,34 @@ class _BottomAction extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isFinalStep = state.currentStep == OnboardingState.totalSteps - 1;
-    final label = switch (state.currentStep) {
-      0 => 'Start Discovery',
-      3 => 'Complete',
-      _ => 'Continue',
-    };
-    final footer = switch (state.currentStep) {
-      0 => 'Only 3 quick steps to personalize your routine',
-      3 => 'Secured by SkinSync AI Analysis',
-      _ => 'You can change this later in settings.',
-    };
 
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: const Color(0xFFFAF6EF),
+        color: AppColors.pageBackground,
         border: Border(
           top: BorderSide(color: AppColors.border.withValues(alpha: 0.3)),
         ),
       ),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+        padding: const EdgeInsets.fromLTRB(20, 14, 20, 16),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (errorMessage != null) ...[
+            if (errorMessage != null && errorMessage!.trim().isNotEmpty) ...[
               Text(
                 errorMessage!,
                 textAlign: TextAlign.center,
-                style: Theme.of(
-                  context,
-                ).textTheme.labelSmall?.copyWith(color: AppColors.error),
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: AppColors.error,
+                ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
             ],
             SizedBox(
               width: double.infinity,
-              height: 54,
+              height: 56,
               child: FilledButton(
                 onPressed: state.isSubmitting ? null : onPressed,
-                style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF87663D),
-                  foregroundColor: Colors.white,
-                  disabledBackgroundColor: const Color(
-                    0xFF87663D,
-                  ).withValues(alpha: 0.55),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  textStyle: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
                 child: state.isSubmitting
                     ? const SizedBox(
                         width: 18,
@@ -728,29 +632,17 @@ class _BottomAction extends StatelessWidget {
                           color: Colors.white,
                         ),
                       )
-                    : Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(label),
-                          const SizedBox(width: 10),
-                          Icon(
-                            isFinalStep
-                                ? Icons.arrow_forward_rounded
-                                : Icons.arrow_forward_rounded,
-                            size: 18,
-                          ),
-                        ],
-                      ),
+                    : Text(isFinalStep ? 'Finish onboarding' : 'Continue'),
               ),
             ),
-            const SizedBox(height: 9),
+            const SizedBox(height: 10),
             Text(
-              footer,
+              isFinalStep
+                  ? 'Skipping the photo is okay. You can run your first scan later.'
+                  : 'SkinSync will save your progress and personalize the next step.',
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: AppColors.primaryDark.withValues(alpha: 0.72),
-                fontSize: 10,
+                color: AppColors.primaryDark.withValues(alpha: 0.75),
               ),
             ),
           ],
@@ -760,257 +652,343 @@ class _BottomAction extends StatelessWidget {
   }
 }
 
-class _InputPanel extends StatelessWidget {
-  const _InputPanel({
-    required this.label,
+class _StepScrollView extends StatelessWidget {
+  const _StepScrollView({
+    required this.eyebrow,
+    required this.title,
+    required this.subtitle,
     required this.child,
-    required this.helper,
   });
 
-  final String label;
+  final String eyebrow;
+  final String title;
+  final String subtitle;
   final Widget child;
-  final String helper;
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+      padding: const EdgeInsets.fromLTRB(18, 8, 18, 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          LinearProgressIndicator(
+            value: (context.watch<OnboardingState>().currentStep + 1) /
+                OnboardingState.totalSteps,
+            minHeight: 6,
+            borderRadius: BorderRadius.circular(999),
+            backgroundColor: const Color(0xFFEADFD1),
+            valueColor: const AlwaysStoppedAnimation(AppColors.primaryDark),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            eyebrow,
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              color: AppColors.primaryDark,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            title,
+            style: Theme.of(context).textTheme.displaySmall?.copyWith(
+              color: AppColors.heading,
+              fontWeight: FontWeight.w700,
+              height: 1.1,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            subtitle,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: AppColors.mutedText,
+              height: 1.55,
+            ),
+          ),
+          const SizedBox(height: 24),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
+class _GlassPanel extends StatelessWidget {
+  const _GlassPanel({required this.child});
+
+  final Widget child;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(18, 16, 18, 14),
-      decoration: _softCardDecoration(radius: 14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: Theme.of(context).textTheme.labelMedium?.copyWith(
-              color: AppColors.primaryDark,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          child,
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              const Icon(
-                Icons.info_outline_rounded,
-                size: 14,
-                color: AppColors.mutedText,
-              ),
-              const SizedBox(width: 7),
-              Expanded(
-                child: Text(
-                  helper,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: AppColors.mutedText,
-                    fontSize: 10,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _FeatureTile extends StatelessWidget {
-  const _FeatureTile({required this.icon, required this.title});
-
-  final IconData icon;
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 82,
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFFBF7),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border.withValues(alpha: 0.65)),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, color: AppColors.primaryDark, size: 20),
-          const SizedBox(height: 9),
-          Text(
-            title,
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: AppColors.foreground,
-              fontWeight: FontWeight.w800,
-              fontSize: 10,
-              height: 1.2,
-            ),
+        color: Colors.white.withValues(alpha: 0.96),
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.82)),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primaryDark.withValues(alpha: 0.08),
+            blurRadius: 24,
+            offset: const Offset(0, 12),
           ),
         ],
       ),
+      child: child,
     );
   }
 }
 
-class _IntroPagerLabel extends StatelessWidget {
-  const _IntroPagerLabel();
+class _TextFieldBlock extends StatelessWidget {
+  const _TextFieldBlock({
+    required this.label,
+    required this.helper,
+    required this.child,
+  });
+
+  final String label;
+  final String helper;
+  final Widget child;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _dot(active: true),
-        const SizedBox(width: 5),
-        _dot(active: false),
-        const SizedBox(width: 13),
         Text(
-          'SKIN DISCOVERY QUIZ',
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-            color: AppColors.primaryDark.withValues(alpha: 0.62),
-            fontSize: 9,
-            fontWeight: FontWeight.w800,
+          label,
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w700,
+            color: AppColors.heading,
+          ),
+        ),
+        const SizedBox(height: 8),
+        child,
+        const SizedBox(height: 8),
+        Text(
+          helper,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: AppColors.mutedText,
           ),
         ),
       ],
     );
   }
-
-  Widget _dot({required bool active}) {
-    return Container(
-      width: active ? 12 : 5,
-      height: 5,
-      decoration: BoxDecoration(
-        color: active ? const Color(0xFFA6815C) : const Color(0xFFD8C8B4),
-        borderRadius: BorderRadius.circular(999),
-      ),
-    );
-  }
 }
 
-class _LotusSeal extends StatelessWidget {
-  const _LotusSeal();
+class _ActionField extends StatelessWidget {
+  const _ActionField({
+    required this.label,
+    required this.value,
+    required this.helper,
+    required this.icon,
+    required this.onTap,
+    required this.isPlaceholder,
+  });
+
+  final String label;
+  final String value;
+  final String helper;
+  final IconData icon;
+  final VoidCallback onTap;
+  final bool isPlaceholder;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 86,
-      height: 86,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: const Color(0xFFF8F0E7),
-        border: Border.all(color: AppColors.border.withValues(alpha: 0.5)),
-      ),
-      child: Container(
-        width: 58,
-        height: 58,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: const Color(0xFFFBF6EF),
-          border: Border.all(color: AppColors.border.withValues(alpha: 0.7)),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w700,
+            color: AppColors.heading,
+          ),
         ),
-        child: const Icon(
-          Icons.local_florist_outlined,
-          color: AppColors.primaryDark,
-          size: 24,
+        const SizedBox(height: 8),
+        InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(18),
+          child: Ink(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Row(
+              children: [
+                Icon(icon, color: AppColors.primaryDark),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    value,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: isPlaceholder
+                          ? AppColors.mutedText
+                          : AppColors.foreground,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                const Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  color: AppColors.primaryDark,
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          helper,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: AppColors.mutedText,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ChoiceWrap extends StatelessWidget {
+  const _ChoiceWrap({
+    required this.label,
+    required this.helper,
+    required this.children,
+  });
+
+  final String label;
+  final String helper;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w700,
+            color: AppColors.heading,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          helper,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: AppColors.mutedText,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Wrap(spacing: 10, runSpacing: 10, children: children),
+      ],
+    );
+  }
+}
+
+class _ChoiceChipCard extends StatelessWidget {
+  const _ChoiceChipCard({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(999),
+        child: Ink(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: selected ? AppColors.secondary : AppColors.surface,
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+              color: selected ? AppColors.primaryDark : AppColors.border,
+            ),
+          ),
+          child: Text(
+            label,
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+              color: AppColors.foreground,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ),
       ),
     );
   }
 }
 
-class _GenderOption extends StatelessWidget {
-  const _GenderOption({
-    required this.icon,
+class _SelectableTile extends StatelessWidget {
+  const _SelectableTile({
     required this.title,
     required this.subtitle,
     required this.selected,
     required this.onTap,
-    this.isLast = false,
   });
 
-  final IconData icon;
   final String title;
   final String subtitle;
   final bool selected;
   final VoidCallback onTap;
-  final bool isLast;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(bottom: isLast ? 0 : 12),
+    return Material(
+      color: Colors.transparent,
       child: InkWell(
-        borderRadius: BorderRadius.circular(13),
         onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          height: 68,
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+        borderRadius: BorderRadius.circular(20),
+        child: Ink(
+          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: selected ? const Color(0xFFFBF6EF) : Colors.white,
-            borderRadius: BorderRadius.circular(13),
+            color: selected ? AppColors.surfaceStrong : AppColors.surface,
+            borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: selected
-                  ? const Color(0xFFA6815C)
-                  : AppColors.border.withValues(alpha: 0.68),
-              width: selected ? 1.3 : 1,
+              color: selected ? AppColors.primaryDark : AppColors.border,
             ),
-            boxShadow: selected
-                ? [
-                    BoxShadow(
-                      color: AppColors.primaryDark.withValues(alpha: 0.08),
-                      blurRadius: 12,
-                      offset: const Offset(0, 6),
-                    ),
-                  ]
-                : null,
           ),
           child: Row(
             children: [
-              Icon(icon, color: AppColors.primaryDark, size: 21),
-              const SizedBox(width: 14),
               Expanded(
                 child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       title,
-                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                        color: AppColors.foreground,
-                        fontWeight: FontWeight.w800,
-                        height: 1,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: AppColors.heading,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
-                    const SizedBox(height: 5),
+                    const SizedBox(height: 6),
                     Text(
                       subtitle,
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: AppColors.mutedText,
-                        fontSize: 10,
+                        height: 1.4,
                       ),
                     ),
                   ],
                 ),
               ),
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
-                width: 18,
-                height: 18,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: selected ? AppColors.primaryDark : Colors.transparent,
-                  border: Border.all(
-                    color: selected
-                        ? AppColors.primaryDark
-                        : AppColors.border.withValues(alpha: 0.95),
-                    width: 1.4,
-                  ),
-                ),
+              const SizedBox(width: 12),
+              Icon(
+                selected
+                    ? Icons.check_circle_rounded
+                    : Icons.radio_button_unchecked_rounded,
+                color: AppColors.primaryDark,
               ),
             ],
           ),
@@ -1020,176 +998,78 @@ class _GenderOption extends StatelessWidget {
   }
 }
 
-class _IntroStillLife extends StatelessWidget {
-  const _IntroStillLife();
+class _PhotoPlaceholder extends StatelessWidget {
+  const _PhotoPlaceholder();
 
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(14),
-      child: SizedBox(
-        width: double.infinity,
-        height: 128,
-        child: CustomPaint(painter: _StillLifePainter()),
-      ),
-    );
-  }
-}
-
-class _StillLifePainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final bg = Paint()
-      ..shader = const LinearGradient(
-        colors: [Color(0xFFF4E9D8), Color(0xFFEFE4D2), Color(0xFFFDFBF7)],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      ).createShader(Offset.zero & size);
-    canvas.drawRect(Offset.zero & size, bg);
-
-    final shadow = Paint()
-      ..color = const Color(0xFF6F5C46).withValues(alpha: 0.14)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10);
-    canvas.drawOval(
-      Rect.fromCenter(
-        center: Offset(size.width * 0.54, size.height * 0.82),
-        width: size.width * 0.78,
-        height: size.height * 0.18,
-      ),
-      shadow,
-    );
-
-    final leafPaint = Paint()
-      ..color = const Color(0xFF3C7A49)
-      ..style = PaintingStyle.fill;
-    final stemPaint = Paint()
-      ..color = const Color(0xFF2F6040)
-      ..strokeWidth = 2
-      ..strokeCap = StrokeCap.round;
-    final stemStart = Offset(size.width * 0.14, size.height * 0.73);
-    final stemEnd = Offset(size.width * 0.41, size.height * 0.52);
-    canvas.drawLine(stemStart, stemEnd, stemPaint);
-    for (var i = 0; i < 5; i++) {
-      final x = size.width * (0.19 + i * 0.045);
-      final y = size.height * (0.69 - i * 0.035);
-      canvas.save();
-      canvas.translate(x, y);
-      canvas.rotate(i.isEven ? -0.55 : 0.55);
-      canvas.drawOval(
-        Rect.fromCenter(
-          center: Offset.zero,
-          width: size.width * 0.085,
-          height: size.height * 0.12,
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Container(
+          width: 72,
+          height: 72,
+          decoration: BoxDecoration(
+            color: AppColors.secondary,
+            borderRadius: BorderRadius.circular(24),
+          ),
+          alignment: Alignment.center,
+          child: const Icon(
+            Icons.camera_alt_outlined,
+            color: AppColors.primaryDark,
+            size: 30,
+          ),
         ),
-        leafPaint,
-      );
-      canvas.restore();
-    }
-
-    final bottleX = size.width * 0.29;
-    final bottleTop = size.height * 0.28;
-    final bottlePaint = Paint()
-      ..color = const Color(0xFFC07A2D).withValues(alpha: 0.88);
-    final glassPaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.24)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.3;
-
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(bottleX, bottleTop, 34, 70),
-        const Radius.circular(8),
-      ),
-      bottlePaint,
-    );
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(bottleX, bottleTop, 34, 70),
-        const Radius.circular(8),
-      ),
-      glassPaint,
-    );
-    canvas.drawRect(
-      Rect.fromLTWH(bottleX + 10, bottleTop - 12, 14, 14),
-      Paint()..color = const Color(0xFF65492D),
-    );
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(bottleX + 5, bottleTop - 25, 24, 14),
-        const Radius.circular(6),
-      ),
-      Paint()..color = const Color(0xFF3B2A1D),
-    );
-    canvas.drawLine(
-      Offset(bottleX + 19, bottleTop - 25),
-      Offset(bottleX + 19, bottleTop - 54),
-      Paint()
-        ..color = const Color(0xFF3B2A1D)
-        ..strokeWidth = 2.6
-        ..strokeCap = StrokeCap.round,
-    );
-
-    final cupRect = Rect.fromLTWH(
-      size.width * 0.55,
-      size.height * 0.27,
-      size.width * 0.25,
-      size.height * 0.5,
-    );
-    final cupPath = Path()
-      ..moveTo(cupRect.left + 8, cupRect.top)
-      ..lineTo(cupRect.right - 8, cupRect.top)
-      ..lineTo(cupRect.right - 16, cupRect.bottom)
-      ..lineTo(cupRect.left + 16, cupRect.bottom)
-      ..close();
-    canvas.drawPath(
-      cupPath,
-      Paint()
-        ..color = Colors.white.withValues(alpha: 0.28)
-        ..style = PaintingStyle.fill,
-    );
-    canvas.drawPath(
-      cupPath,
-      Paint()
-        ..color = const Color(0xFF8E806C).withValues(alpha: 0.48)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.2,
-    );
-    canvas.drawPath(
-      Path()
-        ..moveTo(cupRect.left + 14, cupRect.bottom - 22)
-        ..lineTo(cupRect.right - 16, cupRect.bottom - 30)
-        ..lineTo(cupRect.right - 18, cupRect.bottom)
-        ..lineTo(cupRect.left + 16, cupRect.bottom)
-        ..close(),
-      Paint()..color = const Color(0xFFC4B05E).withValues(alpha: 0.72),
-    );
-
-    final highlight = Paint()
-      ..color = Colors.white.withValues(alpha: 0.35)
-      ..strokeWidth = 2
-      ..strokeCap = StrokeCap.round;
-    canvas.drawLine(
-      Offset(size.width * 0.64, size.height * 0.32),
-      Offset(size.width * 0.62, size.height * 0.68),
-      highlight,
+        const SizedBox(height: 18),
+        Text(
+          'Upload a clear skin photo',
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+            color: AppColors.heading,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Natural light and a makeup-free close-up help the AI produce a better first analysis.',
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: AppColors.mutedText,
+            height: 1.45,
+          ),
+        ),
+      ],
     );
   }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-BoxDecoration _softCardDecoration({required double radius}) {
-  return BoxDecoration(
-    color: Colors.white.withValues(alpha: 0.96),
-    borderRadius: BorderRadius.circular(radius),
-    border: Border.all(color: Colors.white.withValues(alpha: 0.8)),
-    boxShadow: [
-      BoxShadow(
-        color: AppColors.primaryDark.withValues(alpha: 0.08),
-        blurRadius: 24,
-        offset: const Offset(0, 12),
-      ),
-    ],
-  );
+String _genderLabel(OnboardingGender gender) {
+  switch (gender) {
+    case OnboardingGender.male:
+      return 'Male';
+    case OnboardingGender.female:
+      return 'Female';
+    case OnboardingGender.other:
+      return 'Other';
+    case OnboardingGender.preferNotToSay:
+      return 'Prefer not to say';
+  }
+}
+
+String _routineSubtitle(String label) {
+  switch (label) {
+    case 'Beginner':
+      return 'I want something simple with only essential steps.';
+    case 'Balanced':
+      return 'I already do some skincare and want a sustainable routine.';
+    case 'Advanced':
+      return 'I am comfortable with actives and a more structured regimen.';
+    case 'Minimal':
+      return 'I want the fewest possible steps with clear impact.';
+    default:
+      return 'SkinSync will adapt recommendations to this level.';
+  }
+}
+
+String _formatCurrency(int value) {
+  return NumberFormat.decimalPattern().format(value);
 }

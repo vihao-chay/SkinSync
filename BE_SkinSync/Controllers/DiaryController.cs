@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using SkinSync.Base;
+using SkinSync.Data;
 using SkinSync.Helpers;
 using SkinSync.Mappers;
 using SkinSync.Models.Dtos.Diary;
@@ -16,11 +18,13 @@ public class DiaryController : ControllerBase
 {
     private readonly IDiaryRepository _diaryRepository;
     private readonly IWebHostEnvironment _environment;
+    private readonly AppDbContext _dbContext;
 
-    public DiaryController(IDiaryRepository diaryRepository, IWebHostEnvironment environment)
+    public DiaryController(IDiaryRepository diaryRepository, IWebHostEnvironment environment, AppDbContext dbContext)
     {
         _diaryRepository = diaryRepository;
         _environment = environment;
+        _dbContext = dbContext;
     }
 
     [HttpGet("today")]
@@ -71,6 +75,7 @@ public class DiaryController : ControllerBase
 
         var date = request.Date ?? DateOnly.FromDateTime(DateTime.UtcNow.Date);
         var existing = await _diaryRepository.GetByUserAndDateAsync(id, date, cancellationToken);
+        var (morningCompleted, eveningCompleted) = await ResolveRoutineCompletionAsync(id, date, cancellationToken);
 
         string? imageUrl = existing?.DailyImageUrl;
         if (request.Image is not null && request.Image.Length > 0)
@@ -89,26 +94,21 @@ public class DiaryController : ControllerBase
 
         if (existing is null)
         {
-            var payload = new DailyLogPayload
-            {
-                Note = request.Notes,
-                AcneLevel = request.AcneLevel,
-                DrynessLevel = request.DrynessLevel,
-                RednessLevel = request.RednessLevel,
-                IrritationLevel = request.IrritationLevel,
-                HydrationLevel = request.HydrationLevel
-            };
-
             var newLog = new DailyLog
             {
                 Id = Guid.NewGuid(),
                 UserId = id,
                 Date = date,
-                MorningCompleted = request.MorningCompleted,
-                EveningCompleted = request.EveningCompleted,
+                MorningCompleted = morningCompleted,
+                EveningCompleted = eveningCompleted,
                 SkinFeeling = request.SkinFeeling,
                 IsIrritated = request.IsIrritated,
-                Notes = DailyLogPayloadHelper.Serialize(payload),
+                Notes = string.IsNullOrWhiteSpace(request.Notes) ? null : request.Notes.Trim(),
+                AcneLevel = request.AcneLevel,
+                DrynessLevel = request.DrynessLevel,
+                RednessLevel = request.RednessLevel,
+                IrritationLevel = request.IrritationLevel,
+                HydrationLevel = request.HydrationLevel,
                 DailyImageUrl = imageUrl
             };
 
@@ -116,21 +116,16 @@ public class DiaryController : ControllerBase
             return ResponseEntity<DiaryCheckInResponseDto>.Ok(newLog.ToCheckInDto(), "Cáº­p nháº­t check-in thÃ nh cÃ´ng.");
         }
 
-        var updatedPayload = new DailyLogPayload
-        {
-            Note = request.Notes,
-            AcneLevel = request.AcneLevel,
-            DrynessLevel = request.DrynessLevel,
-            RednessLevel = request.RednessLevel,
-            IrritationLevel = request.IrritationLevel,
-            HydrationLevel = request.HydrationLevel
-        };
-
-        existing.MorningCompleted = request.MorningCompleted;
-        existing.EveningCompleted = request.EveningCompleted;
+        existing.MorningCompleted = morningCompleted;
+        existing.EveningCompleted = eveningCompleted;
         existing.SkinFeeling = request.SkinFeeling;
         existing.IsIrritated = request.IsIrritated;
-        existing.Notes = DailyLogPayloadHelper.Serialize(updatedPayload);
+        existing.Notes = string.IsNullOrWhiteSpace(request.Notes) ? null : request.Notes.Trim();
+        existing.AcneLevel = request.AcneLevel;
+        existing.DrynessLevel = request.DrynessLevel;
+        existing.RednessLevel = request.RednessLevel;
+        existing.IrritationLevel = request.IrritationLevel;
+        existing.HydrationLevel = request.HydrationLevel;
         existing.DailyImageUrl = imageUrl;
 
         await _diaryRepository.UpdateAsync(existing, cancellationToken);
@@ -173,5 +168,40 @@ public class DiaryController : ControllerBase
         };
 
         return ResponseEntity<PagingResult<MonthlyDiaryDayDto>>.Ok(response, "Fetched monthly diary successfully.");
+    }
+
+    private async Task<(bool MorningCompleted, bool EveningCompleted)> ResolveRoutineCompletionAsync(
+        Guid userId,
+        DateOnly date,
+        CancellationToken cancellationToken)
+    {
+        var regimen = await _dbContext.UserRegimens
+            .AsNoTracking()
+            .Include(x => x.Items)
+            .FirstOrDefaultAsync(x => x.UserId == userId && x.IsActive, cancellationToken);
+
+        if (regimen is null)
+        {
+            return (false, false);
+        }
+
+        var trackings = await _dbContext.RoutineTrackings
+            .AsNoTracking()
+            .Where(x => x.UserId == userId && x.TrackingDate == date)
+            .ToListAsync(cancellationToken);
+
+        var trackingByStep = trackings.ToDictionary(x => x.StepId, x => x.Status, EqualityComparer<Guid>.Default);
+        var morningCompleted = regimen.Items
+            .Where(x => RoutineScheduleHelper.IsMorning(x.RoutineTime))
+            .Select(x => x.Id)
+            .DefaultIfEmpty(Guid.Empty)
+            .All(stepId => stepId != Guid.Empty && trackingByStep.TryGetValue(stepId, out var status) && status == "completed");
+        var eveningCompleted = regimen.Items
+            .Where(x => RoutineScheduleHelper.IsEvening(x.RoutineTime))
+            .Select(x => x.Id)
+            .DefaultIfEmpty(Guid.Empty)
+            .All(stepId => stepId != Guid.Empty && trackingByStep.TryGetValue(stepId, out var status) && status == "completed");
+
+        return (morningCompleted, eveningCompleted);
     }
 }

@@ -13,13 +13,16 @@ namespace SkinSync.Controllers;
 public class SkinProgressController : ControllerBase
 {
     private readonly ISkinProgressService _skinProgressService;
+    private readonly ISkinProgressComparisonService _skinProgressComparisonService;
     private readonly ISkinProgressReportService _skinProgressReportService;
 
     public SkinProgressController(
         ISkinProgressService skinProgressService,
+        ISkinProgressComparisonService skinProgressComparisonService,
         ISkinProgressReportService skinProgressReportService)
     {
         _skinProgressService = skinProgressService;
+        _skinProgressComparisonService = skinProgressComparisonService;
         _skinProgressReportService = skinProgressReportService;
     }
 
@@ -90,6 +93,105 @@ public class SkinProgressController : ControllerBase
         catch (AiFeatureException ex)
         {
             return ResponseEntity<SkinProgressDashboardResponseDto>.Fail(ex.Message, ex.StatusCode);
+        }
+    }
+
+    [HttpGet("overview")]
+    public async Task<ResponseEntity<SkinProgressOverviewResponseDto>> GetOverview(CancellationToken cancellationToken)
+    {
+        if (!HttpContext.TryGetUserId(out var userId))
+        {
+            return ResponseEntity<SkinProgressOverviewResponseDto>.Fail("Missing authenticated user.", 401);
+        }
+
+        try
+        {
+            var data = await _skinProgressService.GetOverviewAsync(userId, cancellationToken);
+            return ResponseEntity<SkinProgressOverviewResponseDto>.Ok(data, "Skin progress overview fetched successfully.");
+        }
+        catch (AiFeatureException ex)
+        {
+            return ResponseEntity<SkinProgressOverviewResponseDto>.Fail(ex.Message, ex.StatusCode);
+        }
+    }
+
+    [HttpGet("timeline")]
+    public async Task<ResponseEntity<IReadOnlyCollection<SkinProgressTimelineEntryDto>>> GetTimeline([FromQuery] SkinProgressTimelineQueryDto query, CancellationToken cancellationToken)
+    {
+        if (!HttpContext.TryGetUserId(out var userId))
+        {
+            return ResponseEntity<IReadOnlyCollection<SkinProgressTimelineEntryDto>>.Fail("Missing authenticated user.", 401);
+        }
+
+        try
+        {
+            var data = await _skinProgressService.GetTimelineAsync(userId, query, cancellationToken);
+            return ResponseEntity<IReadOnlyCollection<SkinProgressTimelineEntryDto>>.Ok(data.Items, "Skin progress timeline fetched successfully.");
+        }
+        catch (AiFeatureException ex)
+        {
+            return ResponseEntity<IReadOnlyCollection<SkinProgressTimelineEntryDto>>.Fail(ex.Message, ex.StatusCode);
+        }
+    }
+
+    [HttpGet("entries/{entryId:guid}")]
+    public async Task<ResponseEntity<SkinProgressEntryDetailDto>> GetEntry(Guid entryId, CancellationToken cancellationToken)
+    {
+        if (!HttpContext.TryGetUserId(out var userId))
+        {
+            return ResponseEntity<SkinProgressEntryDetailDto>.Fail("Missing authenticated user.", 401);
+        }
+
+        try
+        {
+            var data = await _skinProgressService.GetEntryDetailAsync(userId, entryId, cancellationToken);
+            return ResponseEntity<SkinProgressEntryDetailDto>.Ok(data, "Skin progress entry fetched successfully.");
+        }
+        catch (AiFeatureException ex)
+        {
+            return ResponseEntity<SkinProgressEntryDetailDto>.Fail(ex.Message, ex.StatusCode);
+        }
+    }
+
+    [HttpPost("compare")]
+    public async Task<ResponseEntity<SkinProgressCompareResponseDto>> Compare([FromBody] SkinProgressEntryCompareRequestDto request, CancellationToken cancellationToken)
+    {
+        if (!HttpContext.TryGetUserId(out var userId))
+        {
+            return ResponseEntity<SkinProgressCompareResponseDto>.Fail("Missing authenticated user.", 401);
+        }
+
+        try
+        {
+            var data = await _skinProgressComparisonService.CompareAsync(userId, new SkinProgressCompareRequestDto
+            {
+                BeforePhotoId = request.BeforeEntryId,
+                AfterPhotoId = request.AfterEntryId
+            }, cancellationToken);
+            return ResponseEntity<SkinProgressCompareResponseDto>.Ok(data, "Skin progress comparison completed successfully.");
+        }
+        catch (AiFeatureException ex)
+        {
+            return ResponseEntity<SkinProgressCompareResponseDto>.Fail(ex.Message, ex.StatusCode);
+        }
+    }
+
+    [HttpPost("reports/generate")]
+    public async Task<ResponseEntity<SkinProgressReportResponseDto>> GenerateReport([FromBody] SkinProgressReportGenerateRequestDto request, CancellationToken cancellationToken)
+    {
+        if (!HttpContext.TryGetUserId(out var userId))
+        {
+            return ResponseEntity<SkinProgressReportResponseDto>.Fail("Missing authenticated user.", 401);
+        }
+
+        try
+        {
+            var data = await _skinProgressReportService.GenerateAsync(userId, request, cancellationToken);
+            return ResponseEntity<SkinProgressReportResponseDto>.Ok(data, "Skin progress report generated successfully.");
+        }
+        catch (AiFeatureException ex)
+        {
+            return ResponseEntity<SkinProgressReportResponseDto>.Fail(ex.Message, ex.StatusCode);
         }
     }
 

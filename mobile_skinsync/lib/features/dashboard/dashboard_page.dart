@@ -28,6 +28,10 @@ class DashboardPage extends StatelessWidget {
       title: 'Good evening, $firstName',
       subtitle:
           'Your premium skincare dashboard keeps today\'s routine, scan insights, and gentle next steps in one calm place.',
+      headerTrailing: _ProfileShortcut(
+        displayName: appState.profileDisplayName,
+        onTap: () => Navigator.pushNamed(context, AppRoutes.profile),
+      ),
       onRefresh: appState.refreshHome,
       body: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
@@ -161,6 +165,54 @@ class DashboardPage extends StatelessWidget {
       return 'there';
     }
     return parts.first;
+  }
+}
+
+class _ProfileShortcut extends StatelessWidget {
+  const _ProfileShortcut({
+    required this.displayName,
+    required this.onTap,
+  });
+
+  final String displayName;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final initials = displayName
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((part) => part.isNotEmpty)
+        .take(2)
+        .map((part) => part[0].toUpperCase())
+        .join();
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(999),
+        child: Ink(
+          padding: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.92),
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: CircleAvatar(
+            radius: 22,
+            backgroundColor: AppColors.secondary,
+            child: Text(
+              initials.isEmpty ? 'SS' : initials,
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                color: AppColors.primaryDark,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 

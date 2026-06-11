@@ -19,18 +19,15 @@ public class AdminController : ControllerBase
 {
     private readonly AppDbContext _dbContext;
     private readonly IUserRepository _userRepository;
-    private readonly IAnalysisRepository _analysisRepository;
     private readonly IProductRepository _productRepository;
 
     public AdminController(
         AppDbContext dbContext,
         IUserRepository userRepository,
-        IAnalysisRepository analysisRepository,
         IProductRepository productRepository)
     {
         _dbContext = dbContext;
         _userRepository = userRepository;
-        _analysisRepository = analysisRepository;
         _productRepository = productRepository;
     }
 
@@ -39,7 +36,7 @@ public class AdminController : ControllerBase
     {
         var totalUsers = await _dbContext.Users.CountAsync(cancellationToken);
         var activeUsers = await _dbContext.Users.CountAsync(x => x.Status == "active", cancellationToken);
-        var totalAnalyses = await _analysisRepository.CountAsync(cancellationToken);
+        var totalAnalyses = await _dbContext.SkinProgressAnalyses.CountAsync(cancellationToken);
 
         var skinTypes = await _dbContext.UserProfiles
             .AsNoTracking()

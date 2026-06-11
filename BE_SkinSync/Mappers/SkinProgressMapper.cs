@@ -13,6 +13,8 @@ public static class SkinProgressMapper
             PhotoId = photo.Id,
             ImageUrl = photo.ImageUrl,
             ThumbnailUrl = photo.ThumbnailUrl,
+            Source = photo.Source,
+            ImageMetadataJson = photo.ImageMetadataJson,
             PhotoDate = photo.PhotoDate,
             TimeOfDay = photo.TimeOfDay,
             LightingCondition = photo.LightingCondition,
@@ -33,22 +35,96 @@ public static class SkinProgressMapper
         };
     }
 
-    public static SkinProgressAnalysisResponseDto ToDto(this SkinProgressAnalysis analysis)
+    public static SkinProgressAnalysisResponseDto ToDto(this SkinProgressAnalysis analysis, SkinProgressPhoto? photo = null)
     {
+        var resolvedPhoto = photo;
         return new SkinProgressAnalysisResponseDto
         {
             AnalysisId = analysis.Id,
             PhotoId = analysis.PhotoId,
+            ProgressEntryId = analysis.PhotoId,
+            Status = analysis.Status,
+            Source = resolvedPhoto?.Source ?? "unknown",
+            ImageUrl = resolvedPhoto?.ImageUrl ?? string.Empty,
+            ThumbnailUrl = resolvedPhoto?.ThumbnailUrl,
+            AiModel = analysis.AiModel,
             SkinTypeEstimate = analysis.SkinTypeEstimate,
             HydrationLevel = analysis.HydrationLevel,
             OilinessLevel = analysis.OilinessLevel,
-            Scores = ParseScoreChanges(analysis),
+            Scores = ParseScoreSet(analysis),
             DetectedConcerns = ParseConcernArray(analysis.DetectedConcerns),
             AiSummary = analysis.AiSummary,
-            Recommendations = ParseStringArray(analysis.Recommendations),
+            Recommendations = ParseRecommendationArray(analysis.Recommendations),
+            RoutineSuggestions = ParseRoutineSuggestions(analysis.RoutineSuggestions),
+            ProductSuggestions = ParseProductSuggestionArray(analysis.ProductSuggestions),
+            SafetyNotes = ParseStringArray(analysis.SafetyNotes),
             RiskFlags = ParseStringArray(analysis.RiskFlags),
             Disclaimer = "AI analysis is for skincare tracking only and is not a medical diagnosis.",
-            CreatedAt = analysis.CreatedAt
+            ConfidenceScore = analysis.ConfidenceScore,
+            ErrorMessage = analysis.ErrorMessage,
+            CreatedAt = analysis.CreatedAt,
+            CompletedAt = analysis.CompletedAt
+        };
+    }
+
+    public static SkinProgressTimelineEntryDto ToTimelineDto(this SkinProgressPhoto photo, SkinProgressAnalysis? analysis)
+    {
+        return new SkinProgressTimelineEntryDto
+        {
+            EntryId = photo.Id,
+            AnalysisId = analysis?.Id,
+            PhotoId = photo.Id,
+            EntryType = "analysis",
+            Source = photo.Source,
+            Status = analysis?.Status ?? "pending",
+            ImageUrl = photo.ImageUrl,
+            ThumbnailUrl = photo.ThumbnailUrl,
+            SkinScore = analysis?.OverallScore,
+            AcneLevel = analysis?.AcneScore,
+            RednessLevel = analysis?.RednessScore,
+            DarkSpotLevel = analysis?.DarkSpotScore,
+            TextureLevel = analysis?.TextureScore,
+            HydrationLevel = ParseHydrationScore(analysis?.HydrationLevel),
+            Summary = analysis?.AiSummary,
+            MainConcerns = ParseConcernArray(analysis?.DetectedConcerns).Select(x => x.Label).Where(x => !string.IsNullOrWhiteSpace(x)).ToList(),
+            CreatedAt = analysis?.CompletedAt ?? analysis?.CreatedAt ?? photo.CreatedAt
+        };
+    }
+
+    public static SkinProgressEntryDetailDto ToEntryDetailDto(this SkinProgressPhoto photo, SkinProgressAnalysis? analysis)
+    {
+        var timeline = photo.ToTimelineDto(analysis);
+        return new SkinProgressEntryDetailDto
+        {
+            EntryId = timeline.EntryId,
+            AnalysisId = timeline.AnalysisId,
+            PhotoId = timeline.PhotoId,
+            EntryType = timeline.EntryType,
+            Source = timeline.Source,
+            Status = timeline.Status,
+            ImageUrl = timeline.ImageUrl,
+            ThumbnailUrl = timeline.ThumbnailUrl,
+            SkinScore = timeline.SkinScore,
+            AcneLevel = timeline.AcneLevel,
+            RednessLevel = timeline.RednessLevel,
+            DarkSpotLevel = timeline.DarkSpotLevel,
+            TextureLevel = timeline.TextureLevel,
+            HydrationLevel = timeline.HydrationLevel,
+            Summary = timeline.Summary,
+            MainConcerns = timeline.MainConcerns,
+            CreatedAt = timeline.CreatedAt,
+            SkinType = analysis?.SkinTypeEstimate ?? "unknown",
+            OilinessLevel = analysis?.OilinessLevel ?? "unknown",
+            Scores = analysis is null ? new SkinProgressScoreSetDto() : ParseScoreSet(analysis),
+            DetectedConcerns = ParseConcernArray(analysis?.DetectedConcerns),
+            Recommendations = ParseRecommendationArray(analysis?.Recommendations),
+            RoutineSuggestions = ParseRoutineSuggestions(analysis?.RoutineSuggestions),
+            ProductSuggestions = ParseProductSuggestionArray(analysis?.ProductSuggestions),
+            SafetyNotes = ParseStringArray(analysis?.SafetyNotes),
+            RiskFlags = ParseStringArray(analysis?.RiskFlags),
+            Disclaimer = "AI analysis is for skincare tracking only and is not a medical diagnosis.",
+            ConfidenceScore = analysis?.ConfidenceScore,
+            Note = photo.Note
         };
     }
 
@@ -78,6 +154,9 @@ public static class SkinProgressMapper
         return new SkinProgressReportResponseDto
         {
             ReportId = report.Id,
+            ReportCategory = report.ReportCategory,
+            Source = report.Source,
+            RelatedAnalysisId = report.RelatedAnalysisId,
             PeriodType = report.PeriodType,
             PeriodStart = report.PeriodStart,
             PeriodEnd = report.PeriodEnd,
@@ -86,6 +165,7 @@ public static class SkinProgressMapper
             ScoreChanges = ParseScoreChanges(report.ScoreChanges),
             MainFindings = ParseStringArray(report.MainFindings),
             RoutineFeedback = report.RoutineFeedback,
+            ProductFeedback = report.ProductFeedback,
             NextSuggestions = ParseStringArray(report.NextSuggestions),
             CreatedAt = report.CreatedAt
         };
@@ -96,6 +176,9 @@ public static class SkinProgressMapper
         return new SkinProgressReportSummaryDto
         {
             ReportId = report.Id,
+            ReportCategory = report.ReportCategory,
+            Source = report.Source,
+            RelatedAnalysisId = report.RelatedAnalysisId,
             PeriodType = report.PeriodType,
             PeriodStart = report.PeriodStart,
             PeriodEnd = report.PeriodEnd,
@@ -105,7 +188,7 @@ public static class SkinProgressMapper
         };
     }
 
-    public static SkinProgressScoreSetDto ParseScoreChanges(SkinProgressAnalysis analysis)
+    public static SkinProgressScoreSetDto ParseScoreSet(SkinProgressAnalysis analysis)
     {
         return new SkinProgressScoreSetDto
         {
@@ -163,11 +246,106 @@ public static class SkinProgressMapper
 
         try
         {
-            return JsonSerializer.Deserialize<List<SkinProgressConcernDto>>(raw) ?? [];
+            var items = JsonSerializer.Deserialize<List<SkinProgressConcernDto>>(raw) ?? [];
+            foreach (var item in items)
+            {
+                item.Label = string.IsNullOrWhiteSpace(item.Label) ? Humanize(item.Concern) : item.Label;
+            }
+
+            return items;
         }
         catch (JsonException)
         {
             return Array.Empty<SkinProgressConcernDto>();
         }
+    }
+
+    public static IReadOnlyCollection<SkinProgressRecommendationDto> ParseRecommendationArray(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return Array.Empty<SkinProgressRecommendationDto>();
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize<List<SkinProgressRecommendationDto>>(raw) ?? [];
+        }
+        catch (JsonException)
+        {
+            return ParseStringArray(raw)
+                .Select((item, index) => new SkinProgressRecommendationDto
+                {
+                    Type = "routine",
+                    Title = $"Recommendation {index + 1}",
+                    Description = item,
+                    Priority = "medium"
+                })
+                .ToList();
+        }
+    }
+
+    public static SkinProgressRoutineSuggestionsDto ParseRoutineSuggestions(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return new SkinProgressRoutineSuggestionsDto();
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize<SkinProgressRoutineSuggestionsDto>(raw) ?? new SkinProgressRoutineSuggestionsDto();
+        }
+        catch (JsonException)
+        {
+            return new SkinProgressRoutineSuggestionsDto();
+        }
+    }
+
+    public static IReadOnlyCollection<SkinProgressProductSuggestionDto> ParseProductSuggestionArray(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return Array.Empty<SkinProgressProductSuggestionDto>();
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize<List<SkinProgressProductSuggestionDto>>(raw) ?? [];
+        }
+        catch (JsonException)
+        {
+            return Array.Empty<SkinProgressProductSuggestionDto>();
+        }
+    }
+
+    private static int? ParseHydrationScore(string? level)
+    {
+        if (string.IsNullOrWhiteSpace(level))
+        {
+            return null;
+        }
+
+        return level.Trim().ToLowerInvariant() switch
+        {
+            "very_low" => 15,
+            "low" => 30,
+            "moderate" => 55,
+            "balanced" => 70,
+            "good" => 80,
+            "high" => 90,
+            _ => null
+        };
+    }
+
+    private static string Humanize(string value)
+    {
+        var normalized = value.Trim().Replace('_', ' ');
+        if (normalized.Length == 0)
+        {
+            return "Unknown";
+        }
+
+        return char.ToUpperInvariant(normalized[0]) + normalized[1..];
     }
 }

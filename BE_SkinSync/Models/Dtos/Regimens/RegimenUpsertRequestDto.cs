@@ -17,7 +17,7 @@ public class RegimenStepUpsertDto
 
     [Required]
     [MaxLength(20)]
-    public string RoutineTime { get; set; } = "Morning";
+    public string RoutineTime { get; set; } = "morning";
 
     [Range(1, 100)]
     public int StepOrder { get; set; }

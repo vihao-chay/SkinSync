@@ -22,176 +22,6 @@ namespace SkinSync.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("SkinSync.Models.Entities.AiAnalysis", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<int?>("AgingRisk")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("AiModel")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasDefaultValueSql("timezone('utc', now())");
-
-                    b.Property<string>("ImageUrl")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<string>("IssuesDetected")
-                        .HasColumnType("jsonb");
-
-                    b.Property<int>("OverallScore")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("RawResponse")
-                        .HasColumnType("jsonb");
-
-                    b.Property<int?>("RecoveryCapacity")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("RootCauses")
-                        .HasColumnType("jsonb");
-
-                    b.Property<int?>("SkinAge")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasDefaultValue("completed");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<int?>("UvDamage")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Status");
-
-                    b.HasIndex("UserId", "CreatedAt")
-                        .IsDescending(false, true);
-
-                    b.ToTable("ai_analyses", null, t =>
-                        {
-                            t.HasCheckConstraint("ck_ai_analyses_aging_risk", "aging_risk IS NULL OR aging_risk BETWEEN 0 AND 100");
-
-                            t.HasCheckConstraint("ck_ai_analyses_overall_score", "overall_score BETWEEN 0 AND 100");
-
-                            t.HasCheckConstraint("ck_ai_analyses_recovery_capacity", "recovery_capacity IS NULL OR recovery_capacity BETWEEN 0 AND 100");
-
-                            t.HasCheckConstraint("ck_ai_analyses_status", "status IN ('pending', 'processing', 'completed', 'failed')");
-
-                            t.HasCheckConstraint("ck_ai_analyses_uv_damage", "uv_damage IS NULL OR uv_damage BETWEEN 0 AND 100");
-                        });
-                });
-
-            modelBuilder.Entity("SkinSync.Models.Entities.AiAnalysisIssue", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("AnalysisId")
-                        .HasColumnType("uuid");
-
-                    b.Property<int?>("ConfidenceScore")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasDefaultValueSql("timezone('utc', now())");
-
-                    b.Property<string>("Description")
-                        .HasColumnType("text");
-
-                    b.Property<string>("IssueType")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<int>("SeverityScore")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("AnalysisId");
-
-                    b.HasIndex("IssueType");
-
-                    b.HasIndex("AnalysisId", "IssueType");
-
-                    b.ToTable("ai_analysis_issues", null, t =>
-                        {
-                            t.HasCheckConstraint("ck_ai_analysis_issues_confidence_score", "confidence_score IS NULL OR confidence_score BETWEEN 0 AND 100");
-
-                            t.HasCheckConstraint("ck_ai_analysis_issues_severity_score", "severity_score BETWEEN 0 AND 100");
-                        });
-                });
-
-            modelBuilder.Entity("SkinSync.Models.Entities.AiRecommendation", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("AnalysisId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Content")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasDefaultValueSql("timezone('utc', now())");
-
-                    b.Property<int>("Priority")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(1);
-
-                    b.Property<string>("RecommendationType")
-                        .IsRequired()
-                        .HasMaxLength(30)
-                        .HasColumnType("character varying(30)");
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("AnalysisId");
-
-                    b.HasIndex("UserId", "CreatedAt")
-                        .IsDescending(false, true);
-
-                    b.ToTable("ai_recommendations", null, t =>
-                        {
-                            t.HasCheckConstraint("ck_ai_recommendations_priority", "priority BETWEEN 1 AND 5");
-
-                            t.HasCheckConstraint("ck_ai_recommendations_type", "recommendation_type IN ('routine', 'product', 'lifestyle', 'warning', 'ingredient')");
-                        });
-                });
-
             modelBuilder.Entity("SkinSync.Models.Entities.AiChatConversation", b =>
                 {
                     b.Property<Guid>("Id")
@@ -256,71 +86,9 @@ namespace SkinSync.Migrations
 
                     b.HasIndex("ConversationId", "CreatedAt");
 
-                    b.ToTable("ai_chat_messages", (string)null, t =>
+                    b.ToTable("ai_chat_messages", null, t =>
                         {
                             t.HasCheckConstraint("ck_ai_chat_messages_role", "\"Role\" IN ('user', 'assistant', 'system')");
-                        });
-                });
-
-            modelBuilder.Entity("SkinSync.Models.Entities.AiReport", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasDefaultValueSql("timezone('utc', now())");
-
-                    b.Property<string>("MainFindings")
-                        .IsRequired()
-                        .HasColumnType("jsonb");
-
-                    b.Property<string>("NextPlan")
-                        .IsRequired()
-                        .HasColumnType("jsonb");
-
-                    b.Property<string>("ProductFeedback")
-                        .HasColumnType("text");
-
-                    b.Property<string>("ProgressEvaluation")
-                        .IsRequired()
-                        .HasMaxLength(30)
-                        .HasColumnType("character varying(30)");
-
-                    b.Property<string>("RawAiResponse")
-                        .HasColumnType("jsonb");
-
-                    b.Property<string>("ReportType")
-                        .IsRequired()
-                        .HasMaxLength(30)
-                        .HasColumnType("character varying(30)");
-
-                    b.Property<string>("RoutineFeedback")
-                        .HasColumnType("text");
-
-                    b.Property<string>("Summary")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Warnings")
-                        .IsRequired()
-                        .HasColumnType("jsonb");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId", "CreatedAt")
-                        .IsDescending(false, true);
-
-                    b.ToTable("ai_reports", null, t =>
-                        {
-                            t.HasCheckConstraint("ck_ai_reports_progress_evaluation", "\"ProgressEvaluation\" IN ('improved', 'stable', 'worse', 'insufficient_data')");
-
-                            t.HasCheckConstraint("ck_ai_reports_report_type", "\"ReportType\" IN ('weekly', 'monthly', 'after_analysis')");
                         });
                 });
 
@@ -374,6 +142,9 @@ namespace SkinSync.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<int?>("AcneLevel")
+                        .HasColumnType("integer");
+
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
@@ -386,10 +157,19 @@ namespace SkinSync.Migrations
                     b.Property<DateOnly>("Date")
                         .HasColumnType("date");
 
+                    b.Property<int?>("DrynessLevel")
+                        .HasColumnType("integer");
+
                     b.Property<bool>("EveningCompleted")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
                         .HasDefaultValue(false);
+
+                    b.Property<int?>("HydrationLevel")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("IrritationLevel")
+                        .HasColumnType("integer");
 
                     b.Property<bool>("IsIrritated")
                         .ValueGeneratedOnAdd()
@@ -403,6 +183,9 @@ namespace SkinSync.Migrations
 
                     b.Property<string>("Notes")
                         .HasColumnType("text");
+
+                    b.Property<int?>("RednessLevel")
+                        .HasColumnType("integer");
 
                     b.Property<string>("SkinFeeling")
                         .HasMaxLength(30)
@@ -422,6 +205,16 @@ namespace SkinSync.Migrations
 
                     b.ToTable("daily_logs", null, t =>
                         {
+                            t.HasCheckConstraint("ck_daily_logs_acne_level", "\"AcneLevel\" IS NULL OR \"AcneLevel\" BETWEEN 0 AND 5");
+
+                            t.HasCheckConstraint("ck_daily_logs_dryness_level", "\"DrynessLevel\" IS NULL OR \"DrynessLevel\" BETWEEN 0 AND 5");
+
+                            t.HasCheckConstraint("ck_daily_logs_hydration_level", "\"HydrationLevel\" IS NULL OR \"HydrationLevel\" BETWEEN 0 AND 5");
+
+                            t.HasCheckConstraint("ck_daily_logs_irritation_level", "\"IrritationLevel\" IS NULL OR \"IrritationLevel\" BETWEEN 0 AND 5");
+
+                            t.HasCheckConstraint("ck_daily_logs_redness_level", "\"RednessLevel\" IS NULL OR \"RednessLevel\" BETWEEN 0 AND 5");
+
                             t.HasCheckConstraint("ck_daily_logs_skin_feeling", "skin_feeling IS NULL OR skin_feeling IN ('good', 'normal', 'dry', 'oily', 'irritated', 'acne_flare', 'sensitive')");
                         });
                 });
@@ -699,7 +492,7 @@ namespace SkinSync.Migrations
 
                     b.ToTable("regimen_items", null, t =>
                         {
-                            t.HasCheckConstraint("ck_regimen_items_routine_time", "routine_time IN ('Morning', 'Evening')");
+                            t.HasCheckConstraint("ck_regimen_items_routine_time", "routine_time IN ('morning', 'evening')");
 
                             t.HasCheckConstraint("ck_regimen_items_step_order", "step_order > 0");
                         });
@@ -716,11 +509,6 @@ namespace SkinSync.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasDefaultValueSql("timezone('utc', now())");
 
-                    b.Property<bool>("IsEnabled")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(true);
-
                     b.Property<string>("Frequency")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
@@ -732,6 +520,11 @@ namespace SkinSync.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
                         .HasDefaultValue(false);
+
+                    b.Property<bool>("IsEnabled")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
 
                     b.Property<string>("Priority")
                         .IsRequired()
@@ -765,7 +558,70 @@ namespace SkinSync.Migrations
                     b.ToTable("reminders", null, t =>
                         {
                             t.HasCheckConstraint("ck_reminders_priority", "\"Priority\" IN ('low', 'medium', 'high')");
-                            t.HasCheckConstraint("ck_reminders_routine_type", "routine_type IN ('Morning', 'Evening')");
+
+                            t.HasCheckConstraint("ck_reminders_routine_type", "routine_type IN ('morning', 'evening')");
+                        });
+                });
+
+            modelBuilder.Entity("SkinSync.Models.Entities.RoutineTracking", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("timezone('utc', now())");
+
+                    b.Property<string>("Note")
+                        .HasColumnType("text");
+
+                    b.Property<string>("RoutineTime")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("completed");
+
+                    b.Property<Guid>("StepId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateOnly>("TrackingDate")
+                        .HasColumnType("date");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StepId");
+
+                    b.HasIndex("UserId", "TrackingDate")
+                        .IsDescending(false, true);
+
+                    b.HasIndex("UserId", "RoutineTime", "TrackingDate")
+                        .IsDescending(false, false, true);
+
+                    b.HasIndex("UserId", "StepId", "TrackingDate")
+                        .IsUnique();
+
+                    b.ToTable("routine_trackings", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_routine_trackings_routine_time", "\"RoutineTime\" IN ('morning', 'evening')");
+
+                            t.HasCheckConstraint("ck_routine_trackings_status", "status IN ('completed', 'skipped', 'missed')");
                         });
                 });
 
@@ -801,7 +657,9 @@ namespace SkinSync.Migrations
 
                     b.Property<string>("Improvements")
                         .IsRequired()
-                        .HasColumnType("jsonb");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("jsonb")
+                        .HasDefaultValueSql("'[]'::jsonb");
 
                     b.Property<string>("ProgressStatus")
                         .IsRequired()
@@ -812,22 +670,30 @@ namespace SkinSync.Migrations
 
                     b.Property<string>("Recommendations")
                         .IsRequired()
-                        .HasColumnType("jsonb");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("jsonb")
+                        .HasDefaultValueSql("'[]'::jsonb");
 
                     b.Property<string>("ScoreChanges")
                         .IsRequired()
-                        .HasColumnType("jsonb");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("jsonb")
+                        .HasDefaultValueSql("'{}'::jsonb");
 
                     b.Property<string>("StableAreas")
                         .IsRequired()
-                        .HasColumnType("jsonb");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("jsonb")
+                        .HasDefaultValueSql("'[]'::jsonb");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid");
 
                     b.Property<string>("WorsenedAreas")
                         .IsRequired()
-                        .HasColumnType("jsonb");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("jsonb")
+                        .HasDefaultValueSql("'[]'::jsonb");
 
                     b.HasKey("Id");
 
@@ -858,9 +724,22 @@ namespace SkinSync.Migrations
                     b.Property<int>("AcneScore")
                         .HasColumnType("integer");
 
+                    b.Property<string>("AiModel")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
                     b.Property<string>("AiSummary")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text")
+                        .HasDefaultValue("");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal?>("ConfidenceScore")
+                        .HasPrecision(5, 4)
+                        .HasColumnType("numeric(5,4)");
 
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
@@ -872,12 +751,27 @@ namespace SkinSync.Migrations
 
                     b.Property<string>("DetectedConcerns")
                         .IsRequired()
-                        .HasColumnType("jsonb");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("jsonb")
+                        .HasDefaultValueSql("'[]'::jsonb");
+
+                    b.Property<DateTime?>("DiscardedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<int>("DrynessScore")
                         .HasColumnType("integer");
 
+                    b.Property<string>("ErrorMessage")
+                        .HasColumnType("text");
+
                     b.Property<string>("HydrationLevel")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("unknown");
+
+                    b.Property<string>("OilinessLevel")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
                         .HasMaxLength(20)
@@ -887,32 +781,50 @@ namespace SkinSync.Migrations
                     b.Property<int>("OilinessScore")
                         .HasColumnType("integer");
 
-                    b.Property<string>("OilinessLevel")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasDefaultValue("unknown");
-
                     b.Property<int>("OverallScore")
                         .HasColumnType("integer");
 
+                    b.Property<string>("ParsedAiResponse")
+                        .HasColumnType("jsonb");
+
                     b.Property<Guid>("PhotoId")
                         .HasColumnType("uuid");
+
+                    b.Property<string>("ProductSuggestions")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("jsonb")
+                        .HasDefaultValueSql("'[]'::jsonb");
 
                     b.Property<string>("RawAiResponse")
                         .HasColumnType("jsonb");
 
                     b.Property<string>("Recommendations")
                         .IsRequired()
-                        .HasColumnType("jsonb");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("jsonb")
+                        .HasDefaultValueSql("'[]'::jsonb");
 
                     b.Property<int>("RednessScore")
                         .HasColumnType("integer");
 
                     b.Property<string>("RiskFlags")
                         .IsRequired()
-                        .HasColumnType("jsonb");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("jsonb")
+                        .HasDefaultValueSql("'[]'::jsonb");
+
+                    b.Property<string>("RoutineSuggestions")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("jsonb")
+                        .HasDefaultValueSql("'{}'::jsonb");
+
+                    b.Property<string>("SafetyNotes")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("jsonb")
+                        .HasDefaultValueSql("'[]'::jsonb");
 
                     b.Property<int>("SensitivityScore")
                         .HasColumnType("integer");
@@ -923,6 +835,13 @@ namespace SkinSync.Migrations
                         .HasMaxLength(30)
                         .HasColumnType("character varying(30)")
                         .HasDefaultValue("unknown");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("pending");
 
                     b.Property<int>("TextureScore")
                         .HasColumnType("integer");
@@ -935,12 +854,16 @@ namespace SkinSync.Migrations
                     b.HasIndex("PhotoId")
                         .IsUnique();
 
+                    b.HasIndex("Status");
+
                     b.HasIndex("UserId", "CreatedAt")
                         .IsDescending(false, true);
 
                     b.ToTable("skin_progress_analyses", null, t =>
                         {
                             t.HasCheckConstraint("ck_skin_progress_analyses_acne_score", "\"AcneScore\" BETWEEN 0 AND 100");
+
+                            t.HasCheckConstraint("ck_skin_progress_analyses_confidence_score", "\"ConfidenceScore\" IS NULL OR \"ConfidenceScore\" BETWEEN 0 AND 1");
 
                             t.HasCheckConstraint("ck_skin_progress_analyses_dark_spot_score", "\"DarkSpotScore\" BETWEEN 0 AND 100");
 
@@ -959,6 +882,8 @@ namespace SkinSync.Migrations
                             t.HasCheckConstraint("ck_skin_progress_analyses_sensitivity_score", "\"SensitivityScore\" BETWEEN 0 AND 100");
 
                             t.HasCheckConstraint("ck_skin_progress_analyses_skin_type", "\"SkinTypeEstimate\" IN ('oily', 'dry', 'combination', 'normal', 'sensitive', 'unknown')");
+
+                            t.HasCheckConstraint("ck_skin_progress_analyses_status", "\"Status\" IN ('pending', 'processing', 'completed', 'failed', 'discarded')");
 
                             t.HasCheckConstraint("ck_skin_progress_analyses_texture_score", "\"TextureScore\" BETWEEN 0 AND 100");
                         });
@@ -982,6 +907,9 @@ namespace SkinSync.Migrations
                         .HasColumnType("character varying(20)")
                         .HasDefaultValue("unknown");
 
+                    b.Property<string>("ImageMetadataJson")
+                        .HasColumnType("jsonb");
+
                     b.Property<string>("ImageUrl")
                         .IsRequired()
                         .HasMaxLength(500)
@@ -999,6 +927,13 @@ namespace SkinSync.Migrations
 
                     b.Property<DateOnly>("PhotoDate")
                         .HasColumnType("date");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasDefaultValue("unknown");
 
                     b.Property<string>("ThumbnailUrl")
                         .HasMaxLength(500)
@@ -1025,6 +960,8 @@ namespace SkinSync.Migrations
 
                             t.HasCheckConstraint("ck_skin_progress_photos_lighting_condition", "\"LightingCondition\" IN ('good', 'medium', 'poor', 'unknown')");
 
+                            t.HasCheckConstraint("ck_skin_progress_photos_source", "\"Source\" IN ('dashboard', 'ai_hub', 'progress', 'onboarding', 'unknown')");
+
                             t.HasCheckConstraint("ck_skin_progress_photos_time_of_day", "\"TimeOfDay\" IN ('morning', 'afternoon', 'night', 'unknown')");
                         });
                 });
@@ -1042,24 +979,28 @@ namespace SkinSync.Migrations
 
                     b.Property<string>("MainFindings")
                         .IsRequired()
-                        .HasColumnType("jsonb");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("jsonb")
+                        .HasDefaultValueSql("'[]'::jsonb");
 
                     b.Property<string>("NextSuggestions")
                         .IsRequired()
-                        .HasColumnType("jsonb");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("jsonb")
+                        .HasDefaultValueSql("'[]'::jsonb");
 
-                    b.Property<DateOnly>("PeriodEnd")
+                    b.Property<DateOnly?>("PeriodEnd")
                         .HasColumnType("date");
 
-                    b.Property<DateOnly>("PeriodStart")
+                    b.Property<DateOnly?>("PeriodStart")
                         .HasColumnType("date");
 
                     b.Property<string>("PeriodType")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
                         .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasDefaultValue("monthly");
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("ProductFeedback")
+                        .HasColumnType("text");
 
                     b.Property<string>("ProgressStatus")
                         .IsRequired()
@@ -1071,12 +1012,31 @@ namespace SkinSync.Migrations
                     b.Property<string>("RawAiResponse")
                         .HasColumnType("jsonb");
 
+                    b.Property<Guid?>("RelatedAnalysisId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ReportCategory")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasDefaultValue("progress_timeline");
+
                     b.Property<string>("RoutineFeedback")
                         .HasColumnType("text");
 
                     b.Property<string>("ScoreChanges")
                         .IsRequired()
-                        .HasColumnType("jsonb");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("jsonb")
+                        .HasDefaultValueSql("'{}'::jsonb");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasDefaultValue("system");
 
                     b.Property<string>("Summary")
                         .IsRequired()
@@ -1087,60 +1047,27 @@ namespace SkinSync.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("RelatedAnalysisId");
+
                     b.HasIndex("UserId", "CreatedAt")
                         .IsDescending(false, true);
 
-                    b.HasIndex("UserId", "PeriodType", "PeriodStart", "PeriodEnd")
+                    b.HasIndex("UserId", "ReportCategory", "PeriodType", "PeriodStart", "PeriodEnd", "RelatedAnalysisId")
                         .IsUnique();
 
                     b.ToTable("skin_progress_reports", null, t =>
                         {
-                            t.HasCheckConstraint("ck_skin_progress_reports_period_type", "\"PeriodType\" IN ('weekly', 'monthly', 'yearly')");
+                            t.HasCheckConstraint("ck_skin_progress_reports_after_analysis_related_analysis", "\"ReportCategory\" <> 'after_analysis' OR \"RelatedAnalysisId\" IS NOT NULL");
+
+                            t.HasCheckConstraint("ck_skin_progress_reports_period_type", "\"PeriodType\" IS NULL OR \"PeriodType\" IN ('weekly', 'monthly', 'yearly')");
 
                             t.HasCheckConstraint("ck_skin_progress_reports_progress_status", "\"ProgressStatus\" IN ('improved', 'stable', 'worse', 'mixed', 'insufficient_data')");
-                        });
-                });
 
-            modelBuilder.Entity("SkinSync.Models.Entities.RoutineTracking", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
+                            t.HasCheckConstraint("ck_skin_progress_reports_progress_timeline_period", "\"ReportCategory\" <> 'progress_timeline' OR (\"PeriodType\" IS NOT NULL AND \"PeriodStart\" IS NOT NULL AND \"PeriodEnd\" IS NOT NULL)");
 
-                    b.Property<DateTime>("CompletedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasDefaultValueSql("timezone('utc', now())");
+                            t.HasCheckConstraint("ck_skin_progress_reports_report_category", "\"ReportCategory\" IN ('progress_timeline', 'after_analysis', 'routine_feedback', 'product_feedback', 'general_summary')");
 
-                    b.Property<string>("Note")
-                        .HasColumnType("text");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasDefaultValue("completed");
-
-                    b.Property<Guid>("StepId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("StepId");
-
-                    b.HasIndex("UserId", "CompletedAt")
-                        .IsDescending(false, true);
-
-                    b.HasIndex("UserId", "StepId", "CompletedAt")
-                        .IsDescending(false, false, true);
-
-                    b.ToTable("routine_trackings", null, t =>
-                        {
-                            t.HasCheckConstraint("ck_routine_trackings_status", "status IN ('completed', 'skipped', 'missed')");
+                            t.HasCheckConstraint("ck_skin_progress_reports_source", "\"Source\" IN ('dashboard', 'ai_hub', 'progress', 'onboarding', 'system')");
                         });
                 });
 
@@ -1289,9 +1216,6 @@ namespace SkinSync.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<Guid?>("AnalysisId")
-                        .HasColumnType("uuid");
-
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
@@ -1324,6 +1248,9 @@ namespace SkinSync.Migrations
                         .HasColumnType("character varying(20)")
                         .HasDefaultValue("ai");
 
+                    b.Property<Guid?>("SourceAnalysisId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateOnly>("StartDate")
                         .HasColumnType("date");
 
@@ -1335,7 +1262,7 @@ namespace SkinSync.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("AnalysisId");
+                    b.HasIndex("SourceAnalysisId");
 
                     b.HasIndex("UserId", "IsActive");
 
@@ -1343,47 +1270,6 @@ namespace SkinSync.Migrations
                         {
                             t.HasCheckConstraint("ck_user_regimens_source", "source IN ('ai', 'user', 'expert', 'system')");
                         });
-                });
-
-            modelBuilder.Entity("SkinSync.Models.Entities.AiAnalysis", b =>
-                {
-                    b.HasOne("SkinSync.Models.Entities.User", "User")
-                        .WithMany("Analyses")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("SkinSync.Models.Entities.AiAnalysisIssue", b =>
-                {
-                    b.HasOne("SkinSync.Models.Entities.AiAnalysis", "Analysis")
-                        .WithMany("AnalysisIssues")
-                        .HasForeignKey("AnalysisId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Analysis");
-                });
-
-            modelBuilder.Entity("SkinSync.Models.Entities.AiRecommendation", b =>
-                {
-                    b.HasOne("SkinSync.Models.Entities.AiAnalysis", "Analysis")
-                        .WithMany("Recommendations")
-                        .HasForeignKey("AnalysisId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("SkinSync.Models.Entities.User", "User")
-                        .WithMany("Recommendations")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Analysis");
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("SkinSync.Models.Entities.AiChatConversation", b =>
@@ -1406,17 +1292,6 @@ namespace SkinSync.Migrations
                         .IsRequired();
 
                     b.Navigation("Conversation");
-                });
-
-            modelBuilder.Entity("SkinSync.Models.Entities.AiReport", b =>
-                {
-                    b.HasOne("SkinSync.Models.Entities.User", "User")
-                        .WithMany("AiReports")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("SkinSync.Models.Entities.AiUsageLog", b =>
@@ -1507,6 +1382,25 @@ namespace SkinSync.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("SkinSync.Models.Entities.RoutineTracking", b =>
+                {
+                    b.HasOne("SkinSync.Models.Entities.RegimenItem", "Step")
+                        .WithMany("Trackings")
+                        .HasForeignKey("StepId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SkinSync.Models.Entities.User", "User")
+                        .WithMany("RoutineTrackings")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Step");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("SkinSync.Models.Entities.SkinPhotoComparison", b =>
                 {
                     b.HasOne("SkinSync.Models.Entities.SkinProgressAnalysis", "AfterAnalysis")
@@ -1582,30 +1476,18 @@ namespace SkinSync.Migrations
 
             modelBuilder.Entity("SkinSync.Models.Entities.SkinProgressReport", b =>
                 {
+                    b.HasOne("SkinSync.Models.Entities.SkinProgressAnalysis", "RelatedAnalysis")
+                        .WithMany()
+                        .HasForeignKey("RelatedAnalysisId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("SkinSync.Models.Entities.User", "User")
                         .WithMany("SkinProgressReports")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("SkinSync.Models.Entities.RoutineTracking", b =>
-                {
-                    b.HasOne("SkinSync.Models.Entities.RegimenItem", "Step")
-                        .WithMany("Trackings")
-                        .HasForeignKey("StepId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("SkinSync.Models.Entities.User", "User")
-                        .WithMany("RoutineTrackings")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Step");
+                    b.Navigation("RelatedAnalysis");
 
                     b.Navigation("User");
                 });
@@ -1623,9 +1505,9 @@ namespace SkinSync.Migrations
 
             modelBuilder.Entity("SkinSync.Models.Entities.UserRegimen", b =>
                 {
-                    b.HasOne("SkinSync.Models.Entities.AiAnalysis", "Analysis")
-                        .WithMany("Regimens")
-                        .HasForeignKey("AnalysisId")
+                    b.HasOne("SkinSync.Models.Entities.SkinProgressAnalysis", "SourceAnalysis")
+                        .WithMany()
+                        .HasForeignKey("SourceAnalysisId")
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("SkinSync.Models.Entities.User", "User")
@@ -1634,18 +1516,9 @@ namespace SkinSync.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Analysis");
+                    b.Navigation("SourceAnalysis");
 
                     b.Navigation("User");
-                });
-
-            modelBuilder.Entity("SkinSync.Models.Entities.AiAnalysis", b =>
-                {
-                    b.Navigation("AnalysisIssues");
-
-                    b.Navigation("Recommendations");
-
-                    b.Navigation("Regimens");
                 });
 
             modelBuilder.Entity("SkinSync.Models.Entities.AiChatConversation", b =>
@@ -1683,17 +1556,11 @@ namespace SkinSync.Migrations
                 {
                     b.Navigation("AiChatConversations");
 
-                    b.Navigation("AiReports");
-
                     b.Navigation("AiUsageLogs");
-
-                    b.Navigation("Analyses");
 
                     b.Navigation("DailyLogs");
 
                     b.Navigation("Profile");
-
-                    b.Navigation("Recommendations");
 
                     b.Navigation("Regimens");
 

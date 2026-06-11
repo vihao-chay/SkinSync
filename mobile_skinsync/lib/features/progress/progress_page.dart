@@ -141,13 +141,29 @@ class _ProgressPageState extends State<ProgressPage> {
       return;
     }
 
+    if (!mounted) {
+      return;
+    }
+
     try {
-      await controller.uploadAndAnalyze(File(picked.path));
+      final appState = context.read<AppState>();
+      await appState.analyzeSkinPhoto(
+        File(picked.path),
+        source: 'progress',
+      );
+      await controller.refresh();
+      await controller.loadReports();
+      if (!mounted) {
+        return;
+      }
+      await Navigator.pushNamed(context, AppRoutes.analysis);
       if (!mounted) {
         return;
       }
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Skin progress photo analyzed successfully.')),
+        const SnackBar(
+          content: Text('Skin analysis saved to your progress timeline.'),
+        ),
       );
     } catch (error) {
       if (!mounted) {

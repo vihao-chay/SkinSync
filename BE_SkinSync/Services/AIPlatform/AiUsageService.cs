@@ -15,23 +15,29 @@ public interface IAiUsageService
 public class AiUsageService : IAiUsageService
 {
     private readonly AppDbContext _dbContext;
+    private readonly ISubscriptionPlanService _subscriptionPlanService;
     private readonly AiSettings _settings;
 
-    public AiUsageService(AppDbContext dbContext, IOptions<AiSettings> settings)
+    public AiUsageService(
+        AppDbContext dbContext,
+        ISubscriptionPlanService subscriptionPlanService,
+        IOptions<AiSettings> settings)
     {
         _dbContext = dbContext;
+        _subscriptionPlanService = subscriptionPlanService;
         _settings = settings.Value;
     }
 
     public async Task CheckLimitAsync(Guid userId, string featureName, CancellationToken cancellationToken)
     {
-        var user = await _dbContext.Users.AsNoTracking().FirstOrDefaultAsync(x => x.Id == userId, cancellationToken);
-        if (user is null)
+        var userExists = await _dbContext.Users.AsNoTracking().AnyAsync(x => x.Id == userId, cancellationToken);
+        if (!userExists)
         {
             throw new AiFeatureException("USER_NOT_FOUND", "User not found.", 404);
         }
 
-        var limits = string.Equals(user.PlanType, "premium", StringComparison.OrdinalIgnoreCase)
+        var effectivePlanType = await _subscriptionPlanService.GetEffectivePlanTypeAsync(userId, cancellationToken);
+        var limits = string.Equals(effectivePlanType, "premium", StringComparison.OrdinalIgnoreCase)
             ? _settings.Quotas.PremiumPlanMonthlyLimits
             : _settings.Quotas.FreePlanMonthlyLimits;
 

@@ -15,7 +15,9 @@ import '../../features/checkup/today_checkup_page.dart';
 import '../../features/landing/landing_page.dart';
 import '../../features/onboarding/onboarding_page.dart';
 import '../../features/products/products_page.dart';
+import '../../features/profile/profile_page.dart';
 import '../../features/quiz/quiz_page.dart';
+import '../../features/splash/splash_page.dart';
 import '../../features/upload/upload_page.dart';
 import '../../features/analysis/skin_analysis_page.dart';
 import '../widgets/main_shell.dart';
@@ -24,10 +26,13 @@ import '../models/app_models.dart';
 
 class AppRouter {
   static Route<dynamic> onGenerateRoute(RouteSettings settings) {
-    final name = settings.name ?? AppRoutes.onboarding;
+    final name = settings.name ?? AppRoutes.splash;
     final Widget page;
 
     switch (name) {
+      case AppRoutes.splash:
+        page = const SplashPage();
+        break;
       case AppRoutes.onboarding:
         page = const OnboardingPage();
         break;
@@ -45,9 +50,6 @@ class AppRouter {
         break;
       case AppRoutes.todayCheckup:
         page = const TodayCheckupPage();
-        break;
-      case AppRoutes.aiHub:
-        page = const MainShell(initialRoute: AppRoutes.dashboard);
         break;
       case AppRoutes.aiChat:
         page = const AiChatPage();
@@ -77,10 +79,13 @@ class AppRouter {
         break;
       case AppRoutes.dashboard:
       case AppRoutes.routine:
+      case AppRoutes.aiHub:
       case AppRoutes.products:
       case AppRoutes.progress:
-      case AppRoutes.profile:
         page = MainShell(initialRoute: name);
+        break;
+      case AppRoutes.profile:
+        page = const ProfilePage();
         break;
       case AppRoutes.analysis:
         page = const SkinAnalysisPage();
@@ -101,7 +106,7 @@ class AppRouter {
         page = const AdminProfilePage();
         break;
       default:
-        page = const OnboardingPage();
+        page = const SplashPage();
         break;
     }
 

@@ -69,14 +69,13 @@ builder.Services.AddAuthorization(options =>
 
 builder.Services.AddScoped<IJwtAuthService, JwtService>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
-builder.Services.AddScoped<IAnalysisRepository, AnalysisRepository>();
 builder.Services.AddScoped<IRegimenRepository, RegimenRepository>();
 builder.Services.AddScoped<IDiaryRepository, DiaryRepository>();
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
 
-builder.Services.AddScoped<IAiAnalysisService, AiAnalysisService>();
 builder.Services.AddScoped<IRegimenBuilderService, RegimenBuilderService>();
 builder.Services.AddScoped<IIngredientConflictService, IngredientConflictService>();
+builder.Services.AddScoped<ISubscriptionPlanService, SubscriptionPlanService>();
 builder.Services.AddHttpClient<ISupabaseAuthService, SupabaseAuthService>();
 
 // AI Integration Registrations
@@ -85,6 +84,7 @@ builder.Services.AddScoped<SkinSync.Services.AI.IAiService, SkinSync.Services.AI
 builder.Services.AddScoped<ISkinService, SkinService>();
 builder.Services.AddScoped<IOpenAiService, OpenAiService>();
 builder.Services.AddScoped<IAiUsageService, AiUsageService>();
+builder.Services.AddScoped<IImageStorageService, ImageStorageService>();
 builder.Services.AddScoped<ISkinAnalysisService, SkinAnalysisService>();
 builder.Services.AddScoped<IRoutineGenerationService, RoutineGenerationService>();
 builder.Services.AddScoped<IProductRecommendationService, ProductRecommendationService>();

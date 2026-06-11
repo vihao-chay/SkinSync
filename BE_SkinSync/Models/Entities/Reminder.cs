@@ -5,7 +5,7 @@ public class Reminder
     public Guid Id { get; set; }
     public Guid UserId { get; set; }
     public TimeOnly Time { get; set; }
-    public string RoutineType { get; set; } = "Morning";
+    public string RoutineType { get; set; } = "morning";
     public string Frequency { get; set; } = "daily";
     public string? Reason { get; set; }
     public string Priority { get; set; } = "medium";

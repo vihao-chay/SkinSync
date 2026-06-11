@@ -22,7 +22,7 @@ public class ReminderUpsertRequestDto
 
     [Required]
     [MaxLength(20)]
-    public string RoutineType { get; set; } = "Morning";
+    public string RoutineType { get; set; } = "morning";
 
     [MaxLength(30)]
     public string? Frequency { get; set; }

@@ -26,11 +26,11 @@ public class RoutineTrackingController : ControllerBase
     {
         if (!HttpContext.TryGetUserId(out var userId))
         {
-            return ResponseEntity<RoutineTrackingTodayDto>.Fail("Thiáº¿u thÃ´ng tin ngÆ°á»i dÃ¹ng.", 401);
+            return ResponseEntity<RoutineTrackingTodayDto>.Fail("Missing authenticated user.", 401);
         }
 
-        var response = await BuildTodayResponseAsync(userId, cancellationToken);
-        return ResponseEntity<RoutineTrackingTodayDto>.Ok(response, "Láº¥y tiáº¿n Ä‘á»™ hÃ´m nay thÃ nh cÃ´ng.");
+        var response = await BuildDayResponseAsync(userId, DateOnly.FromDateTime(DateTime.UtcNow.Date), cancellationToken);
+        return ResponseEntity<RoutineTrackingTodayDto>.Ok(response, "Fetched today's routine tracking successfully.");
     }
 
     [HttpGet("history")]
@@ -40,27 +40,30 @@ public class RoutineTrackingController : ControllerBase
     {
         if (!HttpContext.TryGetUserId(out var userId))
         {
-            return ResponseEntity<IEnumerable<RoutineStepTrackingDto>>.Fail("Thiáº¿u thÃ´ng tin ngÆ°á»i dÃ¹ng.", 401);
+            return ResponseEntity<IEnumerable<RoutineStepTrackingDto>>.Fail("Missing authenticated user.", 401);
         }
 
         if (days is < 1 or > 365)
         {
-            return ResponseEntity<IEnumerable<RoutineStepTrackingDto>>.Fail("days pháº£i náº±m trong khoáº£ng 1 Ä‘áº¿n 365.");
+            return ResponseEntity<IEnumerable<RoutineStepTrackingDto>>.Fail("days must be between 1 and 365.");
         }
 
-        var fromUtc = DateTime.UtcNow.Date.AddDays(-(days - 1));
+        var fromDate = DateOnly.FromDateTime(DateTime.UtcNow.Date.AddDays(-(days - 1)));
         var history = await _dbContext.RoutineTrackings
             .AsNoTracking()
             .Include(x => x.Step)
             .ThenInclude(x => x.Product)
-            .Where(x => x.UserId == userId && x.CompletedAt >= fromUtc)
-            .OrderByDescending(x => x.CompletedAt)
+            .Where(x => x.UserId == userId && x.TrackingDate >= fromDate)
+            .OrderByDescending(x => x.TrackingDate)
+            .ThenBy(x => x.RoutineTime)
+            .ThenBy(x => x.Step.StepOrder)
             .Select(x => new RoutineStepTrackingDto
             {
                 TrackingId = x.Id,
                 StepId = x.StepId,
                 ProductId = x.Step.ProductId,
-                RoutineTime = x.Step.RoutineTime,
+                TrackingDate = x.TrackingDate,
+                RoutineTime = x.RoutineTime,
                 StepOrder = x.Step.StepOrder,
                 ProductName = x.Step.Product.Name,
                 Status = x.Status,
@@ -68,54 +71,13 @@ public class RoutineTrackingController : ControllerBase
             })
             .ToListAsync(cancellationToken);
 
-        return ResponseEntity<IEnumerable<RoutineStepTrackingDto>>.Ok(history, "Láº¥y lá»‹ch sá»­ hoÃ n thÃ nh thÃ nh cÃ´ng.");
+        return ResponseEntity<IEnumerable<RoutineStepTrackingDto>>.Ok(history, "Fetched routine tracking history successfully.");
     }
 
     [HttpPost("steps/{stepId:guid}/complete")]
     public async Task<ResponseEntity<RoutineTrackingTodayDto>> CompleteStep(Guid stepId, CancellationToken cancellationToken)
     {
-        if (!HttpContext.TryGetUserId(out var userId))
-        {
-            return ResponseEntity<RoutineTrackingTodayDto>.Fail("Thiáº¿u thÃ´ng tin ngÆ°á»i dÃ¹ng.", 401);
-        }
-
-        var step = await GetOwnedActiveStepAsync(userId, stepId, cancellationToken);
-        if (step is null)
-        {
-            return ResponseEntity<RoutineTrackingTodayDto>.Fail("KhÃ´ng tÃ¬m tháº¥y bÆ°á»›c trong lá»™ trÃ¬nh hiá»‡n táº¡i.", 404);
-        }
-
-        var (startUtc, endUtc) = TodayRangeUtc();
-        var tracking = await _dbContext.RoutineTrackings
-            .FirstOrDefaultAsync(x =>
-                x.UserId == userId &&
-                x.StepId == stepId &&
-                x.CompletedAt >= startUtc &&
-                x.CompletedAt < endUtc,
-                cancellationToken);
-
-        if (tracking is null)
-        {
-            _dbContext.RoutineTrackings.Add(new RoutineTracking
-            {
-                Id = Guid.NewGuid(),
-                UserId = userId,
-                StepId = stepId,
-                CompletedAt = DateTime.UtcNow,
-                Status = "completed"
-            });
-        }
-        else
-        {
-            tracking.Status = "completed";
-            tracking.CompletedAt = DateTime.UtcNow;
-        }
-
-        await _dbContext.SaveChangesAsync(cancellationToken);
-        await SyncDailyLogForRoutineAsync(userId, step.RoutineTime, cancellationToken);
-
-        var response = await BuildTodayResponseAsync(userId, cancellationToken);
-        return ResponseEntity<RoutineTrackingTodayDto>.Ok(response, "ÄÃ¡nh dáº¥u bÆ°á»›c hoÃ n thÃ nh thÃ nh cÃ´ng.");
+        return await UpsertStepStatusAsync(stepId, "completed", cancellationToken);
     }
 
     [HttpDelete("steps/{stepId:guid}/complete")]
@@ -123,30 +85,28 @@ public class RoutineTrackingController : ControllerBase
     {
         if (!HttpContext.TryGetUserId(out var userId))
         {
-            return ResponseEntity<RoutineTrackingTodayDto>.Fail("Thiáº¿u thÃ´ng tin ngÆ°á»i dÃ¹ng.", 401);
+            return ResponseEntity<RoutineTrackingTodayDto>.Fail("Missing authenticated user.", 401);
         }
 
         var step = await GetOwnedActiveStepAsync(userId, stepId, cancellationToken);
         if (step is null)
         {
-            return ResponseEntity<RoutineTrackingTodayDto>.Fail("KhÃ´ng tÃ¬m tháº¥y bÆ°á»›c trong lá»™ trÃ¬nh hiá»‡n táº¡i.", 404);
+            return ResponseEntity<RoutineTrackingTodayDto>.Fail("Routine step not found.", 404);
         }
 
-        var (startUtc, endUtc) = TodayRangeUtc();
-        var trackings = await _dbContext.RoutineTrackings
-            .Where(x =>
-                x.UserId == userId &&
-                x.StepId == stepId &&
-                x.CompletedAt >= startUtc &&
-                x.CompletedAt < endUtc)
-            .ToListAsync(cancellationToken);
+        var today = DateOnly.FromDateTime(DateTime.UtcNow.Date);
+        var tracking = await _dbContext.RoutineTrackings
+            .FirstOrDefaultAsync(x => x.UserId == userId && x.StepId == stepId && x.TrackingDate == today, cancellationToken);
 
-        _dbContext.RoutineTrackings.RemoveRange(trackings);
-        await _dbContext.SaveChangesAsync(cancellationToken);
-        await SyncDailyLogForRoutineAsync(userId, step.RoutineTime, cancellationToken);
+        if (tracking is not null)
+        {
+            _dbContext.RoutineTrackings.Remove(tracking);
+            await _dbContext.SaveChangesAsync(cancellationToken);
+        }
 
-        var response = await BuildTodayResponseAsync(userId, cancellationToken);
-        return ResponseEntity<RoutineTrackingTodayDto>.Ok(response, "Bá» Ä‘Ã¡nh dáº¥u bÆ°á»›c thÃ nh cÃ´ng.");
+        await SyncDailyLogAsync(userId, today, cancellationToken);
+        var response = await BuildDayResponseAsync(userId, today, cancellationToken);
+        return ResponseEntity<RoutineTrackingTodayDto>.Ok(response, "Removed step completion successfully.");
     }
 
     [HttpPost("routines/{routineType}/complete")]
@@ -156,13 +116,13 @@ public class RoutineTrackingController : ControllerBase
     {
         if (!HttpContext.TryGetUserId(out var userId))
         {
-            return ResponseEntity<RoutineTrackingTodayDto>.Fail("Thiáº¿u thÃ´ng tin ngÆ°á»i dÃ¹ng.", 401);
+            return ResponseEntity<RoutineTrackingTodayDto>.Fail("Missing authenticated user.", 401);
         }
 
         var normalizedType = NormalizeRoutineType(routineType);
         if (normalizedType is null)
         {
-            return ResponseEntity<RoutineTrackingTodayDto>.Fail("routineType chá»‰ nháº­n Morning hoáº·c Evening.");
+            return ResponseEntity<RoutineTrackingTodayDto>.Fail("routineType must be Morning or Evening.");
         }
 
         var regimen = await _dbContext.UserRegimens
@@ -171,46 +131,84 @@ public class RoutineTrackingController : ControllerBase
 
         if (regimen is null)
         {
-            return ResponseEntity<RoutineTrackingTodayDto>.Fail("ChÆ°a cÃ³ lá»™ trÃ¬nh Ä‘ang hoáº¡t Ä‘á»™ng.", 404);
+            return ResponseEntity<RoutineTrackingTodayDto>.Fail("No active routine found.", 404);
         }
 
+        var today = DateOnly.FromDateTime(DateTime.UtcNow.Date);
         var steps = regimen.Items
             .Where(x => x.RoutineTime.Equals(normalizedType, StringComparison.OrdinalIgnoreCase))
             .ToList();
 
-        if (steps.Count == 0)
+        foreach (var step in steps)
         {
-            return ResponseEntity<RoutineTrackingTodayDto>.Fail("Lá»™ trÃ¬nh nÃ y chÆ°a cÃ³ bÆ°á»›c nÃ o.");
-        }
+            var tracking = await _dbContext.RoutineTrackings
+                .FirstOrDefaultAsync(x => x.UserId == userId && x.StepId == step.Id && x.TrackingDate == today, cancellationToken);
 
-        var (startUtc, endUtc) = TodayRangeUtc();
-        var stepIds = steps.Select(x => x.Id).ToHashSet();
-        var existingStepIds = await _dbContext.RoutineTrackings
-            .Where(x =>
-                x.UserId == userId &&
-                stepIds.Contains(x.StepId) &&
-                x.CompletedAt >= startUtc &&
-                x.CompletedAt < endUtc)
-            .Select(x => x.StepId)
-            .ToListAsync(cancellationToken);
-
-        foreach (var step in steps.Where(x => !existingStepIds.Contains(x.Id)))
-        {
-            _dbContext.RoutineTrackings.Add(new RoutineTracking
+            if (tracking is null)
             {
-                Id = Guid.NewGuid(),
-                UserId = userId,
-                StepId = step.Id,
-                CompletedAt = DateTime.UtcNow,
-                Status = "completed"
-            });
+                _dbContext.RoutineTrackings.Add(new RoutineTracking
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = userId,
+                    StepId = step.Id,
+                    TrackingDate = today,
+                    RoutineTime = step.RoutineTime,
+                    Status = "completed",
+                    CompletedAt = DateTime.UtcNow
+                });
+            }
+            else
+            {
+                tracking.RoutineTime = step.RoutineTime;
+                tracking.Status = "completed";
+                tracking.CompletedAt = DateTime.UtcNow;
+            }
         }
 
         await _dbContext.SaveChangesAsync(cancellationToken);
-        await SyncDailyLogForRoutineAsync(userId, normalizedType, cancellationToken);
+        await SyncDailyLogAsync(userId, today, cancellationToken);
+        var response = await BuildDayResponseAsync(userId, today, cancellationToken);
+        return ResponseEntity<RoutineTrackingTodayDto>.Ok(response, "Completed routine successfully.");
+    }
 
-        var response = await BuildTodayResponseAsync(userId, cancellationToken);
-        return ResponseEntity<RoutineTrackingTodayDto>.Ok(response, "ÄÃ¡nh dáº¥u hoÃ n thÃ nh toÃ n bá»™ routine thÃ nh cÃ´ng.");
+    private async Task<ResponseEntity<RoutineTrackingTodayDto>> UpsertStepStatusAsync(Guid stepId, string status, CancellationToken cancellationToken)
+    {
+        if (!HttpContext.TryGetUserId(out var userId))
+        {
+            return ResponseEntity<RoutineTrackingTodayDto>.Fail("Missing authenticated user.", 401);
+        }
+
+        var step = await GetOwnedActiveStepAsync(userId, stepId, cancellationToken);
+        if (step is null)
+        {
+            return ResponseEntity<RoutineTrackingTodayDto>.Fail("Routine step not found.", 404);
+        }
+
+        var today = DateOnly.FromDateTime(DateTime.UtcNow.Date);
+        var tracking = await _dbContext.RoutineTrackings
+            .FirstOrDefaultAsync(x => x.UserId == userId && x.StepId == stepId && x.TrackingDate == today, cancellationToken);
+
+        if (tracking is null)
+        {
+            tracking = new RoutineTracking
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                StepId = stepId,
+                TrackingDate = today,
+                RoutineTime = step.RoutineTime
+            };
+            _dbContext.RoutineTrackings.Add(tracking);
+        }
+
+        tracking.RoutineTime = step.RoutineTime;
+        tracking.Status = status;
+        tracking.CompletedAt = status == "completed" ? DateTime.UtcNow : null;
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        await SyncDailyLogAsync(userId, today, cancellationToken);
+        var response = await BuildDayResponseAsync(userId, today, cancellationToken);
+        return ResponseEntity<RoutineTrackingTodayDto>.Ok(response, "Updated step status successfully.");
     }
 
     private async Task<RegimenItem?> GetOwnedActiveStepAsync(Guid userId, Guid stepId, CancellationToken cancellationToken)
@@ -221,11 +219,8 @@ public class RoutineTrackingController : ControllerBase
             .FirstOrDefaultAsync(x => x.Id == stepId && x.Regimen.UserId == userId && x.Regimen.IsActive, cancellationToken);
     }
 
-    private async Task<RoutineTrackingTodayDto> BuildTodayResponseAsync(Guid userId, CancellationToken cancellationToken)
+    private async Task<RoutineTrackingTodayDto> BuildDayResponseAsync(Guid userId, DateOnly date, CancellationToken cancellationToken)
     {
-        var today = DateOnly.FromDateTime(DateTime.UtcNow.Date);
-        var (startUtc, endUtc) = TodayRangeUtc();
-
         var regimen = await _dbContext.UserRegimens
             .AsNoTracking()
             .Include(x => x.Items)
@@ -234,65 +229,56 @@ public class RoutineTrackingController : ControllerBase
 
         if (regimen is null)
         {
-            return new RoutineTrackingTodayDto { Date = today };
+            return new RoutineTrackingTodayDto { Date = date };
         }
 
         var trackings = await _dbContext.RoutineTrackings
             .AsNoTracking()
-            .Where(x =>
-                x.UserId == userId &&
-                x.CompletedAt >= startUtc &&
-                x.CompletedAt < endUtc &&
-                x.Status == "completed")
+            .Where(x => x.UserId == userId && x.TrackingDate == date)
             .ToListAsync(cancellationToken);
 
-        var trackingByStep = trackings
-            .GroupBy(x => x.StepId)
-            .ToDictionary(x => x.Key, x => x.OrderByDescending(t => t.CompletedAt).First());
-
-        var completedSteps = regimen.Items
-            .Where(x => trackingByStep.ContainsKey(x.Id))
+        var trackingByStep = trackings.ToDictionary(x => x.StepId, x => x);
+        var steps = regimen.Items
             .OrderBy(x => x.RoutineTime)
             .ThenBy(x => x.StepOrder)
             .Select(x =>
             {
-                var tracking = trackingByStep[x.Id];
+                trackingByStep.TryGetValue(x.Id, out var tracking);
                 return new RoutineStepTrackingDto
                 {
-                    TrackingId = tracking.Id,
+                    TrackingId = tracking?.Id ?? Guid.Empty,
                     StepId = x.Id,
                     ProductId = x.ProductId,
+                    TrackingDate = date,
                     RoutineTime = x.RoutineTime,
                     StepOrder = x.StepOrder,
                     ProductName = x.Product.Name,
-                    Status = tracking.Status,
-                    CompletedAt = tracking.CompletedAt
+                    Status = tracking?.Status ?? "pending",
+                    CompletedAt = tracking?.CompletedAt
                 };
             })
             .ToList();
 
-        var totalSteps = regimen.Items.Count;
-        var morningSteps = regimen.Items.Where(x => x.RoutineTime == "Morning").Select(x => x.Id).ToHashSet();
-        var eveningSteps = regimen.Items.Where(x => x.RoutineTime == "Evening").Select(x => x.Id).ToHashSet();
-        var completedIds = trackingByStep.Keys.ToHashSet();
+        var completedSteps = steps.Count(x => x.Status == "completed");
+        var morningSteps = steps.Where(x => RoutineScheduleHelper.IsMorning(x.RoutineTime)).ToList();
+        var eveningSteps = steps.Where(x => RoutineScheduleHelper.IsEvening(x.RoutineTime)).ToList();
 
         return new RoutineTrackingTodayDto
         {
-            Date = today,
-            TotalSteps = totalSteps,
-            CompletedSteps = completedSteps.Count,
-            CompletionPercent = totalSteps == 0 ? 0 : Math.Round(completedSteps.Count / (decimal)totalSteps * 100m, 2),
-            MorningCompleted = morningSteps.Count > 0 && morningSteps.All(completedIds.Contains),
-            EveningCompleted = eveningSteps.Count > 0 && eveningSteps.All(completedIds.Contains),
-            Steps = completedSteps
+            Date = date,
+            TotalSteps = steps.Count,
+            CompletedSteps = completedSteps,
+            CompletionPercent = steps.Count == 0 ? 0 : Math.Round(completedSteps / (decimal)steps.Count * 100m, 2),
+            MorningCompleted = morningSteps.Count > 0 && morningSteps.All(x => x.Status == "completed"),
+            EveningCompleted = eveningSteps.Count > 0 && eveningSteps.All(x => x.Status == "completed"),
+            Steps = steps
         };
     }
 
-    private async Task SyncDailyLogForRoutineAsync(Guid userId, string routineType, CancellationToken cancellationToken)
+    private async Task SyncDailyLogAsync(Guid userId, DateOnly date, CancellationToken cancellationToken)
     {
-        var today = DateOnly.FromDateTime(DateTime.UtcNow.Date);
-        var progress = await BuildTodayResponseAsync(userId, cancellationToken);
-        var log = await _dbContext.DailyLogs.FirstOrDefaultAsync(x => x.UserId == userId && x.Date == today, cancellationToken);
+        var progress = await BuildDayResponseAsync(userId, date, cancellationToken);
+        var log = await _dbContext.DailyLogs.FirstOrDefaultAsync(x => x.UserId == userId && x.Date == date, cancellationToken);
 
         if (log is null)
         {
@@ -300,42 +286,21 @@ public class RoutineTrackingController : ControllerBase
             {
                 Id = Guid.NewGuid(),
                 UserId = userId,
-                Date = today,
-                SkinFeeling = "Normal"
+                Date = date,
+                SkinFeeling = "normal"
             };
             _dbContext.DailyLogs.Add(log);
         }
 
-        if (routineType == "Morning")
-        {
-            log.MorningCompleted = progress.MorningCompleted;
-        }
-        else
-        {
-            log.EveningCompleted = progress.EveningCompleted;
-        }
+        log.MorningCompleted = progress.MorningCompleted;
+        log.EveningCompleted = progress.EveningCompleted;
+        log.UpdatedAt = DateTime.UtcNow;
 
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
     private static string? NormalizeRoutineType(string routineType)
     {
-        if (routineType.Equals("Morning", StringComparison.OrdinalIgnoreCase))
-        {
-            return "Morning";
-        }
-
-        if (routineType.Equals("Evening", StringComparison.OrdinalIgnoreCase))
-        {
-            return "Evening";
-        }
-
-        return null;
-    }
-
-    private static (DateTime StartUtc, DateTime EndUtc) TodayRangeUtc()
-    {
-        var start = DateTime.UtcNow.Date;
-        return (start, start.AddDays(1));
+        return RoutineScheduleHelper.NormalizeRoutineValue(routineType);
     }
 }

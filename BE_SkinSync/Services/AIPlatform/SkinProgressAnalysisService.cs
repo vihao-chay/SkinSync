@@ -2,7 +2,6 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using SkinSync.Data;
-using SkinSync.Helpers;
 using SkinSync.Mappers;
 using SkinSync.Models.Dtos.AI;
 using SkinSync.Models.Entities;
@@ -17,20 +16,20 @@ public interface ISkinProgressAnalysisService
 public class SkinProgressAnalysisService : ISkinProgressAnalysisService
 {
     private readonly AppDbContext _dbContext;
-    private readonly IWebHostEnvironment _environment;
+    private readonly IImageStorageService _imageStorageService;
     private readonly IOpenAiService _openAiService;
     private readonly IAiUsageService _aiUsageService;
     private readonly ILogger<SkinProgressAnalysisService> _logger;
 
     public SkinProgressAnalysisService(
         AppDbContext dbContext,
-        IWebHostEnvironment environment,
+        IImageStorageService imageStorageService,
         IOpenAiService openAiService,
         IAiUsageService aiUsageService,
         ILogger<SkinProgressAnalysisService> logger)
     {
         _dbContext = dbContext;
-        _environment = environment;
+        _imageStorageService = imageStorageService;
         _openAiService = openAiService;
         _aiUsageService = aiUsageService;
         _logger = logger;
@@ -41,16 +40,14 @@ public class SkinProgressAnalysisService : ISkinProgressAnalysisService
         try
         {
             var photo = await _dbContext.SkinProgressPhotos
-                .AsNoTracking()
                 .FirstOrDefaultAsync(x => x.Id == request.PhotoId && x.UserId == userId, cancellationToken)
                 ?? throw new AiFeatureException("PHOTO_NOT_FOUND", "Progress photo not found.", 404);
 
             var existing = await _dbContext.SkinProgressAnalyses
-                .AsNoTracking()
                 .FirstOrDefaultAsync(x => x.PhotoId == photo.Id && x.UserId == userId, cancellationToken);
-            if (existing is not null)
+            if (existing is not null && existing.DiscardedAt == null && existing.Status == "completed")
             {
-                return existing.ToDto();
+                return existing.ToDto(photo);
             }
 
             var user = await _dbContext.Users
@@ -66,15 +63,39 @@ public class SkinProgressAnalysisService : ISkinProgressAnalysisService
 
             await _aiUsageService.CheckLimitAsync(userId, "skin_progress_analysis", cancellationToken);
 
-            var imageSource = await BuildImageSourceAsync(photo.ImageUrl, cancellationToken);
-            var metadataJson = JsonSerializer.Serialize(new
+            var entity = existing ?? new SkinProgressAnalysis
             {
-                photoDate = photo.PhotoDate,
-                timeOfDay = photo.TimeOfDay,
-                lightingCondition = photo.LightingCondition,
-                faceAngle = photo.FaceAngle,
-                note = photo.Note
-            });
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                PhotoId = photo.Id,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            entity.Status = "processing";
+            entity.ErrorMessage = null;
+            entity.DiscardedAt = null;
+            entity.RawAiResponse = "{}";
+            entity.ParsedAiResponse = null;
+            entity.CompletedAt = null;
+
+            if (existing is null)
+            {
+                _dbContext.SkinProgressAnalyses.Add(entity);
+            }
+
+            await _dbContext.SaveChangesAsync(cancellationToken);
+
+            var imageSource = await _imageStorageService.BuildImageSourceAsync(photo.ImageUrl, cancellationToken);
+            var metadataJson = string.IsNullOrWhiteSpace(photo.ImageMetadataJson)
+                ? JsonSerializer.Serialize(new
+                {
+                    photoDate = photo.PhotoDate,
+                    timeOfDay = photo.TimeOfDay,
+                    lightingCondition = photo.LightingCondition,
+                    faceAngle = photo.FaceAngle,
+                    note = photo.Note
+                })
+                : photo.ImageMetadataJson;
             object routineContext = regimen is null ? new { } : regimen.ToCurrentRegimenDto();
 
             OpenAiResult<SkinProgressAnalyzeAiModel> aiResult;
@@ -92,60 +113,52 @@ public class SkinProgressAnalysisService : ISkinProgressAnalysisService
             catch (Exception ex) when (ex is not AiFeatureException)
             {
                 _logger.LogError(ex, "Skin progress analysis failed for user {UserId}, photo {PhotoId}.", userId, photo.Id);
+                entity.Status = "failed";
+                entity.ErrorMessage = "AI progress analysis failed.";
+                entity.CompletedAt = DateTime.UtcNow;
+                await _dbContext.SaveChangesAsync(cancellationToken);
                 throw new AiFeatureException("AI_SERVICE_ERROR", "AI progress analysis failed.", 502, ex);
             }
 
             var normalized = NormalizeAiResult(aiResult.Value);
-            var entity = new SkinProgressAnalysis
-            {
-                Id = Guid.NewGuid(),
-                UserId = userId,
-                PhotoId = photo.Id,
-                SkinTypeEstimate = normalized.SkinTypeEstimate,
-                HydrationLevel = normalized.HydrationLevel,
-                OilinessLevel = normalized.OilinessLevel,
-                AcneScore = normalized.Scores.AcneScore,
-                RednessScore = normalized.Scores.RednessScore,
-                DarkSpotScore = normalized.Scores.DarkSpotScore,
-                OilinessScore = normalized.Scores.OilinessScore,
-                DrynessScore = normalized.Scores.DrynessScore,
-                TextureScore = normalized.Scores.TextureScore,
-                SensitivityScore = normalized.Scores.SensitivityScore,
-                OverallScore = normalized.Scores.OverallScore,
-                DetectedConcerns = JsonSerializer.Serialize(normalized.DetectedConcerns),
-                AiSummary = normalized.AiSummary,
-                Recommendations = JsonSerializer.Serialize(normalized.Recommendations),
-                RiskFlags = JsonSerializer.Serialize(normalized.RiskFlags),
-                RawAiResponse = aiResult.RawResponse,
-                CreatedAt = DateTime.UtcNow
-            };
-
-            _dbContext.SkinProgressAnalyses.Add(entity);
+            entity.SkinTypeEstimate = normalized.SkinTypeEstimate;
+            entity.HydrationLevel = normalized.HydrationLevel;
+            entity.OilinessLevel = normalized.OilinessLevel;
+            entity.AcneScore = normalized.Scores.AcneScore;
+            entity.RednessScore = normalized.Scores.RednessScore;
+            entity.DarkSpotScore = normalized.Scores.DarkSpotScore;
+            entity.OilinessScore = normalized.Scores.OilinessScore;
+            entity.DrynessScore = normalized.Scores.DrynessScore;
+            entity.TextureScore = normalized.Scores.TextureScore;
+            entity.SensitivityScore = normalized.Scores.SensitivityScore;
+            entity.OverallScore = normalized.Scores.OverallScore;
+            entity.DetectedConcerns = JsonSerializer.Serialize(normalized.DetectedConcerns);
+            entity.AiSummary = normalized.AiSummary;
+            entity.Recommendations = JsonSerializer.Serialize(normalized.Recommendations);
+            entity.RoutineSuggestions = JsonSerializer.Serialize(normalized.RoutineSuggestions);
+            entity.ProductSuggestions = JsonSerializer.Serialize(normalized.ProductSuggestions);
+            entity.SafetyNotes = JsonSerializer.Serialize(normalized.SafetyNotes);
+            entity.RiskFlags = JsonSerializer.Serialize(normalized.RiskFlags);
+            entity.RawAiResponse = aiResult.RawResponse;
+            entity.ParsedAiResponse = JsonSerializer.Serialize(normalized);
+            entity.AiModel = aiResult.Model ?? "openai";
+            entity.ConfidenceScore = normalized.ConfidenceScore;
+            entity.Status = "completed";
+            entity.ErrorMessage = null;
+            entity.CompletedAt = DateTime.UtcNow;
             await _dbContext.SaveChangesAsync(cancellationToken);
             await _aiUsageService.LogUsageAsync(userId, "skin_progress_analysis", aiResult.Model, aiResult.InputTokens, aiResult.OutputTokens, cancellationToken);
 
-            return entity.ToDto();
+            return entity.ToDto(photo);
         }
         catch (PostgresException ex) when (IsMissingRelation(ex))
         {
             throw BuildSchemaMissingException(ex);
         }
-    }
-
-    private async Task<string> BuildImageSourceAsync(string imageUrl, CancellationToken cancellationToken)
-    {
-        if (imageUrl.StartsWith("data:", StringComparison.OrdinalIgnoreCase) ||
-            imageUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
-            imageUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+        catch (DbUpdateException ex) when (ex.InnerException is PostgresException pgEx && IsMissingRelation(pgEx))
         {
-            return imageUrl;
+            throw BuildSchemaMissingException(pgEx);
         }
-
-        var webRoot = _environment.WebRootPath ?? Path.Combine(_environment.ContentRootPath, "wwwroot");
-        var absolutePath = Path.Combine(webRoot, imageUrl.TrimStart('/').Replace('/', Path.DirectorySeparatorChar));
-        var bytes = await File.ReadAllBytesAsync(absolutePath, cancellationToken);
-        var contentType = ImageMimeTypeHelper.ResolveForPath(absolutePath, bytes);
-        return $"data:{contentType};base64,{Convert.ToBase64String(bytes)}";
     }
 
     private static SkinProgressAnalyzeAiModel NormalizeAiResult(SkinProgressAnalyzeAiModel input)
@@ -165,13 +178,34 @@ public class SkinProgressAnalysisService : ISkinProgressAnalysisService
         foreach (var concern in input.DetectedConcerns)
         {
             concern.Concern = NormalizeValue(concern.Concern, "unknown");
+            concern.Label = string.IsNullOrWhiteSpace(concern.Label)
+                ? Humanize(concern.Concern)
+                : concern.Label.Trim();
             concern.Severity = NormalizeValue(concern.Severity, "low");
             concern.Score = ClampScore(concern.Score);
             concern.Confidence = Math.Clamp(concern.Confidence, 0d, 1d);
         }
 
+        input.Recommendations = input.Recommendations
+            .Where(x => !string.IsNullOrWhiteSpace(x.Description))
+            .Select(x =>
+            {
+                x.Type = NormalizeValue(x.Type, "routine");
+                x.Title = string.IsNullOrWhiteSpace(x.Title) ? Humanize(x.Type) : x.Title.Trim();
+                x.Priority = NormalizeValue(x.Priority, "medium");
+                return x;
+            })
+            .ToList();
+        input.ConfidenceScore = input.ConfidenceScore is null
+            ? 0.82m
+            : Math.Clamp(input.ConfidenceScore.Value, 0m, 1m);
         input.RiskFlags = input.RiskFlags
             .Select(x => NormalizeValue(x, "poor_image_quality"))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        input.SafetyNotes = input.SafetyNotes
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Select(x => x.Trim())
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
 
@@ -191,10 +225,22 @@ public class SkinProgressAnalysisService : ISkinProgressAnalysisService
 
     private static int ClampScore(int value) => Math.Clamp(value, 0, 100);
 
-    private static bool IsMissingRelation(PostgresException ex) => ex.SqlState == PostgresErrorCodes.UndefinedTable;
+    private static string Humanize(string value)
+    {
+        var normalized = value.Trim().Replace('_', ' ');
+        if (normalized.Length == 0)
+        {
+            return "Unknown";
+        }
+
+        return char.ToUpperInvariant(normalized[0]) + normalized[1..];
+    }
+
+    private static bool IsMissingRelation(PostgresException ex) =>
+        ex.SqlState is PostgresErrorCodes.UndefinedTable or PostgresErrorCodes.UndefinedColumn;
 
     private static AiFeatureException BuildSchemaMissingException(PostgresException ex) =>
-        new("SKIN_PROGRESS_SCHEMA_MISSING", "Skin progress tables are missing in the database. Apply the skin progress migration before using this feature.", 503, ex);
+        new("SKIN_PROGRESS_SCHEMA_MISSING", "Skin progress schema is outdated. Apply BE_SkinSync/sql/2026-06-11-unify-skin-analysis-progress.sql before using this feature.", 503, ex);
 }
 
 internal sealed class SkinProgressAnalyzeAiModel
@@ -205,7 +251,11 @@ internal sealed class SkinProgressAnalyzeAiModel
     public SkinProgressScoreSetDto Scores { get; set; } = new();
     public List<SkinProgressConcernDto> DetectedConcerns { get; set; } = [];
     public string AiSummary { get; set; } = string.Empty;
-    public List<string> Recommendations { get; set; } = [];
+    public List<SkinProgressRecommendationDto> Recommendations { get; set; } = [];
+    public SkinProgressRoutineSuggestionsDto RoutineSuggestions { get; set; } = new();
+    public List<SkinProgressProductSuggestionDto> ProductSuggestions { get; set; } = [];
+    public List<string> SafetyNotes { get; set; } = [];
     public List<string> RiskFlags { get; set; } = [];
     public string Disclaimer { get; set; } = string.Empty;
+    public decimal? ConfidenceScore { get; set; }
 }

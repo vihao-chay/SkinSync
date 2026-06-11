@@ -1,9 +1,8 @@
-using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using SkinSync.Data;
-using SkinSync.Helpers;
 using SkinSync.Mappers;
 using SkinSync.Models.Dtos.AI;
+using SkinSync.Models.Dtos.Analysis;
 using SkinSync.Models.Entities;
 
 namespace SkinSync.Services.AIPlatform;
@@ -11,28 +10,25 @@ namespace SkinSync.Services.AIPlatform;
 public interface ISkinAnalysisService
 {
     Task<AiSkinAnalysisResponseDto> AnalyzeAsync(Guid userId, AiSkinAnalysisRequestDto request, CancellationToken cancellationToken);
+    Task<AiSkinAnalysisResponseDto> GetAnalysisAsync(Guid userId, Guid analysisId, CancellationToken cancellationToken);
+    Task<IReadOnlyCollection<AiSkinAnalysisResponseDto>> GetHistoryAsync(Guid userId, CancellationToken cancellationToken);
+    Task DiscardAsync(Guid userId, Guid analysisId, CancellationToken cancellationToken);
 }
 
 public class SkinAnalysisService : ISkinAnalysisService
 {
     private readonly AppDbContext _dbContext;
-    private readonly IWebHostEnvironment _environment;
-    private readonly IOpenAiService _openAiService;
-    private readonly IAiUsageService _aiUsageService;
-    private readonly ILogger<SkinAnalysisService> _logger;
+    private readonly ISkinProgressService _skinProgressService;
+    private readonly ISkinProgressAnalysisService _skinProgressAnalysisService;
 
     public SkinAnalysisService(
         AppDbContext dbContext,
-        IWebHostEnvironment environment,
-        IOpenAiService openAiService,
-        IAiUsageService aiUsageService,
-        ILogger<SkinAnalysisService> logger)
+        ISkinProgressService skinProgressService,
+        ISkinProgressAnalysisService skinProgressAnalysisService)
     {
         _dbContext = dbContext;
-        _environment = environment;
-        _openAiService = openAiService;
-        _aiUsageService = aiUsageService;
-        _logger = logger;
+        _skinProgressService = skinProgressService;
+        _skinProgressAnalysisService = skinProgressAnalysisService;
     }
 
     public async Task<AiSkinAnalysisResponseDto> AnalyzeAsync(Guid userId, AiSkinAnalysisRequestDto request, CancellationToken cancellationToken)
@@ -42,162 +38,253 @@ public class SkinAnalysisService : ISkinAnalysisService
             throw new AiFeatureException("INVALID_REQUEST", "Image file or imageUrl is required.");
         }
 
-        var user = await _dbContext.Users
-            .Include(x => x.Profile)
-            .FirstOrDefaultAsync(x => x.Id == userId, cancellationToken);
-        if (user is null)
+        var photo = await _skinProgressService.UploadPhotoAsync(userId, new SkinProgressPhotoUploadRequestDto
         {
-            throw new AiFeatureException("USER_NOT_FOUND", "User not found.", 404);
-        }
+            Image = request.Image,
+            ImageUrl = request.ImageUrl,
+            Source = request.Source,
+            PhotoDate = DateOnly.FromDateTime(DateTime.UtcNow.Date),
+            TimeOfDay = ResolveTimeOfDay(DateTime.UtcNow),
+            LightingCondition = "unknown",
+            FaceAngle = "front",
+            Note = request.AdditionalNote
+        }, cancellationToken);
 
-        await _aiUsageService.CheckLimitAsync(userId, "skin_analysis", cancellationToken);
+        var analysis = await _skinProgressAnalysisService.AnalyzeAsync(
+            userId,
+            new SkinProgressAnalyzeRequestDto { PhotoId = photo.PhotoId },
+            cancellationToken);
 
-        var storedImageUrl = await StoreImageAsync(request, cancellationToken);
-        var imageSource = await BuildImageSourceAsync(request, storedImageUrl, cancellationToken);
-        var profileJson = AiContextMapper.SerializeUserProfile(user.Profile);
-        var onboardingJson = AiContextMapper.SerializeOnboarding(user.Profile);
-        var systemPrompt = AiPromptLibrary.CommonSystemPrompt;
-        var userPrompt = AiPromptLibrary.BuildSkinAnalysisPrompt(profileJson, onboardingJson, request.AdditionalNote);
+        return ToAiResponse(analysis);
+    }
 
-        OpenAiResult<AiSkinAnalysisAiModel> aiResult;
-        try
-        {
-            aiResult = await _openAiService.AnalyzeImageAsync<AiSkinAnalysisAiModel>(
-                systemPrompt,
-                userPrompt,
-                imageSource,
-                cancellationToken: cancellationToken);
-        }
-        catch (Exception ex) when (ex is not AiFeatureException)
-        {
-            _logger.LogError(ex, "Skin analysis failed for user {UserId}.", userId);
-            throw new AiFeatureException("AI_SERVICE_ERROR", "AI analysis failed.", 502, ex);
-        }
+    public async Task<AiSkinAnalysisResponseDto> GetAnalysisAsync(Guid userId, Guid analysisId, CancellationToken cancellationToken)
+    {
+        var data = await _dbContext.SkinProgressAnalyses
+            .AsNoTracking()
+            .Where(x => x.UserId == userId && x.Id == analysisId && x.DiscardedAt == null && x.Status != "discarded")
+            .Join(
+                _dbContext.SkinProgressPhotos.AsNoTracking(),
+                analysis => analysis.PhotoId,
+                photo => photo.Id,
+                (analysis, photo) => new { Analysis = analysis, Photo = photo })
+            .FirstOrDefaultAsync(cancellationToken)
+            ?? throw new AiFeatureException("ANALYSIS_NOT_FOUND", "Skin analysis not found.", 404);
 
-        var analysis = MapToEntity(userId, storedImageUrl, aiResult);
-        _dbContext.AiAnalyses.Add(analysis);
+        return ToAiResponse(data.Analysis.ToDto(data.Photo));
+    }
+
+    public async Task<IReadOnlyCollection<AiSkinAnalysisResponseDto>> GetHistoryAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        var items = await _dbContext.SkinProgressAnalyses
+            .AsNoTracking()
+            .Where(x => x.UserId == userId && x.DiscardedAt == null && x.Status != "discarded")
+            .Join(
+                _dbContext.SkinProgressPhotos.AsNoTracking(),
+                analysis => analysis.PhotoId,
+                photo => photo.Id,
+                (analysis, photo) => new { Analysis = analysis, Photo = photo })
+            .OrderByDescending(x => x.Analysis.CompletedAt ?? x.Analysis.CreatedAt)
+            .ToListAsync(cancellationToken);
+
+        return items.Select(x => ToAiResponse(x.Analysis.ToDto(x.Photo))).ToList();
+    }
+
+    public async Task DiscardAsync(Guid userId, Guid analysisId, CancellationToken cancellationToken)
+    {
+        var analysis = await _dbContext.SkinProgressAnalyses
+            .FirstOrDefaultAsync(x => x.UserId == userId && x.Id == analysisId, cancellationToken)
+            ?? throw new AiFeatureException("ANALYSIS_NOT_FOUND", "Skin analysis not found.", 404);
+
+        analysis.Status = "discarded";
+        analysis.DiscardedAt = DateTime.UtcNow;
+        analysis.ErrorMessage = null;
+
         await _dbContext.SaveChangesAsync(cancellationToken);
-        await _aiUsageService.LogUsageAsync(userId, "skin_analysis", aiResult.Model, aiResult.InputTokens, aiResult.OutputTokens, cancellationToken);
+    }
 
+    public async Task<AnalysisDetailResponseDto?> GetLegacyLatestAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        var latest = await _dbContext.SkinProgressAnalyses
+            .AsNoTracking()
+            .Where(x => x.UserId == userId && x.DiscardedAt == null && x.Status != "discarded")
+            .Join(
+                _dbContext.SkinProgressPhotos.AsNoTracking(),
+                analysis => analysis.PhotoId,
+                photo => photo.Id,
+                (analysis, photo) => new { Analysis = analysis, Photo = photo })
+            .OrderByDescending(x => x.Analysis.CompletedAt ?? x.Analysis.CreatedAt)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        return latest is null ? null : ToLegacyDetailDto(latest.Analysis, latest.Photo);
+    }
+
+    public async Task<IReadOnlyCollection<AnalysisHistoryItemDto>> GetLegacyHistoryAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        var items = await _dbContext.SkinProgressAnalyses
+            .AsNoTracking()
+            .Where(x => x.UserId == userId && x.DiscardedAt == null && x.Status != "discarded")
+            .OrderByDescending(x => x.CompletedAt ?? x.CreatedAt)
+            .Select(x => new AnalysisHistoryItemDto
+            {
+                Id = x.Id,
+                CreatedAt = x.CompletedAt ?? x.CreatedAt,
+                OverallScore = x.OverallScore,
+                SkinAge = null,
+                RecoveryCapacity = null,
+                UvDamage = null,
+                AgingRisk = null,
+                Status = x.Status
+            })
+            .ToListAsync(cancellationToken);
+
+        return items;
+    }
+
+    public async Task<AnalysisDetailResponseDto?> GetLegacyDetailAsync(Guid userId, Guid analysisId, CancellationToken cancellationToken)
+    {
+        var data = await _dbContext.SkinProgressAnalyses
+            .AsNoTracking()
+            .Where(x => x.UserId == userId && x.Id == analysisId && x.DiscardedAt == null && x.Status != "discarded")
+            .Join(
+                _dbContext.SkinProgressPhotos.AsNoTracking(),
+                analysis => analysis.PhotoId,
+                photo => photo.Id,
+                (analysis, photo) => new { Analysis = analysis, Photo = photo })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        return data is null ? null : ToLegacyDetailDto(data.Analysis, data.Photo);
+    }
+
+    private static AiSkinAnalysisResponseDto ToAiResponse(SkinProgressAnalysisResponseDto analysis)
+    {
         return new AiSkinAnalysisResponseDto
         {
-            AnalysisId = analysis.Id,
-            SkinSummary = aiResult.Value.SkinSummary,
-            DetectedConcerns = aiResult.Value.DetectedConcerns,
-            Recommendations = aiResult.Value.Recommendations,
-            RiskFlags = aiResult.Value.RiskFlags,
-            Disclaimer = string.IsNullOrWhiteSpace(aiResult.Value.Disclaimer)
-                ? "This AI analysis is for skincare guidance only and is not a medical diagnosis."
-                : aiResult.Value.Disclaimer
-        };
-    }
-
-    private async Task<string> StoreImageAsync(AiSkinAnalysisRequestDto request, CancellationToken cancellationToken)
-    {
-        if (request.Image is null)
-        {
-            return request.ImageUrl!.Trim();
-        }
-
-        var uploadDir = Path.Combine(_environment.WebRootPath ?? Path.Combine(_environment.ContentRootPath, "wwwroot"), "uploads", "analyses");
-        Directory.CreateDirectory(uploadDir);
-        var extension = Path.GetExtension(request.Image.FileName);
-        var fileName = $"{Guid.NewGuid():N}{extension}";
-        var absolutePath = Path.Combine(uploadDir, fileName);
-        await using var stream = File.Create(absolutePath);
-        await request.Image.CopyToAsync(stream, cancellationToken);
-        return $"/uploads/analyses/{fileName}";
-    }
-
-    private async Task<string> BuildImageSourceAsync(AiSkinAnalysisRequestDto request, string storedImageUrl, CancellationToken cancellationToken)
-    {
-        if (request.Image is not null)
-        {
-            await using var stream = request.Image.OpenReadStream();
-            using var memory = new MemoryStream();
-            await stream.CopyToAsync(memory, cancellationToken);
-            var uploadBytes = memory.ToArray();
-            var uploadContentType = ImageMimeTypeHelper.ResolveForUpload(request.Image, uploadBytes);
-            return $"data:{uploadContentType};base64,{Convert.ToBase64String(uploadBytes)}";
-        }
-
-        var imageUrl = request.ImageUrl!;
-        if (imageUrl.StartsWith("data:", StringComparison.OrdinalIgnoreCase) ||
-            imageUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
-            imageUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
-        {
-            return imageUrl;
-        }
-
-        var webRoot = _environment.WebRootPath ?? Path.Combine(_environment.ContentRootPath, "wwwroot");
-        var absolutePath = Path.Combine(webRoot, imageUrl.TrimStart('/'));
-        var bytes = await File.ReadAllBytesAsync(absolutePath, cancellationToken);
-        var localContentType = ImageMimeTypeHelper.ResolveForPath(absolutePath, bytes);
-        return $"data:{localContentType};base64,{Convert.ToBase64String(bytes)}";
-    }
-
-    private static AiAnalysis MapToEntity(Guid userId, string imageUrl, OpenAiResult<AiSkinAnalysisAiModel> result)
-    {
-        var issues = result.Value.DetectedConcerns
-            .Select(concern => new AiAnalysisIssue
+            AnalysisSessionId = analysis.AnalysisId,
+            AnalysisResultId = analysis.AnalysisId,
+            ProgressEntryId = analysis.ProgressEntryId,
+            PhotoId = analysis.PhotoId,
+            Status = analysis.Status,
+            Source = analysis.Source,
+            ImageUrl = analysis.ImageUrl,
+            ThumbnailUrl = analysis.ThumbnailUrl,
+            AiModel = analysis.AiModel,
+            SkinScore = analysis.Scores.OverallScore,
+            SkinType = analysis.SkinTypeEstimate,
+            OilinessLevel = analysis.Scores.OilinessScore,
+            DrynessLevel = analysis.Scores.DrynessScore,
+            AcneLevel = analysis.Scores.AcneScore,
+            RednessLevel = analysis.Scores.RednessScore,
+            DarkSpotLevel = analysis.Scores.DarkSpotScore,
+            TextureLevel = analysis.Scores.TextureScore,
+            PoreLevel = analysis.Scores.OilinessScore,
+            WrinkleLevel = analysis.Scores.TextureScore,
+            SensitivityLevel = analysis.Scores.SensitivityScore,
+            HydrationLevel = analysis.Scores.DrynessScore,
+            SkinSummary = analysis.AiSummary,
+            DetectedConcerns = analysis.DetectedConcerns.Select(concern => new AiDetectedConcernDto
             {
-                Id = Guid.NewGuid(),
-                IssueType = concern.Concern,
-                SeverityScore = concern.Severity.ToLowerInvariant() switch
-                {
-                    "high" => 85,
-                    "medium" => 60,
-                    _ => 35
-                },
-                ConfidenceScore = (int)Math.Round(Math.Clamp(concern.Confidence, 0d, 1d) * 100d),
+                Concern = concern.Concern,
+                Severity = concern.Severity,
+                Confidence = concern.Confidence,
                 Description = concern.Description
-            })
-            .ToList();
-
-        var recommendations = result.Value.Recommendations
-            .Select((item, index) => new AiRecommendation
-            {
-                Id = Guid.NewGuid(),
-                UserId = userId,
-                RecommendationType = "routine",
-                Title = $"Recommendation {index + 1}",
-                Content = item,
-                Priority = Math.Min(index + 1, 5)
-            })
-            .ToList();
-
-        var overallScore = Math.Max(0, 100 - (issues.Count == 0 ? 15 : (int)issues.Average(x => x.SeverityScore)));
-
-        return new AiAnalysis
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            ImageUrl = imageUrl,
-            OverallScore = overallScore,
-            RecoveryCapacity = Math.Max(0, 100 - issues.Where(x => x.IssueType.Contains("dry", StringComparison.OrdinalIgnoreCase)).Select(x => x.SeverityScore).DefaultIfEmpty(25).Max()),
-            UvDamage = issues.Where(x => x.IssueType.Contains("dark", StringComparison.OrdinalIgnoreCase) || x.IssueType.Contains("pig", StringComparison.OrdinalIgnoreCase)).Select(x => x.SeverityScore).DefaultIfEmpty(20).Max(),
-            AgingRisk = issues.Where(x => x.IssueType.Contains("wrinkle", StringComparison.OrdinalIgnoreCase)).Select(x => x.SeverityScore).DefaultIfEmpty(20).Max(),
-            IssuesDetected = JsonSerializer.Serialize(result.Value.DetectedConcerns),
-            RootCauses = JsonSerializer.Serialize(new
-            {
-                skinSummary = result.Value.SkinSummary,
-                riskFlags = result.Value.RiskFlags
-            }),
-            AiModel = result.Model ?? "openai",
-            RawResponse = result.RawResponse,
-            Status = "completed",
-            CreatedAt = DateTime.UtcNow,
-            AnalysisIssues = issues,
-            Recommendations = recommendations
+            }).ToList(),
+            Recommendations = analysis.Recommendations,
+            RoutineSuggestions = analysis.RoutineSuggestions,
+            ProductSuggestions = analysis.ProductSuggestions,
+            SafetyNotes = analysis.SafetyNotes,
+            RiskFlags = analysis.RiskFlags,
+            Disclaimer = analysis.Disclaimer,
+            ConfidenceScore = analysis.ConfidenceScore,
+            ErrorMessage = analysis.ErrorMessage,
+            CreatedAt = analysis.CreatedAt,
+            CompletedAt = analysis.CompletedAt
         };
     }
-}
 
-internal sealed class AiSkinAnalysisAiModel
-{
-    public string SkinSummary { get; set; } = string.Empty;
-    public List<AiDetectedConcernDto> DetectedConcerns { get; set; } = [];
-    public List<string> Recommendations { get; set; } = [];
-    public List<string> RiskFlags { get; set; } = [];
-    public string Disclaimer { get; set; } = string.Empty;
+    private static AnalysisDetailResponseDto ToLegacyDetailDto(SkinProgressAnalysis analysis, SkinProgressPhoto photo)
+    {
+        var concerns = SkinProgressMapper.ParseConcernArray(analysis.DetectedConcerns);
+        var recommendations = SkinProgressMapper.ParseRecommendationArray(analysis.Recommendations);
+
+        return new AnalysisDetailResponseDto
+        {
+            Id = analysis.Id,
+            UserId = analysis.UserId,
+            ImageUrl = photo.ImageUrl,
+            SkinType = analysis.SkinTypeEstimate,
+            OverallScore = analysis.OverallScore,
+            ConfidenceScore = (int)Math.Round((analysis.ConfidenceScore ?? 0.8m) * 100m),
+            SkinAge = null,
+            RecoveryCapacity = analysis.DrynessScore == 0 ? null : Math.Max(0, 100 - analysis.DrynessScore),
+            UvDamage = analysis.DarkSpotScore,
+            AgingRisk = analysis.TextureScore,
+            IssuesDetected = analysis.DetectedConcerns,
+            RootCauses = analysis.ParsedAiResponse,
+            Overview = string.IsNullOrWhiteSpace(analysis.AiSummary)
+                ? $"Skin score {analysis.OverallScore}/100."
+                : analysis.AiSummary,
+            AiModel = analysis.AiModel,
+            Status = analysis.Status,
+            Disclaimer = "AI output is for skincare guidance only and does not replace medical diagnosis.",
+            Warnings = SkinProgressMapper.ParseStringArray(analysis.RiskFlags),
+            GeneratedAt = analysis.CompletedAt ?? analysis.CreatedAt,
+            CreatedAt = analysis.CreatedAt,
+            Issues = concerns.Select((concern, index) => new AnalysisIssueItemDto
+            {
+                Id = Guid.NewGuid(),
+                IssueType = concern.Label,
+                SeverityScore = concern.Score,
+                ConfidenceScore = (int)Math.Round(concern.Confidence * 100),
+                Description = concern.Description
+            }).ToList(),
+            Recommendations = recommendations.Select((item, index) => new AnalysisRecommendationItemDto
+            {
+                Id = Guid.NewGuid(),
+                RecommendationType = item.Type,
+                Title = item.Title,
+                Content = item.Description,
+                Priority = item.Priority.ToLowerInvariant() switch
+                {
+                    "high" => 1,
+                    "medium" => 2,
+                    _ => 3
+                }
+            }).ToList()
+        };
+    }
+
+    public static AnalysisDetailResponseDto GetLegacyDetailFromCanonical(SkinProgressAnalysis analysis)
+    {
+        var photo = new SkinProgressPhoto
+        {
+            Id = analysis.PhotoId,
+            UserId = analysis.UserId,
+            ImageUrl = string.Empty,
+            ThumbnailUrl = null,
+            Source = "unknown",
+            PhotoDate = DateOnly.FromDateTime((analysis.CompletedAt ?? analysis.CreatedAt).Date),
+            TimeOfDay = "unknown",
+            LightingCondition = "unknown",
+            FaceAngle = "unknown",
+            CreatedAt = analysis.CreatedAt
+        };
+
+        return ToLegacyDetailDto(analysis, photo);
+    }
+
+    private static string ResolveTimeOfDay(DateTime value)
+    {
+        if (value.Hour < 12)
+        {
+            return "morning";
+        }
+
+        if (value.Hour < 18)
+        {
+            return "afternoon";
+        }
+
+        return "night";
+    }
 }

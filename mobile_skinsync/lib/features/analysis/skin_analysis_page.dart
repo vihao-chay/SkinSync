@@ -147,12 +147,20 @@ class _SkinAnalysisPageState extends State<SkinAnalysisPage> {
                   children: [
                     Expanded(
                       child: OutlinedButton(
+                        onPressed: () =>
+                            Navigator.pushNamed(context, AppRoutes.progress),
+                        child: const Text('View Progress'),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: OutlinedButton(
                         onPressed: () => Navigator.pushNamed(
                           context,
                           AppRoutes.aiChatConversation,
                           arguments: AiChatLaunchArgs(
                             entryPoint: 'analysis_result',
-                            referenceId: result.id,
+                            referenceId: result.progressEntryId ?? result.id,
                             prefillMessage:
                                 'Can you explain this analysis and what I should do next?',
                           ),
@@ -170,7 +178,7 @@ class _SkinAnalysisPageState extends State<SkinAnalysisPage> {
                             initialConcern: result.issues.isNotEmpty
                                 ? result.issues.first.issueType
                                 : 'any',
-                            referenceId: result.id,
+                            referenceId: result.progressEntryId ?? result.id,
                           ),
                         ),
                         child: const Text('View Products'),

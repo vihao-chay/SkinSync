@@ -442,7 +442,7 @@ Return valid JSON only:
 {{
   ""suggestions"": [
     {{
-      ""routineType"": ""Morning | Evening"",
+      ""routineType"": ""morning | evening"",
       ""reason"": ""string"",
       ""priority"": ""low | medium | high""
     }}

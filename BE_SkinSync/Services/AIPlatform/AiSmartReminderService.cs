@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Npgsql;
 using SkinSync.Data;
+using SkinSync.Helpers;
 using SkinSync.Mappers;
 using SkinSync.Models.Dtos.AI;
 using SkinSync.Models.Entities;
@@ -79,7 +80,7 @@ public class AiSmartReminderService : IAiSmartReminderService
         var recentTrackings = await _dbContext.RoutineTrackings
             .AsNoTracking()
             .Include(x => x.Step)
-            .Where(x => x.UserId == userId && x.CompletedAt >= DateTime.UtcNow.AddDays(-14))
+            .Where(x => x.UserId == userId && x.TrackingDate >= DateOnly.FromDateTime(DateTime.UtcNow.Date.AddDays(-14)))
             .ToListAsync(cancellationToken);
 
         var recentLogs = await _dbContext.DailyLogs
@@ -181,10 +182,10 @@ public class AiSmartReminderService : IAiSmartReminderService
         IReadOnlyCollection<DailyLog> recentLogs)
     {
         var results = new List<ReminderCandidate>();
-        foreach (var routineType in new[] { "Morning", "Evening" })
+        foreach (var routineType in new[] { RoutineScheduleHelper.Morning, RoutineScheduleHelper.Evening })
         {
             var steps = activeRegimen.Items
-                .Where(x => string.Equals(x.RoutineTime, routineType, StringComparison.OrdinalIgnoreCase))
+                .Where(x => string.Equals(RoutineScheduleHelper.NormalizeRoutineValue(x.RoutineTime), routineType, StringComparison.OrdinalIgnoreCase))
                 .ToList();
             if (steps.Count == 0)
             {
@@ -193,8 +194,8 @@ public class AiSmartReminderService : IAiSmartReminderService
 
             var existing = reminders.FirstOrDefault(x => x.RoutineType == routineType);
             var trackingTimes = recentTrackings
-                .Where(x => string.Equals(x.Step.RoutineTime, routineType, StringComparison.OrdinalIgnoreCase))
-                .Select(x => TimeOnly.FromDateTime(x.CompletedAt))
+                .Where(x => string.Equals(RoutineScheduleHelper.NormalizeRoutineValue(x.RoutineTime), routineType, StringComparison.OrdinalIgnoreCase) && x.CompletedAt.HasValue)
+                .Select(x => TimeOnly.FromDateTime(x.CompletedAt!.Value))
                 .ToList();
 
             var adherenceRate = CalculateAdherenceRate(recentLogs, routineType);
@@ -224,7 +225,7 @@ public class AiSmartReminderService : IAiSmartReminderService
             return 0.5m;
         }
 
-        var completedDays = recentLogs.Count(x => string.Equals(routineType, "Morning", StringComparison.OrdinalIgnoreCase)
+        var completedDays = recentLogs.Count(x => RoutineScheduleHelper.IsMorning(routineType)
             ? x.MorningCompleted
             : x.EveningCompleted);
 
@@ -233,7 +234,7 @@ public class AiSmartReminderService : IAiSmartReminderService
 
     private static TimeOnly ResolveSuggestedTime(string routineType, TimeOnly? existingTime, IReadOnlyCollection<TimeOnly> trackingTimes, decimal adherenceRate)
     {
-        var baseline = existingTime ?? (string.Equals(routineType, "Morning", StringComparison.OrdinalIgnoreCase)
+        var baseline = existingTime ?? (RoutineScheduleHelper.IsMorning(routineType)
             ? new TimeOnly(7, 0)
             : new TimeOnly(21, 0));
 
@@ -243,11 +244,11 @@ public class AiSmartReminderService : IAiSmartReminderService
 
         if (trackingTimes.Count < 3)
         {
-            if (string.Equals(routineType, "Morning", StringComparison.OrdinalIgnoreCase) && adherenceRate < 0.45m)
+            if (RoutineScheduleHelper.IsMorning(routineType) && adherenceRate < 0.45m)
             {
                 suggested = baseline.Add(TimeSpan.FromMinutes(30));
             }
-            else if (string.Equals(routineType, "Evening", StringComparison.OrdinalIgnoreCase) && adherenceRate < 0.45m)
+            else if (RoutineScheduleHelper.IsEvening(routineType) && adherenceRate < 0.45m)
             {
                 suggested = baseline.Add(TimeSpan.FromMinutes(-30));
             }
@@ -258,9 +259,10 @@ public class AiSmartReminderService : IAiSmartReminderService
 
     private static string BuildContextNote(string routineType, int stepCount, decimal adherenceRate, TimeOnly? existingTime, TimeOnly suggestedTime)
     {
+        var label = RoutineScheduleHelper.IsMorning(routineType) ? "Morning" : "Evening";
         var parts = new List<string>
         {
-            $"{routineType} routine has {stepCount} step(s).",
+            $"{label} routine has {stepCount} step(s).",
             $"Recent adherence is {(adherenceRate * 100):0}%."
         };
 
@@ -300,17 +302,7 @@ public class AiSmartReminderService : IAiSmartReminderService
 
     private static string? NormalizeRoutineType(string? routineType)
     {
-        if (string.IsNullOrWhiteSpace(routineType))
-        {
-            return null;
-        }
-
-        return routineType.Trim().ToLowerInvariant() switch
-        {
-            "morning" => "Morning",
-            "evening" => "Evening",
-            _ => null
-        };
+        return RoutineScheduleHelper.NormalizeRoutineValue(routineType);
     }
 
     private static string? NormalizePriority(string? priority)
@@ -345,7 +337,7 @@ public class AiSmartReminderService : IAiSmartReminderService
 
     private static TimeOnly ClampTime(string routineType, TimeOnly time)
     {
-        if (string.Equals(routineType, "Morning", StringComparison.OrdinalIgnoreCase))
+        if (RoutineScheduleHelper.IsMorning(routineType))
         {
             return time < MorningMin ? MorningMin : time > MorningMax ? MorningMax : time;
         }
