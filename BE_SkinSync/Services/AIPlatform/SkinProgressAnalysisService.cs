@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using SkinSync.Data;
@@ -251,6 +252,7 @@ internal sealed class SkinProgressAnalyzeAiModel
     public SkinProgressScoreSetDto Scores { get; set; } = new();
     public List<SkinProgressConcernDto> DetectedConcerns { get; set; } = [];
     public string AiSummary { get; set; } = string.Empty;
+    [JsonConverter(typeof(SkinProgressRecommendationListJsonConverter))]
     public List<SkinProgressRecommendationDto> Recommendations { get; set; } = [];
     public SkinProgressRoutineSuggestionsDto RoutineSuggestions { get; set; } = new();
     public List<SkinProgressProductSuggestionDto> ProductSuggestions { get; set; } = [];
@@ -258,4 +260,86 @@ internal sealed class SkinProgressAnalyzeAiModel
     public List<string> RiskFlags { get; set; } = [];
     public string Disclaimer { get; set; } = string.Empty;
     public decimal? ConfidenceScore { get; set; }
+}
+
+internal sealed class SkinProgressRecommendationListJsonConverter : JsonConverter<List<SkinProgressRecommendationDto>>
+{
+    public override List<SkinProgressRecommendationDto> Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        if (reader.TokenType == JsonTokenType.Null)
+        {
+            return [];
+        }
+
+        using var document = JsonDocument.ParseValue(ref reader);
+        if (document.RootElement.ValueKind != JsonValueKind.Array)
+        {
+            return [];
+        }
+
+        var items = new List<SkinProgressRecommendationDto>();
+        var index = 0;
+        foreach (var element in document.RootElement.EnumerateArray())
+        {
+            index++;
+            if (element.ValueKind == JsonValueKind.String)
+            {
+                var description = element.GetString();
+                if (!string.IsNullOrWhiteSpace(description))
+                {
+                    items.Add(new SkinProgressRecommendationDto
+                    {
+                        Type = "routine",
+                        Title = $"Recommendation {index}",
+                        Description = description.Trim(),
+                        Priority = "medium"
+                    });
+                }
+
+                continue;
+            }
+
+            if (element.ValueKind == JsonValueKind.Object)
+            {
+                try
+                {
+                    var dto = element.Deserialize<SkinProgressRecommendationDto>(options);
+                    if (dto is not null)
+                    {
+                        items.Add(dto);
+                    }
+                }
+                catch (JsonException)
+                {
+                    if (element.TryGetProperty("description", out var descriptionElement))
+                    {
+                        var description = descriptionElement.GetString();
+                        if (!string.IsNullOrWhiteSpace(description))
+                        {
+                            items.Add(new SkinProgressRecommendationDto
+                            {
+                                Type = element.TryGetProperty("type", out var typeElement) && !string.IsNullOrWhiteSpace(typeElement.GetString())
+                                    ? typeElement.GetString()!.Trim()
+                                    : "routine",
+                                Title = element.TryGetProperty("title", out var titleElement) && !string.IsNullOrWhiteSpace(titleElement.GetString())
+                                    ? titleElement.GetString()!.Trim()
+                                    : $"Recommendation {index}",
+                                Description = description.Trim(),
+                                Priority = element.TryGetProperty("priority", out var priorityElement) && !string.IsNullOrWhiteSpace(priorityElement.GetString())
+                                    ? priorityElement.GetString()!.Trim()
+                                    : "medium"
+                            });
+                        }
+                    }
+                }
+            }
+        }
+
+        return items;
+    }
+
+    public override void Write(Utf8JsonWriter writer, List<SkinProgressRecommendationDto> value, JsonSerializerOptions options)
+    {
+        JsonSerializer.Serialize(writer, value, options);
+    }
 }
