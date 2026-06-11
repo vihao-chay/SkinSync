@@ -18,6 +18,11 @@ import { ResetPasswordPage } from "./pages/ResetPasswordPage";
 import { SecuritySettingsPage } from "./pages/SecuritySettingsPage";
 import { Navigation } from "./components/Navigation";
 import { AuthCallbackPage } from "./pages/AuthCallbackPage";
+import { BlogPage } from "./pages/BlogPage";
+import { TroGiupPage } from "./pages/TroGiupPage";
+import { ChinhSachBaoMatPage } from "./pages/ChinhSachBaoMatPage";
+import { DieuKhoanSuDungPage } from "./pages/DieuKhoanSuDungPage";
+import { SubscriptionPage } from "./pages/SubscriptionPage";
 import { useAuth } from "./contexts/AuthContext";
 
 function MainLayout() {
@@ -152,8 +157,12 @@ function ErrorBoundary() {
 
 export const router = createBrowserRouter([
   {
-    // Main layout with Navigation
     path: "/",
+    element: <LandingPage />,
+    errorElement: <ErrorBoundary />,
+  },
+  {
+    // Main app layout with Navigation
     element: (
       <RequireAuth>
         <MainLayout />
@@ -161,7 +170,6 @@ export const router = createBrowserRouter([
     ),
     errorElement: <ErrorBoundary />,
     children: [
-      { index: true, element: <LandingPage /> },
       { path: "quiz", element: <QuizPage /> },
       { path: "upload", element: <UploadPage /> },
       { path: "analysis", element: <SkinAnalysisPage /> },
@@ -205,6 +213,32 @@ export const router = createBrowserRouter([
   {
     path: "/reset-password",
     element: <ResetPasswordPage />,
+    errorElement: <ErrorBoundary />,
+  },
+  {
+    // Public content pages
+    path: "/blog",
+    element: <BlogPage />,
+    errorElement: <ErrorBoundary />,
+  },
+  {
+    path: "/tro-giup",
+    element: <TroGiupPage />,
+    errorElement: <ErrorBoundary />,
+  },
+  {
+    path: "/chinh-sach-bao-mat",
+    element: <ChinhSachBaoMatPage />,
+    errorElement: <ErrorBoundary />,
+  },
+  {
+    path: "/dieu-khoan-su-dung",
+    element: <DieuKhoanSuDungPage />,
+    errorElement: <ErrorBoundary />,
+  },
+  {
+    path: "/subscription",
+    element: <SubscriptionPage />,
     errorElement: <ErrorBoundary />,
   },
   {

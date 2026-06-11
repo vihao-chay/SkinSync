@@ -2,29 +2,36 @@
 
 :root {
   --font-size: 16px;
-  --background: #ffffff;
-  --foreground: #2a2a2a;
-  --card: #ffffff;
-  --card-foreground: #2a2a2a;
-  --popover: #ffffff;
-  --popover-foreground: #2a2a2a;
-  --primary: #c4a882;
+  --skin-base: #f9f6f0;
+  --skin-surface: #ffffff;
+  --skin-gold: #c2a67d;
+  --skin-gold-hover: #b0946b;
+  --skin-text-main: #2c2a28;
+  --skin-text-muted: #78716c;
+  --skin-border: #eae5d9;
+  --background: var(--skin-base);
+  --foreground: var(--skin-text-main);
+  --card: var(--skin-surface);
+  --card-foreground: var(--skin-text-main);
+  --popover: var(--skin-surface);
+  --popover-foreground: var(--skin-text-main);
+  --primary: var(--skin-gold);
   --primary-foreground: #ffffff;
   --secondary: #f5f0e8;
-  --secondary-foreground: #2a2a2a;
+  --secondary-foreground: var(--skin-text-main);
   --muted: #faf7f2;
-  --muted-foreground: #6b7280;
+  --muted-foreground: var(--skin-text-muted);
   --accent: #e8d5b7;
-  --accent-foreground: #2a2a2a;
+  --accent-foreground: var(--skin-text-main);
   --destructive: #ef4444;
   --destructive-foreground: #ffffff;
-  --border: rgba(0, 0, 0, 0.08);
+  --border: var(--skin-border);
   --input: transparent;
   --input-background: #faf7f2;
   --switch-background: #e5e7eb;
   --font-weight-medium: 500;
   --font-weight-normal: 400;
-  --ring: #e8d5b7;
+  --ring: var(--skin-gold);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
@@ -41,33 +48,33 @@
   --sidebar-ring: oklch(0.708 0 0);
   
   /* Premium Skincare Color Palette */
-  --cream: #f5f0e8;
+  --cream: #f9f6f0;
   --mint: #e8d5b7;
   --soft-pink: #f5e6d3;
-  --electric-blue: #c4a882;
-  --electric-purple: #8c6e52;
+  --electric-blue: #c2a67d;
+  --electric-purple: #b0946b;
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.145 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.145 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.985 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.396 0.141 25.723);
-  --destructive-foreground: oklch(0.637 0.237 25.331);
-  --border: oklch(0.269 0 0);
-  --input: oklch(0.269 0 0);
-  --ring: oklch(0.439 0 0);
+  --background: #1f1b17;
+  --foreground: #f8f4ed;
+  --card: #26201b;
+  --card-foreground: #f8f4ed;
+  --popover: #26201b;
+  --popover-foreground: #f8f4ed;
+  --primary: var(--skin-gold);
+  --primary-foreground: #ffffff;
+  --secondary: #352d27;
+  --secondary-foreground: #f8f4ed;
+  --muted: #312a24;
+  --muted-foreground: #b8aea4;
+  --accent: #40362e;
+  --accent-foreground: #f8f4ed;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --border: #3b332c;
+  --input: #3b332c;
+  --ring: var(--skin-gold);
   --font-weight-medium: 500;
   --font-weight-normal: 400;
   --chart-1: oklch(0.488 0.243 264.376);
@@ -86,6 +93,8 @@
 }
 
 @theme inline {
+  --font-serif: "Playfair Display", ui-serif, Georgia, serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -124,6 +133,13 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-skin-base: var(--skin-base);
+  --color-skin-surface: var(--skin-surface);
+  --color-skin-gold: var(--skin-gold);
+  --color-skin-goldHover: var(--skin-gold-hover);
+  --color-skin-textMain: var(--skin-text-main);
+  --color-skin-textMuted: var(--skin-text-muted);
+  --color-skin-border: var(--skin-border);
 }
 
 @layer base {
@@ -132,7 +148,7 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-skin-base text-skin-textMain font-sans;
   }
 
   /**
@@ -142,6 +158,17 @@
 
   html {
     font-size: var(--font-size);
+    scroll-behavior: smooth;
+    scroll-padding-top: 6rem;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-serif;
   }
 
   h1 {

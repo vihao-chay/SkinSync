@@ -1,0 +1,42 @@
+@SkinSync_HostAddress = http://localhost:5199
+
+GET {{SkinSync_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
+
+# 1. Skin Analysis (Vision-based analysis)
+POST {{SkinSync_HostAddress}}/api/skin/analyze
+Content-Type: application/json
+
+{
+  "imageUrl": "https://raw.githubusercontent.com/vihao-chay/SkinSync/main/docs/assets/sample-skin.jpg"
+}
+
+###
+
+# 2. Skincare Chat Assistant
+POST {{SkinSync_HostAddress}}/api/skin/chat
+Content-Type: application/json
+
+{
+  "message": "My skin has been breaking out on my forehead recently. What should I do?",
+  "userProfile": {
+    "skinType": "Oily",
+    "skinConcerns": ["acne", "pores"],
+    "monthlyBudget": "Mid-range",
+    "age": 22
+  }
+}
+
+###
+
+# 3. Skincare Routine Builder
+POST {{SkinSync_HostAddress}}/api/skin/routine
+Content-Type: application/json
+
+{
+  "skinType": "Combination",
+  "concerns": ["pores", "dehydration"],
+  "budget": "Mid-range"
+}

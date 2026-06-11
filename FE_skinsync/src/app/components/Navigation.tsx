@@ -1,6 +1,7 @@
 import { Link, useLocation, useNavigate } from "react-router";
-import { User, Bell, ChevronDown, LogOut, ChevronRight, Sparkles } from "lucide-react";
+import { User, Bell, ChevronDown, LogOut } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
+import { BrandMark } from "./BrandMark";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { useAuth } from "../contexts/AuthContext";
 import { resolveUserAvatar } from "../utils/avatar";
@@ -9,21 +10,15 @@ export function Navigation() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const [resultsOpen, setResultsOpen] = useState(false);
   const [avatarOpen, setAvatarOpen] = useState(false);
   const avatarRef = useRef<HTMLDivElement>(null);
-  const resultsRef = useRef<HTMLDivElement>(null);
 
   const isActive = (path: string) => location.pathname === path;
-  const isResultActive = ["/analysis", "/routine"].includes(location.pathname);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (avatarRef.current && !avatarRef.current.contains(e.target as Node)) {
         setAvatarOpen(false);
-      }
-      if (resultsRef.current && !resultsRef.current.contains(e.target as Node)) {
-        setResultsOpen(false);
       }
     };
     document.addEventListener("mousedown", handler);
@@ -32,16 +27,6 @@ export function Navigation() {
 
   const navLinks = [
     { label: "Trang Chủ", to: "/" },
-    { label: "Khảo Sát", to: "/quiz" },
-    {
-      label: "Kết Quả",
-      to: "/analysis",
-      children: [
-        { label: "Phân Tích Da", to: "/analysis" },
-        { label: "Lộ Trình", to: "/routine" },
-      ],
-    },
-    { label: "Tiến Trình", to: "/progress" },
   ];
 
   const displayName = user?.fullName ?? "Người dùng";
@@ -55,9 +40,7 @@ export function Navigation() {
 
           {/* ── Logo ── */}
           <Link to="/" className="flex items-center gap-2.5 flex-shrink-0">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#c4a882] to-[#8c6e52] flex items-center justify-center shadow-sm shadow-[#c4a882]/25">
-              <Sparkles className="w-4 h-4 text-white" />
-            </div>
+            <BrandMark className="w-9 h-9 rounded-full ring-1 ring-[#e8d5b7]/70" />
             <span className="text-[#1c1008] tracking-tight" style={{ fontWeight: 600, fontSize: "1.05rem" }}>
               SkinSync
             </span>
@@ -65,57 +48,19 @@ export function Navigation() {
 
           {/* ── Nav Links (center) ── */}
           <div className="hidden md:flex items-center gap-1">
-            {navLinks.map((link) =>
-              link.children ? (
-                <div key={link.label} className="relative" ref={resultsRef}>
-                  <button
-                    onClick={() => setResultsOpen((v) => !v)}
-                    className={`flex items-center gap-1 px-4 py-2 rounded-full text-sm transition-all ${
-                      isResultActive
-                        ? "text-[#8c6e52] bg-[#c4a882]/10"
-                        : "text-[#4b5563] hover:text-[#8c6e52] hover:bg-[#c4a882]/8"
-                    }`}
-                  >
-                    {link.label}
-                    <ChevronDown
-                      className={`w-3.5 h-3.5 transition-transform duration-200 ${resultsOpen ? "rotate-180" : ""}`}
-                    />
-                  </button>
-
-                  {resultsOpen && (
-                    <div className="absolute top-[calc(100%+8px)] left-1/2 -translate-x-1/2 w-48 bg-white/95 backdrop-blur-2xl border border-[#e8d5b7]/80 rounded-2xl shadow-xl shadow-black/8 overflow-hidden py-1.5 animate-in fade-in slide-in-from-top-2 duration-150">
-                      {link.children.map((child) => (
-                        <Link
-                          key={child.to}
-                          to={child.to}
-                          onClick={() => setResultsOpen(false)}
-                          className={`flex items-center justify-between px-4 py-2.5 text-sm transition-colors ${
-                            isActive(child.to)
-                              ? "text-[#8c6e52] bg-[#c4a882]/8"
-                              : "text-[#4b5563] hover:text-[#8c6e52] hover:bg-[#c4a882]/6"
-                          }`}
-                        >
-                          {child.label}
-                          <ChevronRight className="w-3.5 h-3.5 opacity-40" />
-                        </Link>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <Link
-                  key={link.label}
-                  to={link.to}
-                  className={`px-4 py-2 rounded-full text-sm transition-all ${
-                    isActive(link.to)
-                      ? "text-[#8c6e52] bg-[#c4a882]/10"
-                      : "text-[#4b5563] hover:text-[#8c6e52] hover:bg-[#c4a882]/8"
-                  }`}
-                >
-                  {link.label}
-                </Link>
-              )
-            )}
+            {navLinks.map((link) => (
+              <Link
+                key={link.label}
+                to={link.to}
+                className={`px-4 py-2 rounded-full text-sm transition-all ${
+                  isActive(link.to)
+                    ? "text-[#8c6e52] bg-[#c4a882]/10"
+                    : "text-[#4b5563] hover:text-[#8c6e52] hover:bg-[#c4a882]/8"
+                }`}
+              >
+                {link.label}
+              </Link>
+            ))}
           </div>
 
           {/* ── Right Side ── */}

@@ -1,27 +1,68 @@
 # OS
 .DS_Store
 Thumbs.db
+Desktop.ini
 
-# IDE
+# IDE / editors
 .vscode/
 .idea/
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.swp
+*.swo
+*~
 
 # logs
 *.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
 
-# env (nếu có ở root)
+# env / secrets
 .env
+.env.*
+!.env.example
+appsettings.Development.json
+**/appsettings.Development.json
+secrets.json
 
-# node (phòng trường hợp chạy ở root)
+# Node / frontend
 node_modules/
-
-# build tổng
 dist/
 build/
+.next/
+.nuxt/
+.vite/
+coverage/
 
-# docker (nếu dùng)
+# .NET / C#
+bin/
+obj/
+TestResults/
+*.nupkg
+*.snupkg
+
+# local tools / temp scripts
+tmp_db_schema.cs
+*.db
+*.sqlite
+*.sqlite3
+
+# generated uploads
+wwwroot/uploads/
+**/wwwroot/uploads/
+
+# repo-specific extras
+DBInspector/bin/
+DBInspector/obj/
+
+# docker
 docker-compose.override.yml
 
 # misc
 *.tmp
-*.swp
