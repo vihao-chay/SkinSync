@@ -29,10 +29,11 @@ public class AiReportService : IAiReportService
 
     public async Task<AiReportGenerateResponseDto> GenerateAsync(Guid userId, AiReportGenerateRequestDto request, CancellationToken cancellationToken)
     {
+        var reportType = NormalizeReportType(request.ReportType);
+        await _aiUsageService.CheckReportAccessAsync(userId, "report_generation", reportType, cancellationToken);
+
         var user = await _dbContext.Users.Include(x => x.Profile).FirstOrDefaultAsync(x => x.Id == userId, cancellationToken)
             ?? throw new AiFeatureException("USER_NOT_FOUND", "User not found.", 404);
-
-        await _aiUsageService.CheckLimitAsync(userId, "report_generation", cancellationToken);
 
         var analyses = await _dbContext.AiAnalyses
             .AsNoTracking()
@@ -40,14 +41,14 @@ public class AiReportService : IAiReportService
             .Include(x => x.Recommendations)
             .Where(x => x.UserId == userId)
             .OrderByDescending(x => x.CreatedAt)
-            .Take(request.ReportType.Equals("monthly", StringComparison.OrdinalIgnoreCase) ? 10 : 4)
+            .Take(reportType is "monthly" or "custom" ? 10 : 4)
             .ToListAsync(cancellationToken);
         var regimen = await _dbContext.UserRegimens
             .AsNoTracking()
             .Include(x => x.Items)
             .ThenInclude(x => x.Product)
             .FirstOrDefaultAsync(x => x.UserId == userId && x.IsActive, cancellationToken);
-        var days = request.ReportType.Equals("monthly", StringComparison.OrdinalIgnoreCase) ? 30 : 7;
+        var days = reportType is "monthly" or "custom" ? 30 : 7;
         var fromDate = DateOnly.FromDateTime(DateTime.UtcNow.Date.AddDays(-days));
         var dailyLogs = await _dbContext.DailyLogs
             .AsNoTracking()
@@ -68,14 +69,14 @@ public class AiReportService : IAiReportService
                 analysesJson,
                 JsonSerializer.Serialize(regimen?.ToCurrentRegimenDto() ?? new object()),
                 AiContextMapper.SerializeDailyLogs(dailyLogs),
-                request.ReportType),
+                reportType),
             cancellationToken: cancellationToken);
 
         var report = new AiReport
         {
             Id = Guid.NewGuid(),
             UserId = userId,
-            ReportType = NormalizeReportType(request.ReportType),
+            ReportType = reportType,
             Summary = aiResult.Value.Summary,
             ProgressEvaluation = aiResult.Value.ProgressEvaluation,
             MainFindings = JsonSerializer.Serialize(aiResult.Value.MainFindings),
@@ -130,7 +131,7 @@ public class AiReportService : IAiReportService
     private static string NormalizeReportType(string reportType)
     {
         var value = reportType.Trim().ToLowerInvariant();
-        return value is "weekly" or "monthly" or "after_analysis" ? value : "after_analysis";
+        return value is "weekly" or "monthly" or "custom" or "after_analysis" ? value : "after_analysis";
     }
 }
 

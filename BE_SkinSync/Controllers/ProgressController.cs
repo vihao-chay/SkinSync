@@ -5,6 +5,7 @@ using SkinSync.Base;
 using SkinSync.Data;
 using SkinSync.Helpers;
 using SkinSync.Models.Dtos.Progress;
+using SkinSync.Services.AIPlatform;
 
 namespace SkinSync.Controllers;
 
@@ -14,10 +15,12 @@ namespace SkinSync.Controllers;
 public class ProgressController : ControllerBase
 {
     private readonly AppDbContext _dbContext;
+    private readonly IAiUsageService _aiUsageService;
 
-    public ProgressController(AppDbContext dbContext)
+    public ProgressController(AppDbContext dbContext, IAiUsageService aiUsageService)
     {
         _dbContext = dbContext;
+        _aiUsageService = aiUsageService;
     }
 
     [HttpGet("overview")]
@@ -187,6 +190,15 @@ public class ProgressController : ControllerBase
         if (selectedMonth is < 1 or > 12)
         {
             return ResponseEntity<MonthlyReportResponseDto>.Fail("month pháº£i náº±m trong khoáº£ng 1 Ä‘áº¿n 12.");
+        }
+
+        try
+        {
+            await _aiUsageService.CheckReportAccessAsync(userId, "report_generation", "monthly", cancellationToken);
+        }
+        catch (AiFeatureException ex)
+        {
+            return ResponseEntity<MonthlyReportResponseDto>.Fail(ex.Message, ex.StatusCode);
         }
 
         var logs = await _dbContext.DailyLogs

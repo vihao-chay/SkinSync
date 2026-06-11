@@ -19,11 +19,13 @@ public class SkinProgressService : ISkinProgressService
 {
     private readonly AppDbContext _dbContext;
     private readonly IWebHostEnvironment _environment;
+    private readonly IAiUsageService _aiUsageService;
 
-    public SkinProgressService(AppDbContext dbContext, IWebHostEnvironment environment)
+    public SkinProgressService(AppDbContext dbContext, IWebHostEnvironment environment, IAiUsageService aiUsageService)
     {
         _dbContext = dbContext;
         _environment = environment;
+        _aiUsageService = aiUsageService;
     }
 
     public async Task<SkinProgressPhotoDto> UploadPhotoAsync(Guid userId, SkinProgressPhotoUploadRequestDto request, CancellationToken cancellationToken)
@@ -34,6 +36,8 @@ public class SkinProgressService : ISkinProgressService
             {
                 throw new AiFeatureException("INVALID_REQUEST", "Image file or imageUrl is required.");
             }
+
+            await _aiUsageService.CheckLimitAsync(userId, "progress_entry", cancellationToken);
 
             var imageUrl = await StorePhotoAsync(request, cancellationToken);
             var photo = new SkinProgressPhoto
@@ -52,6 +56,7 @@ public class SkinProgressService : ISkinProgressService
 
             _dbContext.SkinProgressPhotos.Add(photo);
             await _dbContext.SaveChangesAsync(cancellationToken);
+            await _aiUsageService.LogUsageAsync(userId, "progress_entry", null, null, null, cancellationToken);
             return photo.ToDto();
         }
         catch (PostgresException ex) when (IsMissingRelation(ex))

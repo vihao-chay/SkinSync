@@ -36,15 +36,17 @@ public class SkinProgressReportService : ISkinProgressReportService
         try
         {
             var periodType = request.PeriodType.Trim().ToLowerInvariant();
-            if (periodType is not ("weekly" or "monthly" or "yearly"))
+            if (periodType is not ("weekly" or "monthly" or "yearly" or "custom"))
             {
-                throw new AiFeatureException("INVALID_REQUEST", "periodType must be weekly, monthly, or yearly.");
+                throw new AiFeatureException("INVALID_REQUEST", "periodType must be weekly, monthly, yearly, or custom.");
             }
 
             if (request.PeriodEnd < request.PeriodStart)
             {
                 throw new AiFeatureException("INVALID_REQUEST", "periodEnd must be on or after periodStart.");
             }
+
+            await _aiUsageService.CheckReportAccessAsync(userId, "skin_progress_report", periodType, cancellationToken);
 
             var existing = await _dbContext.SkinProgressReports
                 .AsNoTracking()
@@ -76,8 +78,6 @@ public class SkinProgressReportService : ISkinProgressReportService
             {
                 throw new AiFeatureException("INSUFFICIENT_DATA", "At least two progress analyses are required to generate a progress report.", 400);
             }
-
-            await _aiUsageService.CheckLimitAsync(userId, "skin_progress_report", cancellationToken);
 
             var regimen = await _dbContext.UserRegimens
                 .AsNoTracking()

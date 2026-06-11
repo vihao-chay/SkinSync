@@ -77,6 +77,7 @@ builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<IAiAnalysisService, AiAnalysisService>();
 builder.Services.AddScoped<IRegimenBuilderService, RegimenBuilderService>();
 builder.Services.AddScoped<IIngredientConflictService, IngredientConflictService>();
+builder.Services.AddScoped<ISubscriptionService, SubscriptionService>();
 builder.Services.AddHttpClient<ISupabaseAuthService, SupabaseAuthService>();
 
 // AI Integration Registrations
@@ -98,6 +99,7 @@ builder.Services.AddScoped<ISkinProgressService, SkinProgressService>();
 builder.Services.AddScoped<ISkinProgressAnalysisService, SkinProgressAnalysisService>();
 builder.Services.AddScoped<ISkinProgressComparisonService, SkinProgressComparisonService>();
 builder.Services.AddScoped<ISkinProgressReportService, SkinProgressReportService>();
+builder.Services.AddScoped<IReportPdfService, ReportPdfService>();
 
 builder.Services.AddHttpClient("OpenAiClient", (sp, client) =>
 {

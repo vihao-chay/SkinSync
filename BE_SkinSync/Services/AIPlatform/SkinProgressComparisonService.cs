@@ -51,9 +51,6 @@ public class SkinProgressComparisonService : ISkinProgressComparisonService
             var afterPhoto = photos.FirstOrDefault(x => x.Id == request.AfterPhotoId)
                 ?? throw new AiFeatureException("PHOTO_NOT_FOUND", "After photo not found.", 404);
 
-            var beforeAnalysis = await EnsureAnalysisAsync(userId, beforePhoto.Id, cancellationToken);
-            var afterAnalysis = await EnsureAnalysisAsync(userId, afterPhoto.Id, cancellationToken);
-
             var existing = await _dbContext.SkinPhotoComparisons
                 .AsNoTracking()
                 .FirstOrDefaultAsync(x => x.UserId == userId && x.BeforePhotoId == beforePhoto.Id && x.AfterPhotoId == afterPhoto.Id, cancellationToken);
@@ -63,6 +60,9 @@ public class SkinProgressComparisonService : ISkinProgressComparisonService
             }
 
             await _aiUsageService.CheckLimitAsync(userId, "skin_progress_compare", cancellationToken);
+
+            var beforeAnalysis = await EnsureAnalysisAsync(userId, beforePhoto.Id, cancellationToken);
+            var afterAnalysis = await EnsureAnalysisAsync(userId, afterPhoto.Id, cancellationToken);
 
             var user = await _dbContext.Users
                 .Include(x => x.Profile)

@@ -9,6 +9,8 @@ using SkinSync.Models.Dtos.Products;
 using SkinSync.Models.Entities;
 using SkinSync.Models.Enums;
 using SkinSync.Repositories;
+using SkinSync.Services;
+using SkinSync.Services.AIPlatform;
 
 namespace SkinSync.Controllers;
 
@@ -21,17 +23,20 @@ public class AdminController : ControllerBase
     private readonly IUserRepository _userRepository;
     private readonly IAnalysisRepository _analysisRepository;
     private readonly IProductRepository _productRepository;
+    private readonly ISubscriptionService _subscriptionService;
 
     public AdminController(
         AppDbContext dbContext,
         IUserRepository userRepository,
         IAnalysisRepository analysisRepository,
-        IProductRepository productRepository)
+        IProductRepository productRepository,
+        ISubscriptionService subscriptionService)
     {
         _dbContext = dbContext;
         _userRepository = userRepository;
         _analysisRepository = analysisRepository;
         _productRepository = productRepository;
+        _subscriptionService = subscriptionService;
     }
 
     [HttpGet("dashboard")]
@@ -200,5 +205,19 @@ public class AdminController : ControllerBase
         user.Role = role;
         await _userRepository.UpdateAsync(user, cancellationToken);
         return Ok(user.ToAdminUserDto());
+    }
+
+    [HttpPatch("users/{id:guid}/plan")]
+    public async Task<ResponseEntity<AdminUserItemDto>> UpdateUserPlan(Guid id, [FromBody] UpdateUserPlanRequestDto request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var user = await _subscriptionService.ChangeUserPlanAsync(id, request.PlanCode, cancellationToken);
+            return ResponseEntity<AdminUserItemDto>.Ok(user.ToAdminUserDto(), "Updated user plan successfully.");
+        }
+        catch (AiFeatureException ex)
+        {
+            return ResponseEntity<AdminUserItemDto>.Fail(ex.Message, ex.StatusCode);
+        }
     }
 }

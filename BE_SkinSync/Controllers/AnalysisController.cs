@@ -9,6 +9,7 @@ using SkinSync.Models.Dtos.Skin;
 using SkinSync.Models.Entities;
 using SkinSync.Repositories;
 using SkinSync.Services;
+using SkinSync.Services.AIPlatform;
 using System.Text.Json;
 
 namespace SkinSync.Controllers;
@@ -25,6 +26,7 @@ public class AnalysisController : ControllerBase
     private readonly IAiAnalysisService _aiAnalysisService;
     private readonly IRegimenBuilderService _regimenBuilderService;
     private readonly ISkinService _skinService;
+    private readonly IAiUsageService _aiUsageService;
     private readonly IWebHostEnvironment _environment;
 
     public AnalysisController(
@@ -35,6 +37,7 @@ public class AnalysisController : ControllerBase
         IAiAnalysisService aiAnalysisService,
         IRegimenBuilderService regimenBuilderService,
         ISkinService skinService,
+        IAiUsageService aiUsageService,
         IWebHostEnvironment environment)
     {
         _userRepository = userRepository;
@@ -44,6 +47,7 @@ public class AnalysisController : ControllerBase
         _aiAnalysisService = aiAnalysisService;
         _regimenBuilderService = regimenBuilderService;
         _skinService = skinService;
+        _aiUsageService = aiUsageService;
         _environment = environment;
     }
 
@@ -66,6 +70,15 @@ public class AnalysisController : ControllerBase
         if (user is null)
         {
             return ResponseEntity<AnalysisScanResponseDto>.Fail("User not found.", 404);
+        }
+
+        try
+        {
+            await _aiUsageService.CheckLimitAsync(userId, "skin_analysis", cancellationToken);
+        }
+        catch (AiFeatureException ex)
+        {
+            return ResponseEntity<AnalysisScanResponseDto>.Fail(ex.Message, ex.StatusCode);
         }
 
         var uploadDir = Path.Combine(_environment.WebRootPath ?? Path.Combine(_environment.ContentRootPath, "wwwroot"), "uploads", "analyses");
@@ -91,6 +104,7 @@ public class AnalysisController : ControllerBase
         var newRegimen = await BuildRegimenFromAnalysisAsync(userId, user.Profile, analysis, products, cancellationToken)
             ?? _regimenBuilderService.BuildRegimen(userId, analysis.Id, user.Profile?.SkinType ?? "normal", products);
         await _regimenRepository.AddAsync(newRegimen, cancellationToken);
+        await _aiUsageService.LogUsageAsync(userId, "skin_analysis", analysis.AiModel, null, null, cancellationToken);
 
         return ResponseEntity<AnalysisScanResponseDto>.Ok(new AnalysisScanResponseDto
         {
