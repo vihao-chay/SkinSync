@@ -39,7 +39,9 @@ class SelectableOptionCard extends StatelessWidget {
           color: selected ? null : Colors.white,
           borderRadius: BorderRadius.circular(AppRadius.card),
           border: Border.all(
-            color: selected ? AppColors.primary : AppColors.border.withValues(alpha: 0.7),
+            color: selected
+                ? AppColors.primary
+                : AppColors.border.withValues(alpha: 0.7),
             width: selected ? 1.4 : 1,
           ),
         ),
@@ -61,14 +63,20 @@ class SelectableOptionCard extends StatelessWidget {
                 children: [
                   Text(title, style: Theme.of(context).textTheme.titleMedium),
                   const SizedBox(height: 6),
-                  Text(description, style: Theme.of(context).textTheme.bodySmall),
+                  Text(
+                    description,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
                 ],
               ),
             ),
             if (selected)
               const Padding(
                 padding: EdgeInsets.only(left: 12),
-                child: Icon(Icons.check_circle_rounded, color: AppColors.primaryDark),
+                child: Icon(
+                  Icons.check_circle_rounded,
+                  color: AppColors.primaryDark,
+                ),
               ),
           ],
         ),

@@ -9,6 +9,7 @@ using SkinSync.Data;
 using SkinSync.Helpers;
 using SkinSync.Repositories;
 using SkinSync.Services;
+using SkinSync.Services.AIPlatform;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -82,6 +83,21 @@ builder.Services.AddHttpClient<ISupabaseAuthService, SupabaseAuthService>();
 builder.Services.Configure<SkinSync.Services.AI.AiSettings>(builder.Configuration.GetSection("AiSettings"));
 builder.Services.AddScoped<SkinSync.Services.AI.IAiService, SkinSync.Services.AI.AiService>();
 builder.Services.AddScoped<ISkinService, SkinService>();
+builder.Services.AddScoped<IOpenAiService, OpenAiService>();
+builder.Services.AddScoped<IAiUsageService, AiUsageService>();
+builder.Services.AddScoped<ISkinAnalysisService, SkinAnalysisService>();
+builder.Services.AddScoped<IRoutineGenerationService, RoutineGenerationService>();
+builder.Services.AddScoped<IProductRecommendationService, ProductRecommendationService>();
+builder.Services.AddScoped<IIngredientCheckService, IngredientCheckService>();
+builder.Services.AddScoped<IConflictCheckService, ConflictCheckService>();
+builder.Services.AddScoped<IAiChatService, AiChatService>();
+builder.Services.AddScoped<IAiReportService, AiReportService>();
+builder.Services.AddScoped<IAiSmartReminderService, AiSmartReminderService>();
+builder.Services.AddScoped<IProductRoutineService, ProductRoutineService>();
+builder.Services.AddScoped<ISkinProgressService, SkinProgressService>();
+builder.Services.AddScoped<ISkinProgressAnalysisService, SkinProgressAnalysisService>();
+builder.Services.AddScoped<ISkinProgressComparisonService, SkinProgressComparisonService>();
+builder.Services.AddScoped<ISkinProgressReportService, SkinProgressReportService>();
 
 builder.Services.AddHttpClient("OpenAiClient", (sp, client) =>
 {

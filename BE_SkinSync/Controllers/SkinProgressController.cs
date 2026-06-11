@@ -1,0 +1,133 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using SkinSync.Base;
+using SkinSync.Helpers;
+using SkinSync.Models.Dtos.AI;
+using SkinSync.Services.AIPlatform;
+
+namespace SkinSync.Controllers;
+
+[ApiController]
+[Route("api/skin-progress")]
+[Authorize]
+public class SkinProgressController : ControllerBase
+{
+    private readonly ISkinProgressService _skinProgressService;
+    private readonly ISkinProgressReportService _skinProgressReportService;
+
+    public SkinProgressController(
+        ISkinProgressService skinProgressService,
+        ISkinProgressReportService skinProgressReportService)
+    {
+        _skinProgressService = skinProgressService;
+        _skinProgressReportService = skinProgressReportService;
+    }
+
+    [HttpPost("photos")]
+    [Consumes("multipart/form-data")]
+    public async Task<ResponseEntity<SkinProgressPhotoDto>> UploadPhoto([FromForm] SkinProgressPhotoUploadRequestDto request, CancellationToken cancellationToken)
+    {
+        if (!HttpContext.TryGetUserId(out var userId))
+        {
+            return ResponseEntity<SkinProgressPhotoDto>.Fail("Missing authenticated user.", 401);
+        }
+
+        try
+        {
+            var data = await _skinProgressService.UploadPhotoAsync(userId, request, cancellationToken);
+            return ResponseEntity<SkinProgressPhotoDto>.Ok(data, "Skin progress photo uploaded successfully.");
+        }
+        catch (AiFeatureException ex)
+        {
+            return ResponseEntity<SkinProgressPhotoDto>.Fail(ex.Message, ex.StatusCode);
+        }
+    }
+
+    [HttpGet("photos")]
+    public async Task<ResponseEntity<IReadOnlyCollection<SkinProgressPhotoDto>>> GetPhotos(CancellationToken cancellationToken)
+    {
+        if (!HttpContext.TryGetUserId(out var userId))
+        {
+            return ResponseEntity<IReadOnlyCollection<SkinProgressPhotoDto>>.Fail("Missing authenticated user.", 401);
+        }
+
+        var data = await _skinProgressService.GetPhotosAsync(userId, cancellationToken);
+        return ResponseEntity<IReadOnlyCollection<SkinProgressPhotoDto>>.Ok(data, "Skin progress photos fetched successfully.");
+    }
+
+    [HttpDelete("photos/{photoId:guid}")]
+    public async Task<ResponseEntity<object>> DeletePhoto(Guid photoId, CancellationToken cancellationToken)
+    {
+        if (!HttpContext.TryGetUserId(out var userId))
+        {
+            return ResponseEntity<object>.Fail("Missing authenticated user.", 401);
+        }
+
+        try
+        {
+            await _skinProgressService.DeletePhotoAsync(userId, photoId, cancellationToken);
+            return ResponseEntity<object>.Ok(null, "Skin progress photo deleted successfully.");
+        }
+        catch (AiFeatureException ex)
+        {
+            return ResponseEntity<object>.Fail(ex.Message, ex.StatusCode);
+        }
+    }
+
+    [HttpGet("dashboard")]
+    public async Task<ResponseEntity<SkinProgressDashboardResponseDto>> GetDashboard([FromQuery] SkinProgressDashboardQueryDto query, CancellationToken cancellationToken)
+    {
+        if (!HttpContext.TryGetUserId(out var userId))
+        {
+            return ResponseEntity<SkinProgressDashboardResponseDto>.Fail("Missing authenticated user.", 401);
+        }
+
+        try
+        {
+            var data = await _skinProgressService.GetDashboardAsync(userId, query, cancellationToken);
+            return ResponseEntity<SkinProgressDashboardResponseDto>.Ok(data, "Skin progress dashboard fetched successfully.");
+        }
+        catch (AiFeatureException ex)
+        {
+            return ResponseEntity<SkinProgressDashboardResponseDto>.Fail(ex.Message, ex.StatusCode);
+        }
+    }
+
+    [HttpGet("reports")]
+    public async Task<ResponseEntity<IReadOnlyCollection<SkinProgressReportSummaryDto>>> GetReports(CancellationToken cancellationToken)
+    {
+        if (!HttpContext.TryGetUserId(out var userId))
+        {
+            return ResponseEntity<IReadOnlyCollection<SkinProgressReportSummaryDto>>.Fail("Missing authenticated user.", 401);
+        }
+
+        try
+        {
+            var data = await _skinProgressReportService.GetReportsAsync(userId, cancellationToken);
+            return ResponseEntity<IReadOnlyCollection<SkinProgressReportSummaryDto>>.Ok(data, "Skin progress reports fetched successfully.");
+        }
+        catch (AiFeatureException ex)
+        {
+            return ResponseEntity<IReadOnlyCollection<SkinProgressReportSummaryDto>>.Fail(ex.Message, ex.StatusCode);
+        }
+    }
+
+    [HttpGet("reports/{reportId:guid}")]
+    public async Task<ResponseEntity<SkinProgressReportResponseDto>> GetReport(Guid reportId, CancellationToken cancellationToken)
+    {
+        if (!HttpContext.TryGetUserId(out var userId))
+        {
+            return ResponseEntity<SkinProgressReportResponseDto>.Fail("Missing authenticated user.", 401);
+        }
+
+        try
+        {
+            var data = await _skinProgressReportService.GetReportAsync(userId, reportId, cancellationToken);
+            return ResponseEntity<SkinProgressReportResponseDto>.Ok(data, "Skin progress report fetched successfully.");
+        }
+        catch (AiFeatureException ex)
+        {
+            return ResponseEntity<SkinProgressReportResponseDto>.Fail(ex.Message, ex.StatusCode);
+        }
+    }
+}

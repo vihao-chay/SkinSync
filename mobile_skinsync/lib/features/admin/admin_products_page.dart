@@ -14,7 +14,10 @@ class AdminProductsPage extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Admin Products', style: Theme.of(context).textTheme.headlineMedium),
+          Text(
+            'Admin Products',
+            style: Theme.of(context).textTheme.headlineMedium,
+          ),
           const SizedBox(height: 16),
           Row(
             children: [

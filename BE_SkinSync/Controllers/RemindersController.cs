@@ -38,6 +38,10 @@ public class RemindersController : ControllerBase
                 ReminderId = x.Id,
                 Time = x.Time.ToString("HH:mm"),
                 RoutineType = x.RoutineType,
+                Frequency = x.Frequency,
+                Reason = x.Reason,
+                Priority = x.Priority,
+                IsAdaptive = x.IsAdaptive,
                 IsEnabled = x.IsEnabled
             })
             .ToListAsync(cancellationToken);
@@ -82,7 +86,12 @@ public class RemindersController : ControllerBase
         }
 
         reminder.Time = time;
+        reminder.Frequency = string.IsNullOrWhiteSpace(request.Frequency) ? reminder.Frequency : request.Frequency.Trim();
+        reminder.Reason = string.IsNullOrWhiteSpace(request.Reason) ? null : request.Reason.Trim();
+        reminder.Priority = NormalizePriority(request.Priority) ?? reminder.Priority;
+        reminder.IsAdaptive = request.IsAdaptive ?? false;
         reminder.IsEnabled = request.IsEnabled;
+        reminder.UpdatedAt = DateTime.UtcNow;
 
         await _dbContext.SaveChangesAsync(cancellationToken);
 
@@ -105,6 +114,7 @@ public class RemindersController : ControllerBase
         }
 
         reminder.IsEnabled = !reminder.IsEnabled;
+        reminder.UpdatedAt = DateTime.UtcNow;
         await _dbContext.SaveChangesAsync(cancellationToken);
 
         return ResponseEntity<ReminderResponseDto>.Ok(ToDto(reminder), "Cáº­p nháº­t tráº¡ng thÃ¡i nháº¯c nhá»Ÿ thÃ nh cÃ´ng.");
@@ -117,6 +127,10 @@ public class RemindersController : ControllerBase
             ReminderId = reminder.Id,
             Time = reminder.Time.ToString("HH:mm"),
             RoutineType = reminder.RoutineType,
+            Frequency = reminder.Frequency,
+            Reason = reminder.Reason,
+            Priority = reminder.Priority,
+            IsAdaptive = reminder.IsAdaptive,
             IsEnabled = reminder.IsEnabled
         };
     }
@@ -134,5 +148,21 @@ public class RemindersController : ControllerBase
         }
 
         return null;
+    }
+
+    private static string? NormalizePriority(string? priority)
+    {
+        if (string.IsNullOrWhiteSpace(priority))
+        {
+            return null;
+        }
+
+        return priority.Trim().ToLowerInvariant() switch
+        {
+            "low" => "low",
+            "medium" => "medium",
+            "high" => "high",
+            _ => null
+        };
     }
 }

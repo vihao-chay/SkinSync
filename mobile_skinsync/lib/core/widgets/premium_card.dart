@@ -34,10 +34,7 @@ class PremiumCard extends StatelessWidget {
           ),
         ],
       ),
-      child: Padding(
-        padding: padding,
-        child: child,
-      ),
+      child: Padding(padding: padding, child: child),
     );
 
     if (onTap == null) return card;

@@ -2,10 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/models/app_models.dart';
+import '../../core/routes/app_routes.dart';
 import '../../core/state/app_state.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
-import '../../core/widgets/brand_logo.dart';
+import '../../core/widgets/app_button.dart';
+import '../../core/widgets/app_card.dart';
+import '../../core/widgets/app_scaffold.dart';
+import '../../core/widgets/empty_state_card.dart';
+import '../../core/widgets/section_header.dart';
 
 class RoutinePage extends StatefulWidget {
   const RoutinePage({super.key});
@@ -15,7 +20,39 @@ class RoutinePage extends StatefulWidget {
 }
 
 class _RoutinePageState extends State<RoutinePage> {
-  bool morning = true;
+  bool _showMorning = true;
+  bool _generating = false;
+  bool _optimizing = false;
+
+  Future<void> _generateRoutine(AppState appState) async {
+    setState(() => _generating = true);
+    try {
+      await appState.generateRoutine(budgetMax: appState.profile?.monthlyBudget);
+    } finally {
+      if (mounted) {
+        setState(() => _generating = false);
+      }
+    }
+  }
+
+  Future<void> _optimizeReminders(AppState appState) async {
+    setState(() => _optimizing = true);
+    try {
+      final result = await appState.optimizeAiReminders();
+      if (!mounted) {
+        return;
+      }
+      await showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        builder: (context) => _ReminderSuggestionSheet(result: result),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _optimizing = false);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -23,56 +60,121 @@ class _RoutinePageState extends State<RoutinePage> {
     final regimen = appState.regimen;
     final tracking = appState.trackingToday;
     final reminders = appState.reminders;
-    final steps = morning
+    final steps = _showMorning
         ? regimen?.morning ?? const <RegimenStep>[]
         : regimen?.evening ?? const <RegimenStep>[];
     final completedIds = tracking?.completedStepIds.toSet() ?? <String>{};
 
-    return RefreshIndicator(
-      color: AppColors.primaryDark,
+    return AppScaffold(
+      title: 'My routine',
+      subtitle:
+          'A calm, premium checklist for your skincare day, with reminders and AI guidance built in.',
       onRefresh: appState.refreshHome,
-      child: ListView(
+      body: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(
           AppSpacing.pagePadding,
-          6,
+          0,
           AppSpacing.pagePadding,
-          106,
+          AppSpacing.bottomNavHeight + 64,
         ),
         children: [
-          const _MiniTopBar(),
-          const SizedBox(height: 20),
-          Text(
-            'My Routine',
-            style: Theme.of(
-              context,
-            ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w800),
+          AppCard(
+            backgroundColor: AppColors.surfaceStrong,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Consistency matters more than intensity',
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Text(
+                  '${tracking?.completedSteps ?? 0} of ${tracking?.totalSteps ?? 0} steps completed today.',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: AppColors.mutedText,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                Row(
+                  children: [
+                    Expanded(
+                      child: AppButton(
+                        label: 'Regenerate',
+                        icon: const Icon(Icons.auto_awesome_outlined),
+                        isLoading: _generating,
+                        onPressed: () => _generateRoutine(appState),
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: AppButton(
+                        label: 'Ask AI',
+                        variant: AppButtonVariant.ai,
+                        icon: const Icon(Icons.chat_bubble_outline_rounded),
+                        onPressed: () => Navigator.pushNamed(
+                          context,
+                          AppRoutes.aiChatConversation,
+                          arguments: AiChatLaunchArgs(
+                            entryPoint: 'routine',
+                            referenceId: regimen?.regimenId,
+                            prefillMessage:
+                                'Can you review my routine and tell me what to improve?',
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            '${tracking?.completedSteps ?? 0} of ${tracking?.totalSteps ?? 0} steps completed today',
-            style: Theme.of(
-              context,
-            ).textTheme.labelSmall?.copyWith(color: AppColors.foreground),
+          const SizedBox(height: AppSpacing.sectionGap),
+          SectionHeader(
+            title: 'Routine timeline',
+            subtitle: 'Switch between morning and evening steps without losing context.',
           ),
-          const SizedBox(height: 18),
-          _SegmentedControl(
-            morning: morning,
-            onChanged: (value) => setState(() => morning = value),
+          const SizedBox(height: AppSpacing.md),
+          _RoutineSegmentedControl(
+            showMorning: _showMorning,
+            onChanged: (value) => setState(() => _showMorning = value),
           ),
-          const SizedBox(height: 16),
-          _RemindersCard(
+          const SizedBox(height: AppSpacing.sectionGap),
+          SectionHeader(
+            title: 'Reminders',
+            subtitle: 'Manual reminders still work, and AI can fine-tune them for you.',
+          ),
+          const SizedBox(height: AppSpacing.md),
+          _ReminderCard(
             reminders: reminders,
+            optimizing: _optimizing,
+            onOptimize: () => _optimizeReminders(appState),
             onMorning: () => appState.saveReminder('Morning', '07:00', true),
             onEvening: () => appState.saveReminder('Evening', '21:00', true),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.sectionGap),
+          SectionHeader(
+            title: _showMorning ? 'Morning steps' : 'Evening steps',
+            subtitle: _showMorning
+                ? 'Prep, treat, and protect before the day starts.'
+                : 'Cleanse, recover, and support overnight repair.',
+          ),
+          const SizedBox(height: AppSpacing.md),
           if (regimen == null || steps.isEmpty)
-            const _EmptyRoutineCard()
+            EmptyStateCard(
+              icon: Icons.spa_outlined,
+              title: 'No routine steps yet',
+              description:
+                  'Complete a skin analysis first, then SkinSync can build a personalized routine for you.',
+              ctaLabel: 'Start skin scan',
+              onCta: () => Navigator.pushNamed(context, AppRoutes.upload),
+            )
           else
             ...steps.map(
               (step) => Padding(
-                padding: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.only(bottom: AppSpacing.sm),
                 child: _RoutineStepCard(
                   step: step,
                   completed: completedIds.contains(step.stepId),
@@ -89,65 +191,33 @@ class _RoutinePageState extends State<RoutinePage> {
   }
 }
 
-class _MiniTopBar extends StatelessWidget {
-  const _MiniTopBar();
+class _RoutineSegmentedControl extends StatelessWidget {
+  const _RoutineSegmentedControl({
+    required this.showMorning,
+    required this.onChanged,
+  });
 
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 28,
-      child: Row(
-        children: [
-          const BrandLogo(size: 24, radius: 8, showShadow: false),
-          const Spacer(),
-          Text(
-            'SkinSync',
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.w800,
-              fontSize: 14,
-            ),
-          ),
-          const Spacer(),
-          const Icon(
-            Icons.notifications_none_rounded,
-            size: 17,
-            color: AppColors.foreground,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SegmentedControl extends StatelessWidget {
-  const _SegmentedControl({required this.morning, required this.onChanged});
-
-  final bool morning;
+  final bool showMorning;
   final ValueChanged<bool> onChanged;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 34,
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(
-        color: AppColors.secondary,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.border.withValues(alpha: 0.35)),
-      ),
+    return AppCard(
+      padding: const EdgeInsets.all(6),
       child: Row(
         children: [
           Expanded(
-            child: _Segment(
+            child: _SegmentButton(
               label: 'Morning',
-              selected: morning,
+              selected: showMorning,
               onTap: () => onChanged(true),
             ),
           ),
+          const SizedBox(width: AppSpacing.xs),
           Expanded(
-            child: _Segment(
+            child: _SegmentButton(
               label: 'Evening',
-              selected: !morning,
+              selected: !showMorning,
               onTap: () => onChanged(false),
             ),
           ),
@@ -157,8 +227,8 @@ class _SegmentedControl extends StatelessWidget {
   }
 }
 
-class _Segment extends StatelessWidget {
-  const _Segment({
+class _SegmentButton extends StatelessWidget {
+  const _SegmentButton({
     required this.label,
     required this.selected,
     required this.onTap,
@@ -171,20 +241,19 @@ class _Segment extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      borderRadius: BorderRadius.circular(6),
+      borderRadius: BorderRadius.circular(20),
       onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        alignment: Alignment.center,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(
-          color: selected ? Colors.white : Colors.transparent,
-          borderRadius: BorderRadius.circular(6),
+          color: selected ? AppColors.secondary : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
         ),
+        alignment: Alignment.center,
         child: Text(
           label,
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-            color: AppColors.foreground,
-            fontWeight: FontWeight.w800,
+          style: Theme.of(context).textTheme.labelLarge?.copyWith(
+            color: selected ? AppColors.primaryDark : AppColors.mutedText,
           ),
         ),
       ),
@@ -192,60 +261,67 @@ class _Segment extends StatelessWidget {
   }
 }
 
-class _RemindersCard extends StatelessWidget {
-  const _RemindersCard({
+class _ReminderCard extends StatelessWidget {
+  const _ReminderCard({
     required this.reminders,
+    required this.optimizing,
+    required this.onOptimize,
     required this.onMorning,
     required this.onEvening,
   });
 
   final List<ReminderItem> reminders;
+  final bool optimizing;
+  final VoidCallback onOptimize;
   final VoidCallback onMorning;
   final VoidCallback onEvening;
 
   @override
   Widget build(BuildContext context) {
-    final morningReminder =
-        _findReminder('morning') ??
-        const ReminderItem(
-          reminderId: 'm',
-          time: '07:00',
-          routineType: 'Morning',
-          isEnabled: true,
-        );
-    final eveningReminder =
-        _findReminder('evening') ??
-        const ReminderItem(
-          reminderId: 'e',
-          time: '21:00',
-          routineType: 'Evening',
-          isEnabled: true,
-        );
+    final morning = _findReminder('morning');
+    final evening = _findReminder('evening');
 
-    return _SoftCard(
-      padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+    return AppCard(
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Reminders',
-            style: Theme.of(
-              context,
-            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+          _ReminderTile(
+            title: 'Morning reminder',
+            item: morning,
+            fallback: 'Not provided yet',
           ),
-          const SizedBox(height: 12),
-          _ReminderRow(item: morningReminder),
-          const SizedBox(height: 8),
-          _ReminderRow(item: eveningReminder),
-          const SizedBox(height: 12),
-          _ReminderButton(
-            label: 'Set Morning Reminder 07:00',
-            onPressed: onMorning,
+          const SizedBox(height: AppSpacing.sm),
+          _ReminderTile(
+            title: 'Evening reminder',
+            item: evening,
+            fallback: 'Not provided yet',
           ),
-          const SizedBox(height: 8),
-          _ReminderButton(
-            label: 'Set Evening Reminder 21:00',
-            onPressed: onEvening,
+          const SizedBox(height: AppSpacing.lg),
+          Row(
+            children: [
+              Expanded(
+                child: AppButton(
+                  label: 'Set morning 07:00',
+                  variant: AppButtonVariant.secondary,
+                  onPressed: onMorning,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: AppButton(
+                  label: 'Set evening 21:00',
+                  variant: AppButtonVariant.secondary,
+                  onPressed: onEvening,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          AppButton(
+            label: 'Optimize with SkinSync AI',
+            icon: const Icon(Icons.auto_awesome_rounded),
+            variant: AppButtonVariant.ai,
+            isLoading: optimizing,
+            onPressed: onOptimize,
           ),
         ],
       ),
@@ -262,66 +338,48 @@ class _RemindersCard extends StatelessWidget {
   }
 }
 
-class _ReminderRow extends StatelessWidget {
-  const _ReminderRow({required this.item});
+class _ReminderTile extends StatelessWidget {
+  const _ReminderTile({
+    required this.title,
+    required this.item,
+    required this.fallback,
+  });
 
-  final ReminderItem item;
+  final String title;
+  final ReminderItem? item;
+  final String fallback;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(
-          item.isEnabled
-              ? Icons.notifications_active_outlined
-              : Icons.notifications_off_outlined,
-          size: 16,
-          color: AppColors.primaryDark,
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            '${item.routineType}: ${item.time}',
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: AppColors.foreground,
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceMuted,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.w700,
             ),
           ),
-        ),
-        Text(
-          item.isEnabled ? 'On' : 'Off',
-          style: Theme.of(
-            context,
-          ).textTheme.labelSmall?.copyWith(color: AppColors.foreground),
-        ),
-      ],
-    );
-  }
-}
-
-class _ReminderButton extends StatelessWidget {
-  const _ReminderButton({required this.label, required this.onPressed});
-
-  final String label;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      height: 30,
-      child: FilledButton(
-        style: FilledButton.styleFrom(
-          backgroundColor: const Color(0xFF4B5568),
-          foregroundColor: Colors.white,
-          textStyle: Theme.of(
-            context,
-          ).textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w800),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),
-          padding: EdgeInsets.zero,
-        ),
-        onPressed: onPressed,
-        child: Text(label),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            item == null ? fallback : '${item!.time} • ${item!.priority}',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            item?.reason?.trim().isNotEmpty == true
+                ? item!.reason!
+                : 'SkinSync can adapt this reminder once it learns your routine pattern.',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ],
       ),
     );
   }
@@ -340,70 +398,49 @@ class _RoutineStepCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _SoftCard(
-      padding: const EdgeInsets.fromLTRB(10, 14, 14, 14),
+    return AppCard(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Transform.scale(
-            scale: 0.78,
-            child: Checkbox(
-              value: completed,
-              activeColor: const Color(0xFF4D7BFF),
-              side: BorderSide(color: AppColors.border.withValues(alpha: 0.9)),
-              onChanged: (_) => onChanged(),
-            ),
+          Checkbox(
+            value: completed,
+            activeColor: AppColors.primaryDark,
+            side: const BorderSide(color: AppColors.border),
+            onChanged: (_) => onChanged(),
           ),
-          const SizedBox(width: 4),
+          const SizedBox(width: AppSpacing.xs),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '${step.stepOrder}. ${_titleCase(step.category)}',
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    height: 1.15,
+                  '${step.stepOrder}. ${step.name}',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpacing.xs),
                 Text(
-                  '${step.brand} ${step.name}'.trim(),
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: AppColors.foreground,
-                    fontWeight: FontWeight.w800,
-                  ),
+                  _productLine(step),
+                  style: Theme.of(context).textTheme.labelLarge,
                 ),
-                if ((step.purpose ?? '').trim().isNotEmpty) ...[
-                  const SizedBox(height: 5),
-                  Text(
-                    step.purpose!,
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: AppColors.foreground,
-                      height: 1.35,
+                const SizedBox(height: AppSpacing.sm),
+                _InfoText(label: 'Category', value: _friendlyText(step.category)),
+                _InfoText(label: 'Purpose', value: _friendlyText(step.purpose)),
+                _InfoText(
+                  label: 'How to use',
+                  value: _friendlyText(step.instruction),
+                ),
+                if ((step.caution ?? '').trim().isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: AppSpacing.sm),
+                    child: Text(
+                      'Caution: ${step.caution!}',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AppColors.warning,
+                      ),
                     ),
                   ),
-                ],
-                if ((step.instruction ?? '').trim().isNotEmpty) ...[
-                  const SizedBox(height: 5),
-                  Text(
-                    step.instruction!,
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: AppColors.mutedText,
-                      height: 1.35,
-                    ),
-                  ),
-                ],
-                if ((step.caution ?? '').trim().isNotEmpty) ...[
-                  const SizedBox(height: 6),
-                  Text(
-                    'Caution: ${step.caution!}',
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: AppColors.warning,
-                      height: 1.35,
-                    ),
-                  ),
-                ],
               ],
             ),
           ),
@@ -412,74 +449,112 @@ class _RoutineStepCard extends StatelessWidget {
     );
   }
 
-  String _titleCase(String value) {
-    if (value.isEmpty) {
-      return value;
-    }
-    return value[0].toUpperCase() + value.substring(1).toLowerCase();
+  String _productLine(RegimenStep step) {
+    final brand = step.brand.trim();
+    final name = step.name.trim();
+    final joined = [brand, name].where((item) => item.isNotEmpty).join(' • ');
+    return joined.isEmpty ? 'Not provided yet' : joined;
   }
 }
 
-class _EmptyRoutineCard extends StatelessWidget {
-  const _EmptyRoutineCard();
+class _InfoText extends StatelessWidget {
+  const _InfoText({required this.label, required this.value});
+
+  final String label;
+  final String value;
 
   @override
   Widget build(BuildContext context) {
-    return _SoftCard(
-      padding: const EdgeInsets.all(18),
-      child: Column(
-        children: [
-          Icon(
-            Icons.spa_outlined,
-            color: AppColors.primaryDark.withValues(alpha: 0.65),
-            size: 34,
-          ),
-          const SizedBox(height: 10),
-          Text(
-            'No routine yet',
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Complete a skin analysis to generate your morning and evening steps.',
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-        ],
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSpacing.xs),
+      child: RichText(
+        text: TextSpan(
+          style: Theme.of(context).textTheme.bodyMedium,
+          children: [
+            TextSpan(
+              text: '$label: ',
+              style: Theme.of(context).textTheme.labelLarge,
+            ),
+            TextSpan(text: value),
+          ],
+        ),
       ),
     );
   }
 }
 
-class _SoftCard extends StatelessWidget {
-  const _SoftCard({
-    required this.child,
-    this.padding = const EdgeInsets.all(16),
-  });
+class _ReminderSuggestionSheet extends StatelessWidget {
+  const _ReminderSuggestionSheet({required this.result});
 
-  final Widget child;
-  final EdgeInsetsGeometry padding;
+  final AiReminderSuggestResponse result;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: padding,
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.94),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.border.withValues(alpha: 0.30)),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primaryDark.withValues(alpha: 0.05),
-            blurRadius: 14,
-            offset: const Offset(0, 7),
-          ),
-        ],
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 44,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.border,
+                borderRadius: BorderRadius.circular(999),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            Text(
+              'SkinSync AI reminder plan',
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              result.overallAdvice.isEmpty
+                  ? 'SkinSync did not return a summary yet.'
+                  : result.overallAdvice,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: AppColors.mutedText,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            ...result.suggestions.map(
+              (item) => Padding(
+                padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                child: AppCard(
+                  backgroundColor: AppColors.surfaceMuted,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${item.routineType} • ${item.time}',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.xs),
+                      Text(
+                        item.reason.isEmpty ? 'Not provided yet' : item.reason,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
-      child: child,
     );
   }
+}
+
+String _friendlyText(String? value) {
+  final trimmed = value?.trim() ?? '';
+  return trimmed.isEmpty ? 'Not provided yet' : trimmed;
 }

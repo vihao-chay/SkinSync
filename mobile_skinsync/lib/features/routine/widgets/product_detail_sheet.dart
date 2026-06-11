@@ -36,7 +36,8 @@ class ProductDetailSheet extends StatelessWidget {
                   child: Image.network(
                     step.imageUrl!,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, _, _) => Container(color: AppColors.secondary),
+                    errorBuilder: (_, _, _) =>
+                        Container(color: AppColors.secondary),
                   ),
                 ),
               )
@@ -48,18 +49,28 @@ class ProductDetailSheet extends StatelessWidget {
                   borderRadius: BorderRadius.circular(24),
                 ),
                 child: const Center(
-                  child: Icon(Icons.spa_rounded, size: 48, color: AppColors.primaryDark),
+                  child: Icon(
+                    Icons.spa_rounded,
+                    size: 48,
+                    color: AppColors.primaryDark,
+                  ),
                 ),
               ),
             const SizedBox(height: AppSpacing.sectionGap),
             Align(
               alignment: Alignment.centerLeft,
-              child: Text(step.category, style: Theme.of(context).textTheme.labelMedium),
+              child: Text(
+                step.category,
+                style: Theme.of(context).textTheme.labelMedium,
+              ),
             ),
             const SizedBox(height: 6),
             Align(
               alignment: Alignment.centerLeft,
-              child: Text(step.productName, style: Theme.of(context).textTheme.headlineMedium),
+              child: Text(
+                step.productName,
+                style: Theme.of(context).textTheme.headlineMedium,
+              ),
             ),
             const SizedBox(height: 8),
             Align(
@@ -72,7 +83,10 @@ class ProductDetailSheet extends StatelessWidget {
             const SizedBox(height: 16),
             Align(
               alignment: Alignment.centerLeft,
-              child: Text(step.instruction, style: Theme.of(context).textTheme.bodyMedium),
+              child: Text(
+                step.instruction,
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
             ),
             if (step.warning != null) ...[
               const SizedBox(height: 16),
@@ -85,9 +99,9 @@ class ProductDetailSheet extends StatelessWidget {
                 ),
                 child: Text(
                   step.warning!,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppColors.primaryDark,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: AppColors.primaryDark),
                 ),
               ),
             ],

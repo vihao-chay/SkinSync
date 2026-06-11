@@ -63,6 +63,10 @@ public class UserRepository : IUserRepository
             existing.BirthYear = profile.BirthYear;
             existing.Gender = profile.Gender;
             existing.SensitivityLevel = profile.SensitivityLevel;
+            existing.Allergies = profile.Allergies;
+            existing.SensitiveIngredients = profile.SensitiveIngredients;
+            existing.SkinGoals = profile.SkinGoals;
+            existing.RoutinePreference = profile.RoutinePreference;
             existing.UpdatedAt = DateTime.UtcNow;
         }
 

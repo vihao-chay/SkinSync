@@ -139,12 +139,48 @@ class _SkinAnalysisPageState extends State<SkinAnalysisPage> {
                     ),
                     onPressed: () =>
                         Navigator.pushNamed(context, AppRoutes.routine),
-                    child: const Text('Open Routine'),
+                    child: const Text('Generate Routine'),
                   ),
                 ),
-                const SizedBox(height: 7),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pushNamed(
+                          context,
+                          AppRoutes.aiChatConversation,
+                          arguments: AiChatLaunchArgs(
+                            entryPoint: 'analysis_result',
+                            referenceId: result.id,
+                            prefillMessage:
+                                'Can you explain this analysis and what I should do next?',
+                          ),
+                        ),
+                        child: const Text('Ask AI'),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pushNamed(
+                          context,
+                          AppRoutes.aiProductRecommend,
+                          arguments: ProductsPageArgs(
+                            initialConcern: result.issues.isNotEmpty
+                                ? result.issues.first.issueType
+                                : 'any',
+                            referenceId: result.id,
+                          ),
+                        ),
+                        child: const Text('View Products'),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
                 TextButton(
-                  onPressed: () => Navigator.pushNamed(context, AppRoutes.quiz),
+                  onPressed: () => Navigator.pushNamed(context, AppRoutes.upload),
                   child: const Text('Analyze Again'),
                 ),
               ],

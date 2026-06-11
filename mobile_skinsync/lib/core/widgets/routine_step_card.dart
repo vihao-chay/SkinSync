@@ -44,12 +44,15 @@ class RoutineStepCard extends StatelessWidget {
                 ),
                 alignment: Alignment.center,
                 child: isCompleted
-                    ? const Icon(Icons.check_rounded, color: Colors.white, size: 22)
+                    ? const Icon(
+                        Icons.check_rounded,
+                        color: Colors.white,
+                        size: 22,
+                      )
                     : Text(
                         '${index + 1}',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              color: AppColors.primaryDark,
-                            ),
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(color: AppColors.primaryDark),
                       ),
               ),
             ),
@@ -64,9 +67,13 @@ class RoutineStepCard extends StatelessWidget {
                     ? Image.network(
                         step.imageUrl!,
                         fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) => const Icon(Icons.spa_rounded),
+                        errorBuilder: (_, _, _) =>
+                            const Icon(Icons.spa_rounded),
                       )
-                    : const Icon(Icons.spa_rounded, color: AppColors.primaryDark),
+                    : const Icon(
+                        Icons.spa_rounded,
+                        color: AppColors.primaryDark,
+                      ),
               ),
             ),
             const SizedBox(width: 12),
@@ -74,9 +81,15 @@ class RoutineStepCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(step.category, style: Theme.of(context).textTheme.labelMedium),
+                  Text(
+                    step.category,
+                    style: Theme.of(context).textTheme.labelMedium,
+                  ),
                   const SizedBox(height: 4),
-                  Text(step.productName, style: Theme.of(context).textTheme.titleMedium),
+                  Text(
+                    step.productName,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
                   const SizedBox(height: 4),
                   Text(
                     step.instruction,
@@ -92,7 +105,10 @@ class RoutineStepCard extends StatelessWidget {
                         style: Theme.of(context).textTheme.labelSmall,
                       ),
                       const SizedBox(width: 8),
-                      Text(step.price, style: Theme.of(context).textTheme.labelSmall),
+                      Text(
+                        step.price,
+                        style: Theme.of(context).textTheme.labelSmall,
+                      ),
                       if (step.warning != null) ...[
                         const SizedBox(width: 8),
                         const Icon(
@@ -112,7 +128,10 @@ class RoutineStepCard extends StatelessWidget {
                 if (editMode)
                   const Padding(
                     padding: EdgeInsets.only(bottom: AppSpacing.smallGap),
-                    child: Icon(Icons.drag_handle_rounded, color: AppColors.subtleText),
+                    child: Icon(
+                      Icons.drag_handle_rounded,
+                      color: AppColors.subtleText,
+                    ),
                   ),
                 InkWell(
                   borderRadius: BorderRadius.circular(14),
@@ -125,7 +144,9 @@ class RoutineStepCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: Icon(
-                      editMode ? Icons.delete_outline_rounded : Icons.more_horiz_rounded,
+                      editMode
+                          ? Icons.delete_outline_rounded
+                          : Icons.more_horiz_rounded,
                       color: AppColors.primaryDark,
                     ),
                   ),
