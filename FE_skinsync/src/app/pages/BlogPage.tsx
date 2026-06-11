@@ -42,27 +42,27 @@ const blogPosts = [
 // [CẬP NHẬT]: Khởi tạo trang Blog với hero, thanh chuyên mục và lưới bài viết có bố cục rõ ràng.
 function BlogPage() {
   return (
-    <main className="min-h-screen bg-[#fbfaf7] text-[#151827]">
-      <header className="border-b border-[#eee7ff] bg-white/85 px-5 py-4 backdrop-blur-xl">
+    <main className="min-h-screen bg-skin-base text-skin-textMain">
+      <header className="border-b border-skin-border bg-skin-surface/85 px-5 py-4 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4">
           <Link to="/" className="flex items-center gap-3">
-            <span className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-[#b9b6ff] to-[#8ea7ff] text-sm font-black text-white shadow-lg shadow-[#8ea7ff]/20">
+            <span className="flex h-11 w-11 items-center justify-center rounded-full bg-[#C2A67D] text-sm font-black text-white shadow-soft-gold">
               SS
             </span>
             <div>
-              <p className="text-sm font-black uppercase tracking-[0.24em] text-[#151827]">SKINSYNC</p>
-              <p className="text-xs text-[#7d86a4]">Blog / kiến thức chăm sóc da</p>
+              <p className="font-serif text-sm font-semibold uppercase tracking-[0.24em] text-skin-textMain">SKINSYNC</p>
+              <p className="text-xs text-skin-textMuted">Blog / kiến thức chăm sóc da</p>
             </div>
           </Link>
 
-          <nav className="flex flex-wrap items-center gap-4 text-sm font-semibold text-[#5f6884]">
-            <Link to="/tro-giup" className="transition hover:text-[#6d63ff]">
+          <nav className="flex flex-wrap items-center gap-4 text-sm font-medium text-skin-textMuted">
+            <Link to="/tro-giup" className="transition hover:text-skin-gold">
               Trung tâm hỗ trợ
             </Link>
-            <Link to="/chinh-sach-bao-mat" className="transition hover:text-[#6d63ff]">
+            <Link to="/chinh-sach-bao-mat" className="transition hover:text-skin-gold">
               Chính sách
             </Link>
-            <Link to="/dieu-khoan-su-dung" className="transition hover:text-[#6d63ff]">
+            <Link to="/dieu-khoan-su-dung" className="transition hover:text-skin-gold">
               Điều khoản
             </Link>
           </nav>
@@ -72,28 +72,28 @@ function BlogPage() {
       <section className="px-5 py-14 md:py-18">
         <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[1.05fr_0.95fr]">
           <div>
-            <p className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/70 bg-white px-4 py-2 text-xs font-black uppercase tracking-[0.2em] text-[#6d63ff] shadow-lg shadow-[#9aa6ff]/10">
+            <p className="mb-4 inline-flex items-center gap-2 rounded-full border border-skin-border bg-skin-surface px-4 py-2 text-xs font-medium uppercase tracking-[0.2em] text-skin-gold shadow-soft-gold">
               <Sparkles className="h-4 w-4" />
               Góc kiến thức SkinSync
             </p>
-            <h1 className="max-w-3xl text-4xl font-black leading-tight md:text-6xl">
+            <h1 className="max-w-3xl font-serif text-4xl font-semibold leading-tight text-skin-textMain md:text-6xl">
               Blog chăm sóc da dành cho những routine có căn cứ và dễ áp dụng.
             </h1>
-            <p className="mt-5 max-w-2xl text-lg leading-8 text-[#5f6884]">
+            <p className="mt-5 max-w-2xl text-lg leading-8 text-skin-textMuted">
               Khám phá nội dung dễ đọc, thực tế và bám sát các vấn đề thường gặp như mụn, kích ứng, phục hồi hàng rào da
               và cách hiểu bảng thành phần mỹ phẩm.
             </p>
           </div>
 
-          <Card className="rounded-[2rem] border-white/70 bg-white shadow-xl shadow-[#9aa6ff]/10">
+          <Card className="rounded-[2rem] border-skin-border bg-skin-surface shadow-soft-gold">
             <CardContent className="p-6 md:p-8">
               <div className="mb-6 flex items-center gap-3">
                 <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-[#f7f2ff] to-[#dff9ee] text-[#6d63ff]">
                   <LayoutGrid className="h-5 w-5" />
                 </span>
                 <div>
-                  <p className="text-sm font-black uppercase tracking-[0.18em] text-[#151827]">Chuyên mục nổi bật</p>
-                  <p className="text-sm text-[#7d86a4]">4 nhóm nội dung cốt lõi trên SkinSync</p>
+                  <p className="font-serif text-sm font-semibold uppercase tracking-[0.18em] text-skin-textMain">Chuyên mục nổi bật</p>
+                  <p className="text-sm text-skin-textMuted">4 nhóm nội dung cốt lõi trên SkinSync</p>
                 </div>
               </div>
 
@@ -101,14 +101,14 @@ function BlogPage() {
                 {blogCategories.map((category) => (
                   <span
                     key={category}
-                    className="rounded-full border border-[#ece5ff] bg-[#faf8ff] px-4 py-2 text-sm font-semibold text-[#5f6884]"
+                    className="rounded-full border border-skin-border bg-skin-base px-4 py-2 text-sm font-medium text-skin-textMuted"
                   >
                     {category}
                   </span>
                 ))}
               </div>
 
-              <div className="mt-6 rounded-[1.5rem] bg-[linear-gradient(135deg,#c9b8ff_0%,#9eaaff_100%)] p-6 text-white">
+              <div className="mt-6 rounded-[1.5rem] bg-[linear-gradient(135deg,#f1e7d7_0%,#c2a67d_100%)] p-6 text-white">
                 <p className="text-xs font-black uppercase tracking-[0.22em] text-white/80">Bài đọc đề xuất</p>
                 <h2 className="mt-3 text-2xl font-black leading-tight">
                   Niacinamide, BHA và cách phối hợp để không làm da quá tải
@@ -116,7 +116,7 @@ function BlogPage() {
                 <p className="mt-3 text-sm leading-6 text-white/85">
                   Bài viết mở đầu dễ hiểu, phù hợp cho người mới bắt đầu hoặc đang tối ưu lại routine theo hướng tối giản.
                 </p>
-                <Button asChild className="mt-6 h-11 rounded-full bg-white px-5 text-sm font-bold text-[#6d63ff] hover:bg-[#f6f7ff]">
+                <Button asChild className="mt-6 h-11 rounded-full bg-white px-5 text-sm font-semibold text-skin-gold hover:bg-stone-100">
                   <Link to="/tro-giup">
                     Xem bài liên quan <ArrowRight className="h-4 w-4" />
                   </Link>
@@ -131,10 +131,10 @@ function BlogPage() {
         <div className="mx-auto max-w-7xl">
           <div className="mb-8 flex items-center justify-between gap-4">
             <div>
-              <p className="text-sm font-black uppercase tracking-[0.22em] text-[#6d63ff]">Bài viết mới</p>
-              <h2 className="mt-2 text-3xl font-black md:text-4xl">Lưới bài viết theo chủ đề SkinSync</h2>
+              <p className="text-sm font-medium uppercase tracking-[0.22em] text-skin-gold">Bài viết mới</p>
+              <h2 className="mt-2 font-serif text-3xl font-semibold text-skin-textMain md:text-4xl">Lưới bài viết theo chủ đề SkinSync</h2>
             </div>
-            <div className="hidden items-center gap-2 rounded-full border border-[#ece5ff] bg-white px-4 py-2 text-sm font-semibold text-[#5f6884] md:flex">
+            <div className="hidden items-center gap-2 rounded-full border border-skin-border bg-skin-surface px-4 py-2 text-sm font-medium text-skin-textMuted md:flex">
               <Clock3 className="h-4 w-4" />
               Cập nhật hàng tuần
             </div>
@@ -142,22 +142,22 @@ function BlogPage() {
 
           <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
             {blogPosts.map((post) => (
-              <Card key={post.title} className="overflow-hidden rounded-[1.75rem] border-white/70 bg-white shadow-lg shadow-[#9aa6ff]/10">
+              <Card key={post.title} className="overflow-hidden rounded-[1.75rem] border-skin-border bg-skin-surface shadow-soft-gold">
                 <CardContent className="p-0">
-                  <div className="relative h-44 bg-[linear-gradient(135deg,#f5f1ff_0%,#eef3ff_52%,#f7fff9_100%)] p-5">
-                    <div className="inline-flex items-center gap-2 rounded-full bg-white/80 px-3 py-1 text-xs font-black uppercase tracking-[0.18em] text-[#6d63ff]">
+                  <div className="relative h-44 bg-[linear-gradient(135deg,#f8f3ea_0%,#fbfaf7_52%,#f2eadf_100%)] p-5">
+                    <div className="inline-flex items-center gap-2 rounded-full bg-skin-surface/80 px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] text-skin-gold">
                       {post.category}
                     </div>
-                    <div className="absolute bottom-5 right-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-white/80 text-[#6d63ff] shadow-lg shadow-white/20">
+                    <div className="absolute bottom-5 right-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-skin-surface/80 text-skin-gold shadow-soft-gold">
                       <FlaskConical className="h-5 w-5" />
                     </div>
                   </div>
                   <div className="space-y-3 p-5">
-                    <h3 className="text-xl font-black leading-snug text-[#151827]">{post.title}</h3>
-                    <p className="text-sm leading-6 text-[#5f6884]">{post.excerpt}</p>
-                    <div className="flex items-center justify-between gap-3 pt-2 text-sm font-semibold text-[#7d86a4]">
+                    <h3 className="font-serif text-xl font-semibold leading-snug text-skin-textMain">{post.title}</h3>
+                    <p className="text-sm leading-6 text-skin-textMuted">{post.excerpt}</p>
+                    <div className="flex items-center justify-between gap-3 pt-2 text-sm font-medium text-skin-textMuted">
                       <span>{post.readTime}</span>
-                      <Link to="/tro-giup" className="inline-flex items-center gap-1 text-[#6d63ff]">
+                      <Link to="/tro-giup" className="inline-flex items-center gap-1 text-skin-gold">
                         Đọc thêm <ArrowRight className="h-4 w-4" />
                       </Link>
                     </div>

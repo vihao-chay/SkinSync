@@ -78,7 +78,7 @@ const faqGroups = [
 // [CẬP NHẬT]: Khởi tạo trang trợ giúp với FAQ dạng accordion và form liên hệ đặt cạnh nhau.
 function TroGiupPage() {
   return (
-    <main className="min-h-screen bg-[#fbfaf7] text-[#151827]">
+    <main className="min-h-screen bg-skin-base text-skin-textMain">
       <header className="border-b border-[#eee7ff] bg-white/85 px-5 py-4 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
           <Link to="/" className="flex items-center gap-3">
@@ -86,8 +86,8 @@ function TroGiupPage() {
               SS
             </span>
             <div>
-              <p className="text-sm font-black uppercase tracking-[0.24em] text-[#151827]">SKINSYNC</p>
-              <p className="text-xs text-[#7d86a4]">Trung tâm hỗ trợ</p>
+              <p className="font-serif text-sm font-semibold uppercase tracking-[0.24em] text-skin-textMain">SKINSYNC</p>
+              <p className="text-xs text-skin-textMuted">Trung tâm hỗ trợ</p>
             </div>
           </Link>
 
@@ -102,7 +102,7 @@ function TroGiupPage() {
       <section className="px-5 py-14 md:py-18">
         <div className="mx-auto max-w-7xl">
           <div className="max-w-3xl">
-            <p className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/70 bg-white px-4 py-2 text-xs font-black uppercase tracking-[0.2em] text-[#6d63ff] shadow-lg shadow-[#9aa6ff]/10">
+            <p className="mb-4 inline-flex items-center gap-2 rounded-full border border-skin-border bg-skin-surface px-4 py-2 text-xs font-medium uppercase tracking-[0.2em] text-skin-gold shadow-soft-gold">
               <CircleHelp className="h-4 w-4" />
               Trung tâm hỗ trợ
             </p>
@@ -121,25 +121,25 @@ function TroGiupPage() {
         <div className="mx-auto grid max-w-7xl gap-6 lg:grid-cols-[1.1fr_0.9fr]">
           <div className="space-y-5">
             {faqGroups.map((group) => (
-              <Card key={group.title} className="rounded-[1.75rem] border-white/70 bg-white shadow-lg shadow-[#9aa6ff]/10">
+              <Card key={group.title} className="rounded-[1.75rem] border-skin-border bg-skin-surface shadow-soft-gold">
                 <CardContent className="p-6 md:p-8">
                   <div className="mb-5 flex items-center gap-3">
-                    <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-[#f7f2ff] to-[#dff9ee] text-[#6d63ff]">
+                    <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-stone-100 text-skin-gold">
                       <group.icon className="h-5 w-5" />
                     </span>
                     <div>
-                      <h2 className="text-xl font-black text-[#151827]">{group.title}</h2>
-                      <p className="text-sm text-[#7d86a4]">Các câu hỏi phổ biến nhất trong nhóm này</p>
+                      <h2 className="font-serif text-xl font-semibold text-skin-textMain">{group.title}</h2>
+                      <p className="text-sm text-skin-textMuted">Các câu hỏi phổ biến nhất trong nhóm này</p>
                     </div>
                   </div>
 
                   <Accordion type="single" collapsible className="w-full">
                     {group.items.map((item, index) => (
                       <AccordionItem key={item.question} value={`${group.title}-${index}`}>
-                        <AccordionTrigger className="text-left text-base font-semibold text-[#151827] hover:no-underline">
+                        <AccordionTrigger className="text-left text-base font-medium text-skin-textMain hover:no-underline">
                           {item.question}
                         </AccordionTrigger>
-                        <AccordionContent className="text-sm leading-7 text-[#5f6884]">
+                        <AccordionContent className="text-sm leading-7 text-skin-textMuted">
                           {item.answer}
                         </AccordionContent>
                       </AccordionItem>
@@ -150,11 +150,11 @@ function TroGiupPage() {
             ))}
           </div>
 
-          <Card className="h-fit rounded-[1.75rem] border-white/70 bg-white shadow-xl shadow-[#9aa6ff]/10">
+          <Card className="h-fit rounded-[1.75rem] border-skin-border bg-skin-surface shadow-soft-gold">
             <CardContent className="space-y-6 p-6 md:p-8">
               <div>
-                <p className="text-sm font-black uppercase tracking-[0.22em] text-[#6d63ff]">Liên hệ hỗ trợ</p>
-                <h2 className="mt-2 text-2xl font-black">Gửi câu hỏi để đội ngũ SkinSync phản hồi</h2>
+                <p className="text-sm font-medium uppercase tracking-[0.22em] text-skin-gold">Liên hệ hỗ trợ</p>
+                <h2 className="mt-2 font-serif text-2xl font-semibold text-skin-textMain">Gửi câu hỏi để đội ngũ SkinSync phản hồi</h2>
               </div>
 
               <form className="space-y-4">
@@ -191,18 +191,18 @@ function TroGiupPage() {
                       <Paperclip className="h-4 w-4" />
                       Chọn ảnh hoặc ảnh chụp màn hình
                     </span>
-                    <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[#6d63ff]">Upload</span>
+                    <span className="text-xs font-semibold uppercase tracking-[0.18em] text-skin-gold">Upload</span>
                   </label>
                   <input id="support-attachment" type="file" className="hidden" />
                 </div>
 
-                <Button className="h-12 w-full rounded-full bg-[#6d63ff] text-sm font-bold text-white hover:bg-[#594de4]">
+                <Button className="h-12 w-full rounded-full bg-skin-gold text-sm font-semibold text-white hover:bg-skin-goldHover">
                   Gửi yêu cầu <Mail className="h-4 w-4" />
                 </Button>
               </form>
 
               <div className="rounded-[1.5rem] bg-[linear-gradient(135deg,#f5f1ff_0%,#eef3ff_100%)] p-5 text-sm leading-7 text-[#5f6884]">
-                <p className="font-black uppercase tracking-[0.18em] text-[#151827]">Kỳ vọng phản hồi</p>
+                <p className="font-medium uppercase tracking-[0.18em] text-skin-textMain">Kỳ vọng phản hồi</p>
                 <p className="mt-2">
                   Đội ngũ hỗ trợ thường phản hồi trong vòng 1-2 ngày làm việc, đặc biệt với lỗi camera, lỗi tải ảnh hoặc
                   các câu hỏi liên quan đến gói dịch vụ.

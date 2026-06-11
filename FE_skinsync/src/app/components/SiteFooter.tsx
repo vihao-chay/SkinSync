@@ -73,26 +73,26 @@ function TikTokIcon() {
 // [CẬP NHẬT]: Tạo Footer 6 cột với nền sáng tím nhạt, link route thật và copyright căn giữa ở đáy.
 function Footer() {
   return (
-    <footer className="border-t border-[#ece5ff] bg-[linear-gradient(180deg,#ffffff_0%,#faf7ff_100%)] px-5">
+    <footer className="border-t border-skin-border bg-[linear-gradient(180deg,#ffffff_0%,#fbf8f2_100%)] px-5">
       <div className="mx-auto max-w-7xl py-14">
         <div className="mb-10 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div className="flex items-center gap-3">
-            <span className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-[#b9b6ff] to-[#8ea7ff] text-sm font-black text-white shadow-lg shadow-[#8ea7ff]/20">
+            <span className="flex h-11 w-11 items-center justify-center rounded-full bg-[#C2A67D] text-sm font-black text-white shadow-soft-gold">
               SS
             </span>
             <div>
-              <p className="text-sm font-black uppercase tracking-[0.26em] text-[#151827]">SKINSYNC</p>
-              <p className="mt-1 max-w-xl text-sm leading-6 text-[#5f6884]">
+              <p className="font-serif text-sm font-semibold uppercase tracking-[0.22em] text-skin-textMain">SKINSYNC</p>
+              <p className="mt-1 max-w-xl text-sm leading-6 text-skin-textMuted">
                 Nền tảng AI skincare giúp cá nhân hóa lộ trình, giải thích thành phần và đồng hành cùng làn da của bạn.
               </p>
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-8 text-sm text-[#5f6884] md:grid-cols-6">
+        <div className="grid grid-cols-2 gap-8 text-sm text-skin-textMuted md:grid-cols-6">
           {footerColumns.map((column) => (
             <div key={column.title} className="space-y-4">
-              <h3 className="text-sm font-black uppercase tracking-[0.18em] text-[#151827]">
+              <h3 className="font-serif text-sm font-semibold uppercase tracking-[0.18em] text-skin-textMain">
                 {column.title}
               </h3>
               <ul className="space-y-3">
@@ -106,7 +106,7 @@ function Footer() {
           ))}
 
           <div className="space-y-4">
-            <h3 className="text-sm font-black uppercase tracking-[0.18em] text-[#151827]">
+            <h3 className="font-serif text-sm font-semibold uppercase tracking-[0.18em] text-skin-textMain">
               Kết nối với chúng tôi
             </h3>
             <div className="space-y-3">
@@ -114,7 +114,7 @@ function Footer() {
                 href="https://facebook.com"
                 target="_blank"
                 rel="noreferrer"
-                className="flex items-center gap-3 transition hover:text-[#6d63ff]"
+                className="flex items-center gap-3 transition hover:text-skin-gold"
               >
                 <Facebook className="h-4 w-4" />
                 <span>Facebook</span>
@@ -123,7 +123,7 @@ function Footer() {
                 href="https://instagram.com"
                 target="_blank"
                 rel="noreferrer"
-                className="flex items-center gap-3 transition hover:text-[#6d63ff]"
+                className="flex items-center gap-3 transition hover:text-skin-gold"
               >
                 <Instagram className="h-4 w-4" />
                 <span>Instagram</span>
@@ -132,7 +132,7 @@ function Footer() {
                 href="https://www.tiktok.com"
                 target="_blank"
                 rel="noreferrer"
-                className="flex items-center gap-3 transition hover:text-[#6d63ff]"
+                className="flex items-center gap-3 transition hover:text-skin-gold"
               >
                 <TikTokIcon />
                 <span>Tiktok</span>
@@ -142,7 +142,7 @@ function Footer() {
         </div>
 
         {/* [CẬP NHẬT]: Thêm đường kẻ mảnh và dòng bản quyền căn giữa ở đáy footer. */}
-        <div className="mt-12 border-t border-[#ece5ff] pt-5 text-center text-sm text-[#7d86a4]">
+        <div className="mt-12 border-t border-skin-border pt-5 text-center text-sm text-skin-textMuted">
           Copyright @ 2026 by SkinSync. All Rights Reserved.
         </div>
       </div>
