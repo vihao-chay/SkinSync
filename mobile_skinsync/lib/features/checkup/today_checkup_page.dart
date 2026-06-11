@@ -27,6 +27,10 @@ class _TodayCheckupPageState extends State<TodayCheckupPage> {
   bool _morning = true;
   File? _selectedImage;
 
+  void selectSkinFeeling(String value) {
+    setState(() => _skinFeeling = value);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -542,7 +546,7 @@ class _FeelingChip extends StatelessWidget {
         if (state == null) {
           return;
         }
-        state.setState(() => state._skinFeeling = label);
+        state.selectSkinFeeling(label);
       },
       borderRadius: BorderRadius.circular(999),
       child: Container(

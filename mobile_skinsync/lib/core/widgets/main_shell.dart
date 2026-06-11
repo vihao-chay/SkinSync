@@ -2,14 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../features/dashboard/dashboard_page.dart';
+import '../../features/products/products_page.dart';
 import '../../features/profile/profile_page.dart';
 import '../../features/progress/progress_page.dart';
-import '../../features/products/products_page.dart';
 import '../../features/routine/routine_page.dart';
-import '../models/app_models.dart';
 import '../routes/app_routes.dart';
 import '../state/app_state.dart';
 import '../theme/app_colors.dart';
+import 'app_bottom_navigation.dart';
+import 'floating_ai_button.dart';
 
 class MainShell extends StatefulWidget {
   const MainShell({super.key, required this.initialRoute});
@@ -30,11 +31,20 @@ class _MainShellState extends State<MainShell> {
   ];
 
   static const _destinations = [
-    _ShellDestination('Home', Icons.home_rounded),
-    _ShellDestination('Routine', Icons.spa_rounded),
-    _ShellDestination('Products', Icons.shopping_bag_outlined),
-    _ShellDestination('Progress', Icons.insights_rounded),
-    _ShellDestination('Profile', Icons.person_rounded),
+    AppBottomNavigationDestination(label: 'Home', icon: Icons.home_rounded),
+    AppBottomNavigationDestination(label: 'Routine', icon: Icons.spa_rounded),
+    AppBottomNavigationDestination(
+      label: 'Products',
+      icon: Icons.shopping_bag_rounded,
+    ),
+    AppBottomNavigationDestination(
+      label: 'Progress',
+      icon: Icons.insights_rounded,
+    ),
+    AppBottomNavigationDestination(
+      label: 'Profile',
+      icon: Icons.person_rounded,
+    ),
   ];
 
   late int _selectedIndex = _routeToIndex(widget.initialRoute);
@@ -64,132 +74,36 @@ class _MainShellState extends State<MainShell> {
 
     return Scaffold(
       backgroundColor: AppColors.pageBackground,
-      body: SafeArea(
-        bottom: false,
-        child: Align(
-          alignment: Alignment.topCenter,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 520),
-            child: SizedBox.expand(
-                child: IndexedStack(
-                  index: _selectedIndex,
-                  children: const [
-                    DashboardPage(),
-                    RoutinePage(),
-                    ProductsPage(),
-                    ProgressPage(),
-                    ProfilePage(),
-                  ],
-                ),
-              ),
-          ),
-        ),
+      body: IndexedStack(
+        index: _selectedIndex,
+        sizing: StackFit.expand,
+        children: const [
+          _ShellPage(pageName: 'Home', child: DashboardPage()),
+          _ShellPage(pageName: 'Routine', child: RoutinePage()),
+          _ShellPage(pageName: 'Products', child: ProductsPage()),
+          _ShellPage(pageName: 'Progress', child: ProgressPage()),
+          _ShellPage(pageName: 'Profile', child: ProfilePage()),
+        ],
       ),
-      bottomNavigationBar: SafeArea(
-        top: false,
-        minimum: const EdgeInsets.fromLTRB(8, 0, 8, 6),
-        child: Align(
-          alignment: Alignment.bottomCenter,
-          heightFactor: 1,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 520),
-            child: SizedBox(
-              height: 62,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.98),
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(22),
-                  ),
-                  border: Border.all(
-                    color: AppColors.border.withValues(alpha: 0.40),
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primaryDark.withValues(alpha: 0.08),
-                      blurRadius: 24,
-                      offset: const Offset(0, -6),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: List.generate(_destinations.length, (index) {
-                    final destination = _destinations[index];
-                    final selected = index == _selectedIndex;
-
-                    return Expanded(
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 220),
-                        curve: Curves.easeOutCubic,
-                        decoration: BoxDecoration(
-                          color: selected
-                              ? AppColors.secondary
-                              : Colors.transparent,
-                          borderRadius: BorderRadius.circular(18),
-                        ),
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(18),
-                          onTap: () => _onTap(index),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 4),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  destination.icon,
-                                  color: selected
-                                      ? AppColors.primaryDark
-                                      : AppColors.foreground,
-                                  size: 18,
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  destination.label,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: Theme.of(context).textTheme.labelSmall
-                                      ?.copyWith(
-                                        color: selected
-                                            ? AppColors.primaryDark
-                                            : AppColors.foreground,
-                                        fontSize: 9,
-                                        fontWeight: selected
-                                            ? FontWeight.w800
-                                            : FontWeight.w600,
-                                      ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    );
-                  }),
-                ),
-              ),
-            ),
-          ),
-        ),
+      bottomNavigationBar: AppBottomNavigation(
+        destinations: _destinations,
+        selectedIndex: _selectedIndex,
+        onTap: _onTap,
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => Navigator.pushNamed(
-          context,
-          AppRoutes.aiChatConversation,
-          arguments: const AiChatLaunchArgs(entryPoint: 'shell_fab'),
-        ),
-        backgroundColor: AppColors.primaryDark,
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.chat_bubble_outline_rounded),
-        label: const Text('SkinSync AI'),
-      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+      floatingActionButton: const FloatingAiButton(),
     );
   }
 }
 
-class _ShellDestination {
-  const _ShellDestination(this.label, this.icon);
+class _ShellPage extends StatelessWidget {
+  const _ShellPage({required this.pageName, required this.child});
 
-  final String label;
-  final IconData icon;
+  final String pageName;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox.expand(child: child);
+  }
 }

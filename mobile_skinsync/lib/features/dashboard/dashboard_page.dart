@@ -6,6 +6,11 @@ import '../../core/routes/app_routes.dart';
 import '../../core/state/app_state.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
+import '../../core/widgets/app_button.dart';
+import '../../core/widgets/app_card.dart';
+import '../../core/widgets/app_scaffold.dart';
+import '../../core/widgets/empty_state_card.dart';
+import '../../core/widgets/section_header.dart';
 
 class DashboardPage extends StatelessWidget {
   const DashboardPage({super.key});
@@ -13,101 +18,137 @@ class DashboardPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final appState = context.watch<AppState>();
-    final user = appState.user;
-    final firstName = _firstName(appState.profileDisplayName);
     final analysis = appState.latestAnalysis;
     final regimen = appState.regimen;
     final tracking = appState.trackingToday;
-    final morningSteps = regimen?.morning ?? const <RegimenStep>[];
-    final eveningSteps = regimen?.evening ?? const <RegimenStep>[];
-    final currentDate = DateTime.now();
+    final concerns = analysis?.issues.map((item) => item.issueType).toList() ?? [];
+    final firstName = _firstName(appState.profileDisplayName);
 
-    return RefreshIndicator(
-      color: AppColors.primaryDark,
+    return AppScaffold(
+      title: 'Good evening, $firstName',
+      subtitle:
+          'Your premium skincare dashboard keeps today\'s routine, scan insights, and gentle next steps in one calm place.',
       onRefresh: appState.refreshHome,
-      child: ListView(
+      body: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(
           AppSpacing.pagePadding,
-          12,
+          0,
           AppSpacing.pagePadding,
-          104,
+          AppSpacing.bottomNavHeight + 64,
         ),
         children: [
-          _GreetingRow(name: firstName, avatarUrl: user?.avatarUrl),
-          const SizedBox(height: 18),
-          _DayStrip(currentDate: currentDate),
-          const SizedBox(height: 16),
-          _PrimaryPromptCard(
-            overview: _overviewText(analysis?.overview),
-            onTap: () => Navigator.pushNamed(context, AppRoutes.todayCheckup),
+          _HeroCard(
+            analysis: analysis,
+            completedSteps: tracking?.completedSteps ?? 0,
+            totalSteps: tracking?.totalSteps ?? 0,
+            onCheckIn: () => Navigator.pushNamed(context, AppRoutes.todayCheckup),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: AppSpacing.sectionGap),
+          SectionHeader(
+            title: 'Today at a glance',
+            subtitle: 'The most important signals from your latest scan and routine.',
+          ),
+          const SizedBox(height: AppSpacing.md),
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                child: _MiniInsightCard(
-                  title: 'Index UV',
-                  value: _uvIndexLabel(analysis),
-                  subtitle: 'Do not forget to use SPF',
-                  accent: const Color(0xFFD1EA8B),
+                child: _InsightCard(
+                  eyebrow: 'Skin score',
+                  value: analysis == null ? 'Not scanned yet' : '${analysis.overallScore}/100',
+                  description: analysis == null
+                      ? 'Upload a photo to unlock your first AI analysis.'
+                      : (analysis.overview?.trim().isNotEmpty == true
+                            ? analysis.overview!
+                            : 'Your current skin condition looks balanced overall.'),
+                  icon: Icons.auto_awesome_rounded,
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: AppSpacing.sm),
               Expanded(
-                child: _MiniInsightCard(
-                  title: 'SkinSync AI',
-                  value: _quoteText(analysis),
-                  subtitle: 'Small, steady progress matters.',
-                  accent: const Color(0xFFF2C8D8),
-                  isQuote: true,
+                child: _InsightCard(
+                  eyebrow: 'Skin type',
+                  value: _friendlyText(analysis?.skinType),
+                  description: concerns.isEmpty
+                      ? 'No major concerns highlighted yet.'
+                      : 'Top focus: ${concerns.take(2).join(', ')}',
+                  icon: Icons.spa_outlined,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          _RoutineSummaryCard(
-            icon: Icons.wb_sunny_outlined,
-            title: 'Morning Routine',
-            timeLabel: _reminderLabel(appState.reminders, 'morning', '7:00 AM'),
-            steps: morningSteps,
-            completed: tracking?.morningCompleted ?? false,
-            onTap: () => Navigator.pushNamed(context, AppRoutes.routine),
-          ),
-          const SizedBox(height: 14),
-          _RoutineSummaryCard(
-            icon: Icons.nightlight_round_outlined,
-            title: 'Evening Routine',
-            timeLabel: _reminderLabel(appState.reminders, 'evening', '9:00 PM'),
-            steps: eveningSteps,
-            completed: tracking?.eveningCompleted ?? false,
-            onTap: () => Navigator.pushNamed(context, AppRoutes.routine),
-            activeColor: const Color(0xFFF4D9E4),
-          ),
-          const SizedBox(height: 14),
-          _ActionRow(
-            onCheckup: () =>
-                Navigator.pushNamed(context, AppRoutes.todayCheckup),
-            onChat: () => Navigator.pushNamed(
-              context,
-              AppRoutes.aiChatConversation,
-              arguments: const AiChatLaunchArgs(entryPoint: 'home'),
+          const SizedBox(height: AppSpacing.sectionGap),
+          SectionHeader(
+            title: 'Routine rhythm',
+            subtitle: 'Keep your morning and evening rituals consistent.',
+            trailing: TextButton(
+              onPressed: () => Navigator.pushNamed(context, AppRoutes.routine),
+              child: const Text('Open routine'),
             ),
-            onScan: () => Navigator.pushNamed(
-              context,
-              AppRoutes.upload,
+          ),
+          const SizedBox(height: AppSpacing.md),
+          if (regimen == null)
+            EmptyStateCard(
+              icon: Icons.spa_outlined,
+              title: 'No routine generated yet',
+              description:
+                  'Complete a skin scan and SkinSync will prepare a routine tailored to your skin goals.',
+              ctaLabel: 'Start skin scan',
+              onCta: () => Navigator.pushNamed(context, AppRoutes.upload),
+            )
+          else
+            Column(
+              children: [
+                _RoutinePreviewCard(
+                  title: 'Morning routine',
+                  accent: const Color(0xFFE9D5BC),
+                  steps: regimen.morning,
+                  completed: tracking?.morningCompleted ?? false,
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                _RoutinePreviewCard(
+                  title: 'Evening routine',
+                  accent: const Color(0xFFDCC5B4),
+                  steps: regimen.evening,
+                  completed: tracking?.eveningCompleted ?? false,
+                ),
+              ],
             ),
-            onProducts: () => Navigator.pushNamed(
-              context,
-              AppRoutes.aiProductRecommend,
-              arguments: ProductsPageArgs(
-                initialConcern: analysis?.issues.isNotEmpty == true
-                    ? analysis!.issues.first.issueType
-                    : 'any',
-                referenceId: analysis?.id,
+          const SizedBox(height: AppSpacing.sectionGap),
+          SectionHeader(
+            title: 'Quick actions',
+            subtitle: 'Jump straight into the next best skincare task.',
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Wrap(
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.sm,
+            children: [
+              _QuickActionChip(
+                label: 'Today check-in',
+                icon: Icons.check_circle_outline_rounded,
+                onTap: () => Navigator.pushNamed(context, AppRoutes.todayCheckup),
               ),
-            ),
+              _QuickActionChip(
+                label: 'Scan skin',
+                icon: Icons.camera_alt_outlined,
+                onTap: () => Navigator.pushNamed(context, AppRoutes.upload),
+              ),
+              _QuickActionChip(
+                label: 'Ask SkinSync AI',
+                icon: Icons.auto_awesome_rounded,
+                onTap: () => Navigator.pushNamed(
+                  context,
+                  AppRoutes.aiChatConversation,
+                  arguments: const AiChatLaunchArgs(entryPoint: 'home'),
+                ),
+              ),
+              _QuickActionChip(
+                label: 'Explore products',
+                icon: Icons.shopping_bag_outlined,
+                onTap: () => Navigator.pushNamed(context, AppRoutes.products),
+              ),
+            ],
           ),
         ],
       ),
@@ -121,234 +162,116 @@ class DashboardPage extends StatelessWidget {
     }
     return parts.first;
   }
-
-  static String _overviewText(String? overview) {
-    final trimmed = overview?.trim() ?? '';
-    if (trimmed.isEmpty) {
-      return 'Start your routine';
-    }
-    return trimmed;
-  }
-
-  static String _uvIndexLabel(AnalysisResult? analysis) {
-    final score = analysis?.overallScore ?? 84;
-    final uv = ((100 - score) / 12).clamp(2, 10).round();
-    return '$uv/10';
-  }
-
-  static String _quoteText(AnalysisResult? analysis) {
-    if (analysis?.warnings.isNotEmpty == true) {
-      return '"Stay gentle and consistent while your skin calms down."';
-    }
-    return '"You are doing great. Keep going with the routine."';
-  }
-
-  static String _reminderLabel(
-    List<ReminderItem> reminders,
-    String type,
-    String fallback,
-  ) {
-    for (final item in reminders) {
-      if (item.routineType.toLowerCase().contains(type)) {
-        return item.time;
-      }
-    }
-    return fallback;
-  }
 }
 
-class _GreetingRow extends StatelessWidget {
-  const _GreetingRow({required this.name, this.avatarUrl});
+class _HeroCard extends StatelessWidget {
+  const _HeroCard({
+    required this.analysis,
+    required this.completedSteps,
+    required this.totalSteps,
+    required this.onCheckIn,
+  });
 
-  final String name;
-  final String? avatarUrl;
+  final AnalysisResult? analysis;
+  final int completedSteps;
+  final int totalSteps;
+  final VoidCallback onCheckIn;
 
   @override
   Widget build(BuildContext context) {
-    final url = avatarUrl?.trim();
-    return Row(
-      children: [
-        CircleAvatar(
-          radius: 21,
-          backgroundColor: const Color(0xFFF3D8E8),
-          backgroundImage: url == null || url.isEmpty
-              ? null
-              : NetworkImage(url),
-          child: url == null || url.isEmpty
-              ? Text(
-                  name.isEmpty ? 'S' : name[0].toUpperCase(),
-                  style: const TextStyle(
-                    color: AppColors.primaryDark,
-                    fontWeight: FontWeight.w800,
-                  ),
-                )
-              : null,
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Text(
-            'Hi, $name',
-            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-              fontWeight: FontWeight.w500,
-              letterSpacing: -0.6,
+    final progress = totalSteps == 0 ? 0.0 : completedSteps / totalSteps;
+    return AppCard(
+      backgroundColor: AppColors.surfaceStrong,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Today\'s complexion story',
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+              fontWeight: FontWeight.w700,
             ),
           ),
-        ),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.95),
-            borderRadius: BorderRadius.circular(18),
-          ),
-          child: Text(
-            'Day 2',
-            style: Theme.of(
-              context,
-            ).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w700),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _DayStrip extends StatelessWidget {
-  const _DayStrip({required this.currentDate});
-
-  final DateTime currentDate;
-
-  @override
-  Widget build(BuildContext context) {
-    final items = List.generate(
-      6,
-      (index) => currentDate.add(Duration(days: index)),
-    );
-
-    return SizedBox(
-      height: 72,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemBuilder: (context, index) {
-          final day = items[index];
-          final isActive = index >= 3;
-          return Container(
-            width: 58,
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            decoration: BoxDecoration(
-              color: isActive ? const Color(0xFFD1EA8B) : Colors.white,
-              borderRadius: BorderRadius.circular(18),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.primaryDark.withValues(alpha: 0.04),
-                  blurRadius: 14,
-                  offset: const Offset(0, 5),
-                ),
-              ],
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            analysis?.overview?.trim().isNotEmpty == true
+                ? analysis!.overview!
+                : 'Start with a quick check-in or fresh scan to build a more complete picture of your skin today.',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: AppColors.mutedText,
             ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  _weekday(day.weekday),
-                  style: Theme.of(
-                    context,
-                  ).textTheme.labelSmall?.copyWith(color: AppColors.mutedText),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          Row(
+            children: [
+              Expanded(
+                child: _MetricTile(
+                  label: 'Confidence',
+                  value: analysis == null ? 'Not provided yet' : '${analysis!.confidenceScore}%',
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  '${day.day}',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: _MetricTile(
+                  label: 'Routine progress',
+                  value: totalSteps == 0 ? 'Not provided yet' : '$completedSteps/$totalSteps',
                 ),
-              ],
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: LinearProgressIndicator(
+              minHeight: 8,
+              value: progress,
+              backgroundColor: Colors.white.withValues(alpha: 0.65),
+              valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primaryDark),
             ),
-          );
-        },
-        separatorBuilder: (_, __) => const SizedBox(width: 10),
-        itemCount: items.length,
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          Row(
+            children: [
+              Expanded(
+                child: AppButton(
+                  label: 'Check in now',
+                  icon: const Icon(Icons.favorite_border_rounded),
+                  onPressed: onCheckIn,
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
-
-  String _weekday(int weekday) {
-    switch (weekday) {
-      case DateTime.monday:
-        return 'Mon';
-      case DateTime.tuesday:
-        return 'Tue';
-      case DateTime.wednesday:
-        return 'Wed';
-      case DateTime.thursday:
-        return 'Thu';
-      case DateTime.friday:
-        return 'Fri';
-      case DateTime.saturday:
-        return 'Sat';
-      default:
-        return 'Sun';
-    }
-  }
 }
 
-class _PrimaryPromptCard extends StatelessWidget {
-  const _PrimaryPromptCard({required this.overview, required this.onTap});
+class _MetricTile extends StatelessWidget {
+  const _MetricTile({required this.label, required this.value});
 
-  final String overview;
-  final VoidCallback onTap;
+  final String label;
+  final String value;
 
   @override
   Widget build(BuildContext context) {
-    return _SurfaceCard(
-      child: Row(
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.72),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: const Color(0xFFF7F7F2),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: const Icon(
-              Icons.menu_book_outlined,
-              color: AppColors.foreground,
-            ),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.labelMedium,
           ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'How is your skin today?',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  overview,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodySmall?.copyWith(color: AppColors.mutedText),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 10),
-          InkWell(
-            onTap: onTap,
-            borderRadius: BorderRadius.circular(14),
-            child: Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                color: const Color(0xFFD1EA8B),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: const Icon(Icons.arrow_forward_ios_rounded, size: 18),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            value,
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w700,
             ),
           ),
         ],
@@ -357,85 +280,48 @@ class _PrimaryPromptCard extends StatelessWidget {
   }
 }
 
-class _MiniInsightCard extends StatelessWidget {
-  const _MiniInsightCard({
-    required this.title,
+class _InsightCard extends StatelessWidget {
+  const _InsightCard({
+    required this.eyebrow,
     required this.value,
-    required this.subtitle,
-    required this.accent,
-    this.isQuote = false,
+    required this.description,
+    required this.icon,
   });
 
-  final String title;
+  final String eyebrow;
   final String value;
-  final String subtitle;
-  final Color accent;
-  final bool isQuote;
+  final String description;
+  final IconData icon;
 
   @override
   Widget build(BuildContext context) {
-    return _SurfaceCard(
+    return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(
-                isQuote ? Icons.edit_note_rounded : Icons.wb_sunny_outlined,
-                size: 18,
-                color: AppColors.foreground,
-              ),
-              const SizedBox(width: 6),
+              Icon(icon, color: AppColors.primaryDark, size: 18),
+              const SizedBox(width: AppSpacing.xs),
               Expanded(
                 child: Text(
-                  title,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.labelMedium?.copyWith(color: AppColors.mutedText),
+                  eyebrow,
+                  style: Theme.of(context).textTheme.labelMedium,
                 ),
-              ),
-              Container(
-                width: 26,
-                height: 26,
-                decoration: BoxDecoration(
-                  color: accent,
-                  borderRadius: BorderRadius.circular(9),
-                ),
-                child: const Icon(Icons.arrow_outward_rounded, size: 16),
               ),
             ],
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: AppSpacing.md),
           Text(
             value,
-            maxLines: isQuote ? 3 : 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
               fontWeight: FontWeight.w700,
-              height: 1.2,
             ),
           ),
-          const SizedBox(height: 12),
-          if (!isQuote)
-            Container(
-              height: 6,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [
-                    Color(0xFFF0ED92),
-                    Color(0xFFEFC1D8),
-                    Color(0xFFE5A85B),
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(999),
-              ),
-            ),
-          SizedBox(height: isQuote ? 0 : 12),
+          const SizedBox(height: AppSpacing.sm),
           Text(
-            subtitle,
-            style: Theme.of(
-              context,
-            ).textTheme.bodySmall?.copyWith(color: AppColors.mutedText),
+            description,
+            style: Theme.of(context).textTheme.bodySmall,
           ),
         ],
       ),
@@ -443,226 +329,115 @@ class _MiniInsightCard extends StatelessWidget {
   }
 }
 
-class _RoutineSummaryCard extends StatelessWidget {
-  const _RoutineSummaryCard({
-    required this.icon,
+class _RoutinePreviewCard extends StatelessWidget {
+  const _RoutinePreviewCard({
     required this.title,
-    required this.timeLabel,
+    required this.accent,
     required this.steps,
     required this.completed,
-    required this.onTap,
-    this.activeColor = const Color(0xFFD1EA8B),
   });
 
-  final IconData icon;
   final String title;
-  final String timeLabel;
+  final Color accent;
   final List<RegimenStep> steps;
   final bool completed;
-  final VoidCallback onTap;
-  final Color activeColor;
 
   @override
   Widget build(BuildContext context) {
-    final chips = steps.isEmpty
-        ? const ['Cleanser', 'Serum', 'Moisturizer']
-        : steps.map((step) => step.category).take(5).toList();
-
-    return _SurfaceCard(
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(icon, size: 20, color: AppColors.foreground),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    title,
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: accent,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                alignment: Alignment.center,
+                child: Icon(
+                  title.contains('Morning')
+                      ? Icons.wb_sunny_outlined
+                      : Icons.bedtime_outlined,
+                  color: AppColors.primaryDark,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  title,
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
-                Container(
-                  width: 34,
-                  height: 34,
-                  decoration: BoxDecoration(
-                    color: completed ? activeColor : Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: AppColors.border.withValues(alpha: 0.35),
-                    ),
-                  ),
-                  child: Icon(
-                    completed ? Icons.check_rounded : Icons.circle_outlined,
-                    size: 20,
-                    color: completed ? AppColors.foreground : AppColors.border,
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: completed ? AppColors.secondary : AppColors.surfaceMuted,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  completed ? 'Completed' : 'Pending',
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: AppColors.primaryDark,
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              timeLabel,
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(color: AppColors.mutedText),
-            ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: chips
-                  .map((item) => _RoutineChip(label: _normalizeCategory(item)))
-                  .toList(),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  String _normalizeCategory(String input) {
-    final trimmed = input.trim();
-    if (trimmed.isEmpty) {
-      return 'Step';
-    }
-
-    return trimmed[0].toUpperCase() + trimmed.substring(1).toLowerCase();
-  }
-}
-
-class _RoutineChip extends StatelessWidget {
-  const _RoutineChip({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = [
-      const Color(0xFFF8D7D7),
-      const Color(0xFFD8E9AF),
-      const Color(0xFFF2D9E8),
-      const Color(0xFFF4E79F),
-    ];
-    final color = colors[label.length % colors.length];
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color),
-      ),
-      child: Text(
-        label,
-        style: Theme.of(
-          context,
-        ).textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Text(
+            steps.isEmpty
+                ? 'Not provided yet'
+                : steps
+                    .take(4)
+                    .map((step) => '${step.stepOrder}. ${step.name}')
+                    .join('\n'),
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+        ],
       ),
     );
   }
 }
 
-class _ActionRow extends StatelessWidget {
-  const _ActionRow({
-    required this.onCheckup,
-    required this.onChat,
-    required this.onScan,
-    required this.onProducts,
-  });
-
-  final VoidCallback onCheckup;
-  final VoidCallback onChat;
-  final VoidCallback onScan;
-  final VoidCallback onProducts;
-
-  @override
-  Widget build(BuildContext context) {
-    return Wrap(
-      spacing: 12,
-      runSpacing: 12,
-      children: [
-        SizedBox(
-          width: 154,
-          child: _ActionButton(
-            label: 'Today Check-up',
-            icon: Icons.checklist_rounded,
-            onTap: onCheckup,
-            accent: const Color(0xFFD1EA8B),
-          ),
-        ),
-        SizedBox(
-          width: 172,
-          child: _ActionButton(
-            label: 'Chat with SkinSync AI',
-            icon: Icons.chat_bubble_outline_rounded,
-            onTap: onChat,
-          ),
-        ),
-        SizedBox(
-          width: 154,
-          child: _ActionButton(
-            label: 'Scan Skin',
-            icon: Icons.auto_awesome_rounded,
-            onTap: onScan,
-          ),
-        ),
-        SizedBox(
-          width: 154,
-          child: _ActionButton(
-            label: 'View Products',
-            icon: Icons.shopping_bag_outlined,
-            onTap: onProducts,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _ActionButton extends StatelessWidget {
-  const _ActionButton({
+class _QuickActionChip extends StatelessWidget {
+  const _QuickActionChip({
     required this.label,
     required this.icon,
     required this.onTap,
-    this.accent = Colors.white,
   });
 
   final String label;
   final IconData icon;
   final VoidCallback onTap;
-  final Color accent;
 
   @override
   Widget build(BuildContext context) {
     return Material(
       color: Colors.transparent,
       child: InkWell(
+        borderRadius: BorderRadius.circular(999),
         onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
         child: Ink(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           decoration: BoxDecoration(
-            color: accent,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: AppColors.border.withValues(alpha: 0.3)),
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: AppColors.border),
           ),
           child: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, color: AppColors.foreground, size: 18),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  label,
-                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
+              Icon(icon, size: 18, color: AppColors.primaryDark),
+              const SizedBox(width: AppSpacing.xs),
+              Text(
+                label,
+                style: Theme.of(context).textTheme.labelLarge,
               ),
             ],
           ),
@@ -672,29 +447,7 @@ class _ActionButton extends StatelessWidget {
   }
 }
 
-class _SurfaceCard extends StatelessWidget {
-  const _SurfaceCard({required this.child});
-
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.96),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.border.withValues(alpha: 0.18)),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primaryDark.withValues(alpha: 0.05),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: child,
-    );
-  }
+String _friendlyText(String? value) {
+  final trimmed = value?.trim() ?? '';
+  return trimmed.isEmpty ? 'Not provided yet' : trimmed;
 }

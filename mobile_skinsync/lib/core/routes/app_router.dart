@@ -7,7 +7,6 @@ import '../../features/admin/admin_profile_page.dart';
 import '../../features/admin/admin_users_page.dart';
 import '../../features/ai_hub/ai_conflict_check_page.dart';
 import '../../features/ai_hub/ai_ingredient_check_page.dart';
-import '../../features/ai_hub/ai_product_recommend_page.dart';
 import '../../features/ai_hub/ai_reports_page.dart';
 import '../../features/auth/login_page.dart';
 import '../../features/chat/ai_chat_page.dart';

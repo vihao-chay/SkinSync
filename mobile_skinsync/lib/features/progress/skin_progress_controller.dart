@@ -9,6 +9,7 @@ class SkinProgressController extends ChangeNotifier {
   SkinProgressController(this._repository);
 
   final SkinProgressRepository _repository;
+  bool _isDisposed = false;
 
   String periodType = 'monthly';
   DateTime anchorDate = DateTime.now();
@@ -28,18 +29,14 @@ class SkinProgressController extends ChangeNotifier {
   Future<void> refresh() async {
     isLoading = true;
     errorMessage = null;
-    notifyListeners();
+    _notifySafely();
     try {
-      dashboard = await _repository.fetchDashboard(
-        periodType: periodType,
-        anchorDate: anchorDate,
-      );
-      photos = await _repository.fetchPhotos();
+      await _loadDashboardAndPhotos();
     } catch (error) {
       errorMessage = error.toString();
     } finally {
       isLoading = false;
-      notifyListeners();
+      _notifySafely();
     }
   }
 
@@ -49,7 +46,7 @@ class SkinProgressController extends ChangeNotifier {
     } catch (_) {
       reports = const [];
     }
-    notifyListeners();
+    _notifySafely();
   }
 
   Future<void> setPeriodType(String value) async {
@@ -68,7 +65,7 @@ class SkinProgressController extends ChangeNotifier {
   Future<void> uploadAndAnalyze(File file, {String? note}) async {
     isUploading = true;
     errorMessage = null;
-    notifyListeners();
+    _notifySafely();
     try {
       final photo = await _repository.uploadPhoto(imageFile: file, note: note);
       await _repository.analyzePhoto(photo.photoId);
@@ -79,7 +76,7 @@ class SkinProgressController extends ChangeNotifier {
       rethrow;
     } finally {
       isUploading = false;
-      notifyListeners();
+      _notifySafely();
     }
   }
 
@@ -89,7 +86,7 @@ class SkinProgressController extends ChangeNotifier {
       await refresh();
     } catch (error) {
       errorMessage = error.toString();
-      notifyListeners();
+      _notifySafely();
       rethrow;
     }
   }
@@ -103,7 +100,7 @@ class SkinProgressController extends ChangeNotifier {
 
     isComparing = true;
     errorMessage = null;
-    notifyListeners();
+    _notifySafely();
     try {
       return await _repository.comparePhotos(
         beforePhotoId: before.photoId,
@@ -114,7 +111,7 @@ class SkinProgressController extends ChangeNotifier {
       rethrow;
     } finally {
       isComparing = false;
-      notifyListeners();
+      _notifySafely();
     }
   }
 
@@ -122,7 +119,7 @@ class SkinProgressController extends ChangeNotifier {
     final period = _resolvePeriod();
     isGeneratingReport = true;
     errorMessage = null;
-    notifyListeners();
+    _notifySafely();
     try {
       final report = await _repository.generateReport(
         periodType: periodType,
@@ -137,8 +134,14 @@ class SkinProgressController extends ChangeNotifier {
       rethrow;
     } finally {
       isGeneratingReport = false;
-      notifyListeners();
+      _notifySafely();
     }
+  }
+
+  @override
+  void dispose() {
+    _isDisposed = true;
+    super.dispose();
   }
 
   Future<SkinProgressReportDetail> openReport(String reportId) {
@@ -163,5 +166,41 @@ class SkinProgressController extends ChangeNotifier {
       DateTime(anchorDate.year, anchorDate.month, 1),
       DateTime(anchorDate.year, anchorDate.month + 1, 0),
     );
+  }
+
+  Future<void> _loadDashboardAndPhotos() async {
+    dashboard = await _repository.fetchDashboard(
+      periodType: periodType,
+      anchorDate: anchorDate,
+    );
+    photos = await _repository.fetchPhotos();
+
+    if (photos.isEmpty || dashboard?.hasPhotos == true) {
+      return;
+    }
+
+    final latestPhotoDate = photos.first.photoDate;
+    if (_isDateInCurrentPeriod(latestPhotoDate)) {
+      return;
+    }
+
+    anchorDate = latestPhotoDate;
+    dashboard = await _repository.fetchDashboard(
+      periodType: periodType,
+      anchorDate: anchorDate,
+    );
+  }
+
+  bool _isDateInCurrentPeriod(DateTime value) {
+    final period = _resolvePeriod();
+    final normalized = DateTime(value.year, value.month, value.day);
+    return !normalized.isBefore(period.$1) && !normalized.isAfter(period.$2);
+  }
+
+  void _notifySafely() {
+    if (_isDisposed) {
+      return;
+    }
+    notifyListeners();
   }
 }

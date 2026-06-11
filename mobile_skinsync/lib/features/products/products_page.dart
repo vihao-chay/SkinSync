@@ -5,6 +5,12 @@ import '../../core/models/app_models.dart';
 import '../../core/routes/app_routes.dart';
 import '../../core/state/app_state.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_spacing.dart';
+import '../../core/widgets/app_button.dart';
+import '../../core/widgets/app_card.dart';
+import '../../core/widgets/app_scaffold.dart';
+import '../../core/widgets/empty_state_card.dart';
+import '../../core/widgets/section_header.dart';
 
 class ProductsPage extends StatefulWidget {
   const ProductsPage({
@@ -44,9 +50,7 @@ class _ProductsPageState extends State<ProductsPage> {
       text: widget.initialBudget?.toStringAsFixed(0) ?? '',
     );
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _submit();
-    });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _submit());
   }
 
   @override
@@ -61,12 +65,8 @@ class _ProductsPageState extends State<ProductsPage> {
     setState(() => _loading = true);
     try {
       final result = await context.read<AppState>().recommendProducts(
-        category: _categoryController.text.trim().isEmpty
-            ? 'any'
-            : _categoryController.text.trim(),
-        concern: _concernController.text.trim().isEmpty
-            ? 'any'
-            : _concernController.text.trim(),
+        category: _blankToAny(_categoryController.text),
+        concern: _blankToAny(_concernController.text),
         budgetMax: double.tryParse(_budgetController.text.trim()),
       );
       if (!mounted) {
@@ -87,24 +87,23 @@ class _ProductsPageState extends State<ProductsPage> {
     final appState = context.read<AppState>();
     final response = await showModalBottomSheet<AiAddProductToRoutineResponse>(
       context: context,
-      backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setSheetState) {
             return _ActionSheet(
-              title: 'Add to Routine',
+              title: 'Add to routine',
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
                     item.name,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w800,
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.md),
                   SegmentedButton<String>(
                     segments: const [
                       ButtonSegment(value: 'Morning', label: Text('Morning')),
@@ -114,47 +113,47 @@ class _ProductsPageState extends State<ProductsPage> {
                     onSelectionChanged: (value) =>
                         setSheetState(() => selectedRoutine = value.first),
                   ),
-                  const SizedBox(height: 12),
-                  if (allowConflicts)
+                  if (allowConflicts) ...[
+                    const SizedBox(height: AppSpacing.md),
                     Text(
-                      'Conflict override enabled. The product will still be added if warnings appear.',
+                      'Conflict override enabled. SkinSync will still add this product if warnings appear.',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: AppColors.warning,
                       ),
                     ),
-                  const SizedBox(height: 16),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton(
-                      onPressed: () async {
-                        final result = await appState.addProductToRoutine(
-                          productId: item.productId,
-                          routineType: selectedRoutine,
-                          allowConflicts: allowConflicts,
+                  ],
+                  const SizedBox(height: AppSpacing.lg),
+                  AppButton(
+                    label: 'Add product',
+                    onPressed: () async {
+                      final result = await appState.addProductToRoutine(
+                        productId: item.productId,
+                        routineType: selectedRoutine,
+                        allowConflicts: allowConflicts,
+                      );
+                      if (!context.mounted) {
+                        return;
+                      }
+                      if (result.requiresConfirmation &&
+                          result.warnings.isNotEmpty &&
+                          !allowConflicts) {
+                        final proceed = await showModalBottomSheet<bool>(
+                          context: context,
+                          builder: (context) =>
+                              _ConflictWarningSheet(warnings: result.warnings),
                         );
-                        if (!mounted) {
+                        if (!context.mounted) {
                           return;
                         }
-                        if (result.requiresConfirmation &&
-                            result.warnings.isNotEmpty &&
-                            !allowConflicts) {
-                          final proceed = await showModalBottomSheet<bool>(
-                            context: context,
-                            backgroundColor: Colors.transparent,
-                            builder: (context) =>
-                                _ConflictWarningSheet(warnings: result.warnings),
-                          );
-                          if (proceed == true) {
-                            setSheetState(() => allowConflicts = true);
-                          }
-                          return;
+                        if (proceed == true) {
+                          setSheetState(() => allowConflicts = true);
                         }
-                        if (context.mounted) {
-                          Navigator.pop(context, result);
-                        }
-                      },
-                      child: const Text('Add product'),
-                    ),
+                        return;
+                      }
+                      if (context.mounted) {
+                        Navigator.pop(context, result);
+                      }
+                    },
                   ),
                 ],
               ),
@@ -175,84 +174,98 @@ class _ProductsPageState extends State<ProductsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.pageBackground,
-      body: SafeArea(
-        bottom: false,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
-          children: [
-            Text(
-              'Products',
-              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                fontWeight: FontWeight.w800,
-              ),
+    return AppScaffold(
+      title: 'Products',
+      subtitle:
+          'Discover AI-ranked skincare products that fit your concern, budget, and current routine.',
+      body: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.pagePadding,
+          0,
+          AppSpacing.pagePadding,
+          AppSpacing.bottomNavHeight + 64,
+        ),
+        children: [
+          AppCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SectionHeader(
+                  title: 'Refine your search',
+                  subtitle: 'Use simple filters, then let SkinSync rank the best matches.',
+                ),
+                const SizedBox(height: AppSpacing.md),
+                _Field(label: 'Category', controller: _categoryController),
+                const SizedBox(height: AppSpacing.sm),
+                _Field(label: 'Concern', controller: _concernController),
+                const SizedBox(height: AppSpacing.sm),
+                _Field(
+                  label: 'Budget max (optional)',
+                  controller: _budgetController,
+                  keyboardType: TextInputType.number,
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                AppButton(
+                  label: 'Recommend products',
+                  icon: const Icon(Icons.search_rounded),
+                  isLoading: _loading,
+                  onPressed: _submit,
+                ),
+              ],
             ),
-            const SizedBox(height: 6),
-            Text(
-              'Filter by concern and budget, then add matched products into your routine with conflict review.',
-              style: Theme.of(
-                context,
-              ).textTheme.bodySmall?.copyWith(color: AppColors.mutedText),
-            ),
-            const SizedBox(height: 18),
-            _Field(label: 'Category', controller: _categoryController),
-            const SizedBox(height: 12),
-            _Field(label: 'Concern', controller: _concernController),
-            const SizedBox(height: 12),
-            _Field(
-              label: 'Budget max (optional)',
-              controller: _budgetController,
-              keyboardType: TextInputType.number,
-            ),
-            const SizedBox(height: 16),
-            FilledButton(
-              onPressed: _loading ? null : _submit,
-              child: Text(_loading ? 'Loading...' : 'Recommend products'),
-            ),
-            const SizedBox(height: 18),
-            if (_loading && _result == null)
-              const _HintCard(
-                title: 'Finding product matches',
-                body:
-                    'SkinSync is ranking products from your backend catalog based on concern, budget, and profile fit.',
-              )
-            else if (_result == null)
-              const _HintCard(
-                title: 'Real catalog recommendations',
-                body:
-                    'Use filters to load AI-ranked products from your backend catalog. Then add them into your routine with conflict review.',
-              )
-            else if (_result!.products.isEmpty)
-              const _HintCard(
-                title: 'No products matched',
-                body:
-                    'Try a broader category, a different concern, or remove the budget limit.',
-              )
-            else
-              ..._result!.products.map(
-                (item) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: _ProductCard(
-                    item: item,
-                    onAddToRoutine: () => _openAddToRoutine(item),
-                    onAskAi: () => Navigator.pushNamed(
-                      context,
-                      AppRoutes.aiChatConversation,
-                      arguments: AiChatLaunchArgs(
-                        entryPoint: 'product_detail',
-                        referenceId: item.productId,
-                        prefillMessage:
-                            'Can you explain whether ${item.name} fits my skin and routine?',
-                      ),
+          ),
+          const SizedBox(height: AppSpacing.sectionGap),
+          SectionHeader(
+            title: 'Recommendations',
+            subtitle:
+                'Premium skincare suggestions, conflict-aware and ready to add into your routine.',
+          ),
+          const SizedBox(height: AppSpacing.md),
+          if (_loading && _result == null)
+            const _LoadingStateCard()
+          else if (_result == null)
+            EmptyStateCard(
+              icon: Icons.shopping_bag_outlined,
+              title: 'No recommendations yet',
+              description:
+                  'SkinSync will surface product matches here after your filters are applied.',
+            )
+          else if (_result!.products.isEmpty)
+            EmptyStateCard(
+              icon: Icons.search_off_rounded,
+              title: 'No products matched',
+              description:
+                  'Try a broader category, a different concern, or remove the budget limit for more options.',
+            )
+          else
+            ..._result!.products.map(
+              (item) => Padding(
+                padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                child: _ProductCard(
+                  item: item,
+                  onAddToRoutine: () => _openAddToRoutine(item),
+                  onAskAi: () => Navigator.pushNamed(
+                    context,
+                    AppRoutes.aiChatConversation,
+                    arguments: AiChatLaunchArgs(
+                      entryPoint: 'product_detail',
+                      referenceId: item.productId,
+                      prefillMessage:
+                          'Can you explain whether ${item.name} fits my skin and routine?',
                     ),
                   ),
                 ),
               ),
-          ],
-        ),
+            ),
+        ],
       ),
     );
+  }
+
+  String _blankToAny(String value) {
+    final trimmed = value.trim();
+    return trimmed.isEmpty ? 'any' : trimmed;
   }
 }
 
@@ -269,13 +282,7 @@ class _ProductCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.95),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.border.withValues(alpha: 0.24)),
-      ),
+    return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -288,53 +295,88 @@ class _ProductCard extends StatelessWidget {
                   children: [
                     Text(
                       item.name,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w800,
+                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Text('${item.brand} - ${item.category}'),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      '${_friendlyText(item.brand)} • ${_friendlyText(item.category)}',
+                      style: Theme.of(context).textTheme.labelLarge,
+                    ),
                   ],
                 ),
               ),
               _ScoreBadge(score: item.matchScore),
             ],
           ),
-          const SizedBox(height: 10),
-          Text(item.aiReason),
-          const SizedBox(height: 10),
-          Text('${item.price.toStringAsFixed(0)} ${item.currency}'),
+          const SizedBox(height: AppSpacing.md),
+          Text(
+            item.aiReason.trim().isEmpty ? 'Not provided yet' : item.aiReason,
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Text(
+            '${item.price.toStringAsFixed(0)} ${item.currency}',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
           if (item.warnings.isNotEmpty) ...[
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpacing.md),
             ...item.warnings.map(
               (warning) => Padding(
-                padding: const EdgeInsets.only(bottom: 6),
+                padding: const EdgeInsets.only(bottom: AppSpacing.xs),
                 child: Text(
                   warning,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodySmall?.copyWith(color: AppColors.warning),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppColors.warning,
+                  ),
                 ),
               ),
             ),
           ],
-          const SizedBox(height: 14),
+          const SizedBox(height: AppSpacing.lg),
           Row(
             children: [
               Expanded(
-                child: OutlinedButton(
+                child: AppButton(
+                  label: 'Ask AI',
+                  variant: AppButtonVariant.secondary,
                   onPressed: onAskAi,
-                  child: const Text('Ask AI'),
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: AppSpacing.sm),
               Expanded(
-                child: FilledButton(
+                child: AppButton(
+                  label: 'Add to routine',
                   onPressed: onAddToRoutine,
-                  child: const Text('Add to Routine'),
                 ),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LoadingStateCard extends StatelessWidget {
+  const _LoadingStateCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      child: Column(
+        children: [
+          const CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryDark),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Text(
+            'Finding premium matches for your skin profile.',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodyMedium,
           ),
         ],
       ),
@@ -352,35 +394,33 @@ class _ConflictWarningSheet extends StatelessWidget {
     return _ActionSheet(
       title: 'Potential conflicts detected',
       child: Column(
-        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
           ...warnings.map(
             (item) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.only(bottom: AppSpacing.md),
               child: Text(
                 '${item.productAName} + ${item.productBName}\n${item.message}\nAdvice: ${item.recommendation}',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: AppColors.foreground,
-                  height: 1.4,
-                ),
+                style: Theme.of(context).textTheme.bodyMedium,
               ),
             ),
           ),
-          const SizedBox(height: 12),
           Row(
             children: [
               Expanded(
-                child: OutlinedButton(
+                child: AppButton(
+                  label: 'Back to edit',
+                  variant: AppButtonVariant.secondary,
                   onPressed: () => Navigator.pop(context, false),
-                  child: const Text('Back to edit'),
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: AppSpacing.sm),
               Expanded(
-                child: FilledButton(
+                child: AppButton(
+                  label: 'Proceed anyway',
+                  variant: AppButtonVariant.danger,
                   onPressed: () => Navigator.pop(context, true),
-                  child: const Text('Proceed anyway'),
                 ),
               ),
             ],
@@ -399,25 +439,30 @@ class _ActionSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
-      child: SafeArea(
-        top: false,
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Container(
+              width: 44,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.border,
+                borderRadius: BorderRadius.circular(999),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.lg),
             Text(
               title,
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: AppSpacing.md),
             child,
           ],
         ),
@@ -434,12 +479,17 @@ class _ScoreBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: AppColors.secondary,
         borderRadius: BorderRadius.circular(999),
       ),
-      child: Text('$score% match'),
+      child: Text(
+        '$score% match',
+        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+          color: AppColors.primaryDark,
+        ),
+      ),
     );
   }
 }
@@ -460,43 +510,12 @@ class _Field extends StatelessWidget {
     return TextField(
       controller: controller,
       keyboardType: keyboardType,
-      decoration: InputDecoration(
-        labelText: label,
-        filled: true,
-        fillColor: Colors.white,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
-      ),
+      decoration: InputDecoration(labelText: label),
     );
   }
 }
 
-class _HintCard extends StatelessWidget {
-  const _HintCard({required this.title, required this.body});
-
-  final String title;
-  final String body;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.95),
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 8),
-          Text(body),
-        ],
-      ),
-    );
-  }
+String _friendlyText(String? value) {
+  final trimmed = value?.trim() ?? '';
+  return trimmed.isEmpty ? 'Not provided yet' : trimmed;
 }

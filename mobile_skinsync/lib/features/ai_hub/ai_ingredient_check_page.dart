@@ -98,6 +98,9 @@ class _AiIngredientCheckPageState extends State<AiIngredientCheckPage> {
         backgroundColor: Colors.transparent,
         builder: (context) => _IngredientConflictSheet(warnings: result.warnings),
       );
+      if (!mounted) {
+        return;
+      }
       if (proceed == true) {
         final confirmed = await context.read<AppState>().addProductToRoutine(
           productId: product.productId,

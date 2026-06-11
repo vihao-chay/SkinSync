@@ -109,7 +109,7 @@ class _AiChatPageState extends State<AiChatPage> {
                     },
                   );
                 },
-                separatorBuilder: (_, __) => const SizedBox(height: 12),
+                separatorBuilder: (_, _) => const SizedBox(height: 12),
                 itemCount: conversations.length,
               );
             },

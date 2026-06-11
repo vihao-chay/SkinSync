@@ -178,11 +178,15 @@ class _AiReportsPageState extends State<AiReportsPage> {
 }
 
 class _ReportCard extends StatelessWidget {
-  const _ReportCard({required this.title, required this.body, this.extra});
+  const _ReportCard({
+    required this.title,
+    required this.body,
+    this.extra = const SizedBox.shrink(),
+  });
 
   final String title;
   final String body;
-  final Widget? extra;
+  final Widget extra;
 
   @override
   Widget build(BuildContext context) {
@@ -203,7 +207,7 @@ class _ReportCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(body),
-          if (extra != null) extra!,
+          extra,
         ],
       ),
     );

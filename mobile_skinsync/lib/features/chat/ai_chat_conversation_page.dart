@@ -261,7 +261,7 @@ class _AiChatConversationPageState extends State<AiChatConversationPage> {
                             onPressed: () => _handleAction(action),
                           );
                         },
-                        separatorBuilder: (_, __) => const SizedBox(width: 8),
+                        separatorBuilder: (_, _) => const SizedBox(width: 8),
                         itemCount: _quickActions.length,
                       ),
                     ),
