@@ -16,6 +16,7 @@ import '../../core/widgets/app_card.dart';
 import '../../core/widgets/app_scaffold.dart';
 import '../../core/widgets/empty_state_card.dart';
 import '../../core/widgets/section_header.dart';
+import '../../core/widgets/skin_sync_ai_button.dart';
 import 'skin_progress_controller.dart';
 import 'skin_progress_models.dart';
 import 'skin_progress_repository.dart';
@@ -205,7 +206,7 @@ class _ProgressContent extends StatelessWidget {
           AppSpacing.pagePadding,
           0,
           AppSpacing.pagePadding,
-          AppSpacing.bottomNavHeight + 64,
+          AppSpacing.pageBottomPaddingWithActions,
         ),
         children: [
           _PeriodSelector(
@@ -234,7 +235,11 @@ class _ProgressContent extends StatelessWidget {
               onCta: onPickImage,
             )
           else ...[
-            _SummarySection(dashboard: dashboard),
+            _SummarySection(
+              dashboard: dashboard,
+              tracking: appState.trackingToday,
+              todayLog: appState.todayLog,
+            ),
             const SizedBox(height: AppSpacing.sectionGap),
             _ConditionSection(scores: dashboard.conditionScores),
             const SizedBox(height: AppSpacing.sectionGap),
@@ -501,9 +506,15 @@ class _PeriodChip extends StatelessWidget {
 }
 
 class _SummarySection extends StatelessWidget {
-  const _SummarySection({required this.dashboard});
+  const _SummarySection({
+    required this.dashboard,
+    required this.tracking,
+    required this.todayLog,
+  });
 
   final SkinProgressDashboard dashboard;
+  final RoutineTrackingToday? tracking;
+  final DailyLog? todayLog;
 
   @override
   Widget build(BuildContext context) {
@@ -559,6 +570,28 @@ class _SummarySection extends StatelessWidget {
                 child: _MetricCell(
                   label: 'Oiliness',
                   value: _friendlyValue(dashboard.summary.oiliness),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            children: [
+              Expanded(
+                child: _MetricCell(
+                  label: 'Adherence today',
+                  value: tracking == null || tracking!.totalSteps == 0
+                      ? 'Not provided yet'
+                      : '${tracking!.completedSteps}/${tracking!.totalSteps}',
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: _MetricCell(
+                  label: 'Diary today',
+                  value: todayLog?.hasDiaryDetails == true
+                      ? _diarySummary(todayLog)
+                      : 'Not provided yet',
                 ),
               ),
             ],
@@ -1004,7 +1037,7 @@ class _ContextActions extends StatelessWidget {
             children: [
               Expanded(
                 child: AppButton(
-                  label: 'Check-in',
+                  label: 'Today log',
                   variant: AppButtonVariant.secondary,
                   onPressed: onOpenCheckup,
                 ),
@@ -1017,15 +1050,15 @@ class _ContextActions extends StatelessWidget {
                   onPressed: onOpenScan,
                 ),
               ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: AppButton(
-                  label: 'Ask AI',
-                  variant: AppButtonVariant.ai,
-                  onPressed: onOpenChat,
-                ),
-              ),
             ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          SkinSyncAiButton(
+            mode: SkinSyncAiButtonMode.compact,
+            title: 'Ask AI',
+            description: '',
+            label: 'Ask SkinSync AI',
+            onPressed: onOpenChat,
           ),
         ],
       ),
@@ -1420,6 +1453,27 @@ String _friendlyValue(String? value) {
     return 'Not provided yet';
   }
   return _capitalize(trimmed);
+}
+
+String _diarySummary(DailyLog? log) {
+  if (log == null) {
+    return 'Not provided yet';
+  }
+
+  final feeling = log.skinFeeling?.trim();
+  if (feeling != null && feeling.isNotEmpty && feeling.toLowerCase() != 'normal') {
+    return _capitalize(feeling);
+  }
+
+  if (log.rednessLevel != null) {
+    return 'Redness ${log.rednessLevel}';
+  }
+
+  if (log.acneLevel != null) {
+    return 'Acne ${log.acneLevel}';
+  }
+
+  return 'Updated';
 }
 
 String _changeLabel(int change) {

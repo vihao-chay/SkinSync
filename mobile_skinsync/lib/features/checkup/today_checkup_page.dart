@@ -9,6 +9,9 @@ import '../../core/models/app_models.dart';
 import '../../core/routes/app_routes.dart';
 import '../../core/state/app_state.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_spacing.dart';
+import '../../core/widgets/app_button.dart';
+import '../../core/widgets/app_card.dart';
 import '../../core/widgets/glass_header.dart';
 
 class TodayCheckupPage extends StatefulWidget {
@@ -21,15 +24,13 @@ class TodayCheckupPage extends StatefulWidget {
 class _TodayCheckupPageState extends State<TodayCheckupPage> {
   final _notesController = TextEditingController();
   final _acneController = TextEditingController();
+  final _drynessController = TextEditingController();
+  final _rednessController = TextEditingController();
   final _hydrationController = TextEditingController();
   final ImagePicker _picker = ImagePicker();
-  String _skinFeeling = 'normal';
-  bool _morning = true;
-  File? _selectedImage;
 
-  void selectSkinFeeling(String value) {
-    setState(() => _skinFeeling = value);
-  }
+  String _skinFeeling = 'normal';
+  File? _selectedImage;
 
   @override
   void initState() {
@@ -38,14 +39,7 @@ class _TodayCheckupPageState extends State<TodayCheckupPage> {
       if (!mounted) {
         return;
       }
-      final log = context.read<AppState>().todayLog;
-      _notesController.text = log?.notes ?? '';
-      _acneController.text = (log?.acneLevel ?? '').toString();
-      _hydrationController.text = (log?.hydrationLevel ?? '').toString();
-      _skinFeeling = (log?.skinFeeling ?? 'normal').trim().isEmpty
-          ? 'normal'
-          : (log?.skinFeeling ?? 'normal');
-      setState(() {});
+      _seedFromTodayLog(context.read<AppState>().todayLog);
     });
   }
 
@@ -53,6 +47,8 @@ class _TodayCheckupPageState extends State<TodayCheckupPage> {
   void dispose() {
     _notesController.dispose();
     _acneController.dispose();
+    _drynessController.dispose();
+    _rednessController.dispose();
     _hydrationController.dispose();
     super.dispose();
   }
@@ -63,140 +59,143 @@ class _TodayCheckupPageState extends State<TodayCheckupPage> {
     final regimen = appState.regimen;
     final tracking = appState.trackingToday;
     final todayLog = appState.todayLog;
-    final steps = _morning
-        ? regimen?.morning ?? const <RegimenStep>[]
-        : regimen?.evening ?? const <RegimenStep>[];
     final completedIds = tracking?.completedStepIds.toSet() ?? <String>{};
 
     return Scaffold(
       backgroundColor: AppColors.pageBackground,
       appBar: const GlassHeader(
         currentRoute: '/today-checkup',
-        title: 'Today Check up',
+        title: 'Today Check-up',
       ),
       body: SafeArea(
         top: false,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.pagePadding,
+            12,
+            AppSpacing.pagePadding,
+            AppSpacing.pageBottomPaddingWithActions,
+          ),
           children: [
-            _SegmentedTab(
-              morning: _morning,
-              onChanged: (value) => setState(() => _morning = value),
+            _TodayOverviewCard(
+              tracking: tracking,
+              todayLog: todayLog,
+              onOpenRoutine: () => Navigator.pushNamed(context, AppRoutes.routine),
             ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'Pick the products you applied today',
+            const SizedBox(height: AppSpacing.sectionGap),
+            _SectionTitle(
+              title: 'Routine today',
+              subtitle:
+                  'Confirm the steps you actually completed today. This keeps routine tracking and check-up in sync.',
+            ),
+            const SizedBox(height: AppSpacing.md),
+            _RoutineBlock(
+              title: 'Morning routine',
+              icon: Icons.wb_sunny_outlined,
+              completed: tracking?.morningCompleted ?? todayLog?.morningCompleted ?? false,
+              steps: regimen?.morning ?? const <RegimenStep>[],
+              completedIds: completedIds,
+              onMarkAll: () => _markAll(
+                appState,
+                regimen?.morning ?? const <RegimenStep>[],
+                completedIds,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            _RoutineBlock(
+              title: 'Evening routine',
+              icon: Icons.bedtime_outlined,
+              completed: tracking?.eveningCompleted ?? todayLog?.eveningCompleted ?? false,
+              steps: regimen?.evening ?? const <RegimenStep>[],
+              completedIds: completedIds,
+              onMarkAll: () => _markAll(
+                appState,
+                regimen?.evening ?? const <RegimenStep>[],
+                completedIds,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sectionGap),
+            _SectionTitle(
+              title: 'Skin diary today',
+              subtitle:
+                  'Log today\'s skin response in a quick 30 to 60 second check-in.',
+            ),
+            const SizedBox(height: AppSpacing.md),
+            AppCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'How does your skin feel today?',
                     style: Theme.of(
                       context,
-                    ).textTheme.bodySmall?.copyWith(color: AppColors.mutedText),
+                    ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
                   ),
-                ),
-                TextButton(
-                  onPressed: steps.isEmpty
-                      ? null
-                      : () => _markAll(appState, steps, completedIds),
-                  child: const Text('Mark all'),
-                ),
-                IconButton(
-                  onPressed: () =>
-                      Navigator.pushNamed(context, AppRoutes.routine),
-                  icon: const Icon(Icons.add_rounded),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            if (steps.isEmpty)
-              const _EmptyStateCard(
-                title: 'No routine steps yet',
-                body:
-                    'Generate or edit your routine first, then come back here to log what you applied today.',
-              )
-            else
-              ...steps.map(
-                (step) => Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: _CheckupStepCard(
-                    step: step,
-                    checked: completedIds.contains(step.stepId),
-                    onToggle: () => appState.toggleRoutineStep(
-                      step.stepId,
-                      completedIds.contains(step.stepId),
-                    ),
+                  const SizedBox(height: AppSpacing.sm),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (final option in _skinFeelingOptions)
+                        _FeelingChip(
+                          label: option.label,
+                          selected: _skinFeeling == option.value,
+                          onTap: () => setState(() => _skinFeeling = option.value),
+                        ),
+                    ],
                   ),
-                ),
-              ),
-            const SizedBox(height: 16),
-            Text(
-              'Skin photo',
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(
-                  child: _PhotoCard(
-                    title: 'Main check-in',
-                    subtitle: 'Saved to diary',
-                    imageFile: _selectedImage,
-                    imageUrl: todayLog?.dailyImageUrl,
-                    onTap: _pickImage,
+                  const SizedBox(height: AppSpacing.lg),
+                  Text(
+                    'Daily symptom inputs',
+                    style: Theme.of(
+                      context,
+                    ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
                   ),
-                ),
-                const SizedBox(width: 12),
-                const Expanded(child: _SecondaryPhotoCard()),
-              ],
-            ),
-            const SizedBox(height: 18),
-            Text(
-              'How does your skin feel today?',
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children:
-                  const [
-                    'good',
-                    'normal',
-                    'dry',
-                    'oily',
-                    'irritated',
-                    'sensitive',
-                  ].map((item) {
-                    return _FeelingChip(label: item);
-                  }).toList(),
-            ),
-            const SizedBox(height: 14),
-            TextField(
-              controller: _notesController,
-              minLines: 3,
-              maxLines: 4,
-              decoration: InputDecoration(
-                labelText: 'Notes',
-                filled: true,
-                fillColor: Colors.white,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(18),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _acneController,
-                    keyboardType: TextInputType.number,
+                  const SizedBox(height: AppSpacing.sm),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _ScoreField(
+                          controller: _acneController,
+                          label: 'Acne',
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: _ScoreField(
+                          controller: _rednessController,
+                          label: 'Redness',
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _ScoreField(
+                          controller: _drynessController,
+                          label: 'Dryness',
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: _ScoreField(
+                          controller: _hydrationController,
+                          label: 'Hydration',
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  TextField(
+                    controller: _notesController,
+                    minLines: 3,
+                    maxLines: 4,
                     decoration: InputDecoration(
-                      labelText: 'Acne level',
+                      labelText: 'Notes',
+                      hintText:
+                          'Optional. Example: skin felt calm this morning, but a new serum caused mild redness.',
                       filled: true,
                       fillColor: Colors.white,
                       border: OutlineInputBorder(
@@ -204,40 +203,52 @@ class _TodayCheckupPageState extends State<TodayCheckupPage> {
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: TextField(
-                    controller: _hydrationController,
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                      labelText: 'Hydration',
-                      filled: true,
-                      fillColor: Colors.white,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(18),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
-            const SizedBox(height: 18),
-            FilledButton(
-              onPressed: appState.isBusy ? null : () => _save(appState),
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.primaryDark,
-                minimumSize: const Size.fromHeight(52),
-              ),
-              child: Text(
-                appState.isBusy ? 'Saving...' : 'Save Today Check-up',
-              ),
+            const SizedBox(height: AppSpacing.sectionGap),
+            _SectionTitle(
+              title: 'Today photo',
+              subtitle:
+                  'Optional diary photo for today only. This does not go into the progress timeline.',
+            ),
+            const SizedBox(height: AppSpacing.md),
+            _PhotoCard(
+              title: 'Diary photo',
+              subtitle: 'Saved only with today\'s check-up',
+              imageFile: _selectedImage,
+              imageUrl: todayLog?.dailyImageUrl,
+              onTap: _pickImage,
+            ),
+            const SizedBox(height: AppSpacing.sectionGap),
+            AppButton(
+              label: appState.isBusy ? 'Saving...' : 'Save Today Check-up',
+              icon: const Icon(Icons.favorite_border_rounded),
+              isLoading: appState.isBusy,
+              onPressed: () => _save(appState),
             ),
           ],
         ),
       ),
     );
   }
+
+  void _seedFromTodayLog(DailyLog? log) {
+    _notesController.text = log?.notes ?? '';
+    _acneController.text = _scoreText(log?.acneLevel);
+    _drynessController.text = _scoreText(log?.drynessLevel);
+    _rednessController.text = _scoreText(log?.rednessLevel);
+    _hydrationController.text = _scoreText(log?.hydrationLevel);
+
+    final feeling = (log?.skinFeeling ?? 'normal').trim().toLowerCase();
+    _skinFeeling =
+        _skinFeelingOptions.any((option) => option.value == feeling)
+            ? feeling
+            : 'normal';
+    setState(() {});
+  }
+
+  String _scoreText(int? value) => value == null ? '' : value.toString();
 
   Future<void> _pickImage() async {
     final picked = await _picker.pickImage(
@@ -266,46 +277,81 @@ class _TodayCheckupPageState extends State<TodayCheckupPage> {
     await appState.saveDailyLog(
       skinFeeling: _skinFeeling,
       notes: _notesController.text.trim(),
-      acneLevel: int.tryParse(_acneController.text.trim()) ?? 0,
-      hydrationLevel: int.tryParse(_hydrationController.text.trim()) ?? 0,
+      acneLevel: int.tryParse(_acneController.text.trim()),
+      drynessLevel: int.tryParse(_drynessController.text.trim()),
+      rednessLevel: int.tryParse(_rednessController.text.trim()),
+      hydrationLevel: int.tryParse(_hydrationController.text.trim()),
       imageFile: _selectedImage,
     );
     if (!mounted) {
       return;
     }
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Today Check-up saved successfully.')),
+    );
     Navigator.of(context).maybePop();
   }
 }
 
-class _SegmentedTab extends StatelessWidget {
-  const _SegmentedTab({required this.morning, required this.onChanged});
+class _TodayOverviewCard extends StatelessWidget {
+  const _TodayOverviewCard({
+    required this.tracking,
+    required this.todayLog,
+    required this.onOpenRoutine,
+  });
 
-  final bool morning;
-  final ValueChanged<bool> onChanged;
+  final RoutineTrackingToday? tracking;
+  final DailyLog? todayLog;
+  final VoidCallback onOpenRoutine;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.95),
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Row(
+    final completed = tracking?.completedSteps ?? 0;
+    final total = tracking?.totalSteps ?? 0;
+    final diaryReady = todayLog?.hasDiaryDetails ?? false;
+
+    return AppCard(
+      backgroundColor: AppColors.surfaceStrong,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: _SegmentItem(
-              label: 'Morning',
-              selected: morning,
-              onTap: () => onChanged(true),
-            ),
+          Text(
+            'Today in one flow',
+            style: Theme.of(
+              context,
+            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
           ),
-          Expanded(
-            child: _SegmentItem(
-              label: 'Evening',
-              selected: !morning,
-              onTap: () => onChanged(false),
-            ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            'Confirm what you applied, then add a quick diary update so Dashboard and Progress stay in sync.',
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: AppColors.mutedText),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          Row(
+            children: [
+              Expanded(
+                child: _StatusTile(
+                  label: 'Routine today',
+                  value: total == 0 ? 'No steps yet' : '$completed/$total done',
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: _StatusTile(
+                  label: 'Diary today',
+                  value: diaryReady ? 'Details added' : 'Not updated yet',
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          AppButton(
+            label: 'Open routine',
+            variant: AppButtonVariant.secondary,
+            icon: const Icon(Icons.spa_outlined),
+            onPressed: onOpenRoutine,
           ),
         ],
       ),
@@ -313,36 +359,122 @@ class _SegmentedTab extends StatelessWidget {
   }
 }
 
-class _SegmentItem extends StatelessWidget {
-  const _SegmentItem({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
+class _StatusTile extends StatelessWidget {
+  const _StatusTile({required this.label, required this.value});
 
   final String label;
-  final bool selected;
-  final VoidCallback onTap;
+  final String value;
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(14),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(
-          color: selected ? AppColors.secondary : Colors.transparent,
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: Center(
-          child: Text(
-            label,
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.78),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: Theme.of(context).textTheme.labelMedium),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            value,
             style: Theme.of(
               context,
-            ).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w700),
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
           ),
-        ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RoutineBlock extends StatelessWidget {
+  const _RoutineBlock({
+    required this.title,
+    required this.icon,
+    required this.completed,
+    required this.steps,
+    required this.completedIds,
+    required this.onMarkAll,
+  });
+
+  final String title;
+  final IconData icon;
+  final bool completed;
+  final List<RegimenStep> steps;
+  final Set<String> completedIds;
+  final VoidCallback onMarkAll;
+
+  @override
+  Widget build(BuildContext context) {
+    final appState = context.read<AppState>();
+
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: AppColors.secondary,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                alignment: Alignment.center,
+                child: Icon(icon, color: AppColors.primaryDark),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    Text(
+                      completed ? 'Completed' : 'Still in progress',
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodySmall?.copyWith(color: AppColors.mutedText),
+                    ),
+                  ],
+                ),
+              ),
+              TextButton(
+                onPressed: steps.isEmpty ? null : onMarkAll,
+                child: const Text('Mark all'),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          if (steps.isEmpty)
+            const _EmptyStateCard(
+              title: 'No routine steps yet',
+              body:
+                  'Generate or edit your routine first, then come back here to track what you actually used today.',
+            )
+          else
+            ...steps.map(
+              (step) => Padding(
+                padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                child: _CheckupStepCard(
+                  step: step,
+                  checked: completedIds.contains(step.stepId),
+                  onToggle: () => appState.toggleRoutineStep(
+                    step.stepId,
+                    completedIds.contains(step.stepId),
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -364,7 +496,7 @@ class _CheckupStepCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.96),
+        color: AppColors.surfaceMuted,
         borderRadius: BorderRadius.circular(18),
       ),
       child: Row(
@@ -374,7 +506,7 @@ class _CheckupStepCard extends StatelessWidget {
             height: 38,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: AppColors.secondary,
+              color: Colors.white,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
@@ -397,7 +529,7 @@ class _CheckupStepCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '${step.category} - ${step.brand}',
+                  _productLine(step),
                   style: Theme.of(
                     context,
                   ).textTheme.bodySmall?.copyWith(color: AppColors.mutedText),
@@ -413,6 +545,15 @@ class _CheckupStepCard extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  String _productLine(RegimenStep step) {
+    final items = [
+      step.category.trim(),
+      step.brand.trim(),
+    ].where((item) => item.isNotEmpty);
+    final value = items.join(' • ');
+    return value.isEmpty ? 'Not provided yet' : value;
   }
 }
 
@@ -443,7 +584,7 @@ class _PhotoCard extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(20),
       child: Container(
-        height: 150,
+        height: 180,
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: Colors.white.withValues(alpha: 0.96),
@@ -487,67 +628,77 @@ class _PhotoCard extends StatelessWidget {
   }
 }
 
-class _SecondaryPhotoCard extends StatelessWidget {
-  const _SecondaryPhotoCard();
+class _SectionTitle extends StatelessWidget {
+  const _SectionTitle({required this.title, required this.subtitle});
+
+  final String title;
+  final String subtitle;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 150,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.96),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Next angle',
-            style: Theme.of(
-              context,
-            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Stored later',
-            style: Theme.of(
-              context,
-            ).textTheme.bodySmall?.copyWith(color: AppColors.mutedText),
-          ),
-          const SizedBox(height: 10),
-          Expanded(
-            child: Container(
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: AppColors.secondary,
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: const Icon(Icons.flip_camera_ios_outlined),
-            ),
-          ),
-        ],
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: Theme.of(
+            context,
+          ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        Text(
+          subtitle,
+          style: Theme.of(
+            context,
+          ).textTheme.bodyMedium?.copyWith(color: AppColors.mutedText),
+        ),
+      ],
+    );
+  }
+}
+
+class _ScoreField extends StatelessWidget {
+  const _ScoreField({
+    required this.controller,
+    required this.label,
+  });
+
+  final TextEditingController controller;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: controller,
+      keyboardType: TextInputType.number,
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: '0-10',
+        filled: true,
+        fillColor: Colors.white,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(18),
+        ),
       ),
     );
   }
 }
 
 class _FeelingChip extends StatelessWidget {
-  const _FeelingChip({required this.label});
+  const _FeelingChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
 
   final String label;
+  final bool selected;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final state = context.findAncestorStateOfType<_TodayCheckupPageState>();
-    final selected = state?._skinFeeling.toLowerCase() == label.toLowerCase();
     return InkWell(
-      onTap: () {
-        if (state == null) {
-          return;
-        }
-        state.selectSkinFeeling(label);
-      },
+      onTap: onTap,
       borderRadius: BorderRadius.circular(999),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -580,7 +731,7 @@ class _EmptyStateCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.96),
+        color: AppColors.surfaceMuted,
         borderRadius: BorderRadius.circular(18),
       ),
       child: Column(
@@ -605,3 +756,19 @@ class _EmptyStateCard extends StatelessWidget {
     );
   }
 }
+
+class _SkinFeelingOption {
+  const _SkinFeelingOption(this.label, this.value);
+
+  final String label;
+  final String value;
+}
+
+const _skinFeelingOptions = [
+  _SkinFeelingOption('Good', 'good'),
+  _SkinFeelingOption('Normal', 'normal'),
+  _SkinFeelingOption('Dry', 'dry'),
+  _SkinFeelingOption('Oily', 'oily'),
+  _SkinFeelingOption('Sensitive', 'sensitive'),
+  _SkinFeelingOption('Irritated', 'irritated'),
+];

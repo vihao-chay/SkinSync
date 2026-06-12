@@ -104,7 +104,7 @@ class AiHubPage extends StatelessWidget {
           AppSpacing.pagePadding,
           0,
           AppSpacing.pagePadding,
-          AppSpacing.bottomNavHeight + 64,
+          AppSpacing.pageBottomPaddingWithActions,
         ),
         children: [
           _HeroCard(hasAnalysis: hasAnalysis, hasRoutine: hasRoutine),

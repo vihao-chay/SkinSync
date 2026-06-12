@@ -401,6 +401,8 @@ class ProgressOverview {
 class DailyLog {
   const DailyLog({
     required this.date,
+    this.morningCompleted = false,
+    this.eveningCompleted = false,
     this.skinFeeling,
     this.notes,
     this.acneLevel,
@@ -412,6 +414,8 @@ class DailyLog {
   });
 
   final String date;
+  final bool morningCompleted;
+  final bool eveningCompleted;
   final String? skinFeeling;
   final String? notes;
   final int? acneLevel;
@@ -421,8 +425,21 @@ class DailyLog {
   final int? hydrationLevel;
   final String? dailyImageUrl;
 
+  bool get hasDiaryDetails {
+    return (notes?.trim().isNotEmpty ?? false) ||
+        acneLevel != null ||
+        drynessLevel != null ||
+        rednessLevel != null ||
+        irritationLevel != null ||
+        hydrationLevel != null ||
+        (dailyImageUrl?.trim().isNotEmpty ?? false) ||
+        _hasMeaningfulSkinFeeling(skinFeeling);
+  }
+
   factory DailyLog.fromJson(Map<String, dynamic> json) => DailyLog(
     date: json['date'].toString(),
+    morningCompleted: (json['morningCompleted'] ?? false) as bool,
+    eveningCompleted: (json['eveningCompleted'] ?? false) as bool,
     skinFeeling: json['skinFeeling'] as String?,
     notes: json['notes'] as String?,
     acneLevel: json['acneLevel'] as int?,
@@ -432,6 +449,15 @@ class DailyLog {
     hydrationLevel: json['hydrationLevel'] as int?,
     dailyImageUrl: json['dailyImageUrl'] as String?,
   );
+}
+
+bool _hasMeaningfulSkinFeeling(String? value) {
+  final normalized = value?.trim().toLowerCase() ?? '';
+  if (normalized.isEmpty) {
+    return false;
+  }
+
+  return normalized != 'normal';
 }
 
 class ReminderItem {

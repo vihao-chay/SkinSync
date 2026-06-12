@@ -39,9 +39,7 @@ class AppState extends ChangeNotifier {
 
   bool get isAuthenticated => session != null;
   bool get shouldShowOnboarding =>
-      isAuthenticated &&
-      (hasPendingOnboarding ||
-          (profile != null && profile!.isOnboardingCompleted != true));
+      isAuthenticated && (hasPendingOnboarding || !_hasCompletedOnboarding(profile));
   AppUser? get user => session?.user;
   ApiClient get apiClient => _apiClient;
   String get onboardingDisplayNameSeed {
@@ -75,18 +73,17 @@ class AppState extends ChangeNotifier {
     notifyListeners();
 
     try {
-      session = await _sessionStore.read();
-      _apiClient.attachSession(session);
-      if (session != null) {
-        hasPendingOnboarding = await _sessionStore.isOnboardingPendingFor(
-          session!.user.id,
-        );
-        await _loadProfile();
-        if (profile?.isOnboardingCompleted == true) {
-          await _clearOnboardingPendingForCurrentUser();
-          await refreshHome();
-        }
-      }
+      await _sessionStore.clear();
+      session = null;
+      profile = null;
+      latestAnalysis = null;
+      regimen = null;
+      trackingToday = null;
+      progress = null;
+      todayLog = null;
+      reminders = const [];
+      hasPendingOnboarding = false;
+      _apiClient.attachSession(null);
     } finally {
       isBootstrapping = false;
       notifyListeners();
@@ -215,7 +212,7 @@ class AppState extends ChangeNotifier {
         _loadReminders(),
         _loadTodayLog(),
       ]);
-      if (profile?.isOnboardingCompleted == true) {
+      if (_hasCompletedOnboarding(profile)) {
         await _clearOnboardingPendingForCurrentUser();
       }
     }, showBusy: false);
@@ -532,26 +529,44 @@ class AppState extends ChangeNotifier {
   Future<void> saveDailyLog({
     required String skinFeeling,
     required String notes,
-    required int acneLevel,
-    required int hydrationLevel,
+    int? acneLevel,
+    int? drynessLevel,
+    int? rednessLevel,
+    int? hydrationLevel,
     File? imageFile,
   }) async {
     await _runBusy(() async {
+      final normalizedFeeling = skinFeeling.trim().toLowerCase();
+      final fields = <String, String>{
+        'skinFeeling': normalizedFeeling,
+        'notes': notes,
+        'morningCompleted':
+            trackingToday?.morningCompleted.toString() ?? 'false',
+        'eveningCompleted':
+            trackingToday?.eveningCompleted.toString() ?? 'false',
+        'isIrritated':
+            (normalizedFeeling == 'irritated' || normalizedFeeling == 'sensitive')
+                .toString(),
+      };
+      if (acneLevel != null) {
+        fields['acneLevel'] = acneLevel.toString();
+      }
+      if (drynessLevel != null) {
+        fields['drynessLevel'] = drynessLevel.toString();
+      }
+      if (rednessLevel != null) {
+        fields['rednessLevel'] = rednessLevel.toString();
+      }
+      if (hydrationLevel != null) {
+        fields['hydrationLevel'] = hydrationLevel.toString();
+      }
+
       await _apiClient.multipart(
         '/api/diary/check-in',
-        fields: {
-          'skinFeeling': skinFeeling,
-          'notes': notes,
-          'morningCompleted':
-              trackingToday?.morningCompleted.toString() ?? 'false',
-          'eveningCompleted':
-              trackingToday?.eveningCompleted.toString() ?? 'false',
-          'isIrritated': 'false',
-          'acneLevel': acneLevel.toString(),
-          'hydrationLevel': hydrationLevel.toString(),
-        },
+        fields: fields,
         file: imageFile,
       );
+      await _loadTracking();
       await _loadTodayLog();
       await _loadProgress();
     });
@@ -1004,6 +1019,25 @@ class AppState extends ChangeNotifier {
       return 'advanced';
     }
     return 'balanced';
+  }
+
+  bool _hasCompletedOnboarding(SkinProfile? value) {
+    if (value == null) {
+      return false;
+    }
+
+    if (value.isOnboardingCompleted) {
+      return true;
+    }
+
+    return (value.displayName?.trim().isNotEmpty ?? false) ||
+        (value.skinType?.trim().isNotEmpty ?? false) ||
+        value.monthlyBudget != null ||
+        (value.budgetLabel?.trim().isNotEmpty ?? false) ||
+        (value.currentRoutineLevel?.trim().isNotEmpty ?? false) ||
+        value.concerns.any((item) => item.trim().isNotEmpty) ||
+        value.goals.any((item) => item.trim().isNotEmpty) ||
+        value.skinGoals.any((item) => item.trim().isNotEmpty);
   }
 
   void _setError(String message, {int? statusCode}) {

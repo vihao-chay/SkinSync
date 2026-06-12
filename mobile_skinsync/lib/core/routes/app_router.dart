@@ -5,6 +5,7 @@ import '../../features/admin/admin_dashboard_page.dart';
 import '../../features/admin/admin_products_page.dart';
 import '../../features/admin/admin_profile_page.dart';
 import '../../features/admin/admin_users_page.dart';
+import '../../features/ai_hub/ai_hub_page.dart';
 import '../../features/ai_hub/ai_conflict_check_page.dart';
 import '../../features/ai_hub/ai_ingredient_check_page.dart';
 import '../../features/ai_hub/ai_reports_page.dart';
@@ -15,7 +16,6 @@ import '../../features/checkup/today_checkup_page.dart';
 import '../../features/landing/landing_page.dart';
 import '../../features/onboarding/onboarding_page.dart';
 import '../../features/products/products_page.dart';
-import '../../features/profile/profile_page.dart';
 import '../../features/quiz/quiz_page.dart';
 import '../../features/splash/splash_page.dart';
 import '../../features/upload/upload_page.dart';
@@ -77,15 +77,15 @@ class AppRouter {
       case AppRoutes.aiReports:
         page = const AiReportsPage();
         break;
+      case AppRoutes.aiHub:
+        page = const AiHubPage();
+        break;
       case AppRoutes.dashboard:
       case AppRoutes.routine:
-      case AppRoutes.aiHub:
       case AppRoutes.products:
       case AppRoutes.progress:
-        page = MainShell(initialRoute: name);
-        break;
       case AppRoutes.profile:
-        page = const ProfilePage();
+        page = MainShell(initialRoute: name);
         break;
       case AppRoutes.analysis:
         page = const SkinAnalysisPage();

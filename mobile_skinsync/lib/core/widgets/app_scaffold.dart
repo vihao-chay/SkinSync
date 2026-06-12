@@ -11,6 +11,7 @@ class AppScaffold extends StatelessWidget {
     this.subtitle,
     this.headerTrailing,
     this.onRefresh,
+    this.headerBottomSpacing = AppSpacing.sectionGap,
   });
 
   final String title;
@@ -18,6 +19,7 @@ class AppScaffold extends StatelessWidget {
   final String? subtitle;
   final Widget? headerTrailing;
   final Future<void> Function()? onRefresh;
+  final double headerBottomSpacing;
 
   @override
   Widget build(BuildContext context) {
@@ -40,9 +42,9 @@ class AppScaffold extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.fromLTRB(
                 AppSpacing.pagePadding,
-                AppSpacing.lg,
+                18,
                 AppSpacing.pagePadding,
-                AppSpacing.xl,
+                18,
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -53,6 +55,8 @@ class AppScaffold extends StatelessWidget {
                       children: [
                         Text(
                           title,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                           style: theme.textTheme.displaySmall?.copyWith(
                             fontWeight: FontWeight.w700,
                             color: AppColors.heading,
@@ -62,6 +66,8 @@ class AppScaffold extends StatelessWidget {
                           const SizedBox(height: AppSpacing.sm),
                           Text(
                             subtitle!,
+                            maxLines: 3,
+                            overflow: TextOverflow.ellipsis,
                             style: theme.textTheme.bodyMedium?.copyWith(
                               color: AppColors.mutedText,
                             ),

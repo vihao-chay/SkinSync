@@ -11,6 +11,7 @@ import '../../core/widgets/app_card.dart';
 import '../../core/widgets/app_scaffold.dart';
 import '../../core/widgets/empty_state_card.dart';
 import '../../core/widgets/section_header.dart';
+import '../../core/widgets/skin_sync_ai_button.dart';
 
 class DashboardPage extends StatelessWidget {
   const DashboardPage({super.key});
@@ -21,6 +22,7 @@ class DashboardPage extends StatelessWidget {
     final analysis = appState.latestAnalysis;
     final regimen = appState.regimen;
     final tracking = appState.trackingToday;
+    final todayLog = appState.todayLog;
     final concerns = analysis?.issues.map((item) => item.issueType).toList() ?? [];
     final firstName = _firstName(appState.profileDisplayName);
 
@@ -30,7 +32,7 @@ class DashboardPage extends StatelessWidget {
           'Your premium skincare dashboard keeps today\'s routine, scan insights, and gentle next steps in one calm place.',
       headerTrailing: _ProfileShortcut(
         displayName: appState.profileDisplayName,
-        onTap: () => Navigator.pushNamed(context, AppRoutes.profile),
+        onTap: () => Navigator.pushReplacementNamed(context, AppRoutes.profile),
       ),
       onRefresh: appState.refreshHome,
       body: ListView(
@@ -39,14 +41,21 @@ class DashboardPage extends StatelessWidget {
           AppSpacing.pagePadding,
           0,
           AppSpacing.pagePadding,
-          AppSpacing.bottomNavHeight + 64,
+          AppSpacing.pageBottomPaddingWithActions,
         ),
         children: [
           _HeroCard(
             analysis: analysis,
             completedSteps: tracking?.completedSteps ?? 0,
             totalSteps: tracking?.totalSteps ?? 0,
+            todayLog: todayLog,
             onCheckIn: () => Navigator.pushNamed(context, AppRoutes.todayCheckup),
+          ),
+          const SizedBox(height: AppSpacing.sectionGap),
+          _TodayCard(
+            tracking: tracking,
+            todayLog: todayLog,
+            onCheckup: () => Navigator.pushNamed(context, AppRoutes.todayCheckup),
           ),
           const SizedBox(height: AppSpacing.sectionGap),
           SectionHeader(
@@ -148,11 +157,28 @@ class DashboardPage extends StatelessWidget {
                 ),
               ),
               _QuickActionChip(
+                label: 'AI tools',
+                icon: Icons.hub_outlined,
+                onTap: () => Navigator.pushNamed(context, AppRoutes.aiHub),
+              ),
+              _QuickActionChip(
                 label: 'Explore products',
                 icon: Icons.shopping_bag_outlined,
                 onTap: () => Navigator.pushNamed(context, AppRoutes.products),
               ),
             ],
+          ),
+          const SizedBox(height: AppSpacing.sectionGap),
+          SkinSyncAiButton(
+            title: 'Want help deciding the next step?',
+            description:
+                'SkinSync AI can interpret today\'s routine status, diary updates, and latest scan before you act.',
+            label: 'Ask SkinSync AI',
+            onPressed: () => Navigator.pushNamed(
+              context,
+              AppRoutes.aiChatConversation,
+              arguments: const AiChatLaunchArgs(entryPoint: 'home'),
+            ),
           ),
         ],
       ),
@@ -221,12 +247,14 @@ class _HeroCard extends StatelessWidget {
     required this.analysis,
     required this.completedSteps,
     required this.totalSteps,
+    required this.todayLog,
     required this.onCheckIn,
   });
 
   final AnalysisResult? analysis;
   final int completedSteps;
   final int totalSteps;
+  final DailyLog? todayLog;
   final VoidCallback onCheckIn;
 
   @override
@@ -268,6 +296,15 @@ class _HeroCard extends StatelessWidget {
                   value: totalSteps == 0 ? 'Not provided yet' : '$completedSteps/$totalSteps',
                 ),
               ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: _MetricTile(
+                  label: 'Diary today',
+                  value: todayLog?.hasDiaryDetails == true
+                      ? 'Updated'
+                      : 'Not updated yet',
+                ),
+              ),
             ],
           ),
           const SizedBox(height: AppSpacing.md),
@@ -288,6 +325,96 @@ class _HeroCard extends StatelessWidget {
                   label: 'Check in now',
                   icon: const Icon(Icons.favorite_border_rounded),
                   onPressed: onCheckIn,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TodayCard extends StatelessWidget {
+  const _TodayCard({
+    required this.tracking,
+    required this.todayLog,
+    required this.onCheckup,
+  });
+
+  final RoutineTrackingToday? tracking;
+  final DailyLog? todayLog;
+  final VoidCallback onCheckup;
+
+  @override
+  Widget build(BuildContext context) {
+    final completed = tracking?.completedSteps ?? 0;
+    final total = tracking?.totalSteps ?? 0;
+    final diaryStatus = todayLog?.hasDiaryDetails == true
+        ? 'Diary updated'
+        : 'Diary not updated yet';
+    final hasCompletedRoutineBlock =
+        (tracking?.morningCompleted ?? false) ||
+        (tracking?.eveningCompleted ?? false);
+
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Today',
+                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      'Your daily check-up combines routine completion and skin diary details in one quick stop.',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: AppColors.mutedText,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              AppButton(
+                label: 'Check-up now',
+                expand: false,
+                icon: const Icon(Icons.check_circle_outline_rounded),
+                onPressed: onCheckup,
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          Row(
+            children: [
+              Expanded(
+                child: _InsightCard(
+                  eyebrow: 'Routine today',
+                  value: total == 0 ? 'No steps yet' : '$completed/$total steps',
+                  description: tracking == null
+                      ? 'Today\'s tracking will appear after you start using your routine.'
+                      : hasCompletedRoutineBlock
+                      ? 'At least one routine block is fully completed today.'
+                      : 'Keep going step by step to complete today\'s routine.',
+                  icon: Icons.spa_outlined,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: _InsightCard(
+                  eyebrow: 'Diary today',
+                  value: diaryStatus,
+                  description: todayLog?.hasDiaryDetails == true
+                      ? _todayFeelingCopy(todayLog)
+                      : 'Add a quick diary update so Progress and AI reports have today\'s context.',
+                  icon: Icons.favorite_border_rounded,
                 ),
               ),
             ],
@@ -322,6 +449,8 @@ class _MetricTile extends StatelessWidget {
           const SizedBox(height: AppSpacing.xs),
           Text(
             value,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
               fontWeight: FontWeight.w700,
             ),
@@ -366,6 +495,8 @@ class _InsightCard extends StatelessWidget {
           const SizedBox(height: AppSpacing.md),
           Text(
             value,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
               fontWeight: FontWeight.w700,
             ),
@@ -373,6 +504,8 @@ class _InsightCard extends StatelessWidget {
           const SizedBox(height: AppSpacing.sm),
           Text(
             description,
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.bodySmall,
           ),
         ],
@@ -502,4 +635,19 @@ class _QuickActionChip extends StatelessWidget {
 String _friendlyText(String? value) {
   final trimmed = value?.trim() ?? '';
   return trimmed.isEmpty ? 'Not provided yet' : trimmed;
+}
+
+String _todayFeelingCopy(DailyLog? log) {
+  if (log == null) {
+    return 'Not provided yet';
+  }
+
+  final feeling = log.skinFeeling?.trim();
+  if (feeling != null && feeling.isNotEmpty && feeling.toLowerCase() != 'normal') {
+    return 'Feeling: ${_friendlyText(feeling)}';
+  }
+  if (log.notes?.trim().isNotEmpty == true) {
+    return log.notes!;
+  }
+  return 'Diary details added for today.';
 }

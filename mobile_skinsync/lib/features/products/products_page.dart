@@ -11,6 +11,7 @@ import '../../core/widgets/app_card.dart';
 import '../../core/widgets/app_scaffold.dart';
 import '../../core/widgets/empty_state_card.dart';
 import '../../core/widgets/section_header.dart';
+import '../../core/widgets/skin_sync_ai_button.dart';
 
 class ProductsPage extends StatefulWidget {
   const ProductsPage({
@@ -36,21 +37,20 @@ class _ProductsPageState extends State<ProductsPage> {
   late final TextEditingController _budgetController;
   AiProductRecommendResponse? _result;
   bool _loading = false;
+  bool _hasSubmitted = false;
 
   @override
   void initState() {
     super.initState();
     _categoryController = TextEditingController(
-      text: widget.initialCategory ?? 'serum',
+      text: widget.initialCategory ?? '',
     );
     _concernController = TextEditingController(
-      text: widget.initialConcern ?? 'acne',
+      text: widget.initialConcern ?? '',
     );
     _budgetController = TextEditingController(
       text: widget.initialBudget?.toStringAsFixed(0) ?? '',
     );
-
-    WidgetsBinding.instance.addPostFrameCallback((_) => _submit());
   }
 
   @override
@@ -62,7 +62,11 @@ class _ProductsPageState extends State<ProductsPage> {
   }
 
   Future<void> _submit() async {
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _hasSubmitted = true;
+    });
+
     try {
       final result = await context.read<AppState>().recommendProducts(
         category: _blankToAny(_categoryController.text),
@@ -184,16 +188,17 @@ class _ProductsPageState extends State<ProductsPage> {
           AppSpacing.pagePadding,
           0,
           AppSpacing.pagePadding,
-          AppSpacing.bottomNavHeight + 64,
+          AppSpacing.pageBottomPaddingWithActions,
         ),
         children: [
           AppCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                SectionHeader(
+                const SectionHeader(
                   title: 'Refine your search',
-                  subtitle: 'Use simple filters, then let SkinSync rank the best matches.',
+                  subtitle:
+                      'Use a few simple filters, then let SkinSync rank the best matches.',
                 ),
                 const SizedBox(height: AppSpacing.md),
                 _Field(label: 'Category', controller: _categoryController),
@@ -215,8 +220,20 @@ class _ProductsPageState extends State<ProductsPage> {
               ],
             ),
           ),
+          const SizedBox(height: AppSpacing.md),
+          SkinSyncAiButton(
+            title: 'Need help before you search?',
+            description:
+                'Ask SkinSync AI which product type makes the most sense for your skin goal or current routine.',
+            label: 'Ask SkinSync AI',
+            onPressed: () => Navigator.pushNamed(
+              context,
+              AppRoutes.aiChatConversation,
+              arguments: const AiChatLaunchArgs(entryPoint: 'products'),
+            ),
+          ),
           const SizedBox(height: AppSpacing.sectionGap),
-          SectionHeader(
+          const SectionHeader(
             title: 'Recommendations',
             subtitle:
                 'Premium skincare suggestions, conflict-aware and ready to add into your routine.',
@@ -224,12 +241,19 @@ class _ProductsPageState extends State<ProductsPage> {
           const SizedBox(height: AppSpacing.md),
           if (_loading && _result == null)
             const _LoadingStateCard()
-          else if (_result == null)
+          else if (!_hasSubmitted)
             EmptyStateCard(
               icon: Icons.shopping_bag_outlined,
+              title: 'Start with a quick search',
+              description:
+                  'Tell SkinSync what you need, then we will rank the best product matches here.',
+            )
+          else if (_result == null)
+            EmptyStateCard(
+              icon: Icons.search_off_rounded,
               title: 'No recommendations yet',
               description:
-                  'SkinSync will surface product matches here after your filters are applied.',
+                  'Run another search and SkinSync will surface new product matches here.',
             )
           else if (_result!.products.isEmpty)
             EmptyStateCard(
@@ -295,6 +319,8 @@ class _ProductCard extends StatelessWidget {
                   children: [
                     Text(
                       item.name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
@@ -302,17 +328,22 @@ class _ProductCard extends StatelessWidget {
                     const SizedBox(height: AppSpacing.xs),
                     Text(
                       '${_friendlyText(item.brand)} • ${_friendlyText(item.category)}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.labelLarge,
                     ),
                   ],
                 ),
               ),
+              const SizedBox(width: AppSpacing.sm),
               _ScoreBadge(score: item.matchScore),
             ],
           ),
           const SizedBox(height: AppSpacing.md),
           Text(
             item.aiReason.trim().isEmpty ? 'Not provided yet' : item.aiReason,
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.bodyMedium,
           ),
           const SizedBox(height: AppSpacing.md),
@@ -324,11 +355,13 @@ class _ProductCard extends StatelessWidget {
           ),
           if (item.warnings.isNotEmpty) ...[
             const SizedBox(height: AppSpacing.md),
-            ...item.warnings.map(
+            ...item.warnings.take(2).map(
               (warning) => Padding(
                 padding: const EdgeInsets.only(bottom: AppSpacing.xs),
                 child: Text(
                   warning,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: AppColors.warning,
                   ),

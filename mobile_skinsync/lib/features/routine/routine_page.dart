@@ -11,6 +11,7 @@ import '../../core/widgets/app_card.dart';
 import '../../core/widgets/app_scaffold.dart';
 import '../../core/widgets/empty_state_card.dart';
 import '../../core/widgets/section_header.dart';
+import '../../core/widgets/skin_sync_ai_button.dart';
 
 class RoutinePage extends StatefulWidget {
   const RoutinePage({super.key});
@@ -76,7 +77,7 @@ class _RoutinePageState extends State<RoutinePage> {
           AppSpacing.pagePadding,
           0,
           AppSpacing.pagePadding,
-          AppSpacing.bottomNavHeight + 64,
+          AppSpacing.pageBottomPaddingWithActions,
         ),
         children: [
           AppCard(
@@ -108,25 +109,33 @@ class _RoutinePageState extends State<RoutinePage> {
                         onPressed: () => _generateRoutine(appState),
                       ),
                     ),
-                    const SizedBox(width: AppSpacing.sm),
-                    Expanded(
-                      child: AppButton(
-                        label: 'Ask AI',
-                        variant: AppButtonVariant.ai,
-                        icon: const Icon(Icons.chat_bubble_outline_rounded),
-                        onPressed: () => Navigator.pushNamed(
-                          context,
-                          AppRoutes.aiChatConversation,
-                          arguments: AiChatLaunchArgs(
-                            entryPoint: 'routine',
-                            referenceId: regimen?.regimenId,
-                            prefillMessage:
-                                'Can you review my routine and tell me what to improve?',
-                          ),
-                        ),
-                      ),
-                    ),
                   ],
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                AppButton(
+                  label: 'Open Today Check-up',
+                  variant: AppButtonVariant.secondary,
+                  icon: const Icon(Icons.check_circle_outline_rounded),
+                  onPressed: () =>
+                      Navigator.pushNamed(context, AppRoutes.todayCheckup),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                SkinSyncAiButton(
+                  mode: SkinSyncAiButtonMode.inline,
+                  title: 'Optimize this routine with AI',
+                  description:
+                      'Ask SkinSync AI to review your current steps, cadence, and product fit before changing anything.',
+                  label: 'Optimize with SkinSync AI',
+                  onPressed: () => Navigator.pushNamed(
+                    context,
+                    AppRoutes.aiChatConversation,
+                    arguments: AiChatLaunchArgs(
+                      entryPoint: 'routine',
+                      referenceId: regimen?.regimenId,
+                      prefillMessage:
+                          'Can you review my routine and tell me what to improve?',
+                    ),
+                  ),
                 ),
               ],
             ),

@@ -6,6 +6,9 @@ class AppSpacing {
   static const mediumGap = 12.0;
   static const largeGap = 20.0;
   static const bottomNavHeight = 90.0;
+  static const bottomNavSafeHeight = 108.0;
+  static const pageBottomPadding = 132.0;
+  static const pageBottomPaddingWithActions = 148.0;
 
   static const xs = smallGap;
   static const sm = mediumGap;

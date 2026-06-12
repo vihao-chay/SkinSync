@@ -23,13 +23,14 @@ class ProfilePage extends StatelessWidget {
       title: 'Profile',
       subtitle:
           'Your personal skin profile, concerns, and preferences in one premium summary.',
+      onRefresh: appState.refreshProfileState,
       body: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(
           AppSpacing.pagePadding,
           0,
           AppSpacing.pagePadding,
-          AppSpacing.bottomNavHeight + 64,
+          AppSpacing.pageBottomPadding,
         ),
         children: [
           _ProfileHeaderCard(

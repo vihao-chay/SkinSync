@@ -25,12 +25,26 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   project.set_dart_entrypoint_arguments(std::move(command_line_arguments));
 
   FlutterWindow window(project);
-  Win32Window::Point origin(10, 10);
-  Win32Window::Size size(1280, 720);
-  if (!window.Create(L"mobile_skinasync", origin, size)) {
+  const int kPhoneWidth = 430;
+  const int kPhoneHeight = 932;
+  const int screen_width = GetSystemMetrics(SM_CXSCREEN);
+  const int screen_height = GetSystemMetrics(SM_CYSCREEN);
+  Win32Window::Point origin(
+      (screen_width - kPhoneWidth) / 2, (screen_height - kPhoneHeight) / 2);
+  Win32Window::Size size(kPhoneWidth, kPhoneHeight);
+  if (!window.Create(L"SkinSync", origin, size)) {
     return EXIT_FAILURE;
   }
   window.SetQuitOnClose(true);
+
+  HWND handle = window.GetHandle();
+  LONG style = GetWindowLong(handle, GWL_STYLE);
+  style &= ~WS_THICKFRAME;
+  style &= ~WS_MAXIMIZEBOX;
+  SetWindowLong(handle, GWL_STYLE, style);
+  SetWindowPos(
+      handle, nullptr, origin.x, origin.y, kPhoneWidth, kPhoneHeight,
+      SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
 
   ::MSG msg;
   while (::GetMessage(&msg, nullptr, 0, 0)) {
