@@ -5,7 +5,6 @@ using SkinSync.Helpers;
 using SkinSync.Mappers;
 using SkinSync.Models.Dtos;
 using SkinSync.Models.Dtos.AI;
-using SkinSync.Models.Dtos.Analysis;
 using SkinSync.Models.Entities;
 
 namespace SkinSync.Services.AIPlatform;
@@ -39,12 +38,11 @@ public class RoutineGenerationService : IRoutineGenerationService
         var user = await _dbContext.Users.Include(x => x.Profile).FirstOrDefaultAsync(x => x.Id == userId, cancellationToken)
             ?? throw new AiFeatureException("USER_NOT_FOUND", "User not found.", 404);
 
-        var latestAnalysis = await _dbContext.AiAnalyses
+        var latestAnalysis = await _dbContext.SkinProgressAnalyses
             .AsNoTracking()
-            .Include(x => x.AnalysisIssues)
-            .Include(x => x.Recommendations)
             .Where(x => x.UserId == userId)
-            .OrderByDescending(x => x.CreatedAt)
+            .Where(x => x.DiscardedAt == null && x.Status == "completed")
+            .OrderByDescending(x => x.CompletedAt ?? x.CreatedAt)
             .FirstOrDefaultAsync(cancellationToken);
         if (latestAnalysis is null)
         {
@@ -59,7 +57,8 @@ public class RoutineGenerationService : IRoutineGenerationService
             .ToListAsync(cancellationToken);
 
         var preference = NormalizeRoutinePreference(request.RoutinePreference, user.Profile?.RoutinePreference);
-        var scoredCandidates = ScoreProducts(user.Profile, request.BudgetRange, candidates, latestAnalysis.ToDetailDto())
+        var latestAnalysisDto = latestAnalysis.ToDto();
+        var scoredCandidates = ScoreProducts(user.Profile, request.BudgetRange, candidates, latestAnalysisDto)
             .Take(20)
             .ToList();
         if (scoredCandidates.Count == 0)
@@ -68,7 +67,7 @@ public class RoutineGenerationService : IRoutineGenerationService
         }
 
         var profileJson = AiContextMapper.SerializeUserProfile(user.Profile);
-        var analysisJson = AiContextMapper.SerializeAnalysis(latestAnalysis.ToDetailDto());
+        var analysisJson = AiContextMapper.SerializeAnalysis(SkinAnalysisService.GetLegacyDetailFromCanonical(latestAnalysis));
         var productsJson = AiContextMapper.SerializeProducts(scoredCandidates.Select(x => new
         {
             productId = x.Product.Id,
@@ -135,7 +134,7 @@ public class RoutineGenerationService : IRoutineGenerationService
         return value is "simple" or "balanced" or "advanced" ? value : "balanced";
     }
 
-    private static List<ScoredProduct> ScoreProducts(UserProfile? profile, AiBudgetRangeDto? budget, IEnumerable<Product> products, AnalysisDetailResponseDto analysis)
+    private static List<ScoredProduct> ScoreProducts(UserProfile? profile, AiBudgetRangeDto? budget, IEnumerable<Product> products, SkinProgressAnalysisResponseDto analysis)
     {
         var concerns = UserProfilePayloadHelper.Parse(profile?.SkinConcerns).Concerns;
         var allergies = JsonListHelper.ParseStringList(profile?.Allergies);
@@ -189,7 +188,9 @@ public class RoutineGenerationService : IRoutineGenerationService
                     score -= 2;
                 }
 
-                score += analysis.Issues.Count(issue => targetConcerns.Contains(issue.IssueType, StringComparer.OrdinalIgnoreCase));
+                score += analysis.DetectedConcerns.Count(issue =>
+                    targetConcerns.Contains(issue.Label, StringComparer.OrdinalIgnoreCase) ||
+                    targetConcerns.Contains(issue.Concern, StringComparer.OrdinalIgnoreCase));
                 return new ScoredProduct(product, score);
             })
             .Where(x => x.Score > -3)
@@ -220,7 +221,7 @@ public class RoutineGenerationService : IRoutineGenerationService
         {
             Id = regimenId,
             UserId = userId,
-            AnalysisId = analysisId,
+            SourceAnalysisId = analysisId,
             Name = string.IsNullOrWhiteSpace(model.RoutineName) ? "AI generated routine" : model.RoutineName.Trim(),
             StartDate = today,
             EndDate = today.AddDays(30),
@@ -230,8 +231,8 @@ public class RoutineGenerationService : IRoutineGenerationService
         };
 
         regimen.Items = model.Morning
-            .Select(step => BuildRegimenItem(regimenId, "Morning", step, products[step.ProductId]))
-            .Concat(model.Night.Select(step => BuildRegimenItem(regimenId, "Evening", step, products[step.ProductId])))
+            .Select(step => BuildRegimenItem(regimenId, RoutineScheduleHelper.Morning, step, products[step.ProductId]))
+            .Concat(model.Night.Select(step => BuildRegimenItem(regimenId, RoutineScheduleHelper.Evening, step, products[step.ProductId])))
             .ToList();
 
         return regimen;

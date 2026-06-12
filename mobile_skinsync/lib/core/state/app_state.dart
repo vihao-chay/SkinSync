@@ -32,6 +32,7 @@ class AppState extends ChangeNotifier {
   DailyLog? todayLog;
   List<ReminderItem> reminders = const [];
   bool isBusy = false;
+  bool isBootstrapping = true;
   bool hasPendingOnboarding = false;
   String? errorMessage;
   int _messageVersion = 0;
@@ -39,8 +40,8 @@ class AppState extends ChangeNotifier {
   bool get isAuthenticated => session != null;
   bool get shouldShowOnboarding =>
       isAuthenticated &&
-      hasPendingOnboarding &&
-      profile?.isOnboardingCompleted != true;
+      (hasPendingOnboarding ||
+          (profile != null && profile!.isOnboardingCompleted != true));
   AppUser? get user => session?.user;
   ApiClient get apiClient => _apiClient;
   String get onboardingDisplayNameSeed {
@@ -70,19 +71,26 @@ class AppState extends ChangeNotifier {
   int get messageVersion => _messageVersion;
 
   Future<void> bootstrap() async {
-    session = await _sessionStore.read();
-    _apiClient.attachSession(session);
-    if (session != null) {
-      hasPendingOnboarding = await _sessionStore.isOnboardingPendingFor(
-        session!.user.id,
-      );
-      await _loadProfile();
-      if (profile?.isOnboardingCompleted == true) {
-        await _clearOnboardingPendingForCurrentUser();
-        await refreshHome();
-      }
-    }
+    isBootstrapping = true;
     notifyListeners();
+
+    try {
+      session = await _sessionStore.read();
+      _apiClient.attachSession(session);
+      if (session != null) {
+        hasPendingOnboarding = await _sessionStore.isOnboardingPendingFor(
+          session!.user.id,
+        );
+        await _loadProfile();
+        if (profile?.isOnboardingCompleted == true) {
+          await _clearOnboardingPendingForCurrentUser();
+          await refreshHome();
+        }
+      }
+    } finally {
+      isBootstrapping = false;
+      notifyListeners();
+    }
   }
 
   Future<void> login(String email, String password) async {
@@ -248,20 +256,33 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> analyzeSkin(File imageFile) async {
+    await analyzeSkinPhoto(imageFile);
+  }
+
+  Future<AnalysisResult> analyzeSkinPhoto(
+    File imageFile, {
+    String source = 'unknown',
+    String additionalNote = '',
+  }) async {
+    late AnalysisResult parsedResult;
     await _runBusy(() async {
       final response = await _apiClient.multipart(
-        '/api/ai/skin-analysis',
+        '/api/skin-analysis',
         file: imageFile,
-        fields: const {'additionalNote': ''},
+        fields: {
+          'additionalNote': additionalNote,
+          'source': source,
+        },
       );
-      final data = _readAiData(response);
-      latestAnalysis = _analysisResultFromAiResponse(data);
+      parsedResult = _analysisResultFromAiResponse(response);
+      latestAnalysis = parsedResult;
 
       await _generateRoutineFromLatestProfile();
       await _loadRegimen();
       await _loadTracking();
       await _loadProgress();
     });
+    return parsedResult;
   }
 
   Future<AiChatReply> sendAiChat(String message) async {
@@ -593,6 +614,17 @@ class AppState extends ChangeNotifier {
 
   Future<void> _loadLatestAnalysis() async {
     try {
+      final history = await _apiClient.get('/api/skin-analysis/history');
+      final items = (history['items'] as List?) ?? const [];
+      if (items.isNotEmpty && items.first is Map<String, dynamic>) {
+        latestAnalysis = _analysisResultFromAiResponse(
+          items.first as Map<String, dynamic>,
+        );
+        return;
+      }
+    } catch (_) {}
+
+    try {
       latestAnalysis = AnalysisResult.fromJson(
         await _apiClient.get('/api/analysis/latest'),
       );
@@ -860,26 +892,38 @@ class AppState extends ChangeNotifier {
         .whereType<Map<String, dynamic>>()
         .toList();
     final recommendations = ((data['recommendations'] as List?) ?? const [])
-        .map((item) => item.toString())
+        .map((item) {
+          if (item is Map<String, dynamic>) {
+            return (item['description'] ?? item['content'] ?? '').toString();
+          }
+          return item.toString();
+        })
         .toList();
-    final warnings = ((data['riskFlags'] as List?) ?? const [])
+    final warnings =
+        (((data['riskFlags'] as List?) ?? (data['warnings'] as List?) ?? const []))
         .map((item) => item.toString())
         .toList();
 
     final issues = concerns
         .map(
           (item) => AnalysisIssue(
-            issueType: (item['concern'] ?? 'unknown').toString(),
-            severityScore: _severityToScore(
-              (item['severity'] ?? 'low').toString(),
-            ),
+            issueType: (item['label'] ?? item['concern'] ?? 'unknown').toString(),
+            severityScore:
+                (item['score'] as int?) ??
+                _severityToScore((item['severity'] ?? 'low').toString()),
             description: item['description']?.toString(),
           ),
         )
         .toList();
 
+    final confidenceValue = data['confidenceScore'];
     final confidenceScore =
-        (concerns.isEmpty
+        (confidenceValue is num
+                ? (confidenceValue <= 1
+                          ? confidenceValue * 100
+                          : confidenceValue)
+                      .round()
+                : concerns.isEmpty
                 ? 80
                 : (concerns
                               .map(
@@ -892,25 +936,38 @@ class AppState extends ChangeNotifier {
                           concerns.length)
                       .clamp(0, 100))
             .toInt();
+    final overallScoreValue = (data['skinScore'] ?? data['overallScore']) as num?;
     final overallScore =
-        (issues.isEmpty
+        ((overallScoreValue?.round()) ??
+                (issues.isEmpty
                 ? 88
                 : (100 -
                           (issues
                                   .map((item) => item.severityScore)
                                   .reduce((a, b) => a + b) ~/
                               issues.length))
-                      .clamp(0, 100))
+                      .clamp(0, 100)))
             .toInt();
 
     return AnalysisResult(
-      id: (data['analysisId'] ?? DateTime.now().millisecondsSinceEpoch)
+      id:
+          (data['analysisResultId'] ??
+                  data['analysisId'] ??
+                  DateTime.now().millisecondsSinceEpoch)
           .toString(),
-      imageUrl: '',
-      skinType: profile?.skinType ?? 'Unknown',
+      analysisSessionId: data['analysisSessionId']?.toString(),
+      progressEntryId: data['progressEntryId']?.toString(),
+      photoId: data['photoId']?.toString(),
+      source: data['source']?.toString(),
+      imageUrl: data['imageUrl']?.toString() ?? '',
+      skinType:
+          data['skinType']?.toString() ??
+          data['skinTypeEstimate']?.toString() ??
+          profile?.skinType ??
+          'Unknown',
       overallScore: overallScore,
       confidenceScore: confidenceScore,
-      overview: data['skinSummary']?.toString(),
+      overview: (data['skinSummary'] ?? data['overview'])?.toString(),
       disclaimer: data['disclaimer']?.toString(),
       warnings: warnings,
       issues: issues,

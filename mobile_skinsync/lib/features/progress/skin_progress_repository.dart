@@ -49,6 +49,7 @@ class SkinProgressRepository {
         'timeOfDay': _timeOfDay(DateTime.now()),
         'lightingCondition': 'unknown',
         'faceAngle': 'front',
+        'source': 'progress',
         'note': note?.trim() ?? '',
       },
     );
@@ -60,11 +61,10 @@ class SkinProgressRepository {
   }
 
   Future<void> analyzePhoto(String photoId) async {
-    final response = await _apiClient.post(
+    await _apiClient.post(
       '/api/ai/skin-progress/analyze',
       body: {'photoId': photoId},
     );
-    _readAiData(response);
   }
 
   Future<SkinProgressComparison> comparePhotos({
@@ -72,13 +72,13 @@ class SkinProgressRepository {
     required String afterPhotoId,
   }) async {
     final response = await _apiClient.post(
-      '/api/ai/skin-progress/compare',
+      '/api/skin-progress/compare',
       body: {
-        'beforePhotoId': beforePhotoId,
-        'afterPhotoId': afterPhotoId,
+        'beforeEntryId': beforePhotoId,
+        'afterEntryId': afterPhotoId,
       },
     );
-    return SkinProgressComparison.fromJson(_readAiData(response));
+    return SkinProgressComparison.fromJson(response);
   }
 
   Future<SkinProgressReportDetail> generateReport({
@@ -87,14 +87,14 @@ class SkinProgressRepository {
     required DateTime periodEnd,
   }) async {
     final response = await _apiClient.post(
-      '/api/ai/skin-progress/report',
+      '/api/skin-progress/reports/generate',
       body: {
         'periodType': periodType,
         'periodStart': _dateOnly(periodStart),
         'periodEnd': _dateOnly(periodEnd),
       },
     );
-    return SkinProgressReportDetail.fromJson(_readAiData(response));
+    return SkinProgressReportDetail.fromJson(response);
   }
 
   Future<List<SkinProgressReportSummary>> fetchReports() async {
@@ -109,14 +109,6 @@ class SkinProgressRepository {
   Future<SkinProgressReportDetail> fetchReport(String reportId) async {
     final response = await _apiClient.get('/api/skin-progress/reports/$reportId');
     return SkinProgressReportDetail.fromJson(response);
-  }
-
-  Map<String, dynamic> _readAiData(Map<String, dynamic> response) {
-    final data = response['data'];
-    if (data is Map<String, dynamic>) {
-      return data;
-    }
-    return response;
   }
 
   String _dateOnly(DateTime value) =>

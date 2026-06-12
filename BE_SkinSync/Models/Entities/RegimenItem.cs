@@ -5,7 +5,7 @@ public class RegimenItem
     public Guid Id { get; set; }
     public Guid RegimenId { get; set; }
     public Guid ProductId { get; set; }
-    public string RoutineTime { get; set; } = "Morning";
+    public string RoutineTime { get; set; } = "morning";
     public int StepOrder { get; set; }
     public string? Instruction { get; set; }
     public string? Frequency { get; set; }

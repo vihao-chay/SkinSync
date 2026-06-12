@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../features/ai_hub/ai_hub_page.dart';
 import '../../features/dashboard/dashboard_page.dart';
 import '../../features/products/products_page.dart';
-import '../../features/profile/profile_page.dart';
 import '../../features/progress/progress_page.dart';
 import '../../features/routine/routine_page.dart';
 import '../routes/app_routes.dart';
@@ -25,14 +25,21 @@ class _MainShellState extends State<MainShell> {
   static const _navRoutes = [
     AppRoutes.dashboard,
     AppRoutes.routine,
+    AppRoutes.aiHub,
     AppRoutes.products,
     AppRoutes.progress,
-    AppRoutes.profile,
   ];
 
   static const _destinations = [
-    AppBottomNavigationDestination(label: 'Home', icon: Icons.home_rounded),
+    AppBottomNavigationDestination(
+      label: 'Dashboard',
+      icon: Icons.home_rounded,
+    ),
     AppBottomNavigationDestination(label: 'Routine', icon: Icons.spa_rounded),
+    AppBottomNavigationDestination(
+      label: 'AI',
+      icon: Icons.auto_awesome_rounded,
+    ),
     AppBottomNavigationDestination(
       label: 'Products',
       icon: Icons.shopping_bag_rounded,
@@ -40,10 +47,6 @@ class _MainShellState extends State<MainShell> {
     AppBottomNavigationDestination(
       label: 'Progress',
       icon: Icons.insights_rounded,
-    ),
-    AppBottomNavigationDestination(
-      label: 'Profile',
-      icon: Icons.person_rounded,
     ),
   ];
 
@@ -78,11 +81,11 @@ class _MainShellState extends State<MainShell> {
         index: _selectedIndex,
         sizing: StackFit.expand,
         children: const [
-          _ShellPage(pageName: 'Home', child: DashboardPage()),
+          _ShellPage(pageName: 'Dashboard', child: DashboardPage()),
           _ShellPage(pageName: 'Routine', child: RoutinePage()),
+          _ShellPage(pageName: 'AI', child: AiHubPage()),
           _ShellPage(pageName: 'Products', child: ProductsPage()),
           _ShellPage(pageName: 'Progress', child: ProgressPage()),
-          _ShellPage(pageName: 'Profile', child: ProfilePage()),
         ],
       ),
       bottomNavigationBar: AppBottomNavigation(

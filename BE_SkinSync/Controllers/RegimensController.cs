@@ -220,18 +220,7 @@ public class RegimensController : ControllerBase
 
     private static string? NormalizeRoutineTime(string routineTime)
     {
-        var value = routineTime.Trim();
-        if (value.Equals("Morning", StringComparison.OrdinalIgnoreCase))
-        {
-            return "Morning";
-        }
-
-        if (value.Equals("Evening", StringComparison.OrdinalIgnoreCase))
-        {
-            return "Evening";
-        }
-
-        return null;
+        return RoutineScheduleHelper.NormalizeRoutineValue(routineTime);
     }
 
     private sealed class BuildItemsResult

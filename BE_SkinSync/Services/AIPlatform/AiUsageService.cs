@@ -18,28 +18,35 @@ public interface IAiUsageService
 public class AiUsageService : IAiUsageService
 {
     private readonly AppDbContext _dbContext;
+    private readonly ISubscriptionPlanService _subscriptionPlanService;
     private readonly AiSettings _settings;
     private readonly ISubscriptionService _subscriptionService;
 
-    public AiUsageService(AppDbContext dbContext, IOptions<AiSettings> settings, ISubscriptionService subscriptionService)
+    public AiUsageService(
+        AppDbContext dbContext,
+        ISubscriptionPlanService subscriptionPlanService,
+        IOptions<AiSettings> settings)
     {
         _dbContext = dbContext;
+        _subscriptionPlanService = subscriptionPlanService;
         _settings = settings.Value;
         _subscriptionService = subscriptionService;
     }
 
     public async Task CheckLimitAsync(Guid userId, string featureName, CancellationToken cancellationToken)
     {
-        var access = await _subscriptionService.GetFeatureAccessAsync(userId, featureName, cancellationToken);
-        if (!access.IsEnabled)
+        var userExists = await _dbContext.Users.AsNoTracking().AnyAsync(x => x.Id == userId, cancellationToken);
+        if (!userExists)
         {
             throw new AiFeatureException("PLAN_FEATURE_NOT_AVAILABLE", $"{featureName} is not available for the current plan.", 403);
         }
 
-        var limit = access.IsConfigured
-            ? access.MonthlyLimit
-            : ResolveLegacyLimit(access.PlanCode, featureName);
-        if (!limit.HasValue)
+        var effectivePlanType = await _subscriptionPlanService.GetEffectivePlanTypeAsync(userId, cancellationToken);
+        var limits = string.Equals(effectivePlanType, "premium", StringComparison.OrdinalIgnoreCase)
+            ? _settings.Quotas.PremiumPlanMonthlyLimits
+            : _settings.Quotas.FreePlanMonthlyLimits;
+
+        if (!limits.TryGetValue(featureName, out var limit) || limit <= 0)
         {
             return;
         }

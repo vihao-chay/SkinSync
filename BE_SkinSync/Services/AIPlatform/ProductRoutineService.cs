@@ -27,7 +27,7 @@ public class ProductRoutineService : IProductRoutineService
     public async Task<AiAddProductToRoutineResponseDto> AddToRoutineAsync(Guid userId, Guid productId, AiAddProductToRoutineRequestDto request, CancellationToken cancellationToken)
     {
         var routineType = NormalizeRoutineType(request.RoutineType)
-            ?? throw new AiFeatureException("INVALID_REQUEST", "RoutineType must be Morning or Evening.", 400);
+            ?? throw new AiFeatureException("INVALID_REQUEST", "RoutineType must be morning or evening.", 400);
 
         var regimen = await _dbContext.UserRegimens
             .Include(x => x.Items)
@@ -163,16 +163,6 @@ public class ProductRoutineService : IProductRoutineService
 
     private static string? NormalizeRoutineType(string routineType)
     {
-        if (routineType.Equals("Morning", StringComparison.OrdinalIgnoreCase))
-        {
-            return "Morning";
-        }
-
-        if (routineType.Equals("Evening", StringComparison.OrdinalIgnoreCase))
-        {
-            return "Evening";
-        }
-
-        return null;
+        return Helpers.RoutineScheduleHelper.NormalizeRoutineValue(routineType);
     }
 }

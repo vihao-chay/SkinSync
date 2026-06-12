@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using SkinSync.Base;
 using SkinSync.Data;
 using SkinSync.Helpers;
@@ -29,22 +30,32 @@ public class RemindersController : ControllerBase
             return ResponseEntity<IEnumerable<ReminderResponseDto>>.Fail("Thiáº¿u thÃ´ng tin ngÆ°á»i dÃ¹ng.", 401);
         }
 
-        var reminders = await _dbContext.Reminders
-            .AsNoTracking()
-            .Where(x => x.UserId == userId)
-            .OrderBy(x => x.RoutineType)
-            .Select(x => new ReminderResponseDto
-            {
-                ReminderId = x.Id,
-                Time = x.Time.ToString("HH:mm"),
-                RoutineType = x.RoutineType,
-                Frequency = x.Frequency,
-                Reason = x.Reason,
-                Priority = x.Priority,
-                IsAdaptive = x.IsAdaptive,
-                IsEnabled = x.IsEnabled
-            })
-            .ToListAsync(cancellationToken);
+        List<ReminderResponseDto> reminders;
+        try
+        {
+            reminders = await _dbContext.Reminders
+                .AsNoTracking()
+                .Where(x => x.UserId == userId)
+                .OrderBy(x => x.RoutineType)
+                .Select(x => new ReminderResponseDto
+                {
+                    ReminderId = x.Id,
+                    Time = x.Time.ToString("HH:mm"),
+                    RoutineType = x.RoutineType,
+                    Frequency = x.Frequency,
+                    Reason = x.Reason,
+                    Priority = x.Priority,
+                    IsAdaptive = x.IsAdaptive,
+                    IsEnabled = x.IsEnabled
+                })
+                .ToListAsync(cancellationToken);
+        }
+        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UndefinedColumn)
+        {
+            return ResponseEntity<IEnumerable<ReminderResponseDto>>.Ok(
+                Array.Empty<ReminderResponseDto>(),
+                "Reminder schema is outdated. Returning an empty list until the latest migration is applied.");
+        }
 
         return ResponseEntity<IEnumerable<ReminderResponseDto>>.Ok(reminders, "Láº¥y nháº¯c nhá»Ÿ thÃ nh cÃ´ng.");
     }
@@ -137,17 +148,7 @@ public class RemindersController : ControllerBase
 
     private static string? NormalizeRoutineType(string routineType)
     {
-        if (routineType.Equals("Morning", StringComparison.OrdinalIgnoreCase))
-        {
-            return "Morning";
-        }
-
-        if (routineType.Equals("Evening", StringComparison.OrdinalIgnoreCase))
-        {
-            return "Evening";
-        }
-
-        return null;
+        return RoutineScheduleHelper.NormalizeRoutineValue(routineType);
     }
 
     private static string? NormalizePriority(string? priority)

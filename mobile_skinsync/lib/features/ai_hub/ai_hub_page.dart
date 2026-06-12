@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/models/app_models.dart';
 import '../../core/routes/app_routes.dart';
 import '../../core/state/app_state.dart';
 import '../../core/theme/app_colors.dart';
-import '../../core/widgets/glass_header.dart';
+import '../../core/theme/app_spacing.dart';
+import '../../core/widgets/app_card.dart';
+import '../../core/widgets/app_scaffold.dart';
+import '../../core/widgets/section_header.dart';
 
 class AiHubPage extends StatelessWidget {
   const AiHubPage({super.key});
@@ -17,108 +21,106 @@ class AiHubPage extends StatelessWidget {
 
     final options = [
       _HubOption(
-        title: 'SkinSync AI',
-        subtitle: 'Open saved sessions or start a new skincare conversation.',
+        title: 'AI chat',
+        subtitle: 'Open a quick SkinSync AI conversation for daily skincare guidance.',
         icon: Icons.chat_bubble_outline_rounded,
-        status: 'Ready',
-        onTap: () => Navigator.pushNamed(context, AppRoutes.aiChat),
+        status: 'Quick help',
+        onTap: () => Navigator.pushNamed(
+          context,
+          AppRoutes.aiChatConversation,
+          arguments: const AiChatLaunchArgs(entryPoint: 'ai_hub'),
+        ),
       ),
       _HubOption(
-        title: 'Skin Analysis',
+        title: 'Skin analysis',
         subtitle: hasAnalysis
-            ? 'Review your latest scan result and recommendations.'
-            : 'Upload a clear selfie to generate your first analysis.',
+            ? 'Review your latest scan result and personalized recommendations.'
+            : 'Upload a clear skin photo to generate your first AI analysis.',
         icon: Icons.auto_awesome_rounded,
-        status: hasAnalysis ? 'Latest scan available' : 'Scan required',
+        status: hasAnalysis ? 'Latest scan ready' : 'Photo needed',
         onTap: () => Navigator.pushNamed(
           context,
           hasAnalysis ? AppRoutes.analysis : AppRoutes.upload,
         ),
       ),
       _HubOption(
-        title: 'Generate Routine',
-        subtitle: hasAnalysis
-            ? 'Build or refresh a morning and evening routine from AI.'
-            : 'Complete a scan first so routine generation has real data.',
-        icon: Icons.spa_outlined,
-        status: hasAnalysis ? 'Can generate now' : 'Needs analysis',
-        onTap: () => Navigator.pushNamed(context, AppRoutes.routine),
-      ),
-      _HubOption(
-        title: 'Product Recommendation',
-        subtitle:
-            'Match products from your backend catalog by concern and budget.',
-        icon: Icons.shopping_bag_outlined,
-        status: 'Catalog search',
-        onTap: () => Navigator.pushNamed(context, AppRoutes.aiProductRecommend),
-      ),
-      _HubOption(
-        title: 'Ingredient Check',
-        subtitle:
-            'Paste ingredient lists and see beneficial, caution, and warning notes.',
+        title: 'Ingredient check',
+        subtitle: 'Paste ingredient lists and let SkinSync explain benefits, cautions, and warnings.',
         icon: Icons.biotech_outlined,
         status: 'Text input',
-        onTap: () => Navigator.pushNamed(context, AppRoutes.aiIngredientCheck),
+        onTap: () =>
+            Navigator.pushNamed(context, AppRoutes.aiIngredientCheck),
       ),
       _HubOption(
-        title: 'Conflict Check',
+        title: 'Conflict check',
         subtitle: hasRoutine
-            ? 'Check your active routine for risky ingredient combinations.'
-            : 'Generate a routine first, then scan it for conflicts.',
+            ? 'Scan your current routine for risky combinations before irritation starts.'
+            : 'Generate or save a routine first, then run a conflict check.',
         icon: Icons.warning_amber_rounded,
         status: hasRoutine ? 'Routine ready' : 'Needs routine',
         onTap: () => Navigator.pushNamed(context, AppRoutes.aiConflictCheck),
       ),
       _HubOption(
-        title: 'AI Reports',
-        subtitle: 'Generate weekly, monthly, or post-analysis summary reports.',
+        title: 'Routine generator',
+        subtitle: 'Create or refresh an AI routine matched to your skin profile and budget.',
+        icon: Icons.spa_outlined,
+        status: 'Routine builder',
+        onTap: () => Navigator.pushNamed(context, AppRoutes.routine),
+      ),
+      _HubOption(
+        title: 'Progress report',
+        subtitle: 'Generate weekly or monthly AI summaries based on your skincare progress.',
         icon: Icons.insert_chart_outlined_rounded,
-        status: 'History + generation',
+        status: 'Reports',
         onTap: () => Navigator.pushNamed(context, AppRoutes.aiReports),
+      ),
+      _HubOption(
+        title: 'Today diary',
+        subtitle: 'Log how your skin feels today and feed that signal back into progress tracking.',
+        icon: Icons.edit_note_rounded,
+        status: 'Daily check-in',
+        onTap: () => Navigator.pushNamed(context, AppRoutes.todayCheckup),
+      ),
+      _HubOption(
+        title: 'Product recommendations',
+        subtitle: 'Match products from the catalog by concern, category, and budget.',
+        icon: Icons.shopping_bag_outlined,
+        status: 'Catalog AI',
+        onTap: () => Navigator.pushNamed(
+          context,
+          AppRoutes.aiProductRecommend,
+        ),
       ),
     ];
 
-    return Scaffold(
-      backgroundColor: AppColors.pageBackground,
-      appBar: const GlassHeader(
-        currentRoute: AppRoutes.aiHub,
-        title: 'AI Tools',
-      ),
-      body: SafeArea(
-        top: false,
-        child: RefreshIndicator(
-          color: AppColors.primaryDark,
-          onRefresh: appState.refreshHome,
-          child: ListView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-            children: [
-              _HeroCard(hasAnalysis: hasAnalysis, hasRoutine: hasRoutine),
-              const SizedBox(height: 18),
-              Text(
-                'All AI Tools',
-                style: Theme.of(
-                  context,
-                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Choose one tool below. Each option opens a dedicated screen instead of leaving you on an empty placeholder.',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: AppColors.mutedText,
-                  height: 1.35,
-                ),
-              ),
-              const SizedBox(height: 14),
-              ...options.map(
-                (option) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: _HubListTile(option: option),
-                ),
-              ),
-            ],
-          ),
+    return AppScaffold(
+      title: 'AI Hub',
+      subtitle:
+          'Every SkinSync AI tool in one premium workspace, from chat and scans to routine generation and progress insights.',
+      onRefresh: appState.refreshHome,
+      body: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.pagePadding,
+          0,
+          AppSpacing.pagePadding,
+          AppSpacing.bottomNavHeight + 64,
         ),
+        children: [
+          _HeroCard(hasAnalysis: hasAnalysis, hasRoutine: hasRoutine),
+          const SizedBox(height: AppSpacing.sectionGap),
+          const SectionHeader(
+            title: 'AI toolkit',
+            subtitle: 'Pick the right tool for the task you want to complete today.',
+          ),
+          const SizedBox(height: AppSpacing.md),
+          ...options.map(
+            (option) => Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+              child: _HubListTile(option: option),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -132,34 +134,39 @@ class _HeroCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-        gradient: const LinearGradient(
-          colors: [Color(0xFFF7E0C8), Color(0xFFF2C29C), Color(0xFFE89A76)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-      ),
+    return AppCard(
+      backgroundColor: AppColors.surfaceStrong,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'One place for every AI feature',
-            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-              color: const Color(0xFF45251C),
-              fontWeight: FontWeight.w800,
-              height: 1.05,
+            'Your AI skincare command center',
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+              fontWeight: FontWeight.w700,
+              color: AppColors.heading,
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpacing.sm),
           Text(
-            'Current status: ${hasAnalysis ? 'analysis ready' : 'no analysis yet'} - ${hasRoutine ? 'routine ready' : 'no routine yet'}',
+            hasAnalysis
+                ? 'Your latest analysis is ready, so you can move straight into recommendations, reports, and routine refinement.'
+                : 'Start with a skin scan or chat, then let SkinSync connect every insight back to your routine and progress.',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: const Color(0xFF603127),
-              height: 1.35,
+              color: AppColors.mutedText,
             ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Wrap(
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.sm,
+            children: [
+              _StatusChip(
+                label: hasAnalysis ? 'Analysis ready' : 'No scan yet',
+              ),
+              _StatusChip(
+                label: hasRoutine ? 'Routine available' : 'No routine yet',
+              ),
+            ],
           ),
         ],
       ),
@@ -178,27 +185,28 @@ class _HubListTile extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: option.onTap,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(24),
         child: Ink(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(AppSpacing.lg),
           decoration: BoxDecoration(
             color: Colors.white.withValues(alpha: 0.95),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: AppColors.border.withValues(alpha: 0.28)),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: AppColors.border.withValues(alpha: 0.32)),
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                width: 48,
-                height: 48,
+                width: 52,
+                height: 52,
                 decoration: BoxDecoration(
                   color: AppColors.secondary,
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(18),
                 ),
+                alignment: Alignment.center,
                 child: Icon(option.icon, color: AppColors.primaryDark),
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -208,44 +216,28 @@ class _HubListTile extends StatelessWidget {
                         Expanded(
                           child: Text(
                             option.title,
-                            style: Theme.of(context).textTheme.titleMedium
-                                ?.copyWith(fontWeight: FontWeight.w800),
+                            style: Theme.of(context).textTheme.titleLarge
+                                ?.copyWith(fontWeight: FontWeight.w700),
                           ),
                         ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.secondary,
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                          child: Text(
-                            option.status,
-                            style: Theme.of(context).textTheme.labelSmall
-                                ?.copyWith(
-                                  color: AppColors.primaryDark,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                          ),
-                        ),
+                        const SizedBox(width: AppSpacing.sm),
+                        _StatusChip(label: option.status),
                       ],
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AppSpacing.sm),
                     Text(
                       option.subtitle,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: AppColors.mutedText,
-                        height: 1.4,
+                        height: 1.45,
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: AppSpacing.sm),
               const Padding(
-                padding: EdgeInsets.only(top: 12),
+                padding: EdgeInsets.only(top: 14),
                 child: Icon(
                   Icons.arrow_forward_ios_rounded,
                   size: 16,
@@ -254,6 +246,30 @@ class _HubListTile extends StatelessWidget {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _StatusChip extends StatelessWidget {
+  const _StatusChip({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppColors.secondary,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+          color: AppColors.primaryDark,
+          fontWeight: FontWeight.w700,
         ),
       ),
     );

@@ -166,8 +166,10 @@ class AnalysisIssue {
   final String? description;
 
   factory AnalysisIssue.fromJson(Map<String, dynamic> json) => AnalysisIssue(
-    issueType: (json['issueType'] ?? '') as String,
-    severityScore: (json['severityScore'] ?? 0) as int,
+    issueType: ((json['issueType'] ?? json['label'] ?? json['concern']) ?? '') as String,
+    severityScore:
+        (json['severityScore'] as int?) ??
+        _severityToLegacyScore((json['severity'] ?? 'low').toString()),
     description: json['description'] as String?,
   );
 }
@@ -185,9 +187,24 @@ class AnalysisRecommendation {
       );
 }
 
+int _severityToLegacyScore(String severity) {
+  switch (severity.trim().toLowerCase()) {
+    case 'high':
+      return 85;
+    case 'medium':
+      return 60;
+    default:
+      return 35;
+  }
+}
+
 class AnalysisResult {
   const AnalysisResult({
     required this.id,
+    this.analysisSessionId,
+    this.progressEntryId,
+    this.photoId,
+    this.source,
     required this.imageUrl,
     required this.skinType,
     required this.overallScore,
@@ -200,6 +217,10 @@ class AnalysisResult {
   });
 
   final String id;
+  final String? analysisSessionId;
+  final String? progressEntryId;
+  final String? photoId;
+  final String? source;
   final String imageUrl;
   final String skinType;
   final int overallScore;
@@ -211,25 +232,46 @@ class AnalysisResult {
   final List<AnalysisRecommendation> recommendations;
 
   factory AnalysisResult.fromJson(Map<String, dynamic> json) => AnalysisResult(
-    id: json['id'].toString(),
+    id: (json['id'] ?? json['analysisResultId'] ?? json['analysisId']).toString(),
+    analysisSessionId: json['analysisSessionId']?.toString(),
+    progressEntryId: json['progressEntryId']?.toString(),
+    photoId: json['photoId']?.toString(),
+    source: json['source']?.toString(),
     imageUrl: (json['imageUrl'] ?? '') as String,
-    skinType: (json['skinType'] ?? 'Unknown') as String,
-    overallScore: (json['overallScore'] ?? 0) as int,
-    confidenceScore: (json['confidenceScore'] ?? 0) as int,
-    overview: json['overview'] as String?,
+    skinType: ((json['skinType'] ?? json['skinTypeEstimate']) ?? 'Unknown') as String,
+    overallScore: ((json['overallScore'] ?? json['skinScore']) ?? 0) as int,
+    confidenceScore: ((json['confidenceScore'] as num?)?.round() ??
+            (((json['confidenceScore'] as num?) ?? (json['confidence'] as num?) ?? 0) * 100).round()),
+    overview: (json['overview'] ?? json['skinSummary']) as String?,
     disclaimer: json['disclaimer'] as String?,
-    warnings: ((json['warnings'] as List?) ?? const [])
+    warnings: (((json['warnings'] as List?) ?? (json['riskFlags'] as List?) ?? const []))
         .map((e) => e.toString())
         .toList(),
-    issues: ((json['issues'] as List?) ?? const [])
+    issues: (((json['issues'] as List?) ?? (json['detectedConcerns'] as List?) ?? const []))
         .whereType<Map<String, dynamic>>()
         .map(AnalysisIssue.fromJson)
         .toList(),
     recommendations: ((json['recommendations'] as List?) ?? const [])
-        .whereType<Map<String, dynamic>>()
-        .map(AnalysisRecommendation.fromJson)
+        .map((item) {
+          if (item is Map<String, dynamic>) {
+            return AnalysisRecommendation(
+              title: (item['title'] ?? item['type'] ?? 'Recommendation') as String,
+              content: (item['content'] ?? item['description'] ?? '') as String,
+            );
+          }
+          return AnalysisRecommendation(
+            title: 'Recommendation',
+            content: item.toString(),
+          );
+        })
         .toList(),
   );
+}
+
+class SkinAnalysisFlowArgs {
+  const SkinAnalysisFlowArgs({this.source = 'unknown'});
+
+  final String source;
 }
 
 class RegimenStep {

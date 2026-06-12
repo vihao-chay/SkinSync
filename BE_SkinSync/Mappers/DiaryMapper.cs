@@ -9,6 +9,13 @@ public static class DiaryMapper
     public static DiaryCheckInResponseDto ToCheckInDto(this DailyLog dailyLog)
     {
         var payload = DailyLogPayloadHelper.Parse(dailyLog.Notes);
+        var note = dailyLog.AcneLevel.HasValue
+                   || dailyLog.DrynessLevel.HasValue
+                   || dailyLog.RednessLevel.HasValue
+                   || dailyLog.IrritationLevel.HasValue
+                   || dailyLog.HydrationLevel.HasValue
+            ? dailyLog.Notes
+            : payload.Note;
 
         return new DiaryCheckInResponseDto
         {
@@ -19,12 +26,12 @@ public static class DiaryMapper
             EveningCompleted = dailyLog.EveningCompleted,
             SkinFeeling = dailyLog.SkinFeeling,
             IsIrritated = dailyLog.IsIrritated,
-            Notes = payload.Note,
-            AcneLevel = payload.AcneLevel,
-            DrynessLevel = payload.DrynessLevel,
-            RednessLevel = payload.RednessLevel,
-            IrritationLevel = payload.IrritationLevel,
-            HydrationLevel = payload.HydrationLevel,
+            Notes = note,
+            AcneLevel = dailyLog.AcneLevel ?? payload.AcneLevel,
+            DrynessLevel = dailyLog.DrynessLevel ?? payload.DrynessLevel,
+            RednessLevel = dailyLog.RednessLevel ?? payload.RednessLevel,
+            IrritationLevel = dailyLog.IrritationLevel ?? payload.IrritationLevel,
+            HydrationLevel = dailyLog.HydrationLevel ?? payload.HydrationLevel,
             DailyImageUrl = dailyLog.DailyImageUrl
         };
     }

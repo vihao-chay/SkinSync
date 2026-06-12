@@ -161,10 +161,11 @@ public class SkinProgressComparisonService : ISkinProgressComparisonService
         return "stable";
     }
 
-    private static bool IsMissingRelation(PostgresException ex) => ex.SqlState == PostgresErrorCodes.UndefinedTable;
+    private static bool IsMissingRelation(PostgresException ex) =>
+        ex.SqlState is PostgresErrorCodes.UndefinedTable or PostgresErrorCodes.UndefinedColumn;
 
     private static AiFeatureException BuildSchemaMissingException(PostgresException ex) =>
-        new("SKIN_PROGRESS_SCHEMA_MISSING", "Skin progress tables are missing in the database. Apply the skin progress migration before using this feature.", 503, ex);
+        new("SKIN_PROGRESS_SCHEMA_MISSING", "Skin progress schema is outdated. Apply BE_SkinSync/sql/2026-06-11-unify-skin-analysis-progress.sql before using this feature.", 503, ex);
 }
 
 internal sealed class SkinProgressCompareAiModel

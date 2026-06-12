@@ -15,6 +15,9 @@ public class AiSkinAnalysisRequestDto
     public IFormFile? Image { get; set; }
     public string? ImageUrl { get; set; }
     public string? AdditionalNote { get; set; }
+    public string? Source { get; set; }
+    public string? CurrentRoutineContext { get; set; }
+    public string? SkinProfileContext { get; set; }
 }
 
 public class AiDetectedConcernDto
@@ -27,12 +30,39 @@ public class AiDetectedConcernDto
 
 public class AiSkinAnalysisResponseDto
 {
-    public Guid AnalysisId { get; set; }
+    public Guid AnalysisSessionId { get; set; }
+    public Guid AnalysisResultId { get; set; }
+    public Guid ProgressEntryId { get; set; }
+    public Guid PhotoId { get; set; }
+    public string Status { get; set; } = "completed";
+    public string Source { get; set; } = "unknown";
+    public string ImageUrl { get; set; } = string.Empty;
+    public string? ThumbnailUrl { get; set; }
+    public string? AiModel { get; set; }
+    public int SkinScore { get; set; }
+    public string SkinType { get; set; } = "unknown";
+    public int OilinessLevel { get; set; }
+    public int DrynessLevel { get; set; }
+    public int AcneLevel { get; set; }
+    public int RednessLevel { get; set; }
+    public int DarkSpotLevel { get; set; }
+    public int TextureLevel { get; set; }
+    public int PoreLevel { get; set; }
+    public int WrinkleLevel { get; set; }
+    public int SensitivityLevel { get; set; }
+    public int HydrationLevel { get; set; }
     public string SkinSummary { get; set; } = string.Empty;
     public IReadOnlyCollection<AiDetectedConcernDto> DetectedConcerns { get; set; } = Array.Empty<AiDetectedConcernDto>();
-    public IReadOnlyCollection<string> Recommendations { get; set; } = Array.Empty<string>();
+    public IReadOnlyCollection<SkinProgressRecommendationDto> Recommendations { get; set; } = Array.Empty<SkinProgressRecommendationDto>();
+    public SkinProgressRoutineSuggestionsDto RoutineSuggestions { get; set; } = new();
+    public IReadOnlyCollection<SkinProgressProductSuggestionDto> ProductSuggestions { get; set; } = Array.Empty<SkinProgressProductSuggestionDto>();
+    public IReadOnlyCollection<string> SafetyNotes { get; set; } = Array.Empty<string>();
     public IReadOnlyCollection<string> RiskFlags { get; set; } = Array.Empty<string>();
     public string Disclaimer { get; set; } = string.Empty;
+    public decimal? ConfidenceScore { get; set; }
+    public string? ErrorMessage { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime? CompletedAt { get; set; }
 }
 
 public class AiRoutineGenerateRequestDto
@@ -194,13 +224,23 @@ public class AiChatConversationDetailDto
 
 public class AiReportGenerateRequestDto
 {
-    public string ReportType { get; set; } = "after_analysis";
+    public string ReportCategory { get; set; } = "after_analysis";
+    public string? Source { get; set; }
+    public Guid? RelatedAnalysisId { get; set; }
+    public string? PeriodType { get; set; }
+    public DateOnly? PeriodStart { get; set; }
+    public DateOnly? PeriodEnd { get; set; }
 }
 
 public class AiReportGenerateResponseDto
 {
     public Guid ReportId { get; set; }
-    public string ReportType { get; set; } = "after_analysis";
+    public string ReportCategory { get; set; } = "after_analysis";
+    public string Source { get; set; } = "system";
+    public Guid? RelatedAnalysisId { get; set; }
+    public string? PeriodType { get; set; }
+    public DateOnly? PeriodStart { get; set; }
+    public DateOnly? PeriodEnd { get; set; }
     public DateTime CreatedAt { get; set; }
     public string Summary { get; set; } = string.Empty;
     public string ProgressEvaluation { get; set; } = "insufficient_data";
@@ -214,7 +254,10 @@ public class AiReportGenerateResponseDto
 public class AiReportSummaryDto
 {
     public Guid ReportId { get; set; }
-    public string ReportType { get; set; } = "after_analysis";
+    public string ReportCategory { get; set; } = "after_analysis";
+    public string Source { get; set; } = "system";
+    public Guid? RelatedAnalysisId { get; set; }
+    public string? PeriodType { get; set; }
     public string Summary { get; set; } = string.Empty;
     public string ProgressEvaluation { get; set; } = "insufficient_data";
     public DateTime CreatedAt { get; set; }
@@ -227,7 +270,7 @@ public class AiReminderSuggestRequestDto
 
 public class AiReminderSuggestionDto
 {
-    public string RoutineType { get; set; } = "Morning";
+    public string RoutineType { get; set; } = "morning";
     public string Time { get; set; } = "07:00";
     public string Frequency { get; set; } = "daily";
     public string Reason { get; set; } = string.Empty;
@@ -244,7 +287,7 @@ public class AiReminderSuggestResponseDto
 
 public class AiAddProductToRoutineRequestDto
 {
-    public string RoutineType { get; set; } = "Evening";
+    public string RoutineType { get; set; } = "evening";
     public bool AllowConflicts { get; set; }
 }
 

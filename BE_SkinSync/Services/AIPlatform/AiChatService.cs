@@ -57,12 +57,10 @@ public class AiChatService : IAiChatService
             .Include(x => x.Items)
             .ThenInclude(x => x.Product)
             .FirstOrDefaultAsync(x => x.UserId == userId && x.IsActive, cancellationToken);
-        var latestAnalysis = await _dbContext.AiAnalyses
+        var latestAnalysis = await _dbContext.SkinProgressAnalyses
             .AsNoTracking()
-            .Include(x => x.AnalysisIssues)
-            .Include(x => x.Recommendations)
-            .Where(x => x.UserId == userId)
-            .OrderByDescending(x => x.CreatedAt)
+            .Where(x => x.UserId == userId && x.DiscardedAt == null && x.Status != "discarded")
+            .OrderByDescending(x => x.CompletedAt ?? x.CreatedAt)
             .FirstOrDefaultAsync(cancellationToken);
         var recentLogs = await _dbContext.DailyLogs
             .AsNoTracking()
@@ -87,7 +85,7 @@ public class AiChatService : IAiChatService
             AiPromptLibrary.BuildChatPrompt(
                 AiContextMapper.SerializeUserProfile(user.Profile),
                 JsonSerializer.Serialize(currentRoutine?.ToCurrentRegimenDto() ?? new object()),
-                AiContextMapper.SerializeAnalysis(latestAnalysis?.ToDetailDto()),
+                AiContextMapper.SerializeAnalysis(latestAnalysis is null ? null : SkinAnalysisService.GetLegacyDetailFromCanonical(latestAnalysis)),
                 AiContextMapper.SerializeDailyLogs(recentLogs),
                 BuildConversationContext(recentMessages, request.Message),
                 request.EntryPoint,

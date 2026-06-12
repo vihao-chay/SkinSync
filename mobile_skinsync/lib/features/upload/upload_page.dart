@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/models/app_models.dart';
 import '../../core/routes/app_routes.dart';
 import '../../core/state/app_state.dart';
 import '../../core/theme/app_colors.dart';
@@ -26,6 +27,9 @@ class _UploadPageState extends State<UploadPage> {
   @override
   Widget build(BuildContext context) {
     final appState = context.watch<AppState>();
+    final flowArgs =
+        ModalRoute.of(context)?.settings.arguments as SkinAnalysisFlowArgs?;
+    final isProgressFlow = flowArgs?.source == 'progress';
 
     return Scaffold(
       backgroundColor: AppColors.pageBackground,
@@ -44,12 +48,16 @@ class _UploadPageState extends State<UploadPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Upload your skin photo',
+                  isProgressFlow
+                      ? 'Add a progress photo'
+                      : 'Upload your skin photo',
                   style: Theme.of(context).textTheme.headlineMedium,
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Use a clear portrait in natural light for the best AI read.',
+                  isProgressFlow
+                      ? 'This photo will be analyzed and saved directly into your skin progress timeline.'
+                      : 'Use a clear portrait in natural light for the best AI read.',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
                 const SizedBox(height: AppSpacing.sectionGap),
@@ -175,7 +183,9 @@ class _UploadPageState extends State<UploadPage> {
     }
 
     final appState = context.read<AppState>();
-    await appState.analyzeSkin(image);
+    final flowArgs =
+        ModalRoute.of(context)?.settings.arguments as SkinAnalysisFlowArgs?;
+    await appState.analyzeSkinPhoto(image, source: flowArgs?.source ?? 'unknown');
 
     if (!mounted) {
       return;

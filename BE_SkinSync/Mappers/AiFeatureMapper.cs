@@ -45,31 +45,39 @@ public static class AiFeatureMapper
         };
     }
 
-    public static AiReportGenerateResponseDto ToDto(this AiReport report)
+    public static AiReportGenerateResponseDto ToAiReportDto(this SkinProgressReport report)
     {
         return new AiReportGenerateResponseDto
         {
             ReportId = report.Id,
-            ReportType = report.ReportType,
+            ReportCategory = report.ReportCategory,
+            Source = report.Source,
+            RelatedAnalysisId = report.RelatedAnalysisId,
+            PeriodType = report.PeriodType,
+            PeriodStart = report.PeriodStart,
+            PeriodEnd = report.PeriodEnd,
             CreatedAt = report.CreatedAt,
             Summary = report.Summary,
-            ProgressEvaluation = report.ProgressEvaluation,
+            ProgressEvaluation = report.ProgressStatus,
             MainFindings = ParseStringArray(report.MainFindings),
             RoutineFeedback = report.RoutineFeedback,
             ProductFeedback = report.ProductFeedback,
-            NextPlan = ParseStringArray(report.NextPlan),
-            Warnings = ParseStringArray(report.Warnings)
+            NextPlan = ParseStringArray(report.NextSuggestions),
+            Warnings = Array.Empty<string>()
         };
     }
 
-    public static AiReportSummaryDto ToSummaryDto(this AiReport report)
+    public static AiReportSummaryDto ToAiReportSummaryDto(this SkinProgressReport report)
     {
         return new AiReportSummaryDto
         {
             ReportId = report.Id,
-            ReportType = report.ReportType,
+            ReportCategory = report.ReportCategory,
+            Source = report.Source,
+            RelatedAnalysisId = report.RelatedAnalysisId,
+            PeriodType = report.PeriodType,
             Summary = report.Summary,
-            ProgressEvaluation = report.ProgressEvaluation,
+            ProgressEvaluation = report.ProgressStatus,
             CreatedAt = report.CreatedAt
         };
     }

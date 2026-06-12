@@ -6,6 +6,8 @@ public class SkinProgressPhoto
     public Guid UserId { get; set; }
     public string ImageUrl { get; set; } = string.Empty;
     public string? ThumbnailUrl { get; set; }
+    public string Source { get; set; } = "unknown";
+    public string? ImageMetadataJson { get; set; }
     public DateOnly PhotoDate { get; set; }
     public string TimeOfDay { get; set; } = "unknown";
     public string LightingCondition { get; set; } = "unknown";
