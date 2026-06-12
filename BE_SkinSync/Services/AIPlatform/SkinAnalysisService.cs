@@ -20,15 +20,18 @@ public class SkinAnalysisService : ISkinAnalysisService
     private readonly AppDbContext _dbContext;
     private readonly ISkinProgressService _skinProgressService;
     private readonly ISkinProgressAnalysisService _skinProgressAnalysisService;
+    private readonly IAiUsageService _aiUsageService;
 
     public SkinAnalysisService(
         AppDbContext dbContext,
         ISkinProgressService skinProgressService,
-        ISkinProgressAnalysisService skinProgressAnalysisService)
+        ISkinProgressAnalysisService skinProgressAnalysisService,
+        IAiUsageService aiUsageService)
     {
         _dbContext = dbContext;
         _skinProgressService = skinProgressService;
         _skinProgressAnalysisService = skinProgressAnalysisService;
+        _aiUsageService = aiUsageService;
     }
 
     public async Task<AiSkinAnalysisResponseDto> AnalyzeAsync(Guid userId, AiSkinAnalysisRequestDto request, CancellationToken cancellationToken)
@@ -38,7 +41,9 @@ public class SkinAnalysisService : ISkinAnalysisService
             throw new AiFeatureException("INVALID_REQUEST", "Image file or imageUrl is required.");
         }
 
-        var photo = await _skinProgressService.UploadPhotoAsync(userId, new SkinProgressPhotoUploadRequestDto
+        await _aiUsageService.CheckLimitAsync(userId, "skin_analysis", cancellationToken);
+
+        var photo = await _skinProgressService.UploadAnalysisPhotoAsync(userId, new SkinProgressPhotoUploadRequestDto
         {
             Image = request.Image,
             ImageUrl = request.ImageUrl,

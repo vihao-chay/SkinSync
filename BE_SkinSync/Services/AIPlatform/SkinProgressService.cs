@@ -10,6 +10,7 @@ namespace SkinSync.Services.AIPlatform;
 public interface ISkinProgressService
 {
     Task<SkinProgressPhotoDto> UploadPhotoAsync(Guid userId, SkinProgressPhotoUploadRequestDto request, CancellationToken cancellationToken);
+    Task<SkinProgressPhotoDto> UploadAnalysisPhotoAsync(Guid userId, SkinProgressPhotoUploadRequestDto request, CancellationToken cancellationToken);
     Task<IReadOnlyCollection<SkinProgressPhotoDto>> GetPhotosAsync(Guid userId, CancellationToken cancellationToken);
     Task DeletePhotoAsync(Guid userId, Guid photoId, CancellationToken cancellationToken);
     Task<SkinProgressDashboardResponseDto> GetDashboardAsync(Guid userId, SkinProgressDashboardQueryDto query, CancellationToken cancellationToken);
@@ -22,20 +23,44 @@ public class SkinProgressService : ISkinProgressService
 {
     private readonly AppDbContext _dbContext;
     private readonly IImageStorageService _imageStorageService;
+    private readonly IAiUsageService _aiUsageService;
 
-    public SkinProgressService(AppDbContext dbContext, IImageStorageService imageStorageService)
+    public SkinProgressService(
+        AppDbContext dbContext,
+        IImageStorageService imageStorageService,
+        IAiUsageService aiUsageService)
     {
         _dbContext = dbContext;
         _imageStorageService = imageStorageService;
+        _aiUsageService = aiUsageService;
     }
 
     public async Task<SkinProgressPhotoDto> UploadPhotoAsync(Guid userId, SkinProgressPhotoUploadRequestDto request, CancellationToken cancellationToken)
+    {
+        return await UploadPhotoCoreAsync(userId, request, enforceProgressQuota: true, cancellationToken);
+    }
+
+    public async Task<SkinProgressPhotoDto> UploadAnalysisPhotoAsync(Guid userId, SkinProgressPhotoUploadRequestDto request, CancellationToken cancellationToken)
+    {
+        return await UploadPhotoCoreAsync(userId, request, enforceProgressQuota: false, cancellationToken);
+    }
+
+    private async Task<SkinProgressPhotoDto> UploadPhotoCoreAsync(
+        Guid userId,
+        SkinProgressPhotoUploadRequestDto request,
+        bool enforceProgressQuota,
+        CancellationToken cancellationToken)
     {
         try
         {
             if (request.Image is null && string.IsNullOrWhiteSpace(request.ImageUrl))
             {
                 throw new AiFeatureException("INVALID_REQUEST", "Image file or imageUrl is required.");
+            }
+
+            if (enforceProgressQuota)
+            {
+                await _aiUsageService.CheckLimitAsync(userId, "progress_entry", cancellationToken);
             }
 
             var imageUrl = await _imageStorageService.StoreSkinProgressPhotoAsync(request, cancellationToken);
@@ -63,6 +88,11 @@ public class SkinProgressService : ISkinProgressService
 
             _dbContext.SkinProgressPhotos.Add(photo);
             await _dbContext.SaveChangesAsync(cancellationToken);
+            if (enforceProgressQuota)
+            {
+                await _aiUsageService.LogUsageAsync(userId, "progress_entry", null, null, null, cancellationToken);
+            }
+
             return photo.ToDto();
         }
         catch (PostgresException ex) when (IsMissingRelation(ex))

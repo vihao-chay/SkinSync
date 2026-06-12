@@ -62,7 +62,7 @@ public class SkinProgressAnalysisService : ISkinProgressAnalysisService
                 .ThenInclude(x => x.Product)
                 .FirstOrDefaultAsync(x => x.UserId == userId && x.IsActive, cancellationToken);
 
-            await _aiUsageService.CheckLimitAsync(userId, "skin_progress_analysis", cancellationToken);
+            await _aiUsageService.CheckLimitAsync(userId, "skin_analysis", cancellationToken);
 
             var entity = existing ?? new SkinProgressAnalysis
             {
@@ -148,7 +148,7 @@ public class SkinProgressAnalysisService : ISkinProgressAnalysisService
             entity.ErrorMessage = null;
             entity.CompletedAt = DateTime.UtcNow;
             await _dbContext.SaveChangesAsync(cancellationToken);
-            await _aiUsageService.LogUsageAsync(userId, "skin_progress_analysis", aiResult.Model, aiResult.InputTokens, aiResult.OutputTokens, cancellationToken);
+            await _aiUsageService.LogUsageAsync(userId, "skin_analysis", aiResult.Model, aiResult.InputTokens, aiResult.OutputTokens, cancellationToken);
 
             return entity.ToDto(photo);
         }

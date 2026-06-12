@@ -5,6 +5,7 @@ using SkinSync.Data;
 using SkinSync.Mappers;
 using SkinSync.Models.Dtos.AI;
 using SkinSync.Models.Entities;
+using SkinSync.Services;
 
 namespace SkinSync.Services.AIPlatform;
 
@@ -38,15 +39,18 @@ public class SkinProgressReportService : ISkinProgressReportService
     private readonly AppDbContext _dbContext;
     private readonly IOpenAiService _openAiService;
     private readonly IAiUsageService _aiUsageService;
+    private readonly ISubscriptionPlanService _subscriptionPlanService;
 
     public SkinProgressReportService(
         AppDbContext dbContext,
         IOpenAiService openAiService,
-        IAiUsageService aiUsageService)
+        IAiUsageService aiUsageService,
+        ISubscriptionPlanService subscriptionPlanService)
     {
         _dbContext = dbContext;
         _openAiService = openAiService;
         _aiUsageService = aiUsageService;
+        _subscriptionPlanService = subscriptionPlanService;
     }
 
     public async Task<SkinProgressReportResponseDto> GenerateAsync(Guid userId, SkinProgressReportGenerateRequestDto request, CancellationToken cancellationToken)
@@ -56,6 +60,7 @@ public class SkinProgressReportService : ISkinProgressReportService
             var reportCategory = NormalizeReportCategory(request.ReportCategory);
             var source = NormalizeSource(request.Source);
             var periodType = NormalizePeriodType(request.PeriodType);
+            await _subscriptionPlanService.EnsureReportAccessAsync(userId, periodType, cancellationToken);
 
             if (reportCategory == "progress_timeline" && (!request.PeriodStart.HasValue || !request.PeriodEnd.HasValue))
             {
@@ -324,7 +329,7 @@ public class SkinProgressReportService : ISkinProgressReportService
         }
 
         var normalized = value.Trim().ToLowerInvariant();
-        return normalized is "weekly" or "monthly" or "yearly" ? normalized : null;
+        return normalized is "weekly" or "monthly" or "yearly" or "custom" ? normalized : null;
     }
 
     private static string NormalizeStatus(string? value, SkinProgressScoreChangesDto scoreChanges)

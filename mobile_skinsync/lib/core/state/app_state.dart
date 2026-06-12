@@ -31,6 +31,8 @@ class AppState extends ChangeNotifier {
   ProgressOverview? progress;
   DailyLog? todayLog;
   List<ReminderItem> reminders = const [];
+  List<SubscriptionPlan> subscriptionPlans = const [];
+  CurrentSubscription? subscription;
   bool isBusy = false;
   bool isBootstrapping = true;
   bool hasPendingOnboarding = false;
@@ -82,6 +84,7 @@ class AppState extends ChangeNotifier {
           session!.user.id,
         );
         await _loadProfile();
+        await _loadSubscription();
         if (profile?.isOnboardingCompleted == true) {
           await _clearOnboardingPendingForCurrentUser();
           await refreshHome();
@@ -194,6 +197,8 @@ class AppState extends ChangeNotifier {
     progress = null;
     todayLog = null;
     reminders = const [];
+    subscriptionPlans = const [];
+    subscription = null;
     hasPendingOnboarding = false;
     _apiClient.attachSession(null);
     await _sessionStore.clear();
@@ -214,6 +219,7 @@ class AppState extends ChangeNotifier {
         _loadProgress(),
         _loadReminders(),
         _loadTodayLog(),
+        _loadSubscription(),
       ]);
       if (profile?.isOnboardingCompleted == true) {
         await _clearOnboardingPendingForCurrentUser();
@@ -269,10 +275,7 @@ class AppState extends ChangeNotifier {
       final response = await _apiClient.multipart(
         '/api/skin-analysis',
         file: imageFile,
-        fields: {
-          'additionalNote': additionalNote,
-          'source': source,
-        },
+        fields: {'additionalNote': additionalNote, 'source': source},
       );
       parsedResult = _analysisResultFromAiResponse(response);
       latestAnalysis = parsedResult;
@@ -302,7 +305,8 @@ class AppState extends ChangeNotifier {
         'message': message,
         if (conversationId != null && conversationId.isNotEmpty)
           'conversationId': conversationId,
-        if (entryPoint != null && entryPoint.isNotEmpty) 'entryPoint': entryPoint,
+        if (entryPoint != null && entryPoint.isNotEmpty)
+          'entryPoint': entryPoint,
         if (referenceId != null && referenceId.isNotEmpty)
           'referenceId': referenceId,
         if (prefillContext != null && prefillContext.isNotEmpty)
@@ -427,10 +431,7 @@ class AppState extends ChangeNotifier {
   }) async {
     final response = await _apiClient.post(
       '/api/ai/products/$productId/add-to-routine',
-      body: {
-        'routineType': routineType,
-        'allowConflicts': allowConflicts,
-      },
+      body: {'routineType': routineType, 'allowConflicts': allowConflicts},
     );
     final data = _readAiData(response);
     final parsed = AiAddProductToRoutineResponse.fromJson(data);
@@ -482,6 +483,36 @@ class AppState extends ChangeNotifier {
     final response = await _apiClient.get('/api/ai/reports/$reportId');
     final data = _readAiData(response);
     return AiReportGenerateResponse.fromJson(data);
+  }
+
+  Future<void> refreshSubscription() async {
+    await _runBusy(() async {
+      await _loadSubscription();
+    }, showBusy: false);
+  }
+
+  Future<void> subscribeToPlan(String planCode) async {
+    final normalized = planCode.trim().toLowerCase();
+    if (normalized != 'plus' && normalized != 'premium') {
+      throw ApiException('Please choose Plus or Premium.', 400);
+    }
+
+    await _runBusy(() async {
+      final data = await _apiClient.post(
+        '/api/subscriptions/subscribe',
+        body: {'planCode': normalized},
+      );
+      subscription = CurrentSubscription.fromJson(data);
+      await _replaceCurrentUserPlanType(subscription?.plan.code);
+    });
+  }
+
+  Future<void> cancelSubscription() async {
+    await _runBusy(() async {
+      final data = await _apiClient.post('/api/subscriptions/cancel');
+      subscription = CurrentSubscription.fromJson(data);
+      await _replaceCurrentUserPlanType(subscription?.plan.code ?? 'free');
+    });
   }
 
   Future<void> toggleRoutineStep(String stepId, bool completed) async {
@@ -684,6 +715,28 @@ class AppState extends ChangeNotifier {
     }
   }
 
+  Future<void> _loadSubscription() async {
+    try {
+      final planData = await _apiClient.get('/api/subscription-plans');
+      final items = (planData['items'] as List?) ?? const [];
+      subscriptionPlans = items
+          .whereType<Map<String, dynamic>>()
+          .map(SubscriptionPlan.fromJson)
+          .toList();
+    } catch (_) {
+      subscriptionPlans = const [];
+    }
+
+    try {
+      subscription = CurrentSubscription.fromJson(
+        await _apiClient.get('/api/subscriptions/me'),
+      );
+      await _replaceCurrentUserPlanType(subscription?.plan.code);
+    } catch (_) {
+      subscription = null;
+    }
+  }
+
   Future<void> _runBusyInternal(
     Future<void> Function() action, {
     required bool showBusy,
@@ -801,6 +854,22 @@ class AppState extends ChangeNotifier {
     await _sessionStore.save(session!);
   }
 
+  Future<void> _replaceCurrentUserPlanType(String? planType) async {
+    final trimmed = planType?.trim().toLowerCase() ?? '';
+    final currentSession = session;
+    if (trimmed.isEmpty || currentSession == null) {
+      return;
+    }
+
+    session = AuthSession(
+      accessToken: currentSession.accessToken,
+      refreshToken: currentSession.refreshToken,
+      user: currentSession.user.copyWith(planType: trimmed),
+    );
+    _apiClient.attachSession(session);
+    await _sessionStore.save(session!);
+  }
+
   AuthSession _sessionFromPayload(Map<String, dynamic> data) {
     final accessToken = _readString(data, 'accessToken', 'AccessToken');
     final refreshToken = _readString(data, 'refreshToken', 'RefreshToken');
@@ -900,14 +969,17 @@ class AppState extends ChangeNotifier {
         })
         .toList();
     final warnings =
-        (((data['riskFlags'] as List?) ?? (data['warnings'] as List?) ?? const []))
-        .map((item) => item.toString())
-        .toList();
+        (((data['riskFlags'] as List?) ??
+                (data['warnings'] as List?) ??
+                const []))
+            .map((item) => item.toString())
+            .toList();
 
     final issues = concerns
         .map(
           (item) => AnalysisIssue(
-            issueType: (item['label'] ?? item['concern'] ?? 'unknown').toString(),
+            issueType: (item['label'] ?? item['concern'] ?? 'unknown')
+                .toString(),
             severityScore:
                 (item['score'] as int?) ??
                 _severityToScore((item['severity'] ?? 'low').toString()),
@@ -936,17 +1008,18 @@ class AppState extends ChangeNotifier {
                           concerns.length)
                       .clamp(0, 100))
             .toInt();
-    final overallScoreValue = (data['skinScore'] ?? data['overallScore']) as num?;
+    final overallScoreValue =
+        (data['skinScore'] ?? data['overallScore']) as num?;
     final overallScore =
         ((overallScoreValue?.round()) ??
                 (issues.isEmpty
-                ? 88
-                : (100 -
-                          (issues
-                                  .map((item) => item.severityScore)
-                                  .reduce((a, b) => a + b) ~/
-                              issues.length))
-                      .clamp(0, 100)))
+                    ? 88
+                    : (100 -
+                              (issues
+                                      .map((item) => item.severityScore)
+                                      .reduce((a, b) => a + b) ~/
+                                  issues.length))
+                          .clamp(0, 100)))
             .toInt();
 
     return AnalysisResult(
@@ -954,7 +1027,7 @@ class AppState extends ChangeNotifier {
           (data['analysisResultId'] ??
                   data['analysisId'] ??
                   DateTime.now().millisecondsSinceEpoch)
-          .toString(),
+              .toString(),
       analysisSessionId: data['analysisSessionId']?.toString(),
       progressEntryId: data['progressEntryId']?.toString(),
       photoId: data['photoId']?.toString(),

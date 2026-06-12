@@ -1,8 +1,7 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
 using SkinSync.Data;
 using SkinSync.Models.Entities;
-using SkinSync.Services.AI;
+using SkinSync.Services;
 
 namespace SkinSync.Services.AIPlatform;
 
@@ -16,16 +15,13 @@ public class AiUsageService : IAiUsageService
 {
     private readonly AppDbContext _dbContext;
     private readonly ISubscriptionPlanService _subscriptionPlanService;
-    private readonly AiSettings _settings;
 
     public AiUsageService(
         AppDbContext dbContext,
-        ISubscriptionPlanService subscriptionPlanService,
-        IOptions<AiSettings> settings)
+        ISubscriptionPlanService subscriptionPlanService)
     {
         _dbContext = dbContext;
         _subscriptionPlanService = subscriptionPlanService;
-        _settings = settings.Value;
     }
 
     public async Task CheckLimitAsync(Guid userId, string featureName, CancellationToken cancellationToken)
@@ -36,12 +32,13 @@ public class AiUsageService : IAiUsageService
             throw new AiFeatureException("USER_NOT_FOUND", "User not found.", 404);
         }
 
-        var effectivePlanType = await _subscriptionPlanService.GetEffectivePlanTypeAsync(userId, cancellationToken);
-        var limits = string.Equals(effectivePlanType, "premium", StringComparison.OrdinalIgnoreCase)
-            ? _settings.Quotas.PremiumPlanMonthlyLimits
-            : _settings.Quotas.FreePlanMonthlyLimits;
+        var access = await _subscriptionPlanService.GetFeatureAccessAsync(userId, featureName, cancellationToken);
+        if (!access.IsEnabled || (!access.IsUnlimited && access.MonthlyLimit == 0))
+        {
+            throw new AiFeatureException("PLAN_FEATURE_NOT_AVAILABLE", $"{featureName} is not available on your current plan.", 403);
+        }
 
-        if (!limits.TryGetValue(featureName, out var limit) || limit <= 0)
+        if (access.IsUnlimited || access.MonthlyLimit is null)
         {
             return;
         }
@@ -55,7 +52,7 @@ public class AiUsageService : IAiUsageService
                      x.UsedAt >= startOfMonth,
                 cancellationToken);
 
-        if (usedCount >= limit)
+        if (usedCount >= access.MonthlyLimit.Value)
         {
             throw new AiFeatureException("AI_QUOTA_EXCEEDED", $"Monthly quota exceeded for {featureName}.", 429);
         }

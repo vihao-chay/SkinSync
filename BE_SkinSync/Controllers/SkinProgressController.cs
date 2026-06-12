@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using SkinSync.Base;
 using SkinSync.Helpers;
 using SkinSync.Models.Dtos.AI;
+using SkinSync.Services;
 using SkinSync.Services.AIPlatform;
 
 namespace SkinSync.Controllers;
@@ -15,15 +16,21 @@ public class SkinProgressController : ControllerBase
     private readonly ISkinProgressService _skinProgressService;
     private readonly ISkinProgressComparisonService _skinProgressComparisonService;
     private readonly ISkinProgressReportService _skinProgressReportService;
+    private readonly ISubscriptionPlanService _subscriptionPlanService;
+    private readonly IReportPdfService _reportPdfService;
 
     public SkinProgressController(
         ISkinProgressService skinProgressService,
         ISkinProgressComparisonService skinProgressComparisonService,
-        ISkinProgressReportService skinProgressReportService)
+        ISkinProgressReportService skinProgressReportService,
+        ISubscriptionPlanService subscriptionPlanService,
+        IReportPdfService reportPdfService)
     {
         _skinProgressService = skinProgressService;
         _skinProgressComparisonService = skinProgressComparisonService;
         _skinProgressReportService = skinProgressReportService;
+        _subscriptionPlanService = subscriptionPlanService;
+        _reportPdfService = reportPdfService;
     }
 
     [HttpPost("photos")]
@@ -230,6 +237,27 @@ public class SkinProgressController : ControllerBase
         catch (AiFeatureException ex)
         {
             return ResponseEntity<SkinProgressReportResponseDto>.Fail(ex.Message, ex.StatusCode);
+        }
+    }
+
+    [HttpGet("reports/{reportId:guid}/export-pdf")]
+    public async Task<IActionResult> ExportReportPdf(Guid reportId, CancellationToken cancellationToken)
+    {
+        if (!HttpContext.TryGetUserId(out var userId))
+        {
+            return StatusCode(401, ResponseEntity<object>.Fail("Missing authenticated user.", 401));
+        }
+
+        try
+        {
+            await _subscriptionPlanService.EnsureFeatureAvailableAsync(userId, "export_pdf", cancellationToken);
+            var report = await _skinProgressReportService.GetReportAsync(userId, reportId, cancellationToken);
+            var pdfBytes = _reportPdfService.BuildSkinProgressReportPdf(report);
+            return File(pdfBytes, "application/pdf", $"skinsync-report-{report.ReportId:N}.pdf");
+        }
+        catch (AiFeatureException ex)
+        {
+            return StatusCode(ex.StatusCode, ResponseEntity<object>.Fail(ex.Message, ex.StatusCode));
         }
     }
 }
