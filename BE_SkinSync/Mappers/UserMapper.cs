@@ -18,7 +18,8 @@ public static class UserMapper
             Phone = user.Phone,
             AvatarUrl = user.AvatarUrl,
             Role = user.Role,
-            Status = user.Status
+            Status = user.Status,
+            PlanType = user.PlanType
         };
     }
 
@@ -79,6 +80,7 @@ public static class UserMapper
             Phone = user.Phone,
             Role = user.Role,
             Status = user.Status,
+            PlanType = user.PlanType,
             CreatedAt = user.CreatedAt
         };
     }

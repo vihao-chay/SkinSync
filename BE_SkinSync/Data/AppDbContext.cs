@@ -27,6 +27,9 @@ public class AppDbContext : DbContext
     public DbSet<SkinProgressAnalysis> SkinProgressAnalyses => Set<SkinProgressAnalysis>();
     public DbSet<SkinPhotoComparison> SkinPhotoComparisons => Set<SkinPhotoComparison>();
     public DbSet<SkinProgressReport> SkinProgressReports => Set<SkinProgressReport>();
+    public DbSet<SubscriptionPlan> SubscriptionPlans => Set<SubscriptionPlan>();
+    public DbSet<SubscriptionPlanFeature> SubscriptionPlanFeatures => Set<SubscriptionPlanFeature>();
+    public DbSet<UserSubscription> UserSubscriptions => Set<UserSubscription>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -36,7 +39,7 @@ public class AppDbContext : DbContext
             {
                 table.HasCheckConstraint("ck_users_role", "role IN ('user', 'admin', 'expert')");
                 table.HasCheckConstraint("ck_users_status", "status IN ('active', 'inactive', 'banned')");
-                table.HasCheckConstraint("ck_users_plan_type", "\"PlanType\" IN ('free', 'premium')");
+                table.HasCheckConstraint("ck_users_plan_type", "\"PlanType\" IN ('free', 'plus', 'premium')");
             });
             entity.HasKey(x => x.Id);
             entity.HasIndex(x => x.Email).IsUnique();
@@ -50,6 +53,80 @@ public class AppDbContext : DbContext
             entity.Property(x => x.PlanType).HasMaxLength(20).HasDefaultValue("free").IsRequired();
             entity.Property(x => x.CreatedAt).HasColumnType("timestamp with time zone").HasDefaultValueSql("timezone('utc', now())");
             entity.Property(x => x.UpdatedAt).HasColumnType("timestamp with time zone");
+        });
+
+        modelBuilder.Entity<SubscriptionPlan>(entity =>
+        {
+            entity.ToTable("subscription_plans", table =>
+            {
+                table.HasCheckConstraint("ck_subscription_plans_code", "\"Code\" IN ('free', 'plus', 'premium')");
+                table.HasCheckConstraint("ck_subscription_plans_price", "\"Price\" >= 0");
+                table.HasCheckConstraint("ck_subscription_plans_billing_period", "\"BillingPeriod\" IN ('monthly')");
+            });
+            entity.HasKey(x => x.Id);
+            entity.HasIndex(x => x.Code).IsUnique();
+            entity.Property(x => x.Code).HasMaxLength(20).IsRequired();
+            entity.Property(x => x.Name).HasMaxLength(80).IsRequired();
+            entity.Property(x => x.Description).HasMaxLength(500);
+            entity.Property(x => x.Price).HasPrecision(12, 2).IsRequired();
+            entity.Property(x => x.Currency).HasMaxLength(10).HasDefaultValue("VND").IsRequired();
+            entity.Property(x => x.BillingPeriod).HasMaxLength(20).HasDefaultValue("monthly").IsRequired();
+            entity.Property(x => x.IsActive).HasDefaultValue(true).IsRequired();
+            entity.Property(x => x.SortOrder).HasDefaultValue(0).IsRequired();
+            entity.Property(x => x.CreatedAt).HasColumnType("timestamp with time zone").HasDefaultValueSql("timezone('utc', now())");
+            entity.Property(x => x.UpdatedAt).HasColumnType("timestamp with time zone");
+        });
+
+        modelBuilder.Entity<SubscriptionPlanFeature>(entity =>
+        {
+            entity.ToTable("subscription_plan_features", table =>
+            {
+                table.HasCheckConstraint("ck_subscription_plan_features_limit", "\"MonthlyLimit\" IS NULL OR \"MonthlyLimit\" >= 0");
+            });
+            entity.HasKey(x => x.Id);
+            entity.HasIndex(x => new { x.PlanId, x.FeatureKey }).IsUnique();
+            entity.Property(x => x.PlanId).IsRequired();
+            entity.Property(x => x.FeatureKey).HasMaxLength(80).IsRequired();
+            entity.Property(x => x.DisplayName).HasMaxLength(120).IsRequired();
+            entity.Property(x => x.IsEnabled).HasDefaultValue(true).IsRequired();
+            entity.Property(x => x.Unit).HasMaxLength(40).HasDefaultValue("usage").IsRequired();
+            entity.Property(x => x.AllowedValues).HasColumnType("jsonb").HasDefaultValueSql("'[]'::jsonb").IsRequired();
+            entity.Property(x => x.CreatedAt).HasColumnType("timestamp with time zone").HasDefaultValueSql("timezone('utc', now())");
+            entity.Property(x => x.UpdatedAt).HasColumnType("timestamp with time zone");
+            entity.HasOne(x => x.Plan)
+                .WithMany(x => x.Features)
+                .HasForeignKey(x => x.PlanId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<UserSubscription>(entity =>
+        {
+            entity.ToTable("user_subscriptions", table =>
+            {
+                table.HasCheckConstraint("ck_user_subscriptions_status", "\"Status\" IN ('active', 'canceled', 'expired')");
+            });
+            entity.HasKey(x => x.Id);
+            entity.HasIndex(x => new { x.UserId, x.Status });
+            entity.HasIndex(x => new { x.UserId, x.StartedAt }).IsDescending(false, true);
+            entity.Property(x => x.UserId).IsRequired();
+            entity.Property(x => x.PlanId).IsRequired();
+            entity.Property(x => x.Status).HasMaxLength(20).HasDefaultValue("active").IsRequired();
+            entity.Property(x => x.StartedAt).HasColumnType("timestamp with time zone").HasDefaultValueSql("timezone('utc', now())");
+            entity.Property(x => x.EndsAt).HasColumnType("timestamp with time zone");
+            entity.Property(x => x.CancelledAt).HasColumnType("timestamp with time zone");
+            entity.Property(x => x.PricePaid).HasPrecision(12, 2).IsRequired();
+            entity.Property(x => x.Currency).HasMaxLength(10).HasDefaultValue("VND").IsRequired();
+            entity.Property(x => x.BillingPeriod).HasMaxLength(20).HasDefaultValue("monthly").IsRequired();
+            entity.Property(x => x.CreatedAt).HasColumnType("timestamp with time zone").HasDefaultValueSql("timezone('utc', now())");
+            entity.Property(x => x.UpdatedAt).HasColumnType("timestamp with time zone");
+            entity.HasOne(x => x.User)
+                .WithMany(x => x.Subscriptions)
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(x => x.Plan)
+                .WithMany(x => x.UserSubscriptions)
+                .HasForeignKey(x => x.PlanId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<UserProfile>(entity =>
@@ -423,7 +500,7 @@ public class AppDbContext : DbContext
             {
                 table.HasCheckConstraint("ck_skin_progress_reports_report_category", "\"ReportCategory\" IN ('progress_timeline', 'after_analysis', 'routine_feedback', 'product_feedback', 'general_summary')");
                 table.HasCheckConstraint("ck_skin_progress_reports_source", "\"Source\" IN ('dashboard', 'ai_hub', 'progress', 'onboarding', 'system')");
-                table.HasCheckConstraint("ck_skin_progress_reports_period_type", "\"PeriodType\" IS NULL OR \"PeriodType\" IN ('weekly', 'monthly', 'yearly')");
+                table.HasCheckConstraint("ck_skin_progress_reports_period_type", "\"PeriodType\" IS NULL OR \"PeriodType\" IN ('weekly', 'monthly', 'yearly', 'custom')");
                 table.HasCheckConstraint("ck_skin_progress_reports_progress_status", "\"ProgressStatus\" IN ('improved', 'stable', 'worse', 'mixed', 'insufficient_data')");
                 table.HasCheckConstraint("ck_skin_progress_reports_progress_timeline_period", "\"ReportCategory\" <> 'progress_timeline' OR (\"PeriodType\" IS NOT NULL AND \"PeriodStart\" IS NOT NULL AND \"PeriodEnd\" IS NOT NULL)");
                 table.HasCheckConstraint("ck_skin_progress_reports_after_analysis_related_analysis", "\"ReportCategory\" <> 'after_analysis' OR \"RelatedAnalysisId\" IS NOT NULL");
@@ -457,7 +534,7 @@ public class AppDbContext : DbContext
         {
             entity.ToTable("ai_usage_logs", table =>
             {
-                table.HasCheckConstraint("ck_ai_usage_logs_feature_name", "\"FeatureName\" IN ('skin_analysis', 'skin_progress_analysis', 'skin_progress_compare', 'skin_progress_report', 'ai_chat', 'routine_generation', 'product_recommendation', 'ingredient_check', 'report_generation', 'conflict_check', 'smart_reminder')");
+                table.HasCheckConstraint("ck_ai_usage_logs_feature_name", "\"FeatureName\" IN ('skin_analysis', 'skin_progress_analysis', 'skin_progress_compare', 'skin_progress_report', 'ai_chat', 'routine_generation', 'product_recommendation', 'ingredient_check', 'report_generation', 'conflict_check', 'smart_reminder', 'progress_entry')");
             });
             entity.HasKey(x => x.Id);
             entity.HasIndex(x => new { x.UserId, x.FeatureName, x.UsedAt }).IsDescending(false, false, true);

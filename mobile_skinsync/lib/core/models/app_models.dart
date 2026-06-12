@@ -31,6 +31,7 @@ class AppUser {
     this.avatarUrl,
     required this.role,
     required this.status,
+    this.planType = 'free',
   });
 
   final String id;
@@ -40,6 +41,7 @@ class AppUser {
   final String? avatarUrl;
   final String role;
   final String status;
+  final String planType;
 
   factory AppUser.fromJson(Map<String, dynamic> json) => AppUser(
     id: json['id'].toString(),
@@ -49,6 +51,7 @@ class AppUser {
     avatarUrl: json['avatarUrl'] as String?,
     role: (json['role'] ?? 'user') as String,
     status: (json['status'] ?? 'active') as String,
+    planType: (json['planType'] ?? 'free') as String,
   );
 
   Map<String, dynamic> toJson() => {
@@ -59,6 +62,7 @@ class AppUser {
     'avatarUrl': avatarUrl,
     'role': role,
     'status': status,
+    'planType': planType,
   };
 
   AppUser copyWith({
@@ -69,6 +73,7 @@ class AppUser {
     String? avatarUrl,
     String? role,
     String? status,
+    String? planType,
   }) {
     return AppUser(
       id: id ?? this.id,
@@ -78,8 +83,168 @@ class AppUser {
       avatarUrl: avatarUrl ?? this.avatarUrl,
       role: role ?? this.role,
       status: status ?? this.status,
+      planType: planType ?? this.planType,
     );
   }
+}
+
+class SubscriptionPlan {
+  const SubscriptionPlan({
+    required this.id,
+    required this.code,
+    required this.name,
+    this.description,
+    required this.priceVnd,
+    required this.billingCycle,
+    required this.isActive,
+    this.features = const [],
+  });
+
+  final String id;
+  final String code;
+  final String name;
+  final String? description;
+  final double priceVnd;
+  final String billingCycle;
+  final bool isActive;
+  final List<SubscriptionPlanFeature> features;
+
+  factory SubscriptionPlan.fromJson(Map<String, dynamic> json) =>
+      SubscriptionPlan(
+        id: json['id'].toString(),
+        code: (json['code'] ?? 'free').toString(),
+        name: (json['name'] ?? '').toString(),
+        description: json['description']?.toString(),
+        priceVnd: (json['priceVnd'] as num?)?.toDouble() ?? 0,
+        billingCycle: (json['billingCycle'] ?? 'monthly').toString(),
+        isActive: (json['isActive'] ?? true) as bool,
+        features: ((json['features'] as List?) ?? const [])
+            .whereType<Map<String, dynamic>>()
+            .map(SubscriptionPlanFeature.fromJson)
+            .toList(),
+      );
+}
+
+class SubscriptionPlanFeature {
+  const SubscriptionPlanFeature({
+    required this.featureKey,
+    required this.displayName,
+    this.monthlyLimit,
+    this.isUnlimited = false,
+    this.isEnabled = true,
+  });
+
+  final String featureKey;
+  final String displayName;
+  final int? monthlyLimit;
+  final bool isUnlimited;
+  final bool isEnabled;
+
+  factory SubscriptionPlanFeature.fromJson(Map<String, dynamic> json) =>
+      SubscriptionPlanFeature(
+        featureKey: (json['featureKey'] ?? '').toString(),
+        displayName: (json['displayName'] ?? '').toString(),
+        monthlyLimit: (json['monthlyLimit'] as num?)?.toInt(),
+        isUnlimited: (json['isUnlimited'] ?? false) as bool,
+        isEnabled: (json['isEnabled'] ?? true) as bool,
+      );
+}
+
+class SubscriptionStatus {
+  const SubscriptionStatus({
+    this.subscriptionId,
+    required this.status,
+    required this.planCode,
+    this.startedAt,
+    this.currentPeriodStart,
+    this.currentPeriodEnd,
+    this.canceledAt,
+  });
+
+  final String? subscriptionId;
+  final String status;
+  final String planCode;
+  final DateTime? startedAt;
+  final DateTime? currentPeriodStart;
+  final DateTime? currentPeriodEnd;
+  final DateTime? canceledAt;
+
+  factory SubscriptionStatus.fromJson(Map<String, dynamic> json) =>
+      SubscriptionStatus(
+        subscriptionId: json['subscriptionId']?.toString(),
+        status: (json['status'] ?? 'active').toString(),
+        planCode: (json['planCode'] ?? 'free').toString(),
+        startedAt: _tryParseDateTime(json['startedAt']),
+        currentPeriodStart: _tryParseDateTime(json['currentPeriodStart']),
+        currentPeriodEnd: _tryParseDateTime(json['currentPeriodEnd']),
+        canceledAt: _tryParseDateTime(json['canceledAt']),
+      );
+}
+
+class SubscriptionUsage {
+  const SubscriptionUsage({
+    required this.featureKey,
+    required this.displayName,
+    required this.used,
+    this.monthlyLimit,
+    this.remaining,
+    this.isUnlimited = false,
+    this.isEnabled = true,
+  });
+
+  final String featureKey;
+  final String displayName;
+  final int used;
+  final int? monthlyLimit;
+  final int? remaining;
+  final bool isUnlimited;
+  final bool isEnabled;
+
+  factory SubscriptionUsage.fromJson(Map<String, dynamic> json) =>
+      SubscriptionUsage(
+        featureKey: (json['featureKey'] ?? '').toString(),
+        displayName: (json['displayName'] ?? '').toString(),
+        used: (json['used'] as num?)?.toInt() ?? 0,
+        monthlyLimit: (json['monthlyLimit'] as num?)?.toInt(),
+        remaining: (json['remaining'] as num?)?.toInt(),
+        isUnlimited: (json['isUnlimited'] ?? false) as bool,
+        isEnabled: (json['isEnabled'] ?? true) as bool,
+      );
+}
+
+class CurrentSubscription {
+  const CurrentSubscription({
+    required this.plan,
+    required this.subscription,
+    this.usage = const [],
+  });
+
+  final SubscriptionPlan plan;
+  final SubscriptionStatus subscription;
+  final List<SubscriptionUsage> usage;
+
+  factory CurrentSubscription.fromJson(Map<String, dynamic> json) =>
+      CurrentSubscription(
+        plan: SubscriptionPlan.fromJson(
+          (json['plan'] as Map<String, dynamic>?) ?? const {},
+        ),
+        subscription: SubscriptionStatus.fromJson(
+          (json['subscription'] as Map<String, dynamic>?) ?? const {},
+        ),
+        usage: ((json['usage'] as List?) ?? const [])
+            .whereType<Map<String, dynamic>>()
+            .map(SubscriptionUsage.fromJson)
+            .toList(),
+      );
+}
+
+DateTime? _tryParseDateTime(Object? value) {
+  final raw = value?.toString();
+  if (raw == null || raw.isEmpty) {
+    return null;
+  }
+
+  return DateTime.tryParse(raw);
 }
 
 class SkinProfile {
@@ -166,7 +331,9 @@ class AnalysisIssue {
   final String? description;
 
   factory AnalysisIssue.fromJson(Map<String, dynamic> json) => AnalysisIssue(
-    issueType: ((json['issueType'] ?? json['label'] ?? json['concern']) ?? '') as String,
+    issueType:
+        ((json['issueType'] ?? json['label'] ?? json['concern']) ?? '')
+            as String,
     severityScore:
         (json['severityScore'] as int?) ??
         _severityToLegacyScore((json['severity'] ?? 'low').toString()),
@@ -232,39 +399,52 @@ class AnalysisResult {
   final List<AnalysisRecommendation> recommendations;
 
   factory AnalysisResult.fromJson(Map<String, dynamic> json) => AnalysisResult(
-    id: (json['id'] ?? json['analysisResultId'] ?? json['analysisId']).toString(),
+    id: (json['id'] ?? json['analysisResultId'] ?? json['analysisId'])
+        .toString(),
     analysisSessionId: json['analysisSessionId']?.toString(),
     progressEntryId: json['progressEntryId']?.toString(),
     photoId: json['photoId']?.toString(),
     source: json['source']?.toString(),
     imageUrl: (json['imageUrl'] ?? '') as String,
-    skinType: ((json['skinType'] ?? json['skinTypeEstimate']) ?? 'Unknown') as String,
+    skinType:
+        ((json['skinType'] ?? json['skinTypeEstimate']) ?? 'Unknown') as String,
     overallScore: ((json['overallScore'] ?? json['skinScore']) ?? 0) as int,
-    confidenceScore: ((json['confidenceScore'] as num?)?.round() ??
-            (((json['confidenceScore'] as num?) ?? (json['confidence'] as num?) ?? 0) * 100).round()),
+    confidenceScore:
+        ((json['confidenceScore'] as num?)?.round() ??
+        (((json['confidenceScore'] as num?) ??
+                    (json['confidence'] as num?) ??
+                    0) *
+                100)
+            .round()),
     overview: (json['overview'] ?? json['skinSummary']) as String?,
     disclaimer: json['disclaimer'] as String?,
-    warnings: (((json['warnings'] as List?) ?? (json['riskFlags'] as List?) ?? const []))
-        .map((e) => e.toString())
-        .toList(),
-    issues: (((json['issues'] as List?) ?? (json['detectedConcerns'] as List?) ?? const []))
-        .whereType<Map<String, dynamic>>()
-        .map(AnalysisIssue.fromJson)
-        .toList(),
-    recommendations: ((json['recommendations'] as List?) ?? const [])
-        .map((item) {
-          if (item is Map<String, dynamic>) {
-            return AnalysisRecommendation(
-              title: (item['title'] ?? item['type'] ?? 'Recommendation') as String,
-              content: (item['content'] ?? item['description'] ?? '') as String,
-            );
-          }
-          return AnalysisRecommendation(
-            title: 'Recommendation',
-            content: item.toString(),
-          );
-        })
-        .toList(),
+    warnings:
+        (((json['warnings'] as List?) ??
+                (json['riskFlags'] as List?) ??
+                const []))
+            .map((e) => e.toString())
+            .toList(),
+    issues:
+        (((json['issues'] as List?) ??
+                (json['detectedConcerns'] as List?) ??
+                const []))
+            .whereType<Map<String, dynamic>>()
+            .map(AnalysisIssue.fromJson)
+            .toList(),
+    recommendations: ((json['recommendations'] as List?) ?? const []).map((
+      item,
+    ) {
+      if (item is Map<String, dynamic>) {
+        return AnalysisRecommendation(
+          title: (item['title'] ?? item['type'] ?? 'Recommendation') as String,
+          content: (item['content'] ?? item['description'] ?? '') as String,
+        );
+      }
+      return AnalysisRecommendation(
+        title: 'Recommendation',
+        content: item.toString(),
+      );
+    }).toList(),
   );
 }
 

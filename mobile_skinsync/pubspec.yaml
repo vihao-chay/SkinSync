@@ -66,6 +66,7 @@ flutter:
   assets:
     - logo.jpg
     - login_register.png
+    - bank.jpg
 
   fonts:
     - family: CormorantGaramond

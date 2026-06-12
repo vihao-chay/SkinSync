@@ -8,5 +8,6 @@ public class AdminUserItemDto
     public string? Phone { get; set; }
     public string Role { get; set; } = string.Empty;
     public string Status { get; set; } = string.Empty;
+    public string PlanType { get; set; } = "free";
     public DateTime CreatedAt { get; set; }
 }

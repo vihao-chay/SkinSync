@@ -132,7 +132,7 @@ namespace SkinSync.Migrations
 
                     b.ToTable("ai_usage_logs", null, t =>
                         {
-                            t.HasCheckConstraint("ck_ai_usage_logs_feature_name", "\"FeatureName\" IN ('skin_analysis', 'skin_progress_analysis', 'skin_progress_compare', 'skin_progress_report', 'ai_chat', 'routine_generation', 'product_recommendation', 'ingredient_check', 'report_generation', 'conflict_check', 'smart_reminder')");
+                            t.HasCheckConstraint("ck_ai_usage_logs_feature_name", "\"FeatureName\" IN ('skin_analysis', 'skin_progress_analysis', 'skin_progress_compare', 'skin_progress_report', 'ai_chat', 'routine_generation', 'product_recommendation', 'ingredient_check', 'report_generation', 'conflict_check', 'smart_reminder', 'progress_entry')");
                         });
                 });
 
@@ -1059,7 +1059,7 @@ namespace SkinSync.Migrations
                         {
                             t.HasCheckConstraint("ck_skin_progress_reports_after_analysis_related_analysis", "\"ReportCategory\" <> 'after_analysis' OR \"RelatedAnalysisId\" IS NOT NULL");
 
-                            t.HasCheckConstraint("ck_skin_progress_reports_period_type", "\"PeriodType\" IS NULL OR \"PeriodType\" IN ('weekly', 'monthly', 'yearly')");
+                            t.HasCheckConstraint("ck_skin_progress_reports_period_type", "\"PeriodType\" IS NULL OR \"PeriodType\" IN ('weekly', 'monthly', 'yearly', 'custom')");
 
                             t.HasCheckConstraint("ck_skin_progress_reports_progress_status", "\"ProgressStatus\" IN ('improved', 'stable', 'worse', 'mixed', 'insufficient_data')");
 
@@ -1068,6 +1068,136 @@ namespace SkinSync.Migrations
                             t.HasCheckConstraint("ck_skin_progress_reports_report_category", "\"ReportCategory\" IN ('progress_timeline', 'after_analysis', 'routine_feedback', 'product_feedback', 'general_summary')");
 
                             t.HasCheckConstraint("ck_skin_progress_reports_source", "\"Source\" IN ('dashboard', 'ai_hub', 'progress', 'onboarding', 'system')");
+                        });
+                });
+
+            modelBuilder.Entity("SkinSync.Models.Entities.SubscriptionPlan", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("BillingPeriod")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("monthly");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("timezone('utc', now())");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasDefaultValue("VND");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<decimal>("Price")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)");
+
+                    b.Property<int>("SortOrder")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.ToTable("subscription_plans", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_subscription_plans_billing_period", "\"BillingPeriod\" IN ('monthly')");
+
+                            t.HasCheckConstraint("ck_subscription_plans_code", "\"Code\" IN ('free', 'plus', 'premium')");
+
+                            t.HasCheckConstraint("ck_subscription_plans_price", "\"Price\" >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("SkinSync.Models.Entities.SubscriptionPlanFeature", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AllowedValues")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("jsonb")
+                        .HasDefaultValueSql("'[]'::jsonb");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("timezone('utc', now())");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<string>("FeatureKey")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<bool>("IsEnabled")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
+                    b.Property<int?>("MonthlyLimit")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("PlanId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Unit")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasDefaultValue("usage");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PlanId", "FeatureKey")
+                        .IsUnique();
+
+                    b.ToTable("subscription_plan_features", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_subscription_plan_features_limit", "\"MonthlyLimit\" IS NULL OR \"MonthlyLimit\" >= 0");
                         });
                 });
 
@@ -1136,7 +1266,7 @@ namespace SkinSync.Migrations
 
                     b.ToTable("users", null, t =>
                         {
-                            t.HasCheckConstraint("ck_users_plan_type", "\"PlanType\" IN ('free', 'premium')");
+                            t.HasCheckConstraint("ck_users_plan_type", "\"PlanType\" IN ('free', 'plus', 'premium')");
 
                             t.HasCheckConstraint("ck_users_role", "role IN ('user', 'admin', 'expert')");
 
@@ -1269,6 +1399,77 @@ namespace SkinSync.Migrations
                     b.ToTable("user_regimens", null, t =>
                         {
                             t.HasCheckConstraint("ck_user_regimens_source", "source IN ('ai', 'user', 'expert', 'system')");
+                        });
+                });
+
+            modelBuilder.Entity("SkinSync.Models.Entities.UserSubscription", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("BillingPeriod")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("monthly");
+
+                    b.Property<DateTime?>("CancelledAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("timezone('utc', now())");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasDefaultValue("VND");
+
+                    b.Property<DateTime?>("EndsAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("PlanId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("PricePaid")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)");
+
+                    b.Property<DateTime>("StartedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("timezone('utc', now())");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("active");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PlanId");
+
+                    b.HasIndex("UserId", "StartedAt")
+                        .IsDescending(false, true);
+
+                    b.HasIndex("UserId", "Status");
+
+                    b.ToTable("user_subscriptions", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_user_subscriptions_status", "\"Status\" IN ('active', 'canceled', 'expired')");
                         });
                 });
 
@@ -1492,6 +1693,17 @@ namespace SkinSync.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("SkinSync.Models.Entities.SubscriptionPlanFeature", b =>
+                {
+                    b.HasOne("SkinSync.Models.Entities.SubscriptionPlan", "Plan")
+                        .WithMany("Features")
+                        .HasForeignKey("PlanId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Plan");
+                });
+
             modelBuilder.Entity("SkinSync.Models.Entities.UserProfile", b =>
                 {
                     b.HasOne("SkinSync.Models.Entities.User", "User")
@@ -1517,6 +1729,25 @@ namespace SkinSync.Migrations
                         .IsRequired();
 
                     b.Navigation("SourceAnalysis");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("SkinSync.Models.Entities.UserSubscription", b =>
+                {
+                    b.HasOne("SkinSync.Models.Entities.SubscriptionPlan", "Plan")
+                        .WithMany("UserSubscriptions")
+                        .HasForeignKey("PlanId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SkinSync.Models.Entities.User", "User")
+                        .WithMany("Subscriptions")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Plan");
 
                     b.Navigation("User");
                 });
@@ -1552,6 +1783,13 @@ namespace SkinSync.Migrations
                     b.Navigation("Analyses");
                 });
 
+            modelBuilder.Entity("SkinSync.Models.Entities.SubscriptionPlan", b =>
+                {
+                    b.Navigation("Features");
+
+                    b.Navigation("UserSubscriptions");
+                });
+
             modelBuilder.Entity("SkinSync.Models.Entities.User", b =>
                 {
                     b.Navigation("AiChatConversations");
@@ -1575,6 +1813,8 @@ namespace SkinSync.Migrations
                     b.Navigation("SkinProgressPhotos");
 
                     b.Navigation("SkinProgressReports");
+
+                    b.Navigation("Subscriptions");
                 });
 
             modelBuilder.Entity("SkinSync.Models.Entities.UserRegimen", b =>
