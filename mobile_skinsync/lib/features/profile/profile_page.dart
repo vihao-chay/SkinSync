@@ -11,6 +11,8 @@ import '../../core/widgets/app_card.dart';
 import '../../core/widgets/app_scaffold.dart';
 import '../../core/widgets/section_header.dart';
 
+const _paymentQrAsset = 'bank.jpg';
+
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
 
@@ -244,7 +246,7 @@ class _SubscriptionCard extends StatelessWidget {
                   plan: plan,
                   isCurrent: currentCode == plan.code,
                   isBusy: isBusy,
-                  onSubscribe: () => _subscribe(context, plan.code),
+                  onSubscribe: () => _subscribe(context, plan),
                 ),
               ),
             ),
@@ -264,12 +266,17 @@ class _SubscriptionCard extends StatelessWidget {
     );
   }
 
-  Future<void> _subscribe(BuildContext context, String planCode) async {
+  Future<void> _subscribe(BuildContext context, SubscriptionPlan plan) async {
+    final shouldActivate = await _showPaymentDialog(context, plan);
+    if (!shouldActivate || !context.mounted) {
+      return;
+    }
+
     try {
-      await context.read<AppState>().subscribeToPlan(planCode);
+      await context.read<AppState>().subscribeToPlan(plan.code);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${_capitalize(planCode)} activated.')),
+          SnackBar(content: Text('${_capitalize(plan.code)} activated.')),
         );
       }
     } catch (_) {
@@ -284,6 +291,117 @@ class _SubscriptionCard extends StatelessWidget {
         );
       }
     }
+  }
+
+  Future<bool> _showPaymentDialog(
+    BuildContext context,
+    SubscriptionPlan plan,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        final textTheme = Theme.of(dialogContext).textTheme;
+        return AlertDialog(
+          backgroundColor: AppColors.surface,
+          surfaceTintColor: AppColors.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+          titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+          contentPadding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
+          actionsPadding: const EdgeInsets.fromLTRB(24, 8, 24, 20),
+          title: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: AppColors.secondary,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(
+                  Icons.qr_code_2_rounded,
+                  color: AppColors.primaryDark,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  'Pay for ${plan.name}',
+                  style: textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _planPrice(plan),
+                  style: textTheme.titleMedium?.copyWith(
+                    color: AppColors.primaryDark,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                Center(
+                  child: Container(
+                    constraints: const BoxConstraints(maxWidth: 260),
+                    padding: const EdgeInsets.all(AppSpacing.sm),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: AspectRatio(
+                      aspectRatio: 397 / 500,
+                      child: Image.asset(
+                        _paymentQrAsset,
+                        fit: BoxFit.contain,
+                        errorBuilder: (context, error, stackTrace) => Center(
+                          child: Text(
+                            'Payment image unavailable',
+                            textAlign: TextAlign.center,
+                            style: textTheme.bodySmall?.copyWith(
+                              color: AppColors.mutedText,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                Text(
+                  'Scan this QR and complete the transfer, then confirm below to activate your plan.',
+                  style: textTheme.bodySmall?.copyWith(
+                    color: AppColors.mutedText,
+                    height: 1.35,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Later'),
+            ),
+            FilledButton.icon(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              icon: const Icon(Icons.check_circle_rounded),
+              label: const Text('I paid'),
+            ),
+          ],
+        );
+      },
+    );
+
+    return confirmed ?? false;
   }
 
   Future<void> _cancel(BuildContext context) async {
