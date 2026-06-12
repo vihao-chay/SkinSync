@@ -22,11 +22,16 @@ public class SkinProgressService : ISkinProgressService
 {
     private readonly AppDbContext _dbContext;
     private readonly IImageStorageService _imageStorageService;
+    private readonly IAiUsageService _aiUsageService;
 
-    public SkinProgressService(AppDbContext dbContext, IImageStorageService imageStorageService)
+    public SkinProgressService(
+        AppDbContext dbContext,
+        IImageStorageService imageStorageService,
+        IAiUsageService aiUsageService)
     {
         _dbContext = dbContext;
         _imageStorageService = imageStorageService;
+        _aiUsageService = aiUsageService;
     }
 
     public async Task<SkinProgressPhotoDto> UploadPhotoAsync(Guid userId, SkinProgressPhotoUploadRequestDto request, CancellationToken cancellationToken)
@@ -37,6 +42,8 @@ public class SkinProgressService : ISkinProgressService
             {
                 throw new AiFeatureException("INVALID_REQUEST", "Image file or imageUrl is required.");
             }
+
+            await _aiUsageService.CheckLimitAsync(userId, "progress_entry", cancellationToken);
 
             var imageUrl = await _imageStorageService.StoreSkinProgressPhotoAsync(request, cancellationToken);
             var metadataJson = System.Text.Json.JsonSerializer.Serialize(new

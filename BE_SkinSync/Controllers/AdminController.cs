@@ -27,7 +27,8 @@ public class AdminController : ControllerBase
     public AdminController(
         AppDbContext dbContext,
         IUserRepository userRepository,
-        IProductRepository productRepository)
+        IProductRepository productRepository,
+        ISubscriptionService subscriptionService)
     {
         _dbContext = dbContext;
         _userRepository = userRepository;

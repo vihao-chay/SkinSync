@@ -1,9 +1,7 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
 using SkinSync.Data;
 using SkinSync.Models.Entities;
 using SkinSync.Services;
-using SkinSync.Services.AI;
 
 namespace SkinSync.Services.AIPlatform;
 
@@ -18,35 +16,25 @@ public interface IAiUsageService
 public class AiUsageService : IAiUsageService
 {
     private readonly AppDbContext _dbContext;
-    private readonly ISubscriptionPlanService _subscriptionPlanService;
-    private readonly AiSettings _settings;
     private readonly ISubscriptionService _subscriptionService;
 
     public AiUsageService(
         AppDbContext dbContext,
-        ISubscriptionPlanService subscriptionPlanService,
-        IOptions<AiSettings> settings)
+        ISubscriptionService subscriptionService)
     {
         _dbContext = dbContext;
-        _subscriptionPlanService = subscriptionPlanService;
-        _settings = settings.Value;
         _subscriptionService = subscriptionService;
     }
 
     public async Task CheckLimitAsync(Guid userId, string featureName, CancellationToken cancellationToken)
     {
-        var userExists = await _dbContext.Users.AsNoTracking().AnyAsync(x => x.Id == userId, cancellationToken);
-        if (!userExists)
+        var access = await _subscriptionService.GetFeatureAccessAsync(userId, featureName, cancellationToken);
+        if (!access.IsEnabled)
         {
             throw new AiFeatureException("PLAN_FEATURE_NOT_AVAILABLE", $"{featureName} is not available for the current plan.", 403);
         }
 
-        var effectivePlanType = await _subscriptionPlanService.GetEffectivePlanTypeAsync(userId, cancellationToken);
-        var limits = string.Equals(effectivePlanType, "premium", StringComparison.OrdinalIgnoreCase)
-            ? _settings.Quotas.PremiumPlanMonthlyLimits
-            : _settings.Quotas.FreePlanMonthlyLimits;
-
-        if (!limits.TryGetValue(featureName, out var limit) || limit <= 0)
+        if (!access.MonthlyLimit.HasValue || access.MonthlyLimit.Value <= 0)
         {
             return;
         }
@@ -60,7 +48,7 @@ public class AiUsageService : IAiUsageService
                      x.UsedAt >= startOfMonth,
                 cancellationToken);
 
-        if (usedCount >= limit.Value)
+        if (usedCount >= access.MonthlyLimit.Value)
         {
             throw new AiFeatureException("AI_QUOTA_EXCEEDED", $"Monthly quota exceeded for {featureName}.", 429);
         }
@@ -108,14 +96,5 @@ public class AiUsageService : IAiUsageService
         });
 
         await _dbContext.SaveChangesAsync(cancellationToken);
-    }
-
-    private int? ResolveLegacyLimit(string planCode, string featureName)
-    {
-        var limits = string.Equals(planCode, SubscriptionService.PremiumPlan, StringComparison.OrdinalIgnoreCase)
-            ? _settings.Quotas.PremiumPlanMonthlyLimits
-            : _settings.Quotas.FreePlanMonthlyLimits;
-
-        return limits.TryGetValue(featureName, out var limit) && limit > 0 ? limit : null;
     }
 }

@@ -22,7 +22,9 @@ public class SkinProgressController : ControllerBase
     public SkinProgressController(
         ISkinProgressService skinProgressService,
         ISkinProgressComparisonService skinProgressComparisonService,
-        ISkinProgressReportService skinProgressReportService)
+        ISkinProgressReportService skinProgressReportService,
+        IAiUsageService aiUsageService,
+        IReportPdfService reportPdfService)
     {
         _skinProgressService = skinProgressService;
         _skinProgressComparisonService = skinProgressComparisonService;
