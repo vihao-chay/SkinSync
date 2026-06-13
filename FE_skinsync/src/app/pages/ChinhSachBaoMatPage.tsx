@@ -28,7 +28,7 @@ const privacySections = [
 // [CẬP NHẬT]: Khởi tạo trang Chính sách bảo mật theo phong cách văn bản pháp lý, có callout và các khối nội dung rõ ràng.
 function ChinhSachBaoMatPage() {
   return (
-    <main className="min-h-screen bg-[#fbfaf7] text-[#151827]">
+    <main className="min-h-screen bg-skin-base text-skin-textMain">
       <header className="border-b border-[#eee7ff] bg-white/85 px-5 py-4 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
           <Link to="/" className="flex items-center gap-3">
@@ -36,8 +36,8 @@ function ChinhSachBaoMatPage() {
               SS
             </span>
             <div>
-              <p className="text-sm font-black uppercase tracking-[0.24em] text-[#151827]">SKINSYNC</p>
-              <p className="text-xs text-[#7d86a4]">Chính sách bảo mật</p>
+              <p className="font-serif text-sm font-semibold uppercase tracking-[0.24em] text-skin-textMain">SKINSYNC</p>
+              <p className="text-xs text-skin-textMuted">Chính sách bảo mật</p>
             </div>
           </Link>
 
@@ -52,7 +52,7 @@ function ChinhSachBaoMatPage() {
       <section className="px-5 py-14 md:py-18">
         <div className="mx-auto max-w-7xl">
           <div className="max-w-3xl">
-            <p className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/70 bg-white px-4 py-2 text-xs font-black uppercase tracking-[0.2em] text-[#6d63ff] shadow-lg shadow-[#9aa6ff]/10">
+            <p className="mb-4 inline-flex items-center gap-2 rounded-full border border-skin-border bg-skin-surface px-4 py-2 text-xs font-medium uppercase tracking-[0.2em] text-skin-gold shadow-soft-gold">
               <ShieldCheck className="h-4 w-4" />
               Chính sách bảo mật
             </p>
@@ -65,9 +65,9 @@ function ChinhSachBaoMatPage() {
             </p>
           </div>
 
-          <div className="mt-10 rounded-[1.75rem] border border-[#ece5ff] bg-[linear-gradient(135deg,#ffffff_0%,#faf8ff_100%)] p-6 shadow-xl shadow-[#9aa6ff]/10 md:p-8">
-            <p className="text-sm font-black uppercase tracking-[0.22em] text-[#6d63ff]">Điểm nhấn chính</p>
-            <p className="mt-3 max-w-4xl text-base leading-8 text-[#5f6884]">
+          <div className="mt-10 rounded-[1.75rem] border border-skin-border bg-[linear-gradient(135deg,#ffffff_0%,#fbf8f2_100%)] p-6 shadow-soft-gold md:p-8">
+            <p className="text-sm font-medium uppercase tracking-[0.22em] text-skin-gold">Điểm nhấn chính</p>
+            <p className="mt-3 max-w-4xl text-base leading-8 text-skin-textMuted">
               Ảnh khuôn mặt chỉ được dùng để AI phân tích và tạo lộ trình chăm sóc da cá nhân hóa. Dữ liệu được bảo vệ
               trong môi trường đám mây an toàn và người dùng có thể yêu cầu xóa dữ liệu khi cần.
             </p>
@@ -78,13 +78,13 @@ function ChinhSachBaoMatPage() {
       <section className="px-5 pb-20">
         <div className="mx-auto grid max-w-7xl gap-5 lg:grid-cols-3">
           {privacySections.map((section) => (
-            <Card key={section.title} className="rounded-[1.75rem] border-white/70 bg-white shadow-lg shadow-[#9aa6ff]/10">
+            <Card key={section.title} className="rounded-[1.75rem] border-skin-border bg-skin-surface shadow-soft-gold">
               <CardContent className="space-y-4 p-6 md:p-8">
-                <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-[#f7f2ff] to-[#dff9ee] text-[#6d63ff]">
+                <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-stone-100 text-skin-gold">
                   <section.icon className="h-5 w-5" />
                 </span>
-                <h2 className="text-2xl font-black">{section.title}</h2>
-                <p className="text-sm leading-7 text-[#5f6884]">{section.text}</p>
+                <h2 className="font-serif text-2xl font-semibold text-skin-textMain">{section.title}</h2>
+                <p className="text-sm leading-7 text-skin-textMuted">{section.text}</p>
               </CardContent>
             </Card>
           ))}

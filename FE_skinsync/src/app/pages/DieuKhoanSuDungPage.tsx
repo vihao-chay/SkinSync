@@ -28,7 +28,7 @@ const termsSections = [
 // [CẬP NHẬT]: Khởi tạo trang Điều khoản sử dụng với khối cảnh báo y tế nổi bật và các điều khoản nền tảng.
 function DieuKhoanSuDungPage() {
   return (
-    <main className="min-h-screen bg-[#fbfaf7] text-[#151827]">
+    <main className="min-h-screen bg-skin-base text-skin-textMain">
       <header className="border-b border-[#eee7ff] bg-white/85 px-5 py-4 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
           <Link to="/" className="flex items-center gap-3">
@@ -36,8 +36,8 @@ function DieuKhoanSuDungPage() {
               SS
             </span>
             <div>
-              <p className="text-sm font-black uppercase tracking-[0.24em] text-[#151827]">SKINSYNC</p>
-              <p className="text-xs text-[#7d86a4]">Điều khoản sử dụng</p>
+              <p className="font-serif text-sm font-semibold uppercase tracking-[0.24em] text-skin-textMain">SKINSYNC</p>
+              <p className="text-xs text-skin-textMuted">Điều khoản sử dụng</p>
             </div>
           </Link>
 
@@ -52,7 +52,7 @@ function DieuKhoanSuDungPage() {
       <section className="px-5 py-14 md:py-18">
         <div className="mx-auto max-w-7xl">
           <div className="max-w-3xl">
-            <p className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/70 bg-white px-4 py-2 text-xs font-black uppercase tracking-[0.2em] text-[#6d63ff] shadow-lg shadow-[#9aa6ff]/10">
+            <p className="mb-4 inline-flex items-center gap-2 rounded-full border border-skin-border bg-skin-surface px-4 py-2 text-xs font-medium uppercase tracking-[0.2em] text-skin-gold shadow-soft-gold">
               <Scale className="h-4 w-4" />
               Điều khoản sử dụng
             </p>
@@ -72,7 +72,7 @@ function DieuKhoanSuDungPage() {
               </span>
               <div>
                 <p className="text-sm font-black uppercase tracking-[0.22em] text-[#d54b63]">Medical Disclaimer</p>
-                <p className="mt-3 text-lg font-semibold leading-8 text-[#151827]">
+                <p className="mt-3 text-lg font-semibold leading-8 text-skin-textMain">
                   “SkinSync là ứng dụng hỗ trợ phân tích bằng AI mang tính chất tham khảo, không thay thế cho việc chẩn
                   đoán hay điều trị từ bác sĩ da liễu.”
                 </p>
@@ -89,13 +89,13 @@ function DieuKhoanSuDungPage() {
       <section className="px-5 pb-20">
         <div className="mx-auto grid max-w-7xl gap-5 lg:grid-cols-3">
           {termsSections.map((section) => (
-            <Card key={section.title} className="rounded-[1.75rem] border-white/70 bg-white shadow-lg shadow-[#9aa6ff]/10">
+            <Card key={section.title} className="rounded-[1.75rem] border-skin-border bg-skin-surface shadow-soft-gold">
               <CardContent className="space-y-4 p-6 md:p-8">
-                <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-[#f7f2ff] to-[#dff9ee] text-[#6d63ff]">
+                <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-stone-100 text-skin-gold">
                   <section.icon className="h-5 w-5" />
                 </span>
-                <h2 className="text-2xl font-black">{section.title}</h2>
-                <p className="text-sm leading-7 text-[#5f6884]">{section.text}</p>
+                <h2 className="font-serif text-2xl font-semibold text-skin-textMain">{section.title}</h2>
+                <p className="text-sm leading-7 text-skin-textMuted">{section.text}</p>
               </CardContent>
             </Card>
           ))}

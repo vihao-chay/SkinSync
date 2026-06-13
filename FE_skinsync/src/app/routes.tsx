@@ -22,6 +22,7 @@ import { BlogPage } from "./pages/BlogPage";
 import { TroGiupPage } from "./pages/TroGiupPage";
 import { ChinhSachBaoMatPage } from "./pages/ChinhSachBaoMatPage";
 import { DieuKhoanSuDungPage } from "./pages/DieuKhoanSuDungPage";
+import { SubscriptionPage } from "./pages/SubscriptionPage";
 import { useAuth } from "./contexts/AuthContext";
 
 function MainLayout() {
@@ -233,6 +234,11 @@ export const router = createBrowserRouter([
   {
     path: "/dieu-khoan-su-dung",
     element: <DieuKhoanSuDungPage />,
+    errorElement: <ErrorBoundary />,
+  },
+  {
+    path: "/subscription",
+    element: <SubscriptionPage />,
     errorElement: <ErrorBoundary />,
   },
   {
