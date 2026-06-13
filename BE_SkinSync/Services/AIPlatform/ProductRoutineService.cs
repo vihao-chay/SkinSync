@@ -17,11 +17,16 @@ public class ProductRoutineService : IProductRoutineService
 {
     private readonly AppDbContext _dbContext;
     private readonly IIngredientConflictService _ingredientConflictService;
+    private readonly IProductRecommendationService _productRecommendationService;
 
-    public ProductRoutineService(AppDbContext dbContext, IIngredientConflictService ingredientConflictService)
+    public ProductRoutineService(
+        AppDbContext dbContext,
+        IIngredientConflictService ingredientConflictService,
+        IProductRecommendationService productRecommendationService)
     {
         _dbContext = dbContext;
         _ingredientConflictService = ingredientConflictService;
+        _productRecommendationService = productRecommendationService;
     }
 
     public async Task<AiAddProductToRoutineResponseDto> AddToRoutineAsync(Guid userId, Guid productId, AiAddProductToRoutineRequestDto request, CancellationToken cancellationToken)
@@ -90,6 +95,7 @@ public class ProductRoutineService : IProductRoutineService
         regimen.UpdatedAt = DateTime.UtcNow;
 
         await _dbContext.SaveChangesAsync(cancellationToken);
+        await _productRecommendationService.MarkProductAsAlreadyInRoutineAsync(userId, productId, cancellationToken);
 
         await _dbContext.Entry(regimen)
             .Collection(x => x.Items)

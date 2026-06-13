@@ -13,6 +13,8 @@ class EmptyStateCard extends StatelessWidget {
     required this.description,
     this.ctaLabel,
     this.onCta,
+    this.secondaryLabel,
+    this.onSecondary,
   });
 
   final IconData icon;
@@ -20,28 +22,36 @@ class EmptyStateCard extends StatelessWidget {
   final String description;
   final String? ctaLabel;
   final VoidCallback? onCta;
+  final String? secondaryLabel;
+  final VoidCallback? onSecondary;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return AppCard(
+      variant: AppCardVariant.hero,
       child: Column(
         children: [
           Container(
-            width: 64,
-            height: 64,
+            width: 76,
+            height: 76,
             decoration: BoxDecoration(
-              color: AppColors.secondary,
+              gradient: const LinearGradient(
+                colors: [AppColors.secondary, AppColors.surfaceStrong],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
               shape: BoxShape.circle,
+              border: Border.all(color: AppColors.border),
             ),
             alignment: Alignment.center,
-            child: Icon(icon, size: 28, color: AppColors.primaryDark),
+            child: Icon(icon, size: 32, color: AppColors.primaryDark),
           ),
           const SizedBox(height: AppSpacing.md),
           Text(
             title,
             textAlign: TextAlign.center,
-            style: theme.textTheme.titleLarge?.copyWith(
+            style: theme.textTheme.headlineSmall?.copyWith(
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -56,6 +66,14 @@ class EmptyStateCard extends StatelessWidget {
           if (ctaLabel != null && onCta != null) ...[
             const SizedBox(height: AppSpacing.lg),
             AppButton(label: ctaLabel!, onPressed: onCta),
+          ],
+          if (secondaryLabel != null && onSecondary != null) ...[
+            const SizedBox(height: AppSpacing.sm),
+            AppButton(
+              label: secondaryLabel!,
+              variant: AppButtonVariant.secondary,
+              onPressed: onSecondary,
+            ),
           ],
         ],
       ),

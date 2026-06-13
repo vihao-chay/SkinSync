@@ -36,14 +36,50 @@ class AppState extends ChangeNotifier {
   bool isBusy = false;
   bool isBootstrapping = true;
   bool hasPendingOnboarding = false;
+  bool hasResolvedProfileState = false;
   String? errorMessage;
+  String? profileLoadErrorMessage;
+  String? analysisLoadErrorMessage;
+  String? regimenLoadErrorMessage;
+  String? trackingLoadErrorMessage;
+  String? progressLoadErrorMessage;
+  String? remindersLoadErrorMessage;
+  String? todayLogLoadErrorMessage;
+  String? subscriptionPlansLoadErrorMessage;
+  String? subscriptionStatusLoadErrorMessage;
   int _messageVersion = 0;
 
   bool get isAuthenticated => session != null;
   bool get shouldShowOnboarding =>
-      isAuthenticated && (hasPendingOnboarding || !_hasCompletedOnboarding(profile));
+      isAuthenticated &&
+      (hasPendingOnboarding ||
+          (hasResolvedProfileState &&
+              profileLoadErrorMessage == null &&
+              !_hasCompletedOnboarding(profile)));
   AppUser? get user => session?.user;
   ApiClient get apiClient => _apiClient;
+  String? get homeDataErrorMessage => _firstErrorMessage([
+    profileLoadErrorMessage,
+    analysisLoadErrorMessage,
+    regimenLoadErrorMessage,
+    trackingLoadErrorMessage,
+    progressLoadErrorMessage,
+    todayLogLoadErrorMessage,
+  ]);
+  String? get routineDataErrorMessage => _firstErrorMessage([
+    regimenLoadErrorMessage,
+    trackingLoadErrorMessage,
+    remindersLoadErrorMessage,
+  ]);
+  String? get todayCheckupDataErrorMessage => _firstErrorMessage([
+    regimenLoadErrorMessage,
+    trackingLoadErrorMessage,
+    todayLogLoadErrorMessage,
+  ]);
+  String? get membershipLoadErrorMessage => _firstErrorMessage([
+    subscriptionPlansLoadErrorMessage,
+    subscriptionStatusLoadErrorMessage,
+  ]);
   String get onboardingDisplayNameSeed {
     final fullName = user?.fullName.trim() ?? '';
     if (fullName.isNotEmpty && !_looksLikeEmail(fullName)) {
@@ -87,6 +123,8 @@ class AppState extends ChangeNotifier {
       subscriptionPlans = const [];
       subscription = null;
       hasPendingOnboarding = false;
+      hasResolvedProfileState = false;
+      _resetLoadErrors();
       _apiClient.attachSession(null);
     } finally {
       isBootstrapping = false;
@@ -198,6 +236,8 @@ class AppState extends ChangeNotifier {
     subscriptionPlans = const [];
     subscription = null;
     hasPendingOnboarding = false;
+    hasResolvedProfileState = false;
+    _resetLoadErrors();
     _apiClient.attachSession(null);
     await _sessionStore.clear();
     notifyListeners();
@@ -219,7 +259,7 @@ class AppState extends ChangeNotifier {
         _loadTodayLog(),
         _loadSubscription(),
       ]);
-      if (_hasCompletedOnboarding(profile)) {
+      if (profileLoadErrorMessage == null && _hasCompletedOnboarding(profile)) {
         await _clearOnboardingPendingForCurrentUser();
       }
     }, showBusy: false);
@@ -278,9 +318,6 @@ class AppState extends ChangeNotifier {
       parsedResult = _analysisResultFromAiResponse(response);
       latestAnalysis = parsedResult;
 
-      await _generateRoutineFromLatestProfile();
-      await _loadRegimen();
-      await _loadTracking();
       await _loadProgress();
     });
     return parsedResult;
@@ -371,22 +408,32 @@ class AppState extends ChangeNotifier {
     return AiRoutinePlan.fromJson(data);
   }
 
-  Future<AiProductRecommendResponse> recommendProducts({
-    required String category,
-    required String concern,
+  Future<AiProductRecommendResponse> getLatestRecommendations() async {
+    final response = await _apiClient.get(
+      '/api/ai/products/recommendations/latest',
+    );
+    final data = _readAiData(response);
+    return AiProductRecommendResponse.fromJson(data);
+  }
+
+  Future<AiProductRecommendResponse> generateRecommendations({
+    String? category,
+    String? concern,
     double? budgetMax,
+    int limitPerCategory = 5,
   }) async {
     final response = await _apiClient.post(
-      '/api/ai/products/recommend',
+      '/api/ai/products/recommendations/generate',
       body: {
-        'category': category,
-        'concern': concern,
+        if (category != null && category.trim().isNotEmpty) 'category': category,
+        if (concern != null && concern.trim().isNotEmpty) 'concern': concern,
         if (budgetMax != null)
           'budgetRange': {
             'min': 0,
             'max': budgetMax.round(),
             'currency': 'VND',
           },
+        'limitPerCategory': limitPerCategory,
       },
     );
     final data = _readAiData(response);
@@ -435,11 +482,12 @@ class AppState extends ChangeNotifier {
     final parsed = AiAddProductToRoutineResponse.fromJson(data);
     if (parsed.routine != null) {
       regimen = parsed.routine;
-      notifyListeners();
     } else {
       await _loadRegimen();
-      notifyListeners();
     }
+    await _loadTracking();
+    await _loadProgress();
+    notifyListeners();
     return parsed;
   }
 
@@ -605,18 +653,47 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> _loadProfile() async {
+    profileLoadErrorMessage = null;
+    hasResolvedProfileState = false;
     try {
       profile = SkinProfile.fromJson(
         await _apiClient.get('/api/user-profiles/onboarding'),
       );
-    } catch (_) {
-      try {
-        profile = SkinProfile.fromJson(
-          await _apiClient.get('/api/users/survey'),
+      hasResolvedProfileState = true;
+      return;
+    } on ApiException catch (error) {
+      if (!_isExpectedEmptyError(error)) {
+        profileLoadErrorMessage = _friendlyErrorMessage(
+          error.message,
+          statusCode: error.statusCode,
         );
-      } catch (_) {
-        profile = null;
       }
+    } catch (_) {
+      profileLoadErrorMessage =
+          'Could not load your profile right now. Please try again.';
+    }
+
+    try {
+      profile = SkinProfile.fromJson(
+        await _apiClient.get('/api/users/survey'),
+      );
+      profileLoadErrorMessage = null;
+      hasResolvedProfileState = true;
+    } on ApiException catch (error) {
+      if (_isExpectedEmptyError(error)) {
+        profile = null;
+        profileLoadErrorMessage = null;
+        hasResolvedProfileState = true;
+        return;
+      }
+
+      profileLoadErrorMessage = _friendlyErrorMessage(
+        error.message,
+        statusCode: error.statusCode,
+      );
+    } catch (_) {
+      profileLoadErrorMessage =
+          'Could not load your profile right now. Please try again.';
     }
   }
 
@@ -625,16 +702,28 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> submitOnboarding(Map<String, dynamic> payload) async {
+  Future<void> saveSkinProfile(
+    Map<String, dynamic> payload, {
+    bool refreshRoutine = false,
+  }) async {
     await _runBusy(() async {
       final response = await _apiClient.post(
         '/api/user-profiles/onboarding',
         body: payload,
       );
       profile = SkinProfile.fromJson(response);
+      profileLoadErrorMessage = null;
+      hasResolvedProfileState = true;
       await _clearOnboardingPendingForCurrentUser();
+      if (refreshRoutine) {
+        await _generateRoutineFromLatestProfile();
+      }
       await refreshHome();
     });
+  }
+
+  Future<void> submitOnboarding(Map<String, dynamic> payload) async {
+    await saveSkinProfile(payload);
   }
 
   Future<void> markOnboardingPendingForCurrentUser() async {
@@ -660,6 +749,8 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> _loadLatestAnalysis() async {
+    analysisLoadErrorMessage = null;
+    String? pendingErrorMessage;
     try {
       final history = await _apiClient.get('/api/skin-analysis/history');
       final items = (history['items'] as List?) ?? const [];
@@ -669,48 +760,111 @@ class AppState extends ChangeNotifier {
         );
         return;
       }
-    } catch (_) {}
+    } on ApiException catch (error) {
+      if (!_isExpectedEmptyError(error)) {
+        pendingErrorMessage = _friendlyErrorMessage(
+          error.message,
+          statusCode: error.statusCode,
+        );
+      }
+    } catch (_) {
+      pendingErrorMessage =
+          'Could not load your latest analysis right now. Please try again.';
+    }
 
     try {
       latestAnalysis = AnalysisResult.fromJson(
         await _apiClient.get('/api/analysis/latest'),
       );
+      analysisLoadErrorMessage = null;
+    } on ApiException catch (error) {
+      if (_isExpectedEmptyError(error)) {
+        latestAnalysis = null;
+        analysisLoadErrorMessage = pendingErrorMessage;
+        return;
+      }
+
+      latestAnalysis = null;
+      analysisLoadErrorMessage = _friendlyErrorMessage(
+        error.message,
+        statusCode: error.statusCode,
+      );
     } catch (_) {
       latestAnalysis = null;
+      analysisLoadErrorMessage =
+          pendingErrorMessage ??
+          'Could not load your latest analysis right now. Please try again.';
     }
   }
 
   Future<void> _loadRegimen() async {
+    regimenLoadErrorMessage = null;
     try {
       regimen = CurrentRegimen.fromJson(
         await _apiClient.get('/api/regimens/current'),
       );
+    } on ApiException catch (error) {
+      if (_isExpectedEmptyError(error)) {
+        regimen = null;
+        return;
+      }
+
+      regimenLoadErrorMessage = _friendlyErrorMessage(
+        error.message,
+        statusCode: error.statusCode,
+      );
     } catch (_) {
-      regimen = null;
+      regimenLoadErrorMessage =
+          'Could not load your routine right now. Please try again.';
     }
   }
 
   Future<void> _loadTracking() async {
+    trackingLoadErrorMessage = null;
     try {
       trackingToday = RoutineTrackingToday.fromJson(
         await _apiClient.get('/api/routine-tracking/today'),
       );
+    } on ApiException catch (error) {
+      if (_isExpectedEmptyError(error)) {
+        trackingToday = null;
+        return;
+      }
+
+      trackingLoadErrorMessage = _friendlyErrorMessage(
+        error.message,
+        statusCode: error.statusCode,
+      );
     } catch (_) {
-      trackingToday = null;
+      trackingLoadErrorMessage =
+          'Could not load today\'s routine tracking right now. Please try again.';
     }
   }
 
   Future<void> _loadProgress() async {
+    progressLoadErrorMessage = null;
     try {
       progress = ProgressOverview.fromJson(
         await _apiClient.get('/api/progress/overview'),
       );
+    } on ApiException catch (error) {
+      if (_isExpectedEmptyError(error)) {
+        progress = null;
+        return;
+      }
+
+      progressLoadErrorMessage = _friendlyErrorMessage(
+        error.message,
+        statusCode: error.statusCode,
+      );
     } catch (_) {
-      progress = null;
+      progressLoadErrorMessage =
+          'Could not load your progress overview right now. Please try again.';
     }
   }
 
   Future<void> _loadReminders() async {
+    remindersLoadErrorMessage = null;
     try {
       final data = await _apiClient.get('/api/reminders');
       final list = (data['items'] as List?) ?? const [];
@@ -718,20 +872,46 @@ class AppState extends ChangeNotifier {
           .whereType<Map<String, dynamic>>()
           .map(ReminderItem.fromJson)
           .toList();
+    } on ApiException catch (error) {
+      reminders = const [];
+      if (_isExpectedEmptyError(error)) {
+        return;
+      }
+
+      remindersLoadErrorMessage = _friendlyErrorMessage(
+        error.message,
+        statusCode: error.statusCode,
+      );
     } catch (_) {
       reminders = const [];
+      remindersLoadErrorMessage =
+          'Could not load your reminders right now. Please try again.';
     }
   }
 
   Future<void> _loadTodayLog() async {
+    todayLogLoadErrorMessage = null;
     try {
       todayLog = DailyLog.fromJson(await _apiClient.get('/api/diary/today'));
+    } on ApiException catch (error) {
+      if (_isExpectedEmptyError(error)) {
+        todayLog = null;
+        return;
+      }
+
+      todayLogLoadErrorMessage = _friendlyErrorMessage(
+        error.message,
+        statusCode: error.statusCode,
+      );
     } catch (_) {
-      todayLog = null;
+      todayLogLoadErrorMessage =
+          'Could not load today\'s diary right now. Please try again.';
     }
   }
 
   Future<void> _loadSubscription() async {
+    subscriptionPlansLoadErrorMessage = null;
+    subscriptionStatusLoadErrorMessage = null;
     try {
       final planData = await _apiClient.get('/api/subscription-plans');
       final items = (planData['items'] as List?) ?? const [];
@@ -739,8 +919,18 @@ class AppState extends ChangeNotifier {
           .whereType<Map<String, dynamic>>()
           .map(SubscriptionPlan.fromJson)
           .toList();
+    } on ApiException catch (error) {
+      subscriptionPlans = const [];
+      if (!_isExpectedEmptyError(error)) {
+        subscriptionPlansLoadErrorMessage = _friendlyErrorMessage(
+          error.message,
+          statusCode: error.statusCode,
+        );
+      }
     } catch (_) {
       subscriptionPlans = const [];
+      subscriptionPlansLoadErrorMessage =
+          'Could not load membership plans right now. Please try again.';
     }
 
     try {
@@ -748,8 +938,19 @@ class AppState extends ChangeNotifier {
         await _apiClient.get('/api/subscriptions/me'),
       );
       await _replaceCurrentUserPlanType(subscription?.plan.code);
+    } on ApiException catch (error) {
+      if (_isExpectedEmptyError(error)) {
+        subscription = null;
+        return;
+      }
+
+      subscriptionStatusLoadErrorMessage = _friendlyErrorMessage(
+        error.message,
+        statusCode: error.statusCode,
+      );
     } catch (_) {
-      subscription = null;
+      subscriptionStatusLoadErrorMessage =
+          'Could not load your membership right now. Please try again.';
     }
   }
 
@@ -811,6 +1012,8 @@ class AppState extends ChangeNotifier {
     _apiClient.attachSession(nextSession);
     if (nextSession == null) {
       hasPendingOnboarding = false;
+      hasResolvedProfileState = false;
+      _resetLoadErrors();
       await _sessionStore.clear();
       return;
     }
@@ -852,6 +1055,8 @@ class AppState extends ChangeNotifier {
     hasPendingOnboarding = await _sessionStore.isOnboardingPendingFor(
       session!.user.id,
     );
+    hasResolvedProfileState = false;
+    _resetLoadErrors();
   }
 
   Future<void> _replaceCurrentUserFullName(String? fullName) async {
@@ -1070,6 +1275,7 @@ class AppState extends ChangeNotifier {
             ),
           )
           .toList(),
+      canGenerateProducts: (data['canGenerateProducts'] ?? false) as bool,
     );
   }
 
@@ -1114,6 +1320,32 @@ class AppState extends ChangeNotifier {
         value.skinGoals.any((item) => item.trim().isNotEmpty);
   }
 
+  bool _isExpectedEmptyError(ApiException error) {
+    return error.statusCode == 404;
+  }
+
+  String? _firstErrorMessage(List<String?> candidates) {
+    for (final candidate in candidates) {
+      final trimmed = candidate?.trim() ?? '';
+      if (trimmed.isNotEmpty) {
+        return trimmed;
+      }
+    }
+    return null;
+  }
+
+  void _resetLoadErrors() {
+    profileLoadErrorMessage = null;
+    analysisLoadErrorMessage = null;
+    regimenLoadErrorMessage = null;
+    trackingLoadErrorMessage = null;
+    progressLoadErrorMessage = null;
+    remindersLoadErrorMessage = null;
+    todayLogLoadErrorMessage = null;
+    subscriptionPlansLoadErrorMessage = null;
+    subscriptionStatusLoadErrorMessage = null;
+  }
+
   void _setError(String message, {int? statusCode}) {
     errorMessage = _friendlyErrorMessage(message, statusCode: statusCode);
     _messageVersion++;
@@ -1144,6 +1376,21 @@ class AppState extends ChangeNotifier {
 
     if (lower.contains('already') && lower.contains('email')) {
       return 'This email is already registered.';
+    }
+
+    if (lower.contains('monthly quota exceeded') &&
+        lower.contains('skin_analysis')) {
+      return 'You have reached this month\'s skin scan quota for your current plan.';
+    }
+
+    if (lower.contains('not available on your current plan')) {
+      if (lower.contains('skin_progress_compare')) {
+        return 'Progress compare is not included in your current plan yet.';
+      }
+      if (lower.contains('skin_analysis')) {
+        return 'Skin analysis is not included in your current plan yet.';
+      }
+      return 'This feature is not included in your current plan yet.';
     }
 
     return raw.isEmpty ? 'Something went wrong. Please try again.' : raw;

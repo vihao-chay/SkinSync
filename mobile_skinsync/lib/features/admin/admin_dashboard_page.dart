@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../core/mock/mock_skin_data.dart';
 import '../../core/routes/app_routes.dart';
 import '../../core/utils/responsive.dart';
 import '../../core/widgets/admin_shell.dart';
@@ -26,6 +25,11 @@ class AdminDashboardPage extends StatelessWidget {
             'Admin Dashboard',
             style: Theme.of(context).textTheme.headlineMedium,
           ),
+          const SizedBox(height: 12),
+          Text(
+            'This dashboard no longer shows sample metrics. Connect live admin reporting endpoints before surfacing totals here.',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
           const SizedBox(height: 20),
           GridView.count(
             shrinkWrap: true,
@@ -39,26 +43,24 @@ class AdminDashboardPage extends StatelessWidget {
             crossAxisSpacing: 16,
             mainAxisSpacing: 16,
             childAspectRatio: Responsive.isMobile(context) ? 2.2 : 1.25,
-            children: MockSkinData.adminMetrics
-                .map(
-                  (metric) => PremiumCard(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          metric.label,
-                          style: Theme.of(context).textTheme.labelMedium,
-                        ),
-                        const SizedBox(height: 10),
-                        Text(
-                          metric.value,
-                          style: Theme.of(context).textTheme.headlineSmall,
-                        ),
-                      ],
-                    ),
-                  ),
-                )
-                .toList(),
+            children: const [
+              _AdminPlaceholderCard(
+                title: 'User metrics',
+                body: 'No live admin metrics connected yet.',
+              ),
+              _AdminPlaceholderCard(
+                title: 'Catalog metrics',
+                body: 'Connect product reporting to show real counts.',
+              ),
+              _AdminPlaceholderCard(
+                title: 'AI usage',
+                body: 'Show real quota and request volume after wiring analytics.',
+              ),
+              _AdminPlaceholderCard(
+                title: 'Operations',
+                body: 'Recent admin activity will appear from real logs only.',
+              ),
+            ],
           ),
           const SizedBox(height: 18),
           const PremiumCard(
@@ -67,13 +69,41 @@ class AdminDashboardPage extends StatelessWidget {
               children: [
                 Text('Recent Activity'),
                 SizedBox(height: 12),
-                Text('- 238 new analyses generated today'),
-                SizedBox(height: 8),
-                Text('- 16 products updated in premium catalog'),
-                SizedBox(height: 8),
-                Text('- 5 prompt config drafts awaiting review'),
+                Text(
+                  'No live admin activity feed is connected yet. This area should stay empty until real backend reporting is available.',
+                ),
               ],
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AdminPlaceholderCard extends StatelessWidget {
+  const _AdminPlaceholderCard({
+    required this.title,
+    required this.body,
+  });
+
+  final String title;
+  final String body;
+
+  @override
+  Widget build(BuildContext context) {
+    return PremiumCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: Theme.of(context).textTheme.labelMedium,
+          ),
+          const SizedBox(height: 10),
+          Text(
+            body,
+            style: Theme.of(context).textTheme.bodyMedium,
           ),
         ],
       ),

@@ -60,6 +60,7 @@ public class AiSkinAnalysisResponseDto
     public IReadOnlyCollection<string> RiskFlags { get; set; } = Array.Empty<string>();
     public string Disclaimer { get; set; } = string.Empty;
     public decimal? ConfidenceScore { get; set; }
+    public bool CanGenerateProducts { get; set; }
     public string? ErrorMessage { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? CompletedAt { get; set; }
@@ -99,6 +100,16 @@ public class AiProductRecommendRequestDto
     public string Category { get; set; } = "any";
     public string Concern { get; set; } = "any";
     public AiBudgetRangeDto? BudgetRange { get; set; }
+    public bool Refresh { get; set; }
+    public int LimitPerCategory { get; set; } = 5;
+}
+
+public class AiProductRecommendationGenerateRequestDto
+{
+    public string? Category { get; set; }
+    public string? Concern { get; set; }
+    public AiBudgetRangeDto? BudgetRange { get; set; }
+    public int LimitPerCategory { get; set; } = 5;
 }
 
 public class AiRecommendedProductDto
@@ -110,13 +121,47 @@ public class AiRecommendedProductDto
     public decimal Price { get; set; }
     public string Currency { get; set; } = "VND";
     public int MatchScore { get; set; }
+    public int MatchPercent { get; set; }
     public string AiReason { get; set; } = string.Empty;
+    public string WhyRecommended { get; set; } = string.Empty;
     public IReadOnlyCollection<string> Warnings { get; set; } = Array.Empty<string>();
+    public IReadOnlyCollection<string> Cautions { get; set; } = Array.Empty<string>();
+    public bool AlreadyInRoutine { get; set; }
+    public string? ImageUrl { get; set; }
+    public string? Description { get; set; }
+    public string? IngredientsText { get; set; }
+    public string? UsageGuide { get; set; }
+}
+
+public class AiProductRecommendationProfileSummaryDto
+{
+    public string SkinType { get; set; } = "Not provided yet";
+    public IReadOnlyCollection<string> Concerns { get; set; } = Array.Empty<string>();
+    public string Budget { get; set; } = "Not provided yet";
+}
+
+public class AiProductRecommendationCategoryDto
+{
+    public string Key { get; set; } = string.Empty;
+    public string Label { get; set; } = string.Empty;
+    public string Reason { get; set; } = string.Empty;
+    public IReadOnlyCollection<AiRecommendedProductDto> Items { get; set; } = Array.Empty<AiRecommendedProductDto>();
 }
 
 public class AiProductRecommendResponseDto
 {
+    public bool HasRecommendation { get; set; }
+    public Guid? SessionId { get; set; }
+    public Guid? SourceAnalysisId { get; set; }
+    public DateTime? ExpiresAt { get; set; }
+    public string Status { get; set; } = "completed";
+    public string? Summary { get; set; }
+    public DateTime GeneratedAt { get; set; } = DateTime.UtcNow;
+    public AiProductRecommendationProfileSummaryDto ProfileSummary { get; set; } = new();
+    public IReadOnlyCollection<AiProductRecommendationCategoryDto> Categories { get; set; } = Array.Empty<AiProductRecommendationCategoryDto>();
     public IReadOnlyCollection<AiRecommendedProductDto> Products { get; set; } = Array.Empty<AiRecommendedProductDto>();
+    public string? Message { get; set; }
+    public string? Note { get; set; }
 }
 
 public class AiIngredientCheckRequestDto

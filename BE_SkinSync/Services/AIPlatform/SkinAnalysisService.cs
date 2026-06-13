@@ -201,6 +201,7 @@ public class SkinAnalysisService : ISkinAnalysisService
             RiskFlags = analysis.RiskFlags,
             Disclaimer = analysis.Disclaimer,
             ConfidenceScore = analysis.ConfidenceScore,
+            CanGenerateProducts = true,
             ErrorMessage = analysis.ErrorMessage,
             CreatedAt = analysis.CreatedAt,
             CompletedAt = analysis.CompletedAt
@@ -219,7 +220,9 @@ public class SkinAnalysisService : ISkinAnalysisService
             ImageUrl = photo.ImageUrl,
             SkinType = analysis.SkinTypeEstimate,
             OverallScore = analysis.OverallScore,
-            ConfidenceScore = (int)Math.Round((analysis.ConfidenceScore ?? 0.8m) * 100m),
+            ConfidenceScore = analysis.ConfidenceScore.HasValue
+                ? (int)Math.Round(analysis.ConfidenceScore.Value * 100m)
+                : 0,
             SkinAge = null,
             RecoveryCapacity = analysis.DrynessScore == 0 ? null : Math.Max(0, 100 - analysis.DrynessScore),
             UvDamage = analysis.DarkSpotScore,

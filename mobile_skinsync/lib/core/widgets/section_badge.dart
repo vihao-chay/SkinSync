@@ -27,9 +27,7 @@ class SectionBadge extends StatelessWidget {
           ],
           Text(
             label,
-            style: const TextStyle(
-              fontSize: 11.5,
-              fontWeight: FontWeight.w600,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
               color: AppColors.primaryDark,
             ),
           ),

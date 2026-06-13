@@ -19,6 +19,7 @@ class AppRoutes {
   static const products = '/products';
   static const progress = '/progress';
   static const profile = '/profile';
+  static const editProfile = '/profile/edit';
 
   static const admin = '/admin';
   static const adminUsers = '/admin/users';

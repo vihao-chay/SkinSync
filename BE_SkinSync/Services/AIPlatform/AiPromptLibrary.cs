@@ -94,12 +94,29 @@ Use only available products and return JSON:
 }}";
     }
 
-    public static string BuildProductRecommendationPrompt(string userProfileJson, string concern, string category, string budgetJson, string candidatesJson)
+    public static string BuildProductRecommendationPrompt(
+        string userProfileJson,
+        string latestAnalysisJson,
+        string currentRoutineJson,
+        string recentDailyLogsJson,
+        string concern,
+        string category,
+        string budgetJson,
+        string candidatesJson)
     {
         return $@"Recommend skincare products for this user.
 
 User profile:
 {userProfileJson}
+
+Latest skin analysis:
+{latestAnalysisJson}
+
+Current routine:
+{currentRoutineJson}
+
+Recent daily logs:
+{recentDailyLogsJson}
 
 User concern:
 {concern}
@@ -112,6 +129,11 @@ Budget:
 
 Candidate products:
 {candidatesJson}
+
+Important rules:
+- Use only productId values copied exactly from Candidate products.
+- Do not invent, shorten, translate, or reformat any productId.
+- If a candidate is not suitable, skip it instead of fabricating a new id.
 
 Return JSON:
 {{

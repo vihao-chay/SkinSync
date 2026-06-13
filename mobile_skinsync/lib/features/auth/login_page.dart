@@ -543,7 +543,10 @@ class _AuthCard extends StatelessWidget {
                   children: [
                     TextSpan(
                       text: isRegisterMode ? 'Login' : 'Sign up now',
-                      style: const TextStyle(fontWeight: FontWeight.w800),
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.foreground,
+                      ),
                     ),
                   ],
                 ),

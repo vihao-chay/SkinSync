@@ -25,7 +25,7 @@ class AppTheme {
 
     return ThemeData(
       useMaterial3: true,
-      fontFamily: 'DMSans',
+      fontFamily: 'Inter',
       colorScheme: colorScheme,
       scaffoldBackgroundColor: AppColors.pageBackground,
       textTheme: AppTextStyles.textTheme,
@@ -49,8 +49,12 @@ class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: AppColors.surface,
-        hintStyle: const TextStyle(color: AppColors.subtleText),
-        labelStyle: const TextStyle(color: AppColors.mutedText),
+        hintStyle: AppTextStyles.textTheme.bodyMedium?.copyWith(
+          color: AppColors.subtleText,
+        ),
+        labelStyle: AppTextStyles.textTheme.labelMedium?.copyWith(
+          color: AppColors.mutedText,
+        ),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 18,
           vertical: 16,
@@ -73,7 +77,7 @@ class AppTheme {
       dividerColor: AppColors.border.withValues(alpha: 0.7),
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: AppColors.surface.withValues(alpha: 0.98),
-        height: 74,
+        height: 80,
         elevation: 0,
         indicatorColor: AppColors.secondary,
         iconTheme: WidgetStateProperty.resolveWith((states) {
@@ -85,12 +89,14 @@ class AppTheme {
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
             return const TextStyle(
-              fontSize: 12,
+              fontFamily: 'Inter',
+              fontSize: 11.5,
               fontWeight: FontWeight.w700,
               color: AppColors.heading,
             );
           }
           return const TextStyle(
+            fontFamily: 'Inter',
             fontSize: 11,
             fontWeight: FontWeight.w600,
             color: AppColors.mutedText,
@@ -108,9 +114,10 @@ class AppTheme {
             borderRadius: BorderRadius.circular(AppRadius.pill),
           ),
           textStyle: const TextStyle(
-            fontFamily: 'DMSans',
+            fontFamily: 'Inter',
             fontSize: 15,
             fontWeight: FontWeight.w700,
+            height: 1.2,
           ),
         ),
       ),
@@ -125,16 +132,21 @@ class AppTheme {
           minimumSize: const Size(0, 56),
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           textStyle: const TextStyle(
-            fontFamily: 'DMSans',
+            fontFamily: 'Inter',
             fontSize: 15,
             fontWeight: FontWeight.w700,
+            height: 1.2,
           ),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           foregroundColor: AppColors.primaryDark,
-          textStyle: const TextStyle(fontWeight: FontWeight.w700),
+          textStyle: const TextStyle(
+            fontFamily: 'Inter',
+            fontWeight: FontWeight.w700,
+            height: 1.2,
+          ),
         ),
       ),
       floatingActionButtonTheme: const FloatingActionButtonThemeData(
@@ -155,13 +167,21 @@ class AppTheme {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.pill),
         ),
-        labelStyle: const TextStyle(color: AppColors.primaryDark),
+        labelStyle: const TextStyle(
+          fontFamily: 'Inter',
+          color: AppColors.primaryDark,
+          fontSize: 12.5,
+          fontWeight: FontWeight.w600,
+          height: 1.2,
+        ),
       ),
       snackBarTheme: SnackBarThemeData(
         backgroundColor: AppColors.darkPanel,
         contentTextStyle: const TextStyle(
           color: Colors.white,
-          fontFamily: 'DMSans',
+          fontFamily: 'Inter',
+          fontSize: 14,
+          height: 1.45,
         ),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.medium),
@@ -173,6 +193,19 @@ class AppTheme {
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.card),
+        ),
+        titleTextStyle: const TextStyle(
+          fontFamily: 'PlayfairDisplay',
+          color: AppColors.heading,
+          fontSize: 20,
+          fontWeight: FontWeight.w700,
+          height: 1.2,
+        ),
+        contentTextStyle: const TextStyle(
+          fontFamily: 'Inter',
+          color: AppColors.foreground,
+          fontSize: 15,
+          height: 1.55,
         ),
       ),
       visualDensity: VisualDensity.standard,

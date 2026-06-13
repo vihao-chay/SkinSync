@@ -205,9 +205,10 @@ class _SkinAnalysisPageState extends State<SkinAnalysisPage> {
                               ? result.issues.first.issueType
                               : 'any',
                           referenceId: result.progressEntryId ?? result.id,
+                          showGeneratePrompt: result.canGenerateProducts,
                         ),
                       ),
-                      child: const Text('View Products'),
+                      child: const Text('Generate Product Recommendations'),
                     ),
                   ),
                   const SizedBox(height: 2),

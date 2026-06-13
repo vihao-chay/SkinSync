@@ -39,8 +39,8 @@ class PrimaryButton extends StatelessWidget {
               )
             : Text(
                 label,
-                style: const TextStyle(
-                  fontSize: 16,
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  color: Colors.white,
                   fontWeight: FontWeight.w700,
                 ),
               ),

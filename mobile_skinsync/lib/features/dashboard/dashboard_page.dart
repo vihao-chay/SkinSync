@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../core/models/app_models.dart';
 import '../../core/routes/app_routes.dart';
 import '../../core/state/app_state.dart';
 import '../../core/theme/app_colors.dart';
@@ -9,9 +8,11 @@ import '../../core/theme/app_spacing.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/app_scaffold.dart';
-import '../../core/widgets/empty_state_card.dart';
+import '../../core/widgets/circular_score.dart';
+import '../../core/widgets/linear_progress_stat.dart';
+import '../../core/widgets/metric_card.dart';
 import '../../core/widgets/section_header.dart';
-import '../../core/widgets/skin_sync_ai_button.dart';
+import '../../core/widgets/status_chip.dart';
 
 class DashboardPage extends StatelessWidget {
   const DashboardPage({super.key});
@@ -19,24 +20,23 @@ class DashboardPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final appState = context.watch<AppState>();
-    final analysis = appState.latestAnalysis;
-    final regimen = appState.regimen;
+    final latestAnalysis = appState.latestAnalysis;
     final tracking = appState.trackingToday;
+    final regimen = appState.regimen;
     final todayLog = appState.todayLog;
-    final concerns = analysis?.issues.map((item) => item.issueType).toList() ?? [];
-    final firstName = _firstName(appState.profileDisplayName);
+    final totalSteps = tracking?.totalSteps ?? 0;
+    final completedSteps = tracking?.completedSteps ?? 0;
+    final progress = totalSteps == 0 ? 0.0 : completedSteps / totalSteps;
+    final previewSteps = [
+      ...?regimen?.morning,
+      ...?regimen?.evening,
+    ].take(3).toList();
 
     return AppScaffold(
-      title: 'Good evening, $firstName',
-      subtitle:
-          'Your premium skincare dashboard keeps today\'s routine, scan insights, and gentle next steps in one calm place.',
-      headerTrailing: _ProfileShortcut(
-        displayName: appState.profileDisplayName,
-        onTap: () => Navigator.pushReplacementNamed(context, AppRoutes.profile),
-      ),
-      onRefresh: appState.refreshHome,
+      title: 'Home',
+      subtitle: 'Your latest analysis, routine, and check-up progress at a glance.',
+      compactHeader: true,
       body: ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(
           AppSpacing.pagePadding,
           0,
@@ -44,610 +44,241 @@ class DashboardPage extends StatelessWidget {
           AppSpacing.pageBottomPaddingWithActions,
         ),
         children: [
-          _HeroCard(
-            analysis: analysis,
-            completedSteps: tracking?.completedSteps ?? 0,
-            totalSteps: tracking?.totalSteps ?? 0,
-            todayLog: todayLog,
-            onCheckIn: () => Navigator.pushNamed(context, AppRoutes.todayCheckup),
-          ),
-          const SizedBox(height: AppSpacing.sectionGap),
-          _TodayCard(
-            tracking: tracking,
-            todayLog: todayLog,
-            onCheckup: () => Navigator.pushNamed(context, AppRoutes.todayCheckup),
-          ),
-          const SizedBox(height: AppSpacing.sectionGap),
-          SectionHeader(
-            title: 'Today at a glance',
-            subtitle: 'The most important signals from your latest scan and routine.',
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Row(
-            children: [
-              Expanded(
-                child: _InsightCard(
-                  eyebrow: 'Skin score',
-                  value: analysis == null ? 'Not scanned yet' : '${analysis.overallScore}/100',
-                  description: analysis == null
-                      ? 'Upload a photo to unlock your first AI analysis.'
-                      : (analysis.overview?.trim().isNotEmpty == true
-                            ? analysis.overview!
-                            : 'Your current skin condition looks balanced overall.'),
-                  icon: Icons.auto_awesome_rounded,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: _InsightCard(
-                  eyebrow: 'Skin type',
-                  value: _friendlyText(analysis?.skinType),
-                  description: concerns.isEmpty
-                      ? 'No major concerns highlighted yet.'
-                      : 'Top focus: ${concerns.take(2).join(', ')}',
-                  icon: Icons.spa_outlined,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.sectionGap),
-          SectionHeader(
-            title: 'Routine rhythm',
-            subtitle: 'Keep your morning and evening rituals consistent.',
-            trailing: TextButton(
-              onPressed: () => Navigator.pushNamed(context, AppRoutes.routine),
-              child: const Text('Open routine'),
-            ),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          if (regimen == null)
-            EmptyStateCard(
-              icon: Icons.spa_outlined,
-              title: 'No routine generated yet',
-              description:
-                  'Complete a skin scan and SkinSync will prepare a routine tailored to your skin goals.',
-              ctaLabel: 'Start skin scan',
-              onCta: () => Navigator.pushNamed(context, AppRoutes.upload),
-            )
-          else
-            Column(
+          AppCard(
+            variant: AppCardVariant.hero,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _RoutinePreviewCard(
-                  title: 'Morning routine',
-                  accent: const Color(0xFFE9D5BC),
-                  steps: regimen.morning,
-                  completed: tracking?.morningCompleted ?? false,
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                _RoutinePreviewCard(
-                  title: 'Evening routine',
-                  accent: const Color(0xFFDCC5B4),
-                  steps: regimen.evening,
-                  completed: tracking?.eveningCompleted ?? false,
-                ),
-              ],
-            ),
-          const SizedBox(height: AppSpacing.sectionGap),
-          SectionHeader(
-            title: 'Quick actions',
-            subtitle: 'Jump straight into the next best skincare task.',
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Wrap(
-            spacing: AppSpacing.sm,
-            runSpacing: AppSpacing.sm,
-            children: [
-              _QuickActionChip(
-                label: 'Today check-in',
-                icon: Icons.check_circle_outline_rounded,
-                onTap: () => Navigator.pushNamed(context, AppRoutes.todayCheckup),
-              ),
-              _QuickActionChip(
-                label: 'Scan skin',
-                icon: Icons.camera_alt_outlined,
-                onTap: () => Navigator.pushNamed(context, AppRoutes.upload),
-              ),
-              _QuickActionChip(
-                label: 'Ask SkinSync AI',
-                icon: Icons.auto_awesome_rounded,
-                onTap: () => Navigator.pushNamed(
-                  context,
-                  AppRoutes.aiChatConversation,
-                  arguments: const AiChatLaunchArgs(entryPoint: 'home'),
-                ),
-              ),
-              _QuickActionChip(
-                label: 'AI tools',
-                icon: Icons.hub_outlined,
-                onTap: () => Navigator.pushNamed(context, AppRoutes.aiHub),
-              ),
-              _QuickActionChip(
-                label: 'Explore products',
-                icon: Icons.shopping_bag_outlined,
-                onTap: () => Navigator.pushNamed(context, AppRoutes.products),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.sectionGap),
-          SkinSyncAiButton(
-            title: 'Want help deciding the next step?',
-            description:
-                'SkinSync AI can interpret today\'s routine status, diary updates, and latest scan before you act.',
-            label: 'Ask SkinSync AI',
-            onPressed: () => Navigator.pushNamed(
-              context,
-              AppRoutes.aiChatConversation,
-              arguments: const AiChatLaunchArgs(entryPoint: 'home'),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  static String _firstName(String fullName) {
-    final parts = fullName.trim().split(RegExp(r'\s+'));
-    if (parts.isEmpty || parts.first.isEmpty) {
-      return 'there';
-    }
-    return parts.first;
-  }
-}
-
-class _ProfileShortcut extends StatelessWidget {
-  const _ProfileShortcut({
-    required this.displayName,
-    required this.onTap,
-  });
-
-  final String displayName;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final initials = displayName
-        .trim()
-        .split(RegExp(r'\s+'))
-        .where((part) => part.isNotEmpty)
-        .take(2)
-        .map((part) => part[0].toUpperCase())
-        .join();
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(999),
-        child: Ink(
-          padding: const EdgeInsets.all(4),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.92),
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(color: AppColors.border),
-          ),
-          child: CircleAvatar(
-            radius: 22,
-            backgroundColor: AppColors.secondary,
-            child: Text(
-              initials.isEmpty ? 'SS' : initials,
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                color: AppColors.primaryDark,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _HeroCard extends StatelessWidget {
-  const _HeroCard({
-    required this.analysis,
-    required this.completedSteps,
-    required this.totalSteps,
-    required this.todayLog,
-    required this.onCheckIn,
-  });
-
-  final AnalysisResult? analysis;
-  final int completedSteps;
-  final int totalSteps;
-  final DailyLog? todayLog;
-  final VoidCallback onCheckIn;
-
-  @override
-  Widget build(BuildContext context) {
-    final progress = totalSteps == 0 ? 0.0 : completedSteps / totalSteps;
-    return AppCard(
-      backgroundColor: AppColors.surfaceStrong,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Today\'s complexion story',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Text(
-            analysis?.overview?.trim().isNotEmpty == true
-                ? analysis!.overview!
-                : 'Start with a quick check-in or fresh scan to build a more complete picture of your skin today.',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: AppColors.mutedText,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.lg),
-          Row(
-            children: [
-              Expanded(
-                child: _MetricTile(
-                  label: 'Confidence',
-                  value: analysis == null ? 'Not provided yet' : '${analysis!.confidenceScore}%',
-                ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: _MetricTile(
-                  label: 'Routine progress',
-                  value: totalSteps == 0 ? 'Not provided yet' : '$completedSteps/$totalSteps',
-                ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: _MetricTile(
-                  label: 'Diary today',
-                  value: todayLog?.hasDiaryDetails == true
-                      ? 'Updated'
-                      : 'Not updated yet',
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.md),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(999),
-            child: LinearProgressIndicator(
-              minHeight: 8,
-              value: progress,
-              backgroundColor: Colors.white.withValues(alpha: 0.65),
-              valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primaryDark),
-            ),
-          ),
-          const SizedBox(height: AppSpacing.lg),
-          Row(
-            children: [
-              Expanded(
-                child: AppButton(
-                  label: 'Check in now',
-                  icon: const Icon(Icons.favorite_border_rounded),
-                  onPressed: onCheckIn,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TodayCard extends StatelessWidget {
-  const _TodayCard({
-    required this.tracking,
-    required this.todayLog,
-    required this.onCheckup,
-  });
-
-  final RoutineTrackingToday? tracking;
-  final DailyLog? todayLog;
-  final VoidCallback onCheckup;
-
-  @override
-  Widget build(BuildContext context) {
-    final completed = tracking?.completedSteps ?? 0;
-    final total = tracking?.totalSteps ?? 0;
-    final diaryStatus = todayLog?.hasDiaryDetails == true
-        ? 'Diary updated'
-        : 'Diary not updated yet';
-    final hasCompletedRoutineBlock =
-        (tracking?.morningCompleted ?? false) ||
-        (tracking?.eveningCompleted ?? false);
-
-    return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Column(
+                Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Today',
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
+                    CircularScore(
+                      score: latestAnalysis?.overallScore ?? 0,
+                      size: 104,
+                      label: 'score',
                     ),
-                    const SizedBox(height: AppSpacing.xs),
-                    Text(
-                      'Your daily check-up combines routine completion and skin diary details in one quick stop.',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppColors.mutedText,
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const StatusChip(
+                            label: 'Today at a glance',
+                            icon: Icons.wb_twilight_outlined,
+                            tone: StatusChipTone.accent,
+                          ),
+                          const SizedBox(height: 10),
+                          Text(
+                            latestAnalysis != null
+                                ? 'Latest skin score: ${latestAnalysis.overallScore}/100'
+                                : 'Start with a skin analysis to unlock routine tracking and product recommendations.',
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                          const SizedBox(height: AppSpacing.sm),
+                          StatusChip(
+                            label: regimen == null ? 'No active routine' : 'Routine active',
+                            icon: regimen == null
+                                ? Icons.spa_outlined
+                                : Icons.checklist_rounded,
+                            tone: regimen == null
+                                ? StatusChipTone.warning
+                                : StatusChipTone.success,
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
-              ),
-              AppButton(
-                label: 'Check-up now',
-                expand: false,
-                icon: const Icon(Icons.check_circle_outline_rounded),
-                onPressed: onCheckup,
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.lg),
-          Row(
-            children: [
-              Expanded(
-                child: _InsightCard(
-                  eyebrow: 'Routine today',
-                  value: total == 0 ? 'No steps yet' : '$completed/$total steps',
-                  description: tracking == null
-                      ? 'Today\'s tracking will appear after you start using your routine.'
-                      : hasCompletedRoutineBlock
-                      ? 'At least one routine block is fully completed today.'
-                      : 'Keep going step by step to complete today\'s routine.',
-                  icon: Icons.spa_outlined,
+                const SizedBox(height: AppSpacing.md),
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final wide = constraints.maxWidth >= 360;
+                    final children = [
+                      MetricCard(
+                        label: 'Routine',
+                        value: regimen == null ? 'Not set' : 'Active',
+                        icon: Icons.local_florist_outlined,
+                      ),
+                      MetricCard(
+                        label: 'Today',
+                        value: '$completedSteps/$totalSteps done',
+                        icon: Icons.check_circle_outline_rounded,
+                      ),
+                      MetricCard(
+                        label: 'Feeling',
+                        value: _formatFeeling(todayLog?.skinFeeling),
+                        icon: Icons.favorite_border_rounded,
+                      ),
+                    ];
+                    if (!wide) {
+                      return Column(
+                        children: children
+                            .map(
+                              (child) => Padding(
+                                padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                                child: child,
+                              ),
+                            )
+                            .toList(),
+                      );
+                    }
+
+                    return Row(
+                      children: [
+                        for (var i = 0; i < children.length; i++) ...[
+                          Expanded(child: children[i]),
+                          if (i != children.length - 1)
+                            const SizedBox(width: AppSpacing.sm),
+                        ],
+                      ],
+                    );
+                  },
                 ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: _InsightCard(
-                  eyebrow: 'Diary today',
-                  value: diaryStatus,
-                  description: todayLog?.hasDiaryDetails == true
-                      ? _todayFeelingCopy(todayLog)
-                      : 'Add a quick diary update so Progress and AI reports have today\'s context.',
-                  icon: Icons.favorite_border_rounded,
+                const SizedBox(height: AppSpacing.md),
+                LinearProgressStat(
+                  label: 'Routine completion',
+                  value: '$completedSteps/$totalSteps',
+                  progress: progress,
+                  caption: totalSteps == 0
+                      ? 'Your checklist will appear once you have an active routine.'
+                      : 'Keep today moving with your next active steps.',
                 ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MetricTile extends StatelessWidget {
-  const _MetricTile({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.72),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: Theme.of(context).textTheme.labelMedium,
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            value,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _InsightCard extends StatelessWidget {
-  const _InsightCard({
-    required this.eyebrow,
-    required this.value,
-    required this.description,
-    required this.icon,
-  });
-
-  final String eyebrow;
-  final String value;
-  final String description;
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, color: AppColors.primaryDark, size: 18),
-              const SizedBox(width: AppSpacing.xs),
-              Expanded(
-                child: Text(
-                  eyebrow,
-                  style: Theme.of(context).textTheme.labelMedium,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Text(
-            value,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Text(
-            description,
-            maxLines: 3,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _RoutinePreviewCard extends StatelessWidget {
-  const _RoutinePreviewCard({
-    required this.title,
-    required this.accent,
-    required this.steps,
-    required this.completed,
-  });
-
-  final String title;
-  final Color accent;
-  final List<RegimenStep> steps;
-  final bool completed;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: accent,
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                alignment: Alignment.center,
-                child: Icon(
-                  title.contains('Morning')
-                      ? Icons.wb_sunny_outlined
-                      : Icons.bedtime_outlined,
-                  color: AppColors.primaryDark,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: Text(
-                  title,
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
+                if (previewSteps.isNotEmpty) ...[
+                  const SizedBox(height: AppSpacing.md),
+                  SectionHeader(
+                    icon: Icons.checklist_rounded,
+                    title: 'Next steps',
+                    subtitle: 'A quick preview from your active routine.',
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  ...previewSteps.map(
+                    (step) => Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 28,
+                            height: 28,
+                            decoration: BoxDecoration(
+                              color: AppColors.secondary,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: AppColors.border),
+                            ),
+                            alignment: Alignment.center,
+                            child: Text(
+                              '${step.stepOrder}',
+                              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                                color: AppColors.primaryDark,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: AppSpacing.sm),
+                          Expanded(
+                            child: Text(
+                              step.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
+                          ),
+                          const SizedBox(width: AppSpacing.sm),
+                          StatusChip(
+                            label: step.category,
+                            icon: Icons.water_drop_outlined,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: AppSpacing.md),
+                AppButton(
+                  label: latestAnalysis != null
+                      ? 'Open Today Check-up'
+                      : 'Analyze Skin',
+                  onPressed: () => Navigator.pushNamed(
+                    context,
+                    latestAnalysis != null ? AppRoutes.todayCheckup : AppRoutes.upload,
                   ),
                 ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: completed ? AppColors.secondary : AppColors.surfaceMuted,
-                  borderRadius: BorderRadius.circular(999),
+                const SizedBox(height: AppSpacing.sm),
+                AppButton(
+                  label: 'Open Products',
+                  variant: AppButtonVariant.secondary,
+                  onPressed: () => Navigator.pushNamed(context, AppRoutes.products),
                 ),
-                child: Text(
-                  completed ? 'Completed' : 'Pending',
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: AppColors.primaryDark,
-                  ),
-                ),
-              ),
-            ],
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sectionGap),
+          SectionHeader(
+            icon: Icons.auto_graph_rounded,
+            title: 'Quick Snapshot',
+            subtitle: 'Small signals from your recent progress and habits.',
           ),
           const SizedBox(height: AppSpacing.md),
-          Text(
-            steps.isEmpty
-                ? 'Not provided yet'
-                : steps
-                    .take(4)
-                    .map((step) => '${step.stepOrder}. ${step.name}')
-                    .join('\n'),
-            style: Theme.of(context).textTheme.bodyMedium,
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final tiles = [
+                MetricCard(
+                  label: 'Current streak',
+                  value: '${appState.progress?.currentStreak ?? 0} days',
+                  icon: Icons.local_fire_department_outlined,
+                  tone: AppColors.surface,
+                ),
+                MetricCard(
+                  label: 'Completion',
+                  value: '${(progress * 100).round()}%',
+                  icon: Icons.donut_small_rounded,
+                  tone: AppColors.surface,
+                ),
+                MetricCard(
+                  label: 'Last analysis',
+                  value: latestAnalysis == null ? 'Not yet' : 'Ready',
+                  caption: latestAnalysis == null
+                      ? 'Analyze skin to start tracking.'
+                      : latestAnalysis.skinType,
+                  icon: Icons.photo_camera_back_outlined,
+                  tone: AppColors.surface,
+                ),
+              ];
+              if (constraints.maxWidth < 360) {
+                return Column(
+                  children: tiles
+                      .map(
+                        (tile) => Padding(
+                          padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                          child: tile,
+                        ),
+                      )
+                      .toList(),
+                );
+              }
+
+              return Wrap(
+                spacing: AppSpacing.sm,
+                runSpacing: AppSpacing.sm,
+                children: tiles
+                    .map(
+                      (tile) => SizedBox(
+                        width: (constraints.maxWidth - AppSpacing.sm) / 2,
+                        child: tile,
+                      ),
+                    )
+                    .toList(),
+              );
+            },
           ),
         ],
       ),
     );
   }
-}
 
-class _QuickActionChip extends StatelessWidget {
-  const _QuickActionChip({
-    required this.label,
-    required this.icon,
-    required this.onTap,
-  });
-
-  final String label;
-  final IconData icon;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(999),
-        onTap: onTap,
-        child: Ink(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(color: AppColors.border),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 18, color: AppColors.primaryDark),
-              const SizedBox(width: AppSpacing.xs),
-              Text(
-                label,
-                style: Theme.of(context).textTheme.labelLarge,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+  String _formatFeeling(String? value) {
+    final normalized = value?.trim().toLowerCase() ?? '';
+    if (normalized.isEmpty) {
+      return 'Not logged';
+    }
+    return normalized.replaceAll('_', ' ');
   }
-}
-
-String _friendlyText(String? value) {
-  final trimmed = value?.trim() ?? '';
-  return trimmed.isEmpty ? 'Not provided yet' : trimmed;
-}
-
-String _todayFeelingCopy(DailyLog? log) {
-  if (log == null) {
-    return 'Not provided yet';
-  }
-
-  final feeling = log.skinFeeling?.trim();
-  if (feeling != null && feeling.isNotEmpty && feeling.toLowerCase() != 'normal') {
-    return 'Feeling: ${_friendlyText(feeling)}';
-  }
-  if (log.notes?.trim().isNotEmpty == true) {
-    return log.notes!;
-  }
-  return 'Diary details added for today.';
 }

@@ -37,25 +37,24 @@ class _SplashPageState extends State<SplashPage> {
       });
     }
 
-    return const Scaffold(
+    return Scaffold(
       backgroundColor: AppColors.pageBackground,
       body: SafeArea(
         child: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              BrandLogo(size: 72, radius: 22),
-              SizedBox(height: 20),
+              const BrandLogo(size: 72, radius: 22),
+              const SizedBox(height: 20),
               Text(
                 'SkinSync',
-                style: TextStyle(
+                style: Theme.of(context).textTheme.headlineLarge?.copyWith(
                   color: AppColors.primaryDark,
-                  fontSize: 28,
                   fontWeight: FontWeight.w700,
                 ),
               ),
-              SizedBox(height: 12),
-              SizedBox(
+              const SizedBox(height: 12),
+              const SizedBox(
                 width: 28,
                 height: 28,
                 child: CircularProgressIndicator(
