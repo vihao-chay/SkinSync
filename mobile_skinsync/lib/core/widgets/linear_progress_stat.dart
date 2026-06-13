@@ -50,28 +50,35 @@ class LinearProgressStat extends StatelessWidget {
           borderRadius: BorderRadius.circular(999),
           child: SizedBox(
             height: 10,
-            child: TweenAnimationBuilder<double>(
-              tween: Tween<double>(begin: 0, end: clamped),
-              duration: const Duration(milliseconds: 500),
-              curve: Curves.easeOutCubic,
-              builder: (context, animated, child) {
-                return Stack(
-                  children: [
-                    Container(color: AppColors.secondary),
-                    FractionallySizedBox(
-                      widthFactor: animated,
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              barColor.withValues(alpha: 0.78),
-                              barColor,
-                            ],
+            width: double.infinity,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return TweenAnimationBuilder<double>(
+                  tween: Tween<double>(begin: 0, end: clamped),
+                  duration: const Duration(milliseconds: 500),
+                  curve: Curves.easeOutCubic,
+                  builder: (context, animated, child) {
+                    final fillWidth = constraints.maxWidth * animated;
+                    return Stack(
+                      children: [
+                        Positioned.fill(
+                          child: Container(color: AppColors.secondary),
+                        ),
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 180),
+                          width: fillWidth,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                barColor.withValues(alpha: 0.78),
+                                barColor,
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                    ),
-                  ],
+                      ],
+                    );
+                  },
                 );
               },
             ),

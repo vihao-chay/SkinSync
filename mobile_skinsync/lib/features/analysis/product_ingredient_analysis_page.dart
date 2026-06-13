@@ -7,6 +7,7 @@ import '../../core/state/app_state.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/brand_logo.dart';
+import '../../core/widgets/main_shell.dart';
 import 'widgets/analysis_mode_tabs.dart';
 
 class ProductIngredientAnalysisPage extends StatefulWidget {
@@ -202,7 +203,11 @@ class _ProductIngredientAnalysisPageState
           AppButton(
             label: 'Open full Products',
             variant: AppButtonVariant.secondary,
-            onPressed: () => Navigator.pushNamed(context, AppRoutes.products),
+            onPressed: () => MainShell.navigateToTab(
+              context,
+              AppRoutes.products,
+              arguments: const ProductsPageArgs(),
+            ),
           ),
         ],
       ],

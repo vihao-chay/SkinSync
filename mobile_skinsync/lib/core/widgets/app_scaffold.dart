@@ -30,7 +30,8 @@ class AppScaffold extends StatelessWidget {
     final theme = Theme.of(context);
     final safeBottom = MediaQuery.paddingOf(context).bottom;
     final topPadding = compactHeader ? 10.0 : 16.0;
-    final bottomPadding = compactHeader ? 10.0 : 16.0;
+    final bottomPadding = compactHeader ? 8.0 : 14.0;
+    final effectiveBottomSpacing = safeBottom + 8;
     final content = onRefresh == null
         ? body
         : RefreshIndicator(
@@ -107,7 +108,7 @@ class AppScaffold extends StatelessWidget {
                 ),
                 Expanded(
                   child: Padding(
-                    padding: EdgeInsets.only(bottom: safeBottom),
+                    padding: EdgeInsets.only(bottom: effectiveBottomSpacing),
                     child: content,
                   ),
                 ),

@@ -11,6 +11,7 @@ import '../../core/widgets/app_card.dart';
 import '../../core/widgets/empty_state_card.dart';
 import '../../core/widgets/error_state_card.dart';
 import '../../core/widgets/glass_header.dart';
+import '../../core/widgets/main_shell.dart';
 
 class AiProductRecommendPage extends StatefulWidget {
   const AiProductRecommendPage({super.key});
@@ -450,7 +451,11 @@ class _RecommendationCard extends StatelessWidget {
           AppButton(
             label: 'Open full Products',
             variant: AppButtonVariant.secondary,
-            onPressed: () => Navigator.pushNamed(context, AppRoutes.products),
+            onPressed: () => MainShell.navigateToTab(
+              context,
+              AppRoutes.products,
+              arguments: const ProductsPageArgs(),
+            ),
           ),
         ],
       ),

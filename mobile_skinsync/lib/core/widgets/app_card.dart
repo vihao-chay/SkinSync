@@ -31,20 +31,28 @@ class AppCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final resolvedBackground = backgroundColor ?? _backgroundForVariant(variant);
     final resolvedRadius = radius ?? _radiusForVariant(variant);
-    final card = Container(
-      width: double.infinity,
-      padding: padding,
-      decoration: BoxDecoration(
-        color: resolvedBackground,
-        borderRadius: BorderRadius.circular(resolvedRadius),
-        border: Border.all(
-          color: borderColor ?? _borderForVariant(variant),
-        ),
-        boxShadow: variant == AppCardVariant.metric
-            ? AppShadows.soft.sublist(0, 1)
-            : AppShadows.soft,
+    final shape = RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(resolvedRadius),
+      side: BorderSide(
+        color: borderColor ?? _borderForVariant(variant),
       ),
-      child: child,
+    );
+    final card = Material(
+      color: resolvedBackground,
+      shape: shape,
+      shadowColor: AppShadows.soft.first.color,
+      elevation: variant == AppCardVariant.metric ? 1 : 0,
+      child: Container(
+        width: double.infinity,
+        padding: padding,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(resolvedRadius),
+          boxShadow: variant == AppCardVariant.metric
+              ? AppShadows.soft.sublist(0, 1)
+              : AppShadows.soft,
+        ),
+        child: child,
+      ),
     );
 
     if (onTap == null) {

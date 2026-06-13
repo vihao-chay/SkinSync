@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/models/app_models.dart';
 import '../../core/routes/app_routes.dart';
 import '../../core/state/app_state.dart';
 import '../../core/theme/app_colors.dart';
@@ -9,12 +10,43 @@ import '../../core/widgets/app_card.dart';
 import '../../core/widgets/app_scaffold.dart';
 import '../../core/widgets/circular_score.dart';
 import '../../core/widgets/empty_state_card.dart';
+import '../../core/widgets/linear_progress_stat.dart';
 import '../../core/widgets/metric_card.dart';
 import '../../core/widgets/section_header.dart';
 import '../../core/widgets/status_chip.dart';
 
-class ProgressPage extends StatelessWidget {
-  const ProgressPage({super.key});
+class ProgressPage extends StatefulWidget {
+  const ProgressPage({
+    super.key,
+    ProgressPageArgs? args,
+  }) : args = args ?? const ProgressPageArgs();
+
+  final ProgressPageArgs args;
+
+  @override
+  State<ProgressPage> createState() => _ProgressPageState();
+}
+
+class _ProgressPageState extends State<ProgressPage> {
+  bool _didHandleEntryPoint = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_didHandleEntryPoint) {
+      return;
+    }
+    _didHandleEntryPoint = true;
+    if (widget.args.entryPoint == ProgressEntryPoint.checkupSaved ||
+        widget.args.entryPoint == ProgressEntryPoint.analysisResult) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) {
+          return;
+        }
+        context.read<AppState>().refreshHome();
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -26,6 +58,14 @@ class ProgressPage extends StatelessWidget {
     final totalSteps = tracking?.totalSteps ?? 0;
     final completedSteps = tracking?.completedSteps ?? 0;
     final routinePercent = totalSteps == 0 ? 0 : ((completedSteps / totalSteps) * 100).round();
+    final hasRealInsight = (progress?.dailyTip?.trim().isNotEmpty ?? false) ||
+        (progress?.progressInsight?.trim().isNotEmpty ?? false);
+    final hasVisualJourney = todayLog?.dailyImageUrl?.trim().isNotEmpty == true;
+
+    final showCheckupSavedState =
+        widget.args.entryPoint == ProgressEntryPoint.checkupSaved;
+    final showAnalysisState =
+        widget.args.entryPoint == ProgressEntryPoint.analysisResult;
 
     if (progress == null && latestAnalysis == null) {
       return AppScaffold(
@@ -64,6 +104,21 @@ class ProgressPage extends StatelessWidget {
           AppSpacing.pageBottomPaddingWithActions,
         ),
         children: [
+          if (showCheckupSavedState) ...[
+            const StatusChip(
+              label: 'Check-up saved',
+              icon: Icons.check_circle_outline_rounded,
+              tone: StatusChipTone.success,
+            ),
+            const SizedBox(height: AppSpacing.md),
+          ] else if (showAnalysisState) ...[
+            const StatusChip(
+              label: 'Analysis saved',
+              icon: Icons.analytics_outlined,
+              tone: StatusChipTone.accent,
+            ),
+            const SizedBox(height: AppSpacing.md),
+          ],
           AppCard(
             variant: AppCardVariant.hero,
             child: Column(
@@ -89,8 +144,9 @@ class ProgressPage extends StatelessWidget {
                           ),
                           const SizedBox(height: 10),
                           Text(
-                            progress?.progressInsight ??
-                                'Progress blends analysis score, checklist consistency, and diary activity.',
+                            progress?.progressInsight?.trim().isNotEmpty == true
+                                ? progress!.progressInsight!
+                                : 'Progress updates when analysis, routine tracking, and daily logs are saved.',
                             maxLines: 4,
                             overflow: TextOverflow.ellipsis,
                             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -143,6 +199,15 @@ class ProgressPage extends StatelessWidget {
                     );
                   },
                 ),
+                const SizedBox(height: AppSpacing.md),
+                LinearProgressStat(
+                  label: 'Routine completion',
+                  value: '$routinePercent%',
+                  progress: totalSteps == 0 ? 0 : completedSteps / totalSteps,
+                  caption: totalSteps == 0
+                      ? 'No routine steps tracked yet.'
+                      : '$completedSteps of $totalSteps steps completed today.',
+                ),
               ],
             ),
           ),
@@ -150,48 +215,65 @@ class ProgressPage extends StatelessWidget {
           SectionHeader(
             icon: Icons.show_chart_rounded,
             title: 'Score Trend',
-            subtitle: 'A lightweight view of how your routine and analysis are moving together.',
+            subtitle: 'Only show a trend when there is enough real data to support it.',
           ),
           const SizedBox(height: AppSpacing.md),
-          AppCard(
-            variant: AppCardVariant.standard,
-            child: _MiniTrendChart(
-              currentScore: progress?.currentScore ?? latestAnalysis?.overallScore ?? 0,
-              improvementPercent: progress?.improvementPercent ?? 0,
-            ),
+          const EmptyStateCard(
+            icon: Icons.show_chart_rounded,
+            title: 'Not enough trend data yet',
+            description:
+                'Complete more analyses and check-ups to unlock a clearer score trend.',
           ),
           const SizedBox(height: AppSpacing.sectionGap),
           SectionHeader(
-            icon: Icons.tips_and_updates_outlined,
-            title: 'Insight Cards',
-            subtitle: 'Short reads instead of long paragraphs.',
+            icon: Icons.photo_camera_back_outlined,
+            title: 'Visual Journey',
+            subtitle: 'Real photo history appears here when your logs include saved images.',
           ),
           const SizedBox(height: AppSpacing.md),
-          Wrap(
-            spacing: AppSpacing.sm,
-            runSpacing: AppSpacing.sm,
-            children: [
-              _InsightCard(
-                icon: Icons.auto_awesome_rounded,
-                title: 'Daily tip',
-                body: progress?.dailyTip ??
-                    'Keep logging routine completion to help SkinSync personalize your next recommendations.',
+          if (hasVisualJourney)
+            AppCard(
+              child: const _TimelineRow(
+                icon: Icons.photo_camera_back_outlined,
+                title: 'Latest uploaded photo',
+                value: 'A real saved photo is available for future comparison.',
               ),
-              _InsightCard(
-                icon: Icons.check_circle_outline_rounded,
-                title: 'Routine signal',
-                body: '$completedSteps of $totalSteps steps are completed today.',
-              ),
-              _InsightCard(
-                icon: Icons.menu_book_outlined,
-                title: 'Diary signal',
-                body: todayLog?.hasDiaryDetails == true
-                    ? 'Today already includes a saved skin feeling or note.'
-                    : 'Add a quick skin feeling or note to strengthen your progress story.',
-              ),
-            ],
-          ),
+            )
+          else
+            const EmptyStateCard(
+              icon: Icons.photo_library_outlined,
+              title: 'No comparison photos yet',
+              description:
+                  'Save daily or analysis photos over time to unlock a clearer visual journey.',
+            ),
           const SizedBox(height: AppSpacing.sectionGap),
+          if (hasRealInsight) ...[
+            SectionHeader(
+              icon: Icons.tips_and_updates_outlined,
+              title: 'Insight Cards',
+              subtitle: 'Short reads grounded in your saved backend data.',
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Wrap(
+              spacing: AppSpacing.sm,
+              runSpacing: AppSpacing.sm,
+              children: [
+                if (progress?.dailyTip?.trim().isNotEmpty == true)
+                  _InsightCard(
+                    icon: Icons.auto_awesome_rounded,
+                    title: 'Daily tip',
+                    body: progress!.dailyTip!,
+                  ),
+                if (progress?.progressInsight?.trim().isNotEmpty == true)
+                  _InsightCard(
+                    icon: Icons.query_stats_rounded,
+                    title: 'Progress signal',
+                    body: progress!.progressInsight!,
+                  ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.sectionGap),
+          ],
           SectionHeader(
             icon: Icons.timeline_rounded,
             title: 'Recent Timeline',
@@ -233,104 +315,6 @@ class ProgressPage extends StatelessWidget {
   String _formatPercent(double? value) {
     final safe = value ?? 0;
     return '${safe.toStringAsFixed(1)}%';
-  }
-}
-
-class _MiniTrendChart extends StatelessWidget {
-  const _MiniTrendChart({
-    required this.currentScore,
-    required this.improvementPercent,
-  });
-
-  final int currentScore;
-  final double improvementPercent;
-
-  @override
-  Widget build(BuildContext context) {
-    final points = [
-      (currentScore - 12).clamp(0, 100).toDouble(),
-      (currentScore - 6).clamp(0, 100).toDouble(),
-      currentScore.toDouble(),
-      (currentScore + (improvementPercent / 3)).clamp(0, 100).toDouble(),
-    ];
-
-    return SizedBox(
-      height: 164,
-      child: Row(
-        children: [
-          Expanded(
-            child: CustomPaint(
-              painter: _TrendPainter(points),
-              child: const SizedBox.expand(),
-            ),
-          ),
-          const SizedBox(width: AppSpacing.md),
-          SizedBox(
-            width: 92,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
-                StatusChip(
-                  label: 'Live trend',
-                  icon: Icons.show_chart_rounded,
-                  tone: StatusChipTone.accent,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TrendPainter extends CustomPainter {
-  _TrendPainter(this.points);
-
-  final List<double> points;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final guidePaint = Paint()
-      ..color = AppColors.border
-      ..strokeWidth = 1;
-    for (var i = 1; i <= 3; i++) {
-      final y = size.height * i / 4;
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), guidePaint);
-    }
-
-    final path = Path();
-    for (var i = 0; i < points.length; i++) {
-      final x = size.width * i / (points.length - 1);
-      final y = size.height - ((points[i] / 100) * size.height);
-      if (i == 0) {
-        path.moveTo(x, y);
-      } else {
-        path.lineTo(x, y);
-      }
-    }
-
-    final stroke = Paint()
-      ..color = AppColors.primaryDark
-      ..strokeWidth = 3
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
-
-    canvas.drawPath(path, stroke);
-
-    final pointPaint = Paint()..color = AppColors.primaryDark;
-    for (var i = 0; i < points.length; i++) {
-      final x = size.width * i / (points.length - 1);
-      final y = size.height - ((points[i] / 100) * size.height);
-      canvas.drawCircle(Offset(x, y), 4.5, pointPaint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _TrendPainter oldDelegate) {
-    return oldDelegate.points != points;
   }
 }
 

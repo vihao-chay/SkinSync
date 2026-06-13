@@ -132,7 +132,7 @@ class ProductRecommendationCard extends StatelessWidget {
             children: [
               Expanded(
                 child: AppButton(
-                  label: 'Ingredients',
+                  label: 'Check ingredients',
                   variant: AppButtonVariant.secondary,
                   onPressed: onCheckIngredients,
                 ),

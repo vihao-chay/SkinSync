@@ -35,7 +35,9 @@ class _TodayCheckupPageState extends State<TodayCheckupPage> {
   bool _showMorning = true;
   bool _saving = false;
   bool _didSyncFromLog = false;
+  bool _didSyncChecklist = false;
   File? _selectedImage;
+  Set<String> _draftCompletedStepIds = <String>{};
 
   @override
   void didChangeDependencies() {
@@ -48,6 +50,14 @@ class _TodayCheckupPageState extends State<TodayCheckupPage> {
     _notesController.text = log?.notes ?? '';
     _skinFeeling = _resolveFeeling(log?.skinFeeling);
     _didSyncFromLog = true;
+  }
+
+  void _syncDraftChecklist(RoutineTrackingToday? tracking) {
+    if (_didSyncChecklist) {
+      return;
+    }
+    _draftCompletedStepIds = {...?tracking?.completedStepIds};
+    _didSyncChecklist = true;
   }
 
   @override
@@ -68,18 +78,28 @@ class _TodayCheckupPageState extends State<TodayCheckupPage> {
   }
 
   Future<void> _saveCheckup(AppState appState) async {
+    debugPrint('[SkinSync] check-up save');
     setState(() => _saving = true);
     try {
       await appState.saveDailyLog(
         skinFeeling: _skinFeeling,
         notes: _notesController.text.trim(),
         imageFile: _selectedImage,
+        completedStepIds: _draftCompletedStepIds.toList(),
       );
       if (!mounted) {
         return;
       }
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Today Check-up saved successfully.')),
+      );
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        AppRoutes.progress,
+        (route) => false,
+        arguments: const ProgressPageArgs(
+          entryPoint: ProgressEntryPoint.checkupSaved,
+        ),
       );
     } catch (_) {
       if (!mounted) {
@@ -104,19 +124,31 @@ class _TodayCheckupPageState extends State<TodayCheckupPage> {
     final appState = context.watch<AppState>();
     final regimen = appState.regimen;
     final tracking = appState.trackingToday;
+    _syncDraftChecklist(tracking);
     final todayLog = appState.todayLog;
-    final completedIds = tracking?.completedStepIds.toSet() ?? <String>{};
+    final completedIds = _draftCompletedStepIds;
     final morningSteps = regimen?.morning ?? const <RegimenStep>[];
     final eveningSteps = regimen?.evening ?? const <RegimenStep>[];
     final activeSteps = _showMorning ? morningSteps : eveningSteps;
-    final totalSteps = tracking?.totalSteps ?? 0;
-    final completedSteps = tracking?.completedSteps ?? 0;
+    final totalSteps = tracking?.totalSteps ?? (morningSteps.length + eveningSteps.length);
+    final completedSteps = completedIds.length;
     final progress = totalSteps == 0 ? 0.0 : completedSteps / totalSteps;
+    final morningCompleted = morningSteps.isNotEmpty &&
+        morningSteps.every((step) => completedIds.contains(step.stepId));
+    final eveningCompleted = eveningSteps.isNotEmpty &&
+        eveningSteps.every((step) => completedIds.contains(step.stepId));
 
     return AppScaffold(
       title: 'Today Check-up',
       subtitle: 'Check off your active routine and log how your skin feels today.',
       onRefresh: appState.refreshHome,
+      headerTrailing: _HeaderHomeButton(
+        onTap: () => Navigator.pushNamedAndRemoveUntil(
+          context,
+          AppRoutes.dashboard,
+          (route) => false,
+        ),
+      ),
       body: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(
@@ -165,16 +197,16 @@ class _TodayCheckupPageState extends State<TodayCheckupPage> {
                   runSpacing: AppSpacing.sm,
                   children: [
                     StatusChip(
-                      label: tracking?.morningCompleted == true ? 'Morning done' : 'Morning pending',
+                      label: morningCompleted ? 'Morning done' : 'Morning pending',
                       icon: Icons.wb_sunny_outlined,
-                      tone: tracking?.morningCompleted == true
+                      tone: morningCompleted
                           ? StatusChipTone.success
                           : StatusChipTone.warning,
                     ),
                     StatusChip(
-                      label: tracking?.eveningCompleted == true ? 'Evening done' : 'Evening pending',
+                      label: eveningCompleted ? 'Evening done' : 'Evening pending',
                       icon: Icons.nightlight_round,
-                      tone: tracking?.eveningCompleted == true
+                      tone: eveningCompleted
                           ? StatusChipTone.success
                           : StatusChipTone.warning,
                     ),
@@ -195,8 +227,15 @@ class _TodayCheckupPageState extends State<TodayCheckupPage> {
               icon: Icons.checklist_rtl_outlined,
               title: 'No active routine yet',
               description: 'Today Check-up only uses products from your active routine. Build your routine first, then come back to track it here.',
-              ctaLabel: 'Open routine',
-              onCta: () => Navigator.pushNamed(context, AppRoutes.routine),
+              ctaLabel: 'Open Products',
+              onCta: () => Navigator.pushNamedAndRemoveUntil(
+                context,
+                AppRoutes.products,
+                (route) => false,
+                arguments: const ProductsPageArgs(
+                  entryPoint: ProductsEntryPoint.routineEmpty,
+                ),
+              ),
             )
           else ...[
             SectionHeader(
@@ -223,10 +262,13 @@ class _TodayCheckupPageState extends State<TodayCheckupPage> {
                   child: RoutineChecklistItem(
                     step: step,
                     completed: completedIds.contains(step.stepId),
-                    onChanged: () => appState.toggleRoutineStep(
-                      step.stepId,
-                      completedIds.contains(step.stepId),
-                    ),
+                    onChanged: () => setState(() {
+                      if (completedIds.contains(step.stepId)) {
+                        completedIds.remove(step.stepId);
+                      } else {
+                        completedIds.add(step.stepId);
+                      }
+                    }),
                   ),
                 ),
               ),
@@ -242,24 +284,27 @@ class _TodayCheckupPageState extends State<TodayCheckupPage> {
                   subtitle: 'Save a quick signal alongside today’s checklist.',
                 ),
                 const SizedBox(height: AppSpacing.md),
-                Wrap(
-                  spacing: AppSpacing.sm,
-                  runSpacing: AppSpacing.sm,
-                  children: _skinFeelingOptions.map((option) {
-                    final selected = _skinFeeling == option.value;
-                    return ChoiceChip(
-                      avatar: Icon(
-                        option.icon,
-                        size: 16,
-                        color: selected
-                            ? AppColors.primaryDark
-                            : AppColors.mutedText,
-                      ),
-                      label: Text(option.label),
-                      selected: selected,
-                      onSelected: (_) => setState(() => _skinFeeling = option.value),
-                    );
-                  }).toList(),
+                Material(
+                  color: Colors.transparent,
+                  child: Wrap(
+                    spacing: AppSpacing.sm,
+                    runSpacing: AppSpacing.sm,
+                    children: _skinFeelingOptions.map((option) {
+                      final selected = _skinFeeling == option.value;
+                      return ChoiceChip(
+                        avatar: Icon(
+                          option.icon,
+                          size: 16,
+                          color: selected
+                              ? AppColors.primaryDark
+                              : AppColors.mutedText,
+                        ),
+                        label: Text(option.label),
+                        selected: selected,
+                        onSelected: (_) => setState(() => _skinFeeling = option.value),
+                      );
+                    }).toList(),
+                  ),
                 ),
                 const SizedBox(height: AppSpacing.lg),
                 TextField(
@@ -326,6 +371,17 @@ class _TodayCheckupPageState extends State<TodayCheckupPage> {
             isLoading: _saving,
             onPressed: _saving ? null : () => _saveCheckup(appState),
           ),
+          const SizedBox(height: AppSpacing.sm),
+          AppButton(
+            label: 'Back to Home',
+            variant: AppButtonVariant.secondary,
+            icon: const Icon(Icons.home_rounded),
+            onPressed: () => Navigator.pushNamedAndRemoveUntil(
+              context,
+              AppRoutes.dashboard,
+              (route) => false,
+            ),
+          ),
         ],
       ),
     );
@@ -371,6 +427,36 @@ class _RoutineSegmentedControl extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _HeaderHomeButton extends StatelessWidget {
+  const _HeaderHomeButton({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: onTap,
+        child: Ink(
+          width: 48,
+          height: 48,
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.82),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: const Icon(
+            Icons.home_rounded,
+            color: AppColors.primaryDark,
+          ),
+        ),
       ),
     );
   }
@@ -500,7 +586,7 @@ const _skinFeelingOptions = [
   _SkinFeelingOption('Good', 'good', Icons.sentiment_satisfied_alt_outlined),
   _SkinFeelingOption('Dry', 'dry', Icons.water_drop_outlined),
   _SkinFeelingOption('Oily', 'oily', Icons.opacity_outlined),
-  _SkinFeelingOption('Red', 'red', Icons.favorite_border_rounded),
+  _SkinFeelingOption('Red', 'irritated', Icons.favorite_border_rounded),
   _SkinFeelingOption('Irritated', 'irritated', Icons.warning_amber_rounded),
-  _SkinFeelingOption('Breakout', 'breakout', Icons.blur_on_outlined),
+  _SkinFeelingOption('Breakout', 'acne_flare', Icons.blur_on_outlined),
 ];

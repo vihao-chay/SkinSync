@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -409,6 +410,7 @@ class AppState extends ChangeNotifier {
   }
 
   Future<AiProductRecommendResponse> getLatestRecommendations() async {
+    debugPrint('[SkinSync] latest recommendation read');
     final response = await _apiClient.get(
       '/api/ai/products/recommendations/latest',
     );
@@ -422,6 +424,7 @@ class AppState extends ChangeNotifier {
     double? budgetMax,
     int limitPerCategory = 5,
   }) async {
+    debugPrint('[SkinSync] manual recommendation generate');
     final response = await _apiClient.post(
       '/api/ai/products/recommendations/generate',
       body: {
@@ -474,6 +477,7 @@ class AppState extends ChangeNotifier {
     required String routineType,
     bool allowConflicts = false,
   }) async {
+    debugPrint('[SkinSync] routine add');
     final response = await _apiClient.post(
       '/api/ai/products/$productId/add-to-routine',
       body: {'routineType': routineType, 'allowConflicts': allowConflicts},
@@ -614,7 +618,9 @@ class AppState extends ChangeNotifier {
     int? rednessLevel,
     int? hydrationLevel,
     File? imageFile,
+    List<String>? completedStepIds,
   }) async {
+    debugPrint('[SkinSync] check-up save');
     await _runBusy(() async {
       final normalizedFeeling = skinFeeling.trim().toLowerCase();
       final fields = <String, String>{
@@ -627,6 +633,8 @@ class AppState extends ChangeNotifier {
         'isIrritated':
             (normalizedFeeling == 'irritated' || normalizedFeeling == 'sensitive')
                 .toString(),
+        if (completedStepIds != null)
+          'completedStepIdsJson': jsonEncode(completedStepIds),
       };
       if (acneLevel != null) {
         fields['acneLevel'] = acneLevel.toString();

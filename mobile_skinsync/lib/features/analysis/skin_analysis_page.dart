@@ -7,6 +7,7 @@ import '../../core/state/app_state.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/widgets/brand_logo.dart';
+import '../../core/widgets/main_shell.dart';
 import 'product_ingredient_analysis_page.dart';
 import 'widgets/analysis_mode_tabs.dart';
 
@@ -161,8 +162,19 @@ class _SkinAnalysisPageState extends State<SkinAnalysisPage> {
                         ),
                       ),
                       onPressed: () =>
-                          Navigator.pushNamed(context, AppRoutes.routine),
-                      child: const Text('Generate Routine'),
+                          MainShell.navigateToTab(
+                            context,
+                            AppRoutes.products,
+                            arguments: ProductsPageArgs(
+                              initialConcern: result.issues.isNotEmpty
+                                  ? result.issues.first.issueType
+                                  : 'any',
+                              referenceId:
+                                  result.progressEntryId ?? result.id,
+                              entryPoint: ProductsEntryPoint.analysisResult,
+                            ),
+                          ),
+                      child: const Text('Review Product Recommendations'),
                     ),
                   ),
                   const SizedBox(height: 10),
@@ -171,8 +183,8 @@ class _SkinAnalysisPageState extends State<SkinAnalysisPage> {
                       Expanded(
                         child: OutlinedButton(
                           onPressed: () =>
-                              Navigator.pushNamed(context, AppRoutes.progress),
-                          child: const Text('View Progress'),
+                              MainShell.navigateToTab(context, AppRoutes.dashboard),
+                          child: const Text('Back to Home'),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -197,18 +209,18 @@ class _SkinAnalysisPageState extends State<SkinAnalysisPage> {
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton(
-                      onPressed: () => Navigator.pushNamed(
+                      onPressed: () => MainShell.navigateToTab(
                         context,
-                        AppRoutes.aiProductRecommend,
+                        AppRoutes.products,
                         arguments: ProductsPageArgs(
                           initialConcern: result.issues.isNotEmpty
                               ? result.issues.first.issueType
                               : 'any',
                           referenceId: result.progressEntryId ?? result.id,
-                          showGeneratePrompt: result.canGenerateProducts,
+                          entryPoint: ProductsEntryPoint.analysisResult,
                         ),
                       ),
-                      child: const Text('Generate Product Recommendations'),
+                      child: const Text('Open Products'),
                     ),
                   ),
                   const SizedBox(height: 2),

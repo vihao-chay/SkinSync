@@ -1217,20 +1217,74 @@ class AiSavedProduct {
   );
 }
 
+enum ProductsEntryPoint { bottomNav, analysisResult, progressCta, routineEmpty }
+
+enum RoutineEntryPoint { bottomNav, productAdded }
+
+enum ProgressEntryPoint { bottomNav, checkupSaved, analysisResult }
+
 class ProductsPageArgs {
   const ProductsPageArgs({
     this.initialCategory,
     this.initialConcern,
     this.initialBudget,
     this.referenceId,
-    this.showGeneratePrompt = false,
+    this.entryPoint = ProductsEntryPoint.bottomNav,
   });
 
   final String? initialCategory;
   final String? initialConcern;
   final double? initialBudget;
   final String? referenceId;
-  final bool showGeneratePrompt;
+  final ProductsEntryPoint entryPoint;
+
+  bool get showGeneratePrompt => entryPoint == ProductsEntryPoint.analysisResult;
+
+  String get cacheKey => [
+        entryPoint.name,
+        initialCategory ?? '',
+        initialConcern ?? '',
+        initialBudget?.toString() ?? '',
+        referenceId ?? '',
+      ].join('|');
+}
+
+class RoutinePageArgs {
+  const RoutinePageArgs({
+    this.entryPoint = RoutineEntryPoint.bottomNav,
+  });
+
+  final RoutineEntryPoint entryPoint;
+
+  String get cacheKey => entryPoint.name;
+}
+
+class ProgressPageArgs {
+  const ProgressPageArgs({
+    this.entryPoint = ProgressEntryPoint.bottomNav,
+  });
+
+  final ProgressEntryPoint entryPoint;
+
+  String get cacheKey => entryPoint.name;
+}
+
+class ProductDetailPageArgs {
+  const ProductDetailPageArgs({
+    required this.product,
+    this.productsEntryPoint = ProductsEntryPoint.bottomNav,
+  });
+
+  final AiRecommendedProduct product;
+  final ProductsEntryPoint productsEntryPoint;
+}
+
+class ProductDetailActionResult {
+  const ProductDetailActionResult({
+    required this.addedToRoutine,
+  });
+
+  final bool addedToRoutine;
 }
 
 class AiProductRecommendResponse {

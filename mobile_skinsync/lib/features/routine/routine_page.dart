@@ -12,13 +12,19 @@ import '../../core/widgets/app_scaffold.dart';
 import '../../core/widgets/empty_state_card.dart';
 import '../../core/widgets/error_state_card.dart';
 import '../../core/widgets/linear_progress_stat.dart';
+import '../../core/widgets/main_shell.dart';
 import '../../core/widgets/metric_card.dart';
 import '../../core/widgets/routine_checklist_item.dart';
 import '../../core/widgets/section_header.dart';
 import '../../core/widgets/status_chip.dart';
 
 class RoutinePage extends StatefulWidget {
-  const RoutinePage({super.key});
+  const RoutinePage({
+    super.key,
+    RoutinePageArgs? args,
+  }) : args = args ?? const RoutinePageArgs();
+
+  final RoutinePageArgs args;
 
   @override
   State<RoutinePage> createState() => _RoutinePageState();
@@ -26,30 +32,11 @@ class RoutinePage extends StatefulWidget {
 
 class _RoutinePageState extends State<RoutinePage> {
   bool _showMorning = true;
-  bool _generating = false;
   bool _optimizing = false;
+  bool _didSeedDraft = false;
+  bool _didHandleEntryPoint = false;
   String? _actionErrorMessage;
-
-  Future<void> _generateRoutine(AppState appState) async {
-    setState(() => _generating = true);
-    try {
-      await appState.generateRoutine(budgetMax: appState.profile?.monthlyBudget);
-      if (mounted) {
-        setState(() => _actionErrorMessage = null);
-      }
-    } catch (_) {
-      if (mounted) {
-        setState(() {
-          _actionErrorMessage =
-              appState.errorMessage ?? 'Could not build your routine right now.';
-        });
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _generating = false);
-      }
-    }
-  }
+  Set<String> _draftCompletedStepIds = <String>{};
 
   Future<void> _optimizeReminders(AppState appState) async {
     setState(() => _optimizing = true);
@@ -98,18 +85,85 @@ class _RoutinePageState extends State<RoutinePage> {
     }
   }
 
+  void _seedDraftCompletedIds(RoutineTrackingToday? tracking) {
+    if (_didSeedDraft) {
+      return;
+    }
+    _draftCompletedStepIds = {...?tracking?.completedStepIds};
+    _didSeedDraft = true;
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_didHandleEntryPoint) {
+      return;
+    }
+    _didHandleEntryPoint = true;
+    if (widget.args.entryPoint == RoutineEntryPoint.productAdded) {
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        if (!mounted) {
+          return;
+        }
+        await context.read<AppState>().refreshHome();
+        if (!mounted) {
+          return;
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Routine reloaded from your saved backend regimen.'),
+          ),
+        );
+      });
+    }
+  }
+
+  Future<void> _toggleRoutineStepOptimistic(
+    AppState appState,
+    String stepId,
+  ) async {
+    final wasCompleted = _draftCompletedStepIds.contains(stepId);
+    setState(() {
+      if (wasCompleted) {
+        _draftCompletedStepIds.remove(stepId);
+      } else {
+        _draftCompletedStepIds.add(stepId);
+      }
+      _actionErrorMessage = null;
+    });
+
+    try {
+      await appState.toggleRoutineStep(stepId, wasCompleted);
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        if (wasCompleted) {
+          _draftCompletedStepIds.add(stepId);
+        } else {
+          _draftCompletedStepIds.remove(stepId);
+        }
+        _actionErrorMessage =
+            appState.errorMessage ?? 'Could not update this routine step.';
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final appState = context.watch<AppState>();
     final regimen = appState.regimen;
     final tracking = appState.trackingToday;
+    _seedDraftCompletedIds(tracking);
     final reminders = appState.reminders;
-    final completedIds = tracking?.completedStepIds.toSet() ?? <String>{};
+    final completedIds = _draftCompletedStepIds;
     final steps = _showMorning
         ? regimen?.morning ?? const <RegimenStep>[]
         : regimen?.evening ?? const <RegimenStep>[];
-    final totalSteps = tracking?.totalSteps ?? 0;
-    final completedSteps = tracking?.completedSteps ?? 0;
+    final totalSteps = tracking?.totalSteps ??
+        ((regimen?.morning.length ?? 0) + (regimen?.evening.length ?? 0));
+    final completedSteps = completedIds.length;
     final progress = totalSteps == 0 ? 0.0 : completedSteps / totalSteps;
 
     return AppScaffold(
@@ -169,23 +223,44 @@ class _RoutinePageState extends State<RoutinePage> {
                 const SizedBox(height: AppSpacing.md),
                 LayoutBuilder(
                   builder: (context, constraints) {
-                    final actions = [
-                      AppButton(
-                        label: regimen == null
-                            ? 'Build from selected products'
-                            : 'Refresh routine',
-                        icon: const Icon(Icons.auto_awesome_outlined),
-                        isLoading: _generating,
-                        onPressed: () => _generateRoutine(appState),
-                      ),
-                      AppButton(
-                        label: 'Open Today Check-up',
-                        variant: AppButtonVariant.secondary,
-                        icon: const Icon(Icons.check_circle_outline_rounded),
-                        onPressed: () =>
-                            Navigator.pushNamed(context, AppRoutes.todayCheckup),
-                      ),
-                    ];
+                    final actions = regimen == null
+                        ? [
+                            AppButton(
+                              label: 'Open Products',
+                              icon: const Icon(Icons.shopping_bag_outlined),
+                              onPressed: () => MainShell.navigateToTab(
+                                context,
+                                AppRoutes.products,
+                                arguments: const ProductsPageArgs(
+                                  entryPoint: ProductsEntryPoint.routineEmpty,
+                                ),
+                              ),
+                            ),
+                            AppButton(
+                              label: 'Optimize with AI',
+                              variant: AppButtonVariant.secondary,
+                              icon: const Icon(Icons.auto_awesome_outlined),
+                              isLoading: _optimizing,
+                              onPressed: () => _optimizeReminders(appState),
+                            ),
+                          ]
+                        : [
+                            AppButton(
+                              label: 'Open Today Check-up',
+                              icon: const Icon(Icons.check_circle_outline_rounded),
+                              onPressed: () => Navigator.pushNamed(
+                                context,
+                                AppRoutes.todayCheckup,
+                              ),
+                            ),
+                            AppButton(
+                              label: 'Optimize with AI',
+                              variant: AppButtonVariant.secondary,
+                              icon: const Icon(Icons.auto_awesome_outlined),
+                              isLoading: _optimizing,
+                              onPressed: () => _optimizeReminders(appState),
+                            ),
+                          ];
                     if (constraints.maxWidth < 360) {
                       return Column(
                         children: [
@@ -225,7 +300,13 @@ class _RoutinePageState extends State<RoutinePage> {
               title: 'Choose products first to build your routine',
               description: 'Routine steps only appear from your active regimen. Open Products and add items you want to use.',
               ctaLabel: 'Open Products',
-              onCta: () => Navigator.pushNamed(context, AppRoutes.products),
+              onCta: () => MainShell.navigateToTab(
+                context,
+                AppRoutes.products,
+                arguments: const ProductsPageArgs(
+                  entryPoint: ProductsEntryPoint.routineEmpty,
+                ),
+              ),
             )
           else ...[
             LayoutBuilder(
@@ -278,9 +359,9 @@ class _RoutinePageState extends State<RoutinePage> {
                 child: RoutineChecklistItem(
                   step: step,
                   completed: completedIds.contains(step.stepId),
-                  onChanged: () => appState.toggleRoutineStep(
+                  onChanged: () => _toggleRoutineStepOptimistic(
+                    appState,
                     step.stepId,
-                    completedIds.contains(step.stepId),
                   ),
                 ),
               ),
@@ -334,24 +415,47 @@ class _RoutinePageState extends State<RoutinePage> {
                   },
                 ),
                 const SizedBox(height: AppSpacing.md),
-                Row(
-                  children: [
-                    Expanded(
-                      child: AppButton(
-                        label: 'Set 07:00',
-                        variant: AppButtonVariant.secondary,
-                        onPressed: () => _saveReminder(appState, 'Morning', '07:00'),
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-                    Expanded(
-                      child: AppButton(
-                        label: 'Set 21:00',
-                        variant: AppButtonVariant.secondary,
-                        onPressed: () => _saveReminder(appState, 'Evening', '21:00'),
-                      ),
-                    ),
-                  ],
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final compact = constraints.maxWidth < 380;
+                    final buttonWidth = compact
+                        ? constraints.maxWidth
+                        : (constraints.maxWidth - AppSpacing.sm * 2) / 3;
+                    return Wrap(
+                      spacing: AppSpacing.sm,
+                      runSpacing: AppSpacing.sm,
+                      children: [
+                        SizedBox(
+                          width: buttonWidth,
+                          child: AppButton(
+                            label: 'Add product',
+                            variant: AppButtonVariant.secondary,
+                            onPressed: () => MainShell.navigateToTab(
+                              context,
+                              AppRoutes.products,
+                              arguments: const ProductsPageArgs(),
+                            ),
+                          ),
+                        ),
+                        SizedBox(
+                          width: buttonWidth,
+                          child: AppButton(
+                            label: 'Set 07:00',
+                            variant: AppButtonVariant.secondary,
+                            onPressed: () => _saveReminder(appState, 'Morning', '07:00'),
+                          ),
+                        ),
+                        SizedBox(
+                          width: buttonWidth,
+                          child: AppButton(
+                            label: 'Set 21:00',
+                            variant: AppButtonVariant.secondary,
+                            onPressed: () => _saveReminder(appState, 'Evening', '21:00'),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 AppButton(

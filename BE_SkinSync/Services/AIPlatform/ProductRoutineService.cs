@@ -37,12 +37,37 @@ public class ProductRoutineService : IProductRoutineService
         var regimen = await _dbContext.UserRegimens
             .Include(x => x.Items)
             .ThenInclude(x => x.Product)
-            .FirstOrDefaultAsync(x => x.UserId == userId && x.IsActive, cancellationToken)
-            ?? throw new AiFeatureException("ROUTINE_NOT_FOUND", "Generate a routine before adding products.", 404);
+            .FirstOrDefaultAsync(x => x.UserId == userId && x.IsActive, cancellationToken);
 
         var product = await _dbContext.Products
             .FirstOrDefaultAsync(x => x.Id == productId, cancellationToken)
             ?? throw new AiFeatureException("PRODUCT_NOT_FOUND", "Product not found.", 404);
+
+        if (regimen is null)
+        {
+            var latestAnalysisId = await _dbContext.SkinProgressAnalyses
+                .AsNoTracking()
+                .Where(x => x.UserId == userId && x.DiscardedAt == null && x.Status != "discarded")
+                .OrderByDescending(x => x.CompletedAt ?? x.CreatedAt)
+                .Select(x => (Guid?)x.Id)
+                .FirstOrDefaultAsync(cancellationToken);
+
+            regimen = new UserRegimen
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                SourceAnalysisId = latestAnalysisId,
+                Name = "My custom routine",
+                StartDate = DateOnly.FromDateTime(DateTime.UtcNow),
+                IsActive = true,
+                IsCustom = true,
+                Source = "manual",
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            _dbContext.UserRegimens.Add(regimen);
+        }
 
         if (regimen.Items.Any(x => x.ProductId == productId && x.RoutineTime == routineType))
         {

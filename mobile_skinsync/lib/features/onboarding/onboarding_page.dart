@@ -172,7 +172,7 @@ class _OnboardingBodyState extends State<_OnboardingBody> {
         if (photo != null) {
           await appState.analyzeSkin(photo);
         } else {
-          await appState.generateRoutine(budgetMax: state.monthlyBudget);
+          await appState.refreshHome();
         }
       } catch (_) {
         appState.clearError();

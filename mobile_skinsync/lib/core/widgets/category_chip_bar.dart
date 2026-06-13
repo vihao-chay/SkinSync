@@ -21,35 +21,39 @@ class CategoryChipBar<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: items.map((item) {
+    return SizedBox(
+      height: 48,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        primary: false,
+        physics: const BouncingScrollPhysics(),
+        padding: const EdgeInsets.only(right: AppSpacing.pagePadding),
+        itemCount: items.length,
+        separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.sm),
+        itemBuilder: (context, index) {
+          final item = items[index];
           final isSelected = item == selected;
-          return Padding(
-            padding: const EdgeInsets.only(right: AppSpacing.sm),
-            child: ChoiceChip(
-              avatar: iconBuilder == null
-                  ? null
-                  : Icon(
-                      iconBuilder!(item),
-                      size: 16,
-                      color: isSelected
-                          ? AppColors.primaryDark
-                          : AppColors.mutedText,
-                    ),
-              label: Text(labelBuilder(item)),
-              selected: isSelected,
-              onSelected: (_) => onSelected(item),
-              selectedColor: AppColors.secondary,
-              backgroundColor: Colors.white.withValues(alpha: 0.7),
-              side: const BorderSide(color: AppColors.border),
-              labelStyle: Theme.of(context).textTheme.labelLarge?.copyWith(
-                color: isSelected ? AppColors.primaryDark : AppColors.mutedText,
-              ),
+          return ChoiceChip(
+            avatar: iconBuilder == null
+                ? null
+                : Icon(
+                    iconBuilder!(item),
+                    size: 16,
+                    color: isSelected
+                        ? AppColors.primaryDark
+                        : AppColors.mutedText,
+                  ),
+            label: Text(labelBuilder(item)),
+            selected: isSelected,
+            onSelected: (_) => onSelected(item),
+            selectedColor: AppColors.secondary,
+            backgroundColor: Colors.white.withValues(alpha: 0.7),
+            side: const BorderSide(color: AppColors.border),
+            labelStyle: Theme.of(context).textTheme.labelLarge?.copyWith(
+              color: isSelected ? AppColors.primaryDark : AppColors.mutedText,
             ),
           );
-        }).toList(),
+        },
       ),
     );
   }

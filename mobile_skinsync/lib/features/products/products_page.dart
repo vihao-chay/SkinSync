@@ -14,6 +14,7 @@ import '../../core/widgets/empty_state_card.dart';
 import '../../core/widgets/error_state_card.dart';
 import '../../core/widgets/loading_skeleton.dart';
 import '../../core/widgets/metric_card.dart';
+import '../../core/widgets/main_shell.dart';
 import '../../core/widgets/product_recommendation_card.dart';
 import '../../core/widgets/section_header.dart';
 import '../../core/widgets/status_chip.dart';
@@ -21,18 +22,10 @@ import '../../core/widgets/status_chip.dart';
 class ProductsPage extends StatefulWidget {
   const ProductsPage({
     super.key,
-    this.initialCategory,
-    this.initialConcern,
-    this.initialBudget,
-    this.referenceId,
-    this.showGeneratePrompt = false,
-  });
+    ProductsPageArgs? args,
+  }) : args = args ?? const ProductsPageArgs();
 
-  final String? initialCategory;
-  final String? initialConcern;
-  final double? initialBudget;
-  final String? referenceId;
-  final bool showGeneratePrompt;
+  final ProductsPageArgs args;
 
   @override
   State<ProductsPage> createState() => _ProductsPageState();
@@ -42,6 +35,7 @@ class _ProductsPageState extends State<ProductsPage> {
   AiProductRecommendResponse? _recommendation;
   bool _loading = true;
   bool _isGenerating = false;
+  bool _didForwardToRoutine = false;
   String? _errorMessage;
   late String _selectedCategory;
 
@@ -58,7 +52,7 @@ class _ProductsPageState extends State<ProductsPage> {
   @override
   void initState() {
     super.initState();
-    _selectedCategory = _normalizeCategoryKey(widget.initialCategory);
+    _selectedCategory = _normalizeCategoryKey(widget.args.initialCategory);
     if (_selectedCategory.isEmpty) {
       _selectedCategory = _tabs.first.key;
     }
@@ -66,6 +60,7 @@ class _ProductsPageState extends State<ProductsPage> {
   }
 
   Future<void> _fetchLatestRecommendations() async {
+    debugPrint('[SkinSync] latest recommendation read');
     if (!mounted) {
       return;
     }
@@ -98,6 +93,7 @@ class _ProductsPageState extends State<ProductsPage> {
   }
 
   Future<void> _generateRecommendations() async {
+    debugPrint('[SkinSync] manual recommendation generate');
     if (!mounted) {
       return;
     }
@@ -108,9 +104,9 @@ class _ProductsPageState extends State<ProductsPage> {
 
     try {
       final result = await context.read<AppState>().generateRecommendations(
-        category: widget.initialCategory,
-        concern: widget.initialConcern,
-        budgetMax: widget.initialBudget,
+        category: widget.args.initialCategory,
+        concern: widget.args.initialConcern,
+        budgetMax: widget.args.initialBudget,
         limitPerCategory: 5,
       );
       if (!mounted) {
@@ -201,15 +197,10 @@ class _ProductsPageState extends State<ProductsPage> {
                     ),
                   ),
                   const SizedBox(height: AppSpacing.md),
-                  SegmentedButton<String>(
-                    segments: const [
-                      ButtonSegment(value: 'Morning', label: Text('Morning')),
-                      ButtonSegment(value: 'Evening', label: Text('Evening')),
-                      ButtonSegment(value: 'Both', label: Text('Both')),
-                    ],
-                    selected: {selection},
-                    onSelectionChanged: (value) =>
-                        setSheetState(() => selection = value.first),
+                  _RoutineTargetSelector(
+                    value: selection,
+                    onChanged: (value) =>
+                        setSheetState(() => selection = value),
                   ),
                   const SizedBox(height: AppSpacing.lg),
                   AppButton(
@@ -251,10 +242,41 @@ class _ProductsPageState extends State<ProductsPage> {
       return;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('${item.name} was added to your routine.')),
-    );
+    debugPrint('[SkinSync] routine add');
     await _fetchLatestRecommendations();
+
+    if (!mounted) {
+      return;
+    }
+
+    if (widget.args.entryPoint == ProductsEntryPoint.analysisResult &&
+        !_didForwardToRoutine) {
+      _didForwardToRoutine = true;
+      MainShell.navigateToTab(
+        context,
+        AppRoutes.routine,
+        arguments: const RoutinePageArgs(
+          entryPoint: RoutineEntryPoint.productAdded,
+        ),
+      );
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('${item.name} was added to your routine.'),
+        action: SnackBarAction(
+          label: 'View routine',
+          onPressed: () => MainShell.navigateToTab(
+            context,
+            AppRoutes.routine,
+            arguments: const RoutinePageArgs(
+              entryPoint: RoutineEntryPoint.productAdded,
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _submitAddToRoutine({
@@ -295,43 +317,51 @@ class _ProductsPageState extends State<ProductsPage> {
   }
 
   Future<void> _viewDetails(AiRecommendedProduct item) async {
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) {
-        return _SheetFrame(
-          title: 'Product details',
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ProductRecommendationCard(
-                item: item,
-                onViewDetails: () {},
-                onAddToRoutine: () {},
-                onCheckIngredients: () {},
-              ),
-              const SizedBox(height: AppSpacing.md),
-              _DetailBlock(
-                title: 'Why SkinSync picked this',
-                body: item.whyRecommended?.trim().isNotEmpty == true
-                    ? item.whyRecommended!
-                    : item.aiReason,
-              ),
-              const SizedBox(height: AppSpacing.md),
-              _DetailBlock(
-                title: 'How to use',
-                body: _friendlyText(item.usageGuide),
-              ),
-              const SizedBox(height: AppSpacing.md),
-              _DetailBlock(
-                title: 'Ingredients',
-                body: _friendlyText(item.ingredientsText),
-              ),
-            ],
+    final result = await Navigator.pushNamed(
+      context,
+      AppRoutes.productDetail,
+      arguments: ProductDetailPageArgs(
+        product: item,
+        productsEntryPoint: widget.args.entryPoint,
+      ),
+    );
+
+    if (!mounted || result is! ProductDetailActionResult || !result.addedToRoutine) {
+      return;
+    }
+
+    await _fetchLatestRecommendations();
+    if (!mounted) {
+      return;
+    }
+
+    if (widget.args.entryPoint == ProductsEntryPoint.analysisResult &&
+        !_didForwardToRoutine) {
+      _didForwardToRoutine = true;
+      MainShell.navigateToTab(
+        context,
+        AppRoutes.routine,
+        arguments: const RoutinePageArgs(
+          entryPoint: RoutineEntryPoint.productAdded,
+        ),
+      );
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('${item.name} was added to your routine.'),
+        action: SnackBarAction(
+          label: 'View routine',
+          onPressed: () => MainShell.navigateToTab(
+            context,
+            AppRoutes.routine,
+            arguments: const RoutinePageArgs(
+              entryPoint: RoutineEntryPoint.productAdded,
+            ),
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 
@@ -462,24 +492,51 @@ class _ProductsPageState extends State<ProductsPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    const StatusChip(
-                      label: 'Based on latest analysis',
-                      icon: Icons.auto_awesome_rounded,
-                      tone: StatusChipTone.accent,
-                    ),
-                    const Spacer(),
-                    AppButton(
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final button = AppButton(
                       label: recommendation?.hasRecommendation == true
                           ? 'Refresh'
                           : 'Generate',
                       expand: false,
                       icon: const Icon(Icons.auto_awesome_rounded),
                       isLoading: _isGenerating,
-                      onPressed: _isGenerating ? null : _generateRecommendations,
-                    ),
-                  ],
+                      onPressed:
+                          _isGenerating ? null : _generateRecommendations,
+                    );
+
+                    if (constraints.maxWidth < 380) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const StatusChip(
+                            label: 'Based on latest analysis',
+                            icon: Icons.auto_awesome_rounded,
+                            tone: StatusChipTone.accent,
+                          ),
+                          const SizedBox(height: AppSpacing.sm),
+                          SizedBox(width: double.infinity, child: button),
+                        ],
+                      );
+                    }
+
+                    return Row(
+                      children: [
+                        const Expanded(
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: StatusChip(
+                              label: 'Based on latest analysis',
+                              icon: Icons.auto_awesome_rounded,
+                              tone: StatusChipTone.accent,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.sm),
+                        button,
+                      ],
+                    );
+                  },
                 ),
                 const SizedBox(height: AppSpacing.md),
                 LayoutBuilder(
@@ -530,7 +587,7 @@ class _ProductsPageState extends State<ProductsPage> {
                     message: 'Ranking real products from your database...',
                   ),
                 ],
-                if (widget.showGeneratePrompt &&
+                if (widget.args.showGeneratePrompt &&
                     recommendation?.hasRecommendation != true &&
                     !_isGenerating) ...[
                   const SizedBox(height: AppSpacing.md),
@@ -674,6 +731,80 @@ class _ProductsLoadingState extends StatelessWidget {
           SizedBox(height: AppSpacing.sm),
           LoadingSkeleton(height: 92, radius: 24),
         ],
+      ),
+    );
+  }
+}
+
+class _RoutineTargetSelector extends StatelessWidget {
+  const _RoutineTargetSelector({
+    required this.value,
+    required this.onChanged,
+  });
+
+  final String value;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    const options = ['Morning', 'Evening', 'Both'];
+    return AppCard(
+      variant: AppCardVariant.muted,
+      padding: const EdgeInsets.all(6),
+      child: Row(
+        children: [
+          for (var i = 0; i < options.length; i++) ...[
+            Expanded(
+              child: _RoutineTargetButton(
+                label: options[i],
+                selected: value == options[i],
+                onTap: () => onChanged(options[i]),
+              ),
+            ),
+            if (i != options.length - 1)
+              const SizedBox(width: AppSpacing.xs),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _RoutineTargetButton extends StatelessWidget {
+  const _RoutineTargetButton({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+          decoration: BoxDecoration(
+            color: selected ? AppColors.secondary : Colors.transparent,
+            borderRadius: BorderRadius.circular(18),
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+              color: selected ? AppColors.primaryDark : AppColors.mutedText,
+            ),
+          ),
+        ),
       ),
     );
   }

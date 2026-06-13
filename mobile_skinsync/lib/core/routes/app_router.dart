@@ -15,6 +15,7 @@ import '../../features/chat/ai_chat_conversation_page.dart';
 import '../../features/checkup/today_checkup_page.dart';
 import '../../features/landing/landing_page.dart';
 import '../../features/onboarding/onboarding_page.dart';
+import '../../features/products/product_detail_page.dart';
 import '../../features/products/products_page.dart';
 import '../../features/profile/edit_skin_profile_page.dart';
 import '../../features/quiz/quiz_page.dart';
@@ -52,6 +53,11 @@ class AppRouter {
       case AppRoutes.todayCheckup:
         page = const TodayCheckupPage();
         break;
+      case AppRoutes.productDetail:
+        page = ProductDetailPage(
+          args: settings.arguments as ProductDetailPageArgs,
+        );
+        break;
       case AppRoutes.aiChat:
         page = const AiChatPage();
         break;
@@ -62,13 +68,7 @@ class AppRouter {
         break;
       case AppRoutes.aiProductRecommend:
         final args = settings.arguments as ProductsPageArgs?;
-        page = ProductsPage(
-          initialCategory: args?.initialCategory,
-          initialConcern: args?.initialConcern,
-          initialBudget: args?.initialBudget,
-          referenceId: args?.referenceId,
-          showGeneratePrompt: args?.showGeneratePrompt ?? false,
-        );
+        page = ProductsPage(args: args);
         break;
       case AppRoutes.aiIngredientCheck:
         page = const AiIngredientCheckPage();
@@ -90,7 +90,7 @@ class AppRouter {
       case AppRoutes.products:
       case AppRoutes.progress:
       case AppRoutes.profile:
-        page = MainShell(initialRoute: name);
+        page = MainShell(initialRoute: name, initialArgs: settings.arguments);
         break;
       case AppRoutes.analysis:
         page = const SkinAnalysisPage();
