@@ -321,6 +321,17 @@ class _MiniTopBar extends StatelessWidget {
       height: 28,
       child: Row(
         children: [
+          _HeaderIconButton(
+            icon: Icons.arrow_back_rounded,
+            onTap: () {
+              if (Navigator.of(context).canPop()) {
+                Navigator.of(context).pop();
+                return;
+              }
+              MainShell.navigateToTab(context, AppRoutes.dashboard);
+            },
+          ),
+          const SizedBox(width: 8),
           const BrandLogo(size: 24, radius: 8, showShadow: false),
           const Spacer(),
           Text(
@@ -583,6 +594,37 @@ class _SoftCard extends StatelessWidget {
         ],
       ),
       child: child,
+    );
+  }
+}
+
+class _HeaderIconButton extends StatelessWidget {
+  const _HeaderIconButton({
+    required this.icon,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Ink(
+          width: 32,
+          height: 32,
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.9),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Icon(icon, size: 18, color: AppColors.primaryDark),
+        ),
+      ),
     );
   }
 }

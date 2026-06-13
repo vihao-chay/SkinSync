@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/config/app_config.dart';
 import '../../core/models/app_models.dart';
 import '../../core/routes/app_routes.dart';
 import '../../core/state/app_state.dart';
@@ -55,12 +56,17 @@ class _ProgressPageState extends State<ProgressPage> {
     final latestAnalysis = appState.latestAnalysis;
     final tracking = appState.trackingToday;
     final todayLog = appState.todayLog;
+    final latestPhotoUrl = _resolveImageUrl(
+      todayLog?.dailyImageUrl?.trim().isNotEmpty == true
+          ? todayLog!.dailyImageUrl
+          : latestAnalysis?.imageUrl,
+    );
     final totalSteps = tracking?.totalSteps ?? 0;
     final completedSteps = tracking?.completedSteps ?? 0;
     final routinePercent = totalSteps == 0 ? 0 : ((completedSteps / totalSteps) * 100).round();
     final hasRealInsight = (progress?.dailyTip?.trim().isNotEmpty ?? false) ||
         (progress?.progressInsight?.trim().isNotEmpty ?? false);
-    final hasVisualJourney = todayLog?.dailyImageUrl?.trim().isNotEmpty == true;
+    final hasVisualJourney = latestPhotoUrl.isNotEmpty;
 
     final showCheckupSavedState =
         widget.args.entryPoint == ProgressEntryPoint.checkupSaved;
@@ -228,15 +234,19 @@ class _ProgressPageState extends State<ProgressPage> {
           SectionHeader(
             icon: Icons.photo_camera_back_outlined,
             title: 'Visual Journey',
-            subtitle: 'Real photo history appears here when your logs include saved images.',
+            subtitle: 'Your latest analysis or daily log photo appears here when backend data is available.',
           ),
           const SizedBox(height: AppSpacing.md),
           if (hasVisualJourney)
             AppCard(
-              child: const _TimelineRow(
-                icon: Icons.photo_camera_back_outlined,
-                title: 'Latest uploaded photo',
-                value: 'A real saved photo is available for future comparison.',
+              child: _VisualJourneyCard(
+                imageUrl: latestPhotoUrl,
+                title: todayLog?.dailyImageUrl?.trim().isNotEmpty == true
+                    ? 'Latest daily log photo'
+                    : 'Latest analysis photo',
+                value: latestAnalysis != null
+                    ? 'Skin score ${latestAnalysis.overallScore}/100 from your most recent scan.'
+                    : 'A real saved photo is available for future comparison.',
               ),
             )
           else
@@ -300,9 +310,11 @@ class _ProgressPageState extends State<ProgressPage> {
                 _TimelineRow(
                   icon: Icons.photo_camera_back_outlined,
                   title: 'Latest photo',
-                  value: todayLog?.dailyImageUrl?.trim().isNotEmpty == true
-                      ? 'Daily log photo saved'
-                      : 'No daily log photo yet',
+                  value: latestPhotoUrl.isNotEmpty
+                      ? (todayLog?.dailyImageUrl?.trim().isNotEmpty == true
+                          ? 'Daily log photo saved'
+                          : 'Analysis photo saved')
+                      : 'No saved photo yet',
                 ),
               ],
             ),
@@ -315,6 +327,14 @@ class _ProgressPageState extends State<ProgressPage> {
   String _formatPercent(double? value) {
     final safe = value ?? 0;
     return '${safe.toStringAsFixed(1)}%';
+  }
+
+  String _resolveImageUrl(String? raw) {
+    final value = raw?.trim() ?? '';
+    if (value.isEmpty) {
+      return '';
+    }
+    return value.startsWith('http') ? value : '${AppConfig.apiBaseUrl}$value';
   }
 }
 
@@ -409,6 +429,52 @@ class _TimelineRow extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _VisualJourneyCard extends StatelessWidget {
+  const _VisualJourneyCard({
+    required this.imageUrl,
+    required this.title,
+    required this.value,
+  });
+
+  final String imageUrl;
+  final String title;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(18),
+          child: Container(
+            width: 88,
+            height: 112,
+            color: AppColors.secondary,
+            child: Image.network(
+              imageUrl,
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) => const Icon(
+                Icons.image_not_supported_outlined,
+                color: AppColors.primaryDark,
+                size: 28,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: AppSpacing.md),
+        Expanded(
+          child: _TimelineRow(
+            icon: Icons.photo_camera_back_outlined,
+            title: title,
+            value: value,
           ),
         ),
       ],

@@ -25,6 +25,17 @@ class _UploadPageState extends State<UploadPage> {
   File? _selectedImage;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      context.read<AppState>().clearError();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final appState = context.watch<AppState>();
     final flowArgs =
@@ -38,6 +49,7 @@ class _UploadPageState extends State<UploadPage> {
           ? 'Analyze a fresh photo and save it straight into your skin progress timeline.'
           : 'Use a clear portrait in natural light for the best AI read.',
       compactHeader: true,
+      leading: _BackButton(onPressed: () => _handleBack(context)),
       body: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(
@@ -235,6 +247,14 @@ class _UploadPageState extends State<UploadPage> {
       setState(() {});
     }
   }
+
+  void _handleBack(BuildContext context) {
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+      return;
+    }
+    Navigator.pushReplacementNamed(context, AppRoutes.dashboard);
+  }
 }
 
 class _NoticeBanner extends StatelessWidget {
@@ -315,4 +335,26 @@ String? _membershipNotice(String? message) {
     return raw;
   }
   return null;
+}
+
+class _BackButton extends StatelessWidget {
+  const _BackButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      onPressed: onPressed,
+      tooltip: 'Back',
+      style: IconButton.styleFrom(
+        backgroundColor: Colors.white,
+        foregroundColor: AppColors.primaryDark,
+        minimumSize: const Size(40, 40),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        side: const BorderSide(color: AppColors.border),
+      ),
+      icon: const Icon(Icons.arrow_back_rounded),
+    );
+  }
 }
