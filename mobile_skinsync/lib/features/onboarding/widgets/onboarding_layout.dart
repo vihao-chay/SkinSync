@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_spacing.dart';
 import '../../../core/widgets/brand_logo.dart';
 
 class OnboardingLayout extends StatelessWidget {
@@ -29,7 +30,12 @@ class OnboardingLayout extends StatelessWidget {
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.pagePadding,
+                16,
+                AppSpacing.pagePadding,
+                0,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -69,23 +75,20 @@ class OnboardingLayout extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   OnboardingProgressBar(progress: progress),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: AppSpacing.largeGap),
                   Text(
                     title,
-                    style: const TextStyle(
-                      fontSize: 28,
-                      height: 1.1,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.foreground,
+                    style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                      color: AppColors.heading,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: AppSpacing.smallGap),
                   Text(
                     subtitle,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      height: 1.45,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: AppColors.mutedText,
+                      height: 1.55,
                     ),
                   ),
                 ],
@@ -93,7 +96,12 @@ class OnboardingLayout extends StatelessWidget {
             ),
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.pagePadding,
+                  24,
+                  AppSpacing.pagePadding,
+                  0,
+                ),
                 child: child,
               ),
             ),

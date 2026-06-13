@@ -21,8 +21,21 @@ class QuizPage extends StatefulWidget {
 }
 
 class _QuizPageState extends State<QuizPage> {
-  static const _skinTypes = ['Normal', 'Oily', 'Dry', 'Combination', 'Sensitive'];
-  static const _concerns = ['Acne', 'Dark spots', 'Dryness', 'Redness', 'Large pores', 'Uneven tone'];
+  static const _skinTypes = [
+    'Normal',
+    'Oily',
+    'Dry',
+    'Combination',
+    'Sensitive',
+  ];
+  static const _concerns = [
+    'Acne',
+    'Dark spots',
+    'Dryness',
+    'Redness',
+    'Large pores',
+    'Uneven tone',
+  ];
   static const _budgets = ['Tiet kiem', 'Trung binh', 'Cao cap'];
 
   int step = 0;
@@ -61,7 +74,8 @@ class _QuizPageState extends State<QuizPage> {
                       if (appState.errorMessage != null) ...[
                         Text(
                           appState.errorMessage!,
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.error),
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: AppColors.error),
                         ),
                         const SizedBox(height: 8),
                       ],
@@ -69,11 +83,15 @@ class _QuizPageState extends State<QuizPage> {
                         label: step == 3 ? 'Save And Analyze' : 'Continue',
                         isLoading: appState.isBusy,
                         expanded: true,
-                        onPressed: _canContinue() ? () => _handleContinue(appState) : null,
+                        onPressed: _canContinue()
+                            ? () => _handleContinue(appState)
+                            : null,
                       ),
                       const SizedBox(height: 8),
                       TextButton(
-                        onPressed: step == 0 ? () => Navigator.of(context).maybePop() : () => setState(() => step -= 1),
+                        onPressed: step == 0
+                            ? () => Navigator.of(context).maybePop()
+                            : () => setState(() => step -= 1),
                         child: Text(step == 0 ? 'Back' : 'Previous'),
                       ),
                     ],
@@ -101,7 +119,8 @@ class _QuizPageState extends State<QuizPage> {
                 padding: const EdgeInsets.only(bottom: 12),
                 child: SelectableOptionCard(
                   title: type,
-                  description: 'Used to personalize your AI analysis and routine.',
+                  description:
+                      'Used to personalize your AI analysis and routine.',
                   selected: selectedSkinType == type,
                   icon: Icons.spa_outlined,
                   onTap: () => setState(() => selectedSkinType = type),
@@ -147,7 +166,8 @@ class _QuizPageState extends State<QuizPage> {
                 padding: const EdgeInsets.only(bottom: 12),
                 child: SelectableOptionCard(
                   title: budget,
-                  description: 'This helps match routine recommendations to realistic product tiers.',
+                  description:
+                      'This helps match routine recommendations to realistic product tiers.',
                   selected: selectedBudget == budget,
                   icon: Icons.sell_outlined,
                   onTap: () => setState(() => selectedBudget = budget),
@@ -179,7 +199,11 @@ class _QuizPageState extends State<QuizPage> {
                   ? const Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.camera_alt_outlined, size: 48, color: AppColors.primaryDark),
+                        Icon(
+                          Icons.camera_alt_outlined,
+                          size: 48,
+                          color: AppColors.primaryDark,
+                        ),
                         SizedBox(height: 12),
                         Text('Select a clear selfie to continue'),
                       ],

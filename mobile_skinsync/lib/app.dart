@@ -23,7 +23,7 @@ class SkinSyncApp extends StatelessWidget {
         debugShowCheckedModeBanner: false,
         title: 'SkinSync',
         theme: AppTheme.lightTheme,
-        initialRoute: AppRoutes.login,
+        initialRoute: AppRoutes.splash,
         onGenerateRoute: AppRouter.onGenerateRoute,
       ),
     );

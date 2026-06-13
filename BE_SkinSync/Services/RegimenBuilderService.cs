@@ -1,4 +1,5 @@
 using System.Text.Json;
+using SkinSync.Helpers;
 using SkinSync.Models.Entities;
 
 namespace SkinSync.Services;
@@ -24,7 +25,7 @@ public class RegimenBuilderService : IRegimenBuilderService
         {
             Id = Guid.NewGuid(),
             UserId = userId,
-            AnalysisId = analysisId,
+            SourceAnalysisId = analysisId,
             Name = "AI generated routine",
             StartDate = DateOnly.FromDateTime(DateTime.UtcNow),
             EndDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(30)),
@@ -40,8 +41,8 @@ public class RegimenBuilderService : IRegimenBuilderService
     private static List<RegimenItem> BuildItems(Guid regimenId, List<Product> products)
     {
         var result = new List<RegimenItem>();
-        result.AddRange(BuildByTime(regimenId, "Morning", MorningCategories, products));
-        result.AddRange(BuildByTime(regimenId, "Evening", EveningCategories, products));
+        result.AddRange(BuildByTime(regimenId, RoutineScheduleHelper.Morning, MorningCategories, products));
+        result.AddRange(BuildByTime(regimenId, RoutineScheduleHelper.Evening, EveningCategories, products));
         return result;
     }
 

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../core/mock/mock_skin_data.dart';
 import '../../core/routes/app_routes.dart';
 import '../../core/state/app_state.dart';
 import '../../core/theme/app_colors.dart';
@@ -35,14 +34,14 @@ class LandingPage extends StatelessWidget {
             const _TopBrand(),
             const SizedBox(height: 28),
             Text(
-              'Skincare guidance that feels native to SkinSync.',
+              'Skincare guidance grounded in your real routine and real skin data.',
               style: Theme.of(
                 context,
               ).textTheme.headlineLarge?.copyWith(fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 10),
             Text(
-              'Create an account or sign in first, then complete the skin quiz, upload a clear selfie, review AI insights, and follow a routine built for daily use.',
+              'Sign in, complete onboarding, upload a clear photo, and let SkinSync build analysis, routine, diary, and progress around your actual account.',
               style: Theme.of(
                 context,
               ).textTheme.bodyMedium?.copyWith(color: AppColors.mutedText),
@@ -53,68 +52,98 @@ class LandingPage extends StatelessWidget {
               child: Container(
                 decoration: const BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [Color(0xFFF4F1FF), Colors.white],
+                    colors: [Color(0xFFF9F3EC), Colors.white],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
                 ),
                 child: Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(18),
                   child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(22),
-                        child: AspectRatio(
-                          aspectRatio: 1,
-                          child: Stack(
-                            fit: StackFit.expand,
-                            children: [
-                              Image.network(
-                                MockSkinData.analysis.imageUrl!,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, _, _) =>
-                                    Container(color: AppColors.secondary),
-                              ),
-                              Container(
+                      Container(
+                        height: 220,
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceStrong,
+                          borderRadius: BorderRadius.circular(22),
+                        ),
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            Positioned(
+                              top: 28,
+                              right: 24,
+                              child: Container(
+                                width: 86,
+                                height: 86,
                                 decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [
-                                      AppColors.primaryDark.withValues(
-                                        alpha: 0.02,
-                                      ),
-                                      AppColors.primaryDark.withValues(
-                                        alpha: 0.28,
-                                      ),
-                                    ],
-                                    begin: Alignment.topCenter,
-                                    end: Alignment.bottomCenter,
+                                  color: Colors.white.withValues(alpha: 0.72),
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                            ),
+                            Positioned(
+                              left: 24,
+                              bottom: 24,
+                              child: Container(
+                                width: 120,
+                                height: 120,
+                                decoration: BoxDecoration(
+                                  color: AppColors.secondary,
+                                  borderRadius: BorderRadius.circular(28),
+                                ),
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.all(22),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 8,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withValues(alpha: 0.88),
+                                      borderRadius: BorderRadius.circular(999),
+                                    ),
+                                    child: Text(
+                                      'Live data only',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .labelLarge
+                                          ?.copyWith(
+                                            color: AppColors.primaryDark,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                    ),
                                   ),
-                                ),
+                                  const Spacer(),
+                                  Text(
+                                    'No fake scores.\nNo sample routine.\nJust your own journey.',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .headlineSmall
+                                        ?.copyWith(
+                                          color: AppColors.heading,
+                                          fontWeight: FontWeight.w800,
+                                          height: 1.05,
+                                        ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    'SkinSync starts showing analysis, routine, and progress after you actually sign in and add data.',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodyMedium
+                                        ?.copyWith(color: AppColors.mutedText),
+                                  ),
+                                ],
                               ),
-                              Positioned(
-                                left: 14,
-                                right: 14,
-                                bottom: 14,
-                                child: Row(
-                                  children: const [
-                                    Expanded(
-                                      child: _HeroMetric(
-                                        title: 'Skin Score',
-                                        value: '87/100',
-                                      ),
-                                    ),
-                                    SizedBox(width: 10),
-                                    Expanded(
-                                      child: _HeroMetric(
-                                        title: 'Routine',
-                                        value: 'AM + PM',
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -131,7 +160,11 @@ class LandingPage extends StatelessWidget {
                             icon: Icons.spa_outlined,
                           ),
                           SkinChip(
-                            label: 'Daily Progress',
+                            label: 'Daily Check-up',
+                            icon: Icons.favorite_border_rounded,
+                          ),
+                          SkinChip(
+                            label: 'Progress Tracking',
                             icon: Icons.insights_outlined,
                           ),
                         ],
@@ -200,32 +233,6 @@ class _MiniBadge extends StatelessWidget {
           color: AppColors.primaryDark,
           letterSpacing: 1.1,
         ),
-      ),
-    );
-  }
-}
-
-class _HeroMetric extends StatelessWidget {
-  const _HeroMetric({required this.title, required this.value});
-
-  final String title;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.94),
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(title, style: Theme.of(context).textTheme.labelMedium),
-          const SizedBox(height: 4),
-          Text(value, style: Theme.of(context).textTheme.titleLarge),
-        ],
       ),
     );
   }

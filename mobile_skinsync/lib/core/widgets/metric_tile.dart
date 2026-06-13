@@ -37,9 +37,9 @@ class MetricTile extends StatelessWidget {
             Text(
               trend!,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppColors.primaryDark,
-                    fontWeight: FontWeight.w500,
-                  ),
+                color: AppColors.primaryDark,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ],
         ],

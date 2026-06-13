@@ -35,27 +35,24 @@ class GlassHeader extends StatelessWidget implements PreferredSizeWidget {
       leadingWidth: leading != null || (showBack && canPop) ? 52 : 16,
       automaticallyImplyLeading: false,
       leading: leading != null
+          ? Padding(padding: const EdgeInsets.only(left: 8), child: leading)
+          : showBack && canPop
           ? Padding(
               padding: const EdgeInsets.only(left: 8),
-              child: leading,
+              child: _HeaderIconButton(
+                icon: Icons.arrow_back_ios_new_rounded,
+                onPressed: () => Navigator.of(context).maybePop(),
+              ),
             )
-          : showBack && canPop
-              ? Padding(
-                  padding: const EdgeInsets.only(left: 8),
-                  child: _HeaderIconButton(
-                    icon: Icons.arrow_back_ios_new_rounded,
-                    onPressed: () => Navigator.of(context).maybePop(),
-                  ),
-                )
-              : null,
+          : null,
       title: Text(
         title ?? _resolveTitle(currentRoute),
-        style: Theme.of(context).textTheme.titleLarge?.copyWith(fontSize: 20, fontWeight: FontWeight.w700),
+        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+          fontSize: 20,
+          fontWeight: FontWeight.w700,
+        ),
       ),
-      actions: [
-        ...?actions,
-        const SizedBox(width: 8),
-      ],
+      actions: [...?actions, const SizedBox(width: 8)],
     );
   }
 
@@ -86,10 +83,7 @@ class GlassHeader extends StatelessWidget implements PreferredSizeWidget {
 }
 
 class _HeaderIconButton extends StatelessWidget {
-  const _HeaderIconButton({
-    required this.icon,
-    required this.onPressed,
-  });
+  const _HeaderIconButton({required this.icon, required this.onPressed});
 
   final IconData icon;
   final VoidCallback onPressed;

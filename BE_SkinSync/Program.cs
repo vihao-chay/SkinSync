@@ -9,6 +9,7 @@ using SkinSync.Data;
 using SkinSync.Helpers;
 using SkinSync.Repositories;
 using SkinSync.Services;
+using SkinSync.Services.AIPlatform;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -68,20 +69,36 @@ builder.Services.AddAuthorization(options =>
 
 builder.Services.AddScoped<IJwtAuthService, JwtService>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
-builder.Services.AddScoped<IAnalysisRepository, AnalysisRepository>();
 builder.Services.AddScoped<IRegimenRepository, RegimenRepository>();
 builder.Services.AddScoped<IDiaryRepository, DiaryRepository>();
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
 
-builder.Services.AddScoped<IAiAnalysisService, AiAnalysisService>();
 builder.Services.AddScoped<IRegimenBuilderService, RegimenBuilderService>();
 builder.Services.AddScoped<IIngredientConflictService, IngredientConflictService>();
+builder.Services.AddScoped<ISubscriptionPlanService, SubscriptionPlanService>();
+builder.Services.AddScoped<IReportPdfService, ReportPdfService>();
 builder.Services.AddHttpClient<ISupabaseAuthService, SupabaseAuthService>();
 
 // AI Integration Registrations
 builder.Services.Configure<SkinSync.Services.AI.AiSettings>(builder.Configuration.GetSection("AiSettings"));
 builder.Services.AddScoped<SkinSync.Services.AI.IAiService, SkinSync.Services.AI.AiService>();
 builder.Services.AddScoped<ISkinService, SkinService>();
+builder.Services.AddScoped<IOpenAiService, OpenAiService>();
+builder.Services.AddScoped<IAiUsageService, AiUsageService>();
+builder.Services.AddScoped<IImageStorageService, ImageStorageService>();
+builder.Services.AddScoped<ISkinAnalysisService, SkinAnalysisService>();
+builder.Services.AddScoped<IRoutineGenerationService, RoutineGenerationService>();
+builder.Services.AddScoped<IProductRecommendationService, ProductRecommendationService>();
+builder.Services.AddScoped<IIngredientCheckService, IngredientCheckService>();
+builder.Services.AddScoped<IConflictCheckService, ConflictCheckService>();
+builder.Services.AddScoped<IAiChatService, AiChatService>();
+builder.Services.AddScoped<IAiReportService, AiReportService>();
+builder.Services.AddScoped<IAiSmartReminderService, AiSmartReminderService>();
+builder.Services.AddScoped<IProductRoutineService, ProductRoutineService>();
+builder.Services.AddScoped<ISkinProgressService, SkinProgressService>();
+builder.Services.AddScoped<ISkinProgressAnalysisService, SkinProgressAnalysisService>();
+builder.Services.AddScoped<ISkinProgressComparisonService, SkinProgressComparisonService>();
+builder.Services.AddScoped<ISkinProgressReportService, SkinProgressReportService>();
 
 builder.Services.AddHttpClient("OpenAiClient", (sp, client) =>
 {
@@ -152,6 +169,7 @@ builder.Services.AddSwaggerGen(options =>
 var app = builder.Build();
 
 var shouldSeedOnStartup = builder.Configuration.GetValue<bool>("Startup:SeedOnStartup");
+var shouldSeedDemoData = builder.Configuration.GetValue<bool>("Startup:SeedDemoData");
 var shouldEnableSwagger = builder.Configuration.GetValue<bool>("Swagger:Enabled");
 var aspNetCoreUrls = builder.Configuration["ASPNETCORE_URLS"] ?? Environment.GetEnvironmentVariable("ASPNETCORE_URLS") ?? string.Empty;
 var shouldUseHttpsRedirection = aspNetCoreUrls
@@ -161,7 +179,11 @@ if (app.Environment.IsDevelopment() || shouldSeedOnStartup)
 {
     using var scope = app.Services.CreateScope();
     var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    await DbSeeder.SeedAsync(dbContext);
+    await DbSeeder.EnsureDatabaseAsync(dbContext);
+    if (shouldSeedDemoData)
+    {
+        await DbSeeder.SeedDemoDataAsync(dbContext);
+    }
 }
 
 // Configure the HTTP request pipeline.

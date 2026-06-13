@@ -28,10 +28,10 @@ public class ProgressController : ControllerBase
             return ResponseEntity<ProgressOverviewResponseDto>.Fail("Thiáº¿u thÃ´ng tin ngÆ°á»i dÃ¹ng.", 401);
         }
 
-        var analyses = await _dbContext.AiAnalyses
+        var analyses = await _dbContext.SkinProgressAnalyses
             .AsNoTracking()
-            .Where(x => x.UserId == userId)
-            .OrderBy(x => x.CreatedAt)
+            .Where(x => x.UserId == userId && x.DiscardedAt == null && x.Status != "discarded")
+            .OrderBy(x => x.CompletedAt ?? x.CreatedAt)
             .ToListAsync(cancellationToken);
 
         var nowDate = DateOnly.FromDateTime(DateTime.UtcNow.Date);
@@ -75,18 +75,18 @@ public class ProgressController : ControllerBase
         }
 
         var fromUtc = DateTime.UtcNow.Date.AddDays(-(days - 1));
-        var analyses = await _dbContext.AiAnalyses
+        var analyses = await _dbContext.SkinProgressAnalyses
             .AsNoTracking()
-            .Where(x => x.UserId == userId && x.CreatedAt >= fromUtc)
-            .OrderBy(x => x.CreatedAt)
+            .Where(x => x.UserId == userId && x.DiscardedAt == null && x.Status != "discarded" && (x.CompletedAt ?? x.CreatedAt) >= fromUtc)
+            .OrderBy(x => x.CompletedAt ?? x.CreatedAt)
             .ToListAsync(cancellationToken);
 
         var chart = analyses
             .Select(x => new ProgressChartPointDto
             {
-                Date = DateOnly.FromDateTime(x.CreatedAt.Date),
+                Date = DateOnly.FromDateTime((x.CompletedAt ?? x.CreatedAt).Date),
                 OverallScore = x.OverallScore,
-                HydrationScore = x.RecoveryCapacity
+                HydrationScore = x.DrynessScore == 0 ? null : Math.Max(0, 100 - x.DrynessScore)
             })
             .ToList();
 

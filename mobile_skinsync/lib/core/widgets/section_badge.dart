@@ -4,11 +4,7 @@ import '../theme/app_colors.dart';
 import '../theme/app_radius.dart';
 
 class SectionBadge extends StatelessWidget {
-  const SectionBadge({
-    super.key,
-    required this.label,
-    this.icon,
-  });
+  const SectionBadge({super.key, required this.label, this.icon});
 
   final String label;
   final IconData? icon;
@@ -31,9 +27,7 @@ class SectionBadge extends StatelessWidget {
           ],
           Text(
             label,
-            style: const TextStyle(
-              fontSize: 11.5,
-              fontWeight: FontWeight.w600,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
               color: AppColors.primaryDark,
             ),
           ),

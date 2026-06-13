@@ -42,10 +42,12 @@ class AdminShell extends StatelessWidget {
           ? Drawer(
               child: ListView(
                 children: items
-                    .map((item) => ListTile(
-                          title: Text(item.$1),
-                          onTap: () => Navigator.pushNamed(context, item.$2),
-                        ))
+                    .map(
+                      (item) => ListTile(
+                        title: Text(item.$1),
+                        onTap: () => Navigator.pushNamed(context, item.$2),
+                      ),
+                    )
                     .toList(),
               ),
             )
@@ -69,7 +71,8 @@ class AdminShell extends StatelessWidget {
                                   contentPadding: EdgeInsets.zero,
                                   title: Text(item.$1),
                                   selected: item.$2 == currentRoute,
-                                  onTap: () => Navigator.pushNamed(context, item.$2),
+                                  onTap: () =>
+                                      Navigator.pushNamed(context, item.$2),
                                 ),
                               )
                               .toList(),

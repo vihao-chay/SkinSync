@@ -1,19 +1,39 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../features/analysis/skin_analysis_page.dart';
+import '../models/app_models.dart';
 import '../../features/dashboard/dashboard_page.dart';
+import '../../features/products/products_page.dart';
 import '../../features/profile/profile_page.dart';
 import '../../features/progress/progress_page.dart';
 import '../../features/routine/routine_page.dart';
 import '../routes/app_routes.dart';
 import '../state/app_state.dart';
 import '../theme/app_colors.dart';
+import 'app_bottom_navigation.dart';
 
 class MainShell extends StatefulWidget {
-  const MainShell({super.key, required this.initialRoute});
+  const MainShell({
+    super.key,
+    required this.initialRoute,
+    this.initialArgs,
+  });
 
   final String initialRoute;
+  final Object? initialArgs;
+
+  static void navigateToTab(
+    BuildContext context,
+    String route, {
+    Object? arguments,
+  }) {
+    final shellState = context.findAncestorStateOfType<_MainShellState>();
+    if (shellState != null) {
+      shellState.selectRoute(route, arguments: arguments);
+      return;
+    }
+    Navigator.pushNamed(context, route, arguments: arguments);
+  }
 
   @override
   State<MainShell> createState() => _MainShellState();
@@ -22,32 +42,100 @@ class MainShell extends StatefulWidget {
 class _MainShellState extends State<MainShell> {
   static const _navRoutes = [
     AppRoutes.dashboard,
-    AppRoutes.analysis,
     AppRoutes.routine,
+    AppRoutes.products,
     AppRoutes.progress,
     AppRoutes.profile,
   ];
 
   static const _destinations = [
-    _ShellDestination('Home', Icons.home_rounded),
-    _ShellDestination('AI Scan', Icons.auto_awesome_rounded),
-    _ShellDestination('Routine', Icons.spa_rounded),
-    _ShellDestination('Progress', Icons.insights_rounded),
-    _ShellDestination('Profile', Icons.person_rounded),
+    AppBottomNavigationDestination(
+      label: 'Home',
+      icon: Icons.home_rounded,
+    ),
+    AppBottomNavigationDestination(label: 'Routine', icon: Icons.spa_rounded),
+    AppBottomNavigationDestination(
+      label: 'Shop',
+      icon: Icons.shopping_bag_rounded,
+    ),
+    AppBottomNavigationDestination(
+      label: 'Stats',
+      icon: Icons.insights_rounded,
+    ),
+    AppBottomNavigationDestination(
+      label: 'Profile',
+      icon: Icons.person_outline_rounded,
+    ),
   ];
 
   late int _selectedIndex = _routeToIndex(widget.initialRoute);
+  late ProductsPageArgs _productsArgs;
+  late RoutinePageArgs _routineArgs;
+  late ProgressPageArgs _progressArgs;
+
+  @override
+  void initState() {
+    super.initState();
+    _productsArgs = const ProductsPageArgs();
+    _routineArgs = const RoutinePageArgs();
+    _progressArgs = const ProgressPageArgs();
+    _applyInitialArgs(widget.initialRoute, widget.initialArgs);
+  }
 
   int _routeToIndex(String route) {
     final index = _navRoutes.indexOf(route);
     return index < 0 ? 0 : index;
   }
 
+  void _applyInitialArgs(String route, Object? arguments) {
+    switch (route) {
+      case AppRoutes.products:
+        if (arguments is ProductsPageArgs) {
+          _productsArgs = arguments;
+        }
+        break;
+      case AppRoutes.routine:
+        if (arguments is RoutinePageArgs) {
+          _routineArgs = arguments;
+        }
+        break;
+      case AppRoutes.progress:
+        if (arguments is ProgressPageArgs) {
+          _progressArgs = arguments;
+        }
+        break;
+    }
+  }
+
+  void selectRoute(String route, {Object? arguments}) {
+    final nextIndex = _routeToIndex(route);
+    setState(() {
+      _selectedIndex = nextIndex;
+      switch (route) {
+        case AppRoutes.products:
+          _productsArgs = arguments is ProductsPageArgs
+              ? arguments
+              : const ProductsPageArgs();
+          break;
+        case AppRoutes.routine:
+          _routineArgs = arguments is RoutinePageArgs
+              ? arguments
+              : const RoutinePageArgs();
+          break;
+        case AppRoutes.progress:
+          _progressArgs = arguments is ProgressPageArgs
+              ? arguments
+              : const ProgressPageArgs();
+          break;
+      }
+    });
+  }
+
   void _onTap(int index) {
     if (index == _selectedIndex) {
       return;
     }
-    setState(() => _selectedIndex = index);
+    selectRoute(_navRoutes[index]);
   }
 
   @override
@@ -59,125 +147,55 @@ class _MainShellState extends State<MainShell> {
           Navigator.pushReplacementNamed(context, AppRoutes.login);
         }
       });
+
+      return const Scaffold(
+        backgroundColor: AppColors.pageBackground,
+        body: SizedBox.expand(),
+      );
     }
 
     return Scaffold(
       backgroundColor: AppColors.pageBackground,
-      body: SafeArea(
-        bottom: false,
-        child: Align(
-          alignment: Alignment.topCenter,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 520),
-            child: SizedBox.expand(
-              child: IndexedStack(
-                index: _selectedIndex,
-                children: const [
-                  DashboardPage(),
-                  SkinAnalysisPage(),
-                  RoutinePage(),
-                  ProgressPage(),
-                  ProfilePage(),
-                ],
-              ),
-            ),
+      body: IndexedStack(
+        index: _selectedIndex,
+        sizing: StackFit.expand,
+        children: [
+          const _ShellPage(pageName: 'Home', child: DashboardPage()),
+          _ShellPage(
+            key: ValueKey('routine-${_routineArgs.cacheKey}'),
+            pageName: 'Routine',
+            child: RoutinePage(args: _routineArgs),
           ),
-        ),
+          _ShellPage(
+            key: ValueKey('products-${_productsArgs.cacheKey}'),
+            pageName: 'Products',
+            child: ProductsPage(args: _productsArgs),
+          ),
+          _ShellPage(
+            key: ValueKey('progress-${_progressArgs.cacheKey}'),
+            pageName: 'Progress',
+            child: ProgressPage(args: _progressArgs),
+          ),
+          const _ShellPage(pageName: 'Profile', child: ProfilePage()),
+        ],
       ),
-      bottomNavigationBar: SafeArea(
-        top: false,
-        minimum: const EdgeInsets.fromLTRB(8, 0, 8, 6),
-        child: Align(
-          alignment: Alignment.bottomCenter,
-          heightFactor: 1,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 520),
-            child: SizedBox(
-              height: 62,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.98),
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(22),
-                  ),
-                  border: Border.all(
-                    color: AppColors.border.withValues(alpha: 0.40),
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primaryDark.withValues(alpha: 0.08),
-                      blurRadius: 24,
-                      offset: const Offset(0, -6),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: List.generate(_destinations.length, (index) {
-                    final destination = _destinations[index];
-                    final selected = index == _selectedIndex;
-
-                    return Expanded(
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 220),
-                        curve: Curves.easeOutCubic,
-                        decoration: BoxDecoration(
-                          color: selected
-                              ? AppColors.secondary
-                              : Colors.transparent,
-                          borderRadius: BorderRadius.circular(18),
-                        ),
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(18),
-                          onTap: () => _onTap(index),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 4),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  destination.icon,
-                                  color: selected
-                                      ? AppColors.primaryDark
-                                      : AppColors.foreground,
-                                  size: 18,
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  destination.label,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: Theme.of(context).textTheme.labelSmall
-                                      ?.copyWith(
-                                        color: selected
-                                            ? AppColors.primaryDark
-                                            : AppColors.foreground,
-                                        fontSize: 9,
-                                        fontWeight: selected
-                                            ? FontWeight.w800
-                                            : FontWeight.w600,
-                                      ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    );
-                  }),
-                ),
-              ),
-            ),
-          ),
-        ),
+      bottomNavigationBar: AppBottomNavigation(
+        destinations: _destinations,
+        selectedIndex: _selectedIndex,
+        onTap: _onTap,
       ),
     );
   }
 }
 
-class _ShellDestination {
-  const _ShellDestination(this.label, this.icon);
+class _ShellPage extends StatelessWidget {
+  const _ShellPage({super.key, required this.pageName, required this.child});
 
-  final String label;
-  final IconData icon;
+  final String pageName;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox.expand(child: child);
+  }
 }

@@ -1,255 +1,325 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/models/app_models.dart';
+import '../../core/routes/app_routes.dart';
 import '../../core/state/app_state.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
-import '../../core/widgets/app_text_field.dart';
-import '../../core/widgets/gradient_pill_button.dart';
+import '../../core/widgets/app_card.dart';
+import '../../core/widgets/app_scaffold.dart';
+import '../../core/widgets/circular_score.dart';
+import '../../core/widgets/empty_state_card.dart';
+import '../../core/widgets/linear_progress_stat.dart';
+import '../../core/widgets/metric_card.dart';
+import '../../core/widgets/section_header.dart';
+import '../../core/widgets/status_chip.dart';
 
-class ProgressPage extends StatelessWidget {
-  const ProgressPage({super.key});
+class ProgressPage extends StatefulWidget {
+  const ProgressPage({
+    super.key,
+    ProgressPageArgs? args,
+  }) : args = args ?? const ProgressPageArgs();
+
+  final ProgressPageArgs args;
+
+  @override
+  State<ProgressPage> createState() => _ProgressPageState();
+}
+
+class _ProgressPageState extends State<ProgressPage> {
+  bool _didHandleEntryPoint = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_didHandleEntryPoint) {
+      return;
+    }
+    _didHandleEntryPoint = true;
+    if (widget.args.entryPoint == ProgressEntryPoint.checkupSaved ||
+        widget.args.entryPoint == ProgressEntryPoint.analysisResult) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) {
+          return;
+        }
+        context.read<AppState>().refreshHome();
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final appState = context.watch<AppState>();
     final progress = appState.progress;
-    final log = appState.todayLog;
+    final latestAnalysis = appState.latestAnalysis;
+    final tracking = appState.trackingToday;
+    final todayLog = appState.todayLog;
+    final totalSteps = tracking?.totalSteps ?? 0;
+    final completedSteps = tracking?.completedSteps ?? 0;
+    final routinePercent = totalSteps == 0 ? 0 : ((completedSteps / totalSteps) * 100).round();
+    final hasRealInsight = (progress?.dailyTip?.trim().isNotEmpty ?? false) ||
+        (progress?.progressInsight?.trim().isNotEmpty ?? false);
+    final hasVisualJourney = todayLog?.dailyImageUrl?.trim().isNotEmpty == true;
 
-    return Stack(
-      children: [
-        RefreshIndicator(
-          color: AppColors.primaryDark,
-          onRefresh: appState.refreshHome,
-          child: ListView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.pagePadding,
-              26,
-              AppSpacing.pagePadding,
-              118,
-            ),
-            children: [
-              Text(
-                'Your Progress',
-                style: Theme.of(
-                  context,
-                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-              ),
-              const SizedBox(height: 22),
-              _ScoreCard(
-                score: progress?.currentScore ?? 100,
-                streak: progress?.currentStreak ?? 0,
-                improvement: progress?.improvementPercent ?? 0,
-              ),
-              const SizedBox(height: 16),
-              _InfoCard(
-                icon: Icons.lightbulb_outline_rounded,
-                title: 'Insight',
-                body:
-                    progress?.progressInsight ??
-                    'Over your tracked period, your skin score has stayed stable. You completed routine tracking on 1 of the last 28 days.',
-              ),
-              const SizedBox(height: 16),
-              _TodayLogCard(
-                skinFeeling: log?.skinFeeling,
-                notes: log?.notes,
-                acne: log?.acneLevel,
-                hydration: log?.hydrationLevel,
-              ),
-              const SizedBox(height: 16),
-              _InfoCard(
-                icon: Icons.eco_outlined,
-                title: 'Daily Tip',
-                body:
-                    progress?.dailyTip ??
-                    'Your skin often improves with consistency; try completing both morning and evening steps today.',
-              ),
-            ],
+    final showCheckupSavedState =
+        widget.args.entryPoint == ProgressEntryPoint.checkupSaved;
+    final showAnalysisState =
+        widget.args.entryPoint == ProgressEntryPoint.analysisResult;
+
+    if (progress == null && latestAnalysis == null) {
+      return AppScaffold(
+        title: 'Progress',
+        subtitle: 'Analysis history, routine completion, and daily logs stay in sync here.',
+        compactHeader: true,
+        body: ListView(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.pagePadding,
+            0,
+            AppSpacing.pagePadding,
+            AppSpacing.pageBottomPaddingWithActions,
           ),
-        ),
-        Positioned(
-          right: 24,
-          bottom: 22,
-          child: FloatingActionButton(
-            heroTag: 'progress-add-log',
-            backgroundColor: AppColors.primaryDark,
-            foregroundColor: Colors.white,
-            elevation: 4,
-            shape: const CircleBorder(),
-            onPressed: () => _showAddLogSheet(context),
-            child: const Icon(Icons.add_rounded),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Future<void> _showAddLogSheet(BuildContext context) async {
-    final skinFeelingController = TextEditingController();
-    final acneController = TextEditingController();
-    final hydrationController = TextEditingController();
-    final notesController = TextEditingController();
-    final appState = context.read<AppState>();
-
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      builder: (context) {
-        return SafeArea(
-          top: false,
-          child: Padding(
-            padding: EdgeInsets.fromLTRB(
-              20,
-              12,
-              20,
-              20 + MediaQuery.of(context).viewInsets.bottom,
+          children: [
+            EmptyStateCard(
+              icon: Icons.insights_outlined,
+              title: 'No progress data yet',
+              description: 'Analyze your skin and start completing your routine to unlock a clearer progress story.',
+              ctaLabel: 'Analyze skin',
+              onCta: () => Navigator.pushNamed(context, AppRoutes.upload),
             ),
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 44,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: AppColors.border,
-                        borderRadius: BorderRadius.circular(999),
+          ],
+        ),
+      );
+    }
+
+    return AppScaffold(
+      title: 'Progress',
+      subtitle: 'Analysis history, routine completion, and daily logs stay in sync here.',
+      compactHeader: true,
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.pagePadding,
+          0,
+          AppSpacing.pagePadding,
+          AppSpacing.pageBottomPaddingWithActions,
+        ),
+        children: [
+          if (showCheckupSavedState) ...[
+            const StatusChip(
+              label: 'Check-up saved',
+              icon: Icons.check_circle_outline_rounded,
+              tone: StatusChipTone.success,
+            ),
+            const SizedBox(height: AppSpacing.md),
+          ] else if (showAnalysisState) ...[
+            const StatusChip(
+              label: 'Analysis saved',
+              icon: Icons.analytics_outlined,
+              tone: StatusChipTone.accent,
+            ),
+            const SizedBox(height: AppSpacing.md),
+          ],
+          AppCard(
+            variant: AppCardVariant.hero,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    CircularScore(
+                      score: progress?.currentScore ?? latestAnalysis?.overallScore ?? 0,
+                      size: 112,
+                      label: 'current',
+                    ),
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const StatusChip(
+                            label: 'Current Progress Snapshot',
+                            icon: Icons.query_stats_rounded,
+                            tone: StatusChipTone.accent,
+                          ),
+                          const SizedBox(height: 10),
+                          Text(
+                            progress?.progressInsight?.trim().isNotEmpty == true
+                                ? progress!.progressInsight!
+                                : 'Progress updates when analysis, routine tracking, and daily logs are saved.',
+                            maxLines: 4,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: AppColors.mutedText,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 18),
-                  Text(
-                    'Add Daily Log',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                  const SizedBox(height: 16),
-                  AppTextField(
-                    label: 'How does your skin feel?',
-                    controller: skinFeelingController,
-                  ),
-                  const SizedBox(height: 12),
-                  AppTextField(
-                    label: 'Acne level (0-100)',
-                    controller: acneController,
-                    keyboardType: TextInputType.number,
-                  ),
-                  const SizedBox(height: 12),
-                  AppTextField(
-                    label: 'Hydration level (0-100)',
-                    controller: hydrationController,
-                    keyboardType: TextInputType.number,
-                  ),
-                  const SizedBox(height: 12),
-                  AppTextField(
-                    label: 'Notes',
-                    controller: notesController,
-                    maxLines: 3,
-                  ),
-                  const SizedBox(height: 20),
-                  GradientPillButton(
-                    label: 'Save Daily Log',
-                    expanded: true,
-                    onPressed: () async {
-                      await appState.saveDailyLog(
-                        skinFeeling: skinFeelingController.text.trim(),
-                        notes: notesController.text.trim(),
-                        acneLevel: int.tryParse(acneController.text) ?? 0,
-                        hydrationLevel:
-                            int.tryParse(hydrationController.text) ?? 0,
-                      );
-                      if (context.mounted) {
-                        Navigator.of(context).pop();
-                      }
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _ScoreCard extends StatelessWidget {
-  const _ScoreCard({
-    required this.score,
-    required this.streak,
-    required this.improvement,
-  });
-
-  final int score;
-  final int streak;
-  final double improvement;
-
-  @override
-  Widget build(BuildContext context) {
-    return _SoftCard(
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'CURRENT SCORE',
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              letterSpacing: 1.4,
-              color: AppColors.mutedText,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Text(
-                '$score',
-                style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                  color: AppColors.primaryDark,
-                  fontWeight: FontWeight.w800,
+                  ],
                 ),
-              ),
-              const SizedBox(width: 10),
-              Container(
-                width: 7,
-                height: 7,
-                decoration: const BoxDecoration(
-                  color: Color(0xFF35D66B),
-                  shape: BoxShape.circle,
+                const SizedBox(height: AppSpacing.md),
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final metrics = [
+                      MetricCard(
+                        label: 'Current score',
+                        value: '${progress?.currentScore ?? latestAnalysis?.overallScore ?? 0}',
+                        icon: Icons.favorite_outline_rounded,
+                      ),
+                      MetricCard(
+                        label: 'Current streak',
+                        value: '${progress?.currentStreak ?? 0} days',
+                        icon: Icons.local_fire_department_outlined,
+                      ),
+                      MetricCard(
+                        label: 'Improvement',
+                        value: _formatPercent(progress?.improvementPercent),
+                        icon: Icons.trending_up_rounded,
+                      ),
+                      MetricCard(
+                        label: 'Routine completion',
+                        value: '$routinePercent%',
+                        icon: Icons.checklist_rounded,
+                      ),
+                    ];
+                    return Wrap(
+                      spacing: AppSpacing.sm,
+                      runSpacing: AppSpacing.sm,
+                      children: metrics
+                          .map(
+                            (metric) => SizedBox(
+                              width: constraints.maxWidth < 360
+                                  ? constraints.maxWidth
+                                  : (constraints.maxWidth - AppSpacing.sm) / 2,
+                              child: metric,
+                            ),
+                          )
+                          .toList(),
+                    );
+                  },
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'Streak: $streak days',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: AppColors.foreground,
-              fontWeight: FontWeight.w700,
+                const SizedBox(height: AppSpacing.md),
+                LinearProgressStat(
+                  label: 'Routine completion',
+                  value: '$routinePercent%',
+                  progress: totalSteps == 0 ? 0 : completedSteps / totalSteps,
+                  caption: totalSteps == 0
+                      ? 'No routine steps tracked yet.'
+                      : '$completedSteps of $totalSteps steps completed today.',
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 6),
-          Text(
-            'Improvement: ${improvement.toStringAsFixed(1)}%',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: AppColors.foreground,
-              fontWeight: FontWeight.w700,
+          const SizedBox(height: AppSpacing.sectionGap),
+          SectionHeader(
+            icon: Icons.show_chart_rounded,
+            title: 'Score Trend',
+            subtitle: 'Only show a trend when there is enough real data to support it.',
+          ),
+          const SizedBox(height: AppSpacing.md),
+          const EmptyStateCard(
+            icon: Icons.show_chart_rounded,
+            title: 'Not enough trend data yet',
+            description:
+                'Complete more analyses and check-ups to unlock a clearer score trend.',
+          ),
+          const SizedBox(height: AppSpacing.sectionGap),
+          SectionHeader(
+            icon: Icons.photo_camera_back_outlined,
+            title: 'Visual Journey',
+            subtitle: 'Real photo history appears here when your logs include saved images.',
+          ),
+          const SizedBox(height: AppSpacing.md),
+          if (hasVisualJourney)
+            AppCard(
+              child: const _TimelineRow(
+                icon: Icons.photo_camera_back_outlined,
+                title: 'Latest uploaded photo',
+                value: 'A real saved photo is available for future comparison.',
+              ),
+            )
+          else
+            const EmptyStateCard(
+              icon: Icons.photo_library_outlined,
+              title: 'No comparison photos yet',
+              description:
+                  'Save daily or analysis photos over time to unlock a clearer visual journey.',
+            ),
+          const SizedBox(height: AppSpacing.sectionGap),
+          if (hasRealInsight) ...[
+            SectionHeader(
+              icon: Icons.tips_and_updates_outlined,
+              title: 'Insight Cards',
+              subtitle: 'Short reads grounded in your saved backend data.',
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Wrap(
+              spacing: AppSpacing.sm,
+              runSpacing: AppSpacing.sm,
+              children: [
+                if (progress?.dailyTip?.trim().isNotEmpty == true)
+                  _InsightCard(
+                    icon: Icons.auto_awesome_rounded,
+                    title: 'Daily tip',
+                    body: progress!.dailyTip!,
+                  ),
+                if (progress?.progressInsight?.trim().isNotEmpty == true)
+                  _InsightCard(
+                    icon: Icons.query_stats_rounded,
+                    title: 'Progress signal',
+                    body: progress!.progressInsight!,
+                  ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.sectionGap),
+          ],
+          SectionHeader(
+            icon: Icons.timeline_rounded,
+            title: 'Recent Timeline',
+            subtitle: 'The latest moments feeding your progress.',
+          ),
+          const SizedBox(height: AppSpacing.md),
+          AppCard(
+            child: Column(
+              children: [
+                _TimelineRow(
+                  icon: Icons.analytics_outlined,
+                  title: 'Latest analysis',
+                  value: latestAnalysis == null
+                      ? 'No analysis yet'
+                      : '${latestAnalysis.overallScore}/100 • ${latestAnalysis.skinType}',
+                ),
+                const SizedBox(height: AppSpacing.md),
+                _TimelineRow(
+                  icon: Icons.checklist_rounded,
+                  title: 'Latest check-up',
+                  value: '$completedSteps/$totalSteps routine steps completed today',
+                ),
+                const SizedBox(height: AppSpacing.md),
+                _TimelineRow(
+                  icon: Icons.photo_camera_back_outlined,
+                  title: 'Latest photo',
+                  value: todayLog?.dailyImageUrl?.trim().isNotEmpty == true
+                      ? 'Daily log photo saved'
+                      : 'No daily log photo yet',
+                ),
+              ],
             ),
           ),
         ],
       ),
     );
   }
+
+  String _formatPercent(double? value) {
+    final safe = value ?? 0;
+    return '${safe.toStringAsFixed(1)}%';
+  }
 }
 
-class _InfoCard extends StatelessWidget {
-  const _InfoCard({
+class _InsightCard extends StatelessWidget {
+  const _InsightCard({
     required this.icon,
     required this.title,
     required this.body,
@@ -261,186 +331,87 @@ class _InfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _SoftCard(
-      padding: const EdgeInsets.fromLTRB(18, 17, 18, 18),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _TinyIcon(icon: icon),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  body,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppColors.foreground,
-                    height: 1.45,
-                  ),
-                ),
-              ],
+    return SizedBox(
+      width: MediaQuery.sizeOf(context).width > 380 ? 170 : double.infinity,
+      child: AppCard(
+        variant: AppCardVariant.metric,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, color: AppColors.primaryDark),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              title,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
             ),
-          ),
-        ],
+            const SizedBox(height: 6),
+            Text(
+              body,
+              maxLines: 4,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: AppColors.mutedText,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
-class _TodayLogCard extends StatelessWidget {
-  const _TodayLogCard({
-    required this.skinFeeling,
-    required this.notes,
-    required this.acne,
-    required this.hydration,
+class _TimelineRow extends StatelessWidget {
+  const _TimelineRow({
+    required this.icon,
+    required this.title,
+    required this.value,
   });
 
-  final String? skinFeeling;
-  final String? notes;
-  final int? acne;
-  final int? hydration;
-
-  @override
-  Widget build(BuildContext context) {
-    return _SoftCard(
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
-      child: Stack(
-        children: [
-          Positioned(
-            right: -2,
-            top: 6,
-            child: Icon(
-              Icons.calendar_month_outlined,
-              size: 58,
-              color: AppColors.border.withValues(alpha: 0.32),
-            ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                "Today's Log",
-                style: Theme.of(
-                  context,
-                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
-              ),
-              const SizedBox(height: 14),
-              Text(
-                skinFeeling?.trim().isNotEmpty == true
-                    ? skinFeeling!
-                    : 'No log yet',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: AppColors.mutedText,
-                  fontStyle: FontStyle.italic,
-                ),
-              ),
-              if (notes?.trim().isNotEmpty == true) ...[
-                const SizedBox(height: 8),
-                Text(
-                  notes!,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodySmall?.copyWith(color: AppColors.foreground),
-                ),
-              ],
-              const SizedBox(height: 18),
-              _LogMetric(label: 'Acne', value: acne?.toString() ?? '-'),
-              const SizedBox(height: 12),
-              _LogMetric(
-                label: 'Hydration',
-                value: hydration?.toString() ?? '-',
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _LogMetric extends StatelessWidget {
-  const _LogMetric({required this.label, required this.value});
-
-  final String label;
+  final IconData icon;
+  final String title;
   final String value;
 
   @override
   Widget build(BuildContext context) {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: AppColors.foreground,
-            fontWeight: FontWeight.w700,
+        Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: AppColors.secondary,
+            borderRadius: BorderRadius.circular(14),
           ),
+          alignment: Alignment.center,
+          child: Icon(icon, size: 18, color: AppColors.primaryDark),
         ),
-        const Spacer(),
-        Text(
-          value,
-          style: Theme.of(
-            context,
-          ).textTheme.bodySmall?.copyWith(color: AppColors.mutedText),
+        const SizedBox(width: AppSpacing.sm),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  color: AppColors.primaryDark,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                value,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: AppColors.mutedText,
+                ),
+              ),
+            ],
+          ),
         ),
       ],
-    );
-  }
-}
-
-class _TinyIcon extends StatelessWidget {
-  const _TinyIcon({required this.icon});
-
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 28,
-      height: 28,
-      decoration: const BoxDecoration(
-        color: AppColors.secondary,
-        shape: BoxShape.circle,
-      ),
-      child: Icon(icon, size: 16, color: AppColors.primaryDark),
-    );
-  }
-}
-
-class _SoftCard extends StatelessWidget {
-  const _SoftCard({
-    required this.child,
-    this.padding = const EdgeInsets.all(16),
-  });
-
-  final Widget child;
-  final EdgeInsetsGeometry padding;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: padding,
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.94),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.78)),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primaryDark.withValues(alpha: 0.06),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: child,
     );
   }
 }

@@ -31,6 +31,7 @@ class AppUser {
     this.avatarUrl,
     required this.role,
     required this.status,
+    this.planType = 'free',
   });
 
   final String id;
@@ -40,6 +41,7 @@ class AppUser {
   final String? avatarUrl;
   final String role;
   final String status;
+  final String planType;
 
   factory AppUser.fromJson(Map<String, dynamic> json) => AppUser(
     id: json['id'].toString(),
@@ -49,6 +51,7 @@ class AppUser {
     avatarUrl: json['avatarUrl'] as String?,
     role: (json['role'] ?? 'user') as String,
     status: (json['status'] ?? 'active') as String,
+    planType: (json['planType'] ?? 'free') as String,
   );
 
   Map<String, dynamic> toJson() => {
@@ -59,6 +62,7 @@ class AppUser {
     'avatarUrl': avatarUrl,
     'role': role,
     'status': status,
+    'planType': planType,
   };
 
   AppUser copyWith({
@@ -69,6 +73,7 @@ class AppUser {
     String? avatarUrl,
     String? role,
     String? status,
+    String? planType,
   }) {
     return AppUser(
       id: id ?? this.id,
@@ -78,8 +83,168 @@ class AppUser {
       avatarUrl: avatarUrl ?? this.avatarUrl,
       role: role ?? this.role,
       status: status ?? this.status,
+      planType: planType ?? this.planType,
     );
   }
+}
+
+class SubscriptionPlan {
+  const SubscriptionPlan({
+    required this.id,
+    required this.code,
+    required this.name,
+    this.description,
+    required this.priceVnd,
+    required this.billingCycle,
+    required this.isActive,
+    this.features = const [],
+  });
+
+  final String id;
+  final String code;
+  final String name;
+  final String? description;
+  final double priceVnd;
+  final String billingCycle;
+  final bool isActive;
+  final List<SubscriptionPlanFeature> features;
+
+  factory SubscriptionPlan.fromJson(Map<String, dynamic> json) =>
+      SubscriptionPlan(
+        id: json['id'].toString(),
+        code: (json['code'] ?? 'free').toString(),
+        name: (json['name'] ?? '').toString(),
+        description: json['description']?.toString(),
+        priceVnd: (json['priceVnd'] as num?)?.toDouble() ?? 0,
+        billingCycle: (json['billingCycle'] ?? 'monthly').toString(),
+        isActive: (json['isActive'] ?? true) as bool,
+        features: ((json['features'] as List?) ?? const [])
+            .whereType<Map<String, dynamic>>()
+            .map(SubscriptionPlanFeature.fromJson)
+            .toList(),
+      );
+}
+
+class SubscriptionPlanFeature {
+  const SubscriptionPlanFeature({
+    required this.featureKey,
+    required this.displayName,
+    this.monthlyLimit,
+    this.isUnlimited = false,
+    this.isEnabled = true,
+  });
+
+  final String featureKey;
+  final String displayName;
+  final int? monthlyLimit;
+  final bool isUnlimited;
+  final bool isEnabled;
+
+  factory SubscriptionPlanFeature.fromJson(Map<String, dynamic> json) =>
+      SubscriptionPlanFeature(
+        featureKey: (json['featureKey'] ?? '').toString(),
+        displayName: (json['displayName'] ?? '').toString(),
+        monthlyLimit: (json['monthlyLimit'] as num?)?.toInt(),
+        isUnlimited: (json['isUnlimited'] ?? false) as bool,
+        isEnabled: (json['isEnabled'] ?? true) as bool,
+      );
+}
+
+class SubscriptionStatus {
+  const SubscriptionStatus({
+    this.subscriptionId,
+    required this.status,
+    required this.planCode,
+    this.startedAt,
+    this.currentPeriodStart,
+    this.currentPeriodEnd,
+    this.canceledAt,
+  });
+
+  final String? subscriptionId;
+  final String status;
+  final String planCode;
+  final DateTime? startedAt;
+  final DateTime? currentPeriodStart;
+  final DateTime? currentPeriodEnd;
+  final DateTime? canceledAt;
+
+  factory SubscriptionStatus.fromJson(Map<String, dynamic> json) =>
+      SubscriptionStatus(
+        subscriptionId: json['subscriptionId']?.toString(),
+        status: (json['status'] ?? 'active').toString(),
+        planCode: (json['planCode'] ?? 'free').toString(),
+        startedAt: _tryParseDateTime(json['startedAt']),
+        currentPeriodStart: _tryParseDateTime(json['currentPeriodStart']),
+        currentPeriodEnd: _tryParseDateTime(json['currentPeriodEnd']),
+        canceledAt: _tryParseDateTime(json['canceledAt']),
+      );
+}
+
+class SubscriptionUsage {
+  const SubscriptionUsage({
+    required this.featureKey,
+    required this.displayName,
+    required this.used,
+    this.monthlyLimit,
+    this.remaining,
+    this.isUnlimited = false,
+    this.isEnabled = true,
+  });
+
+  final String featureKey;
+  final String displayName;
+  final int used;
+  final int? monthlyLimit;
+  final int? remaining;
+  final bool isUnlimited;
+  final bool isEnabled;
+
+  factory SubscriptionUsage.fromJson(Map<String, dynamic> json) =>
+      SubscriptionUsage(
+        featureKey: (json['featureKey'] ?? '').toString(),
+        displayName: (json['displayName'] ?? '').toString(),
+        used: (json['used'] as num?)?.toInt() ?? 0,
+        monthlyLimit: (json['monthlyLimit'] as num?)?.toInt(),
+        remaining: (json['remaining'] as num?)?.toInt(),
+        isUnlimited: (json['isUnlimited'] ?? false) as bool,
+        isEnabled: (json['isEnabled'] ?? true) as bool,
+      );
+}
+
+class CurrentSubscription {
+  const CurrentSubscription({
+    required this.plan,
+    required this.subscription,
+    this.usage = const [],
+  });
+
+  final SubscriptionPlan plan;
+  final SubscriptionStatus subscription;
+  final List<SubscriptionUsage> usage;
+
+  factory CurrentSubscription.fromJson(Map<String, dynamic> json) =>
+      CurrentSubscription(
+        plan: SubscriptionPlan.fromJson(
+          (json['plan'] as Map<String, dynamic>?) ?? const {},
+        ),
+        subscription: SubscriptionStatus.fromJson(
+          (json['subscription'] as Map<String, dynamic>?) ?? const {},
+        ),
+        usage: ((json['usage'] as List?) ?? const [])
+            .whereType<Map<String, dynamic>>()
+            .map(SubscriptionUsage.fromJson)
+            .toList(),
+      );
+}
+
+DateTime? _tryParseDateTime(Object? value) {
+  final raw = value?.toString();
+  if (raw == null || raw.isEmpty) {
+    return null;
+  }
+
+  return DateTime.tryParse(raw);
 }
 
 class SkinProfile {
@@ -166,8 +331,12 @@ class AnalysisIssue {
   final String? description;
 
   factory AnalysisIssue.fromJson(Map<String, dynamic> json) => AnalysisIssue(
-    issueType: (json['issueType'] ?? '') as String,
-    severityScore: (json['severityScore'] ?? 0) as int,
+    issueType:
+        ((json['issueType'] ?? json['label'] ?? json['concern']) ?? '')
+            as String,
+    severityScore:
+        (json['severityScore'] as int?) ??
+        _severityToLegacyScore((json['severity'] ?? 'low').toString()),
     description: json['description'] as String?,
   );
 }
@@ -185,9 +354,24 @@ class AnalysisRecommendation {
       );
 }
 
+int _severityToLegacyScore(String severity) {
+  switch (severity.trim().toLowerCase()) {
+    case 'high':
+      return 85;
+    case 'medium':
+      return 60;
+    default:
+      return 35;
+  }
+}
+
 class AnalysisResult {
   const AnalysisResult({
     required this.id,
+    this.analysisSessionId,
+    this.progressEntryId,
+    this.photoId,
+    this.source,
     required this.imageUrl,
     required this.skinType,
     required this.overallScore,
@@ -197,9 +381,14 @@ class AnalysisResult {
     this.warnings = const [],
     this.issues = const [],
     this.recommendations = const [],
+    this.canGenerateProducts = false,
   });
 
   final String id;
+  final String? analysisSessionId;
+  final String? progressEntryId;
+  final String? photoId;
+  final String? source;
   final String imageUrl;
   final String skinType;
   final int overallScore;
@@ -209,27 +398,63 @@ class AnalysisResult {
   final List<String> warnings;
   final List<AnalysisIssue> issues;
   final List<AnalysisRecommendation> recommendations;
+  final bool canGenerateProducts;
 
   factory AnalysisResult.fromJson(Map<String, dynamic> json) => AnalysisResult(
-    id: json['id'].toString(),
+    id: (json['id'] ?? json['analysisResultId'] ?? json['analysisId'])
+        .toString(),
+    analysisSessionId: json['analysisSessionId']?.toString(),
+    progressEntryId: json['progressEntryId']?.toString(),
+    photoId: json['photoId']?.toString(),
+    source: json['source']?.toString(),
     imageUrl: (json['imageUrl'] ?? '') as String,
-    skinType: (json['skinType'] ?? 'Unknown') as String,
-    overallScore: (json['overallScore'] ?? 0) as int,
-    confidenceScore: (json['confidenceScore'] ?? 0) as int,
-    overview: json['overview'] as String?,
+    skinType:
+        ((json['skinType'] ?? json['skinTypeEstimate']) ?? 'Unknown') as String,
+    overallScore: ((json['overallScore'] ?? json['skinScore']) ?? 0) as int,
+    confidenceScore:
+        ((json['confidenceScore'] as num?)?.round() ??
+        (((json['confidenceScore'] as num?) ??
+                    (json['confidence'] as num?) ??
+                    0) *
+                100)
+            .round()),
+    overview: (json['overview'] ?? json['skinSummary']) as String?,
     disclaimer: json['disclaimer'] as String?,
-    warnings: ((json['warnings'] as List?) ?? const [])
-        .map((e) => e.toString())
-        .toList(),
-    issues: ((json['issues'] as List?) ?? const [])
-        .whereType<Map<String, dynamic>>()
-        .map(AnalysisIssue.fromJson)
-        .toList(),
-    recommendations: ((json['recommendations'] as List?) ?? const [])
-        .whereType<Map<String, dynamic>>()
-        .map(AnalysisRecommendation.fromJson)
-        .toList(),
+    warnings:
+        (((json['warnings'] as List?) ??
+                (json['riskFlags'] as List?) ??
+                const []))
+            .map((e) => e.toString())
+            .toList(),
+    issues:
+        (((json['issues'] as List?) ??
+                (json['detectedConcerns'] as List?) ??
+                const []))
+            .whereType<Map<String, dynamic>>()
+            .map(AnalysisIssue.fromJson)
+            .toList(),
+    recommendations: ((json['recommendations'] as List?) ?? const []).map((
+      item,
+    ) {
+      if (item is Map<String, dynamic>) {
+        return AnalysisRecommendation(
+          title: (item['title'] ?? item['type'] ?? 'Recommendation') as String,
+          content: (item['content'] ?? item['description'] ?? '') as String,
+        );
+      }
+      return AnalysisRecommendation(
+        title: 'Recommendation',
+        content: item.toString(),
+      );
+    }).toList(),
+    canGenerateProducts: (json['canGenerateProducts'] ?? false) as bool,
   );
+}
+
+class SkinAnalysisFlowArgs {
+  const SkinAnalysisFlowArgs({this.source = 'unknown'});
+
+  final String source;
 }
 
 class RegimenStep {
@@ -310,6 +535,7 @@ class RoutineTrackingToday {
     required this.completedSteps,
     required this.morningCompleted,
     required this.eveningCompleted,
+    this.steps = const [],
     this.completedStepIds = const [],
   });
 
@@ -317,6 +543,7 @@ class RoutineTrackingToday {
   final int completedSteps;
   final bool morningCompleted;
   final bool eveningCompleted;
+  final List<RoutineTrackingStep> steps;
   final List<String> completedStepIds;
 
   factory RoutineTrackingToday.fromJson(Map<String, dynamic> json) =>
@@ -325,8 +552,18 @@ class RoutineTrackingToday {
         completedSteps: (json['completedSteps'] ?? 0) as int,
         morningCompleted: (json['morningCompleted'] ?? false) as bool,
         eveningCompleted: (json['eveningCompleted'] ?? false) as bool,
+        steps: ((json['steps'] as List?) ?? const [])
+            .whereType<Map<String, dynamic>>()
+            .map(RoutineTrackingStep.fromJson)
+            .toList(),
         completedStepIds: ((json['steps'] as List?) ?? const [])
-            .map((e) => (e as Map<String, dynamic>)['stepId'].toString())
+            .whereType<Map<String, dynamic>>()
+            .where(
+              (item) =>
+                  (item['status']?.toString().trim().toLowerCase() ?? '') ==
+                  'completed',
+            )
+            .map((item) => item['stepId'].toString())
             .toList(),
       );
 }
@@ -359,6 +596,8 @@ class ProgressOverview {
 class DailyLog {
   const DailyLog({
     required this.date,
+    this.morningCompleted = false,
+    this.eveningCompleted = false,
     this.skinFeeling,
     this.notes,
     this.acneLevel,
@@ -366,9 +605,12 @@ class DailyLog {
     this.rednessLevel,
     this.irritationLevel,
     this.hydrationLevel,
+    this.dailyImageUrl,
   });
 
   final String date;
+  final bool morningCompleted;
+  final bool eveningCompleted;
   final String? skinFeeling;
   final String? notes;
   final int? acneLevel;
@@ -376,9 +618,23 @@ class DailyLog {
   final int? rednessLevel;
   final int? irritationLevel;
   final int? hydrationLevel;
+  final String? dailyImageUrl;
+
+  bool get hasDiaryDetails {
+    return (notes?.trim().isNotEmpty ?? false) ||
+        acneLevel != null ||
+        drynessLevel != null ||
+        rednessLevel != null ||
+        irritationLevel != null ||
+        hydrationLevel != null ||
+        (dailyImageUrl?.trim().isNotEmpty ?? false) ||
+        _hasMeaningfulSkinFeeling(skinFeeling);
+  }
 
   factory DailyLog.fromJson(Map<String, dynamic> json) => DailyLog(
     date: json['date'].toString(),
+    morningCompleted: (json['morningCompleted'] ?? false) as bool,
+    eveningCompleted: (json['eveningCompleted'] ?? false) as bool,
     skinFeeling: json['skinFeeling'] as String?,
     notes: json['notes'] as String?,
     acneLevel: json['acneLevel'] as int?,
@@ -386,7 +642,17 @@ class DailyLog {
     rednessLevel: json['rednessLevel'] as int?,
     irritationLevel: json['irritationLevel'] as int?,
     hydrationLevel: json['hydrationLevel'] as int?,
+    dailyImageUrl: json['dailyImageUrl'] as String?,
   );
+}
+
+bool _hasMeaningfulSkinFeeling(String? value) {
+  final normalized = value?.trim().toLowerCase() ?? '';
+  if (normalized.isEmpty) {
+    return false;
+  }
+
+  return normalized != 'normal';
 }
 
 class ReminderItem {
@@ -394,18 +660,864 @@ class ReminderItem {
     required this.reminderId,
     required this.time,
     required this.routineType,
+    this.frequency = 'daily',
+    this.reason,
+    this.priority = 'medium',
+    this.isAdaptive = false,
     required this.isEnabled,
   });
 
   final String reminderId;
   final String time;
   final String routineType;
+  final String frequency;
+  final String? reason;
+  final String priority;
+  final bool isAdaptive;
   final bool isEnabled;
 
   factory ReminderItem.fromJson(Map<String, dynamic> json) => ReminderItem(
     reminderId: json['reminderId'].toString(),
     time: (json['time'] ?? '') as String,
     routineType: (json['routineType'] ?? '') as String,
+    frequency: (json['frequency'] ?? 'daily') as String,
+    reason: json['reason'] as String?,
+    priority: (json['priority'] ?? 'medium') as String,
+    isAdaptive: (json['isAdaptive'] ?? false) as bool,
     isEnabled: (json['isEnabled'] ?? false) as bool,
   );
+}
+
+class AiReminderSuggestion {
+  const AiReminderSuggestion({
+    required this.routineType,
+    required this.time,
+    required this.frequency,
+    required this.reason,
+    required this.priority,
+    required this.isAdaptive,
+    required this.isEnabled,
+  });
+
+  final String routineType;
+  final String time;
+  final String frequency;
+  final String reason;
+  final String priority;
+  final bool isAdaptive;
+  final bool isEnabled;
+
+  factory AiReminderSuggestion.fromJson(Map<String, dynamic> json) =>
+      AiReminderSuggestion(
+        routineType: (json['routineType'] ?? 'Morning') as String,
+        time: (json['time'] ?? '07:00') as String,
+        frequency: (json['frequency'] ?? 'daily') as String,
+        reason: (json['reason'] ?? '') as String,
+        priority: (json['priority'] ?? 'medium') as String,
+        isAdaptive: (json['isAdaptive'] ?? false) as bool,
+        isEnabled: (json['isEnabled'] ?? true) as bool,
+      );
+}
+
+class AiReminderSuggestResponse {
+  const AiReminderSuggestResponse({
+    this.suggestions = const [],
+    this.overallAdvice = '',
+  });
+
+  final List<AiReminderSuggestion> suggestions;
+  final String overallAdvice;
+
+  factory AiReminderSuggestResponse.fromJson(Map<String, dynamic> json) =>
+      AiReminderSuggestResponse(
+        suggestions: ((json['suggestions'] as List?) ?? const [])
+            .whereType<Map<String, dynamic>>()
+            .map(AiReminderSuggestion.fromJson)
+            .toList(),
+        overallAdvice: (json['overallAdvice'] ?? '') as String,
+      );
+}
+
+class AiChatLaunchArgs {
+  const AiChatLaunchArgs({
+    this.conversationId,
+    this.entryPoint,
+    this.referenceId,
+    this.prefillMessage,
+    this.prefillContext,
+  });
+
+  final String? conversationId;
+  final String? entryPoint;
+  final String? referenceId;
+  final String? prefillMessage;
+  final String? prefillContext;
+}
+
+class AiSuggestedAction {
+  const AiSuggestedAction({
+    required this.type,
+    required this.label,
+    required this.route,
+    this.referenceId,
+  });
+
+  final String type;
+  final String label;
+  final String route;
+  final String? referenceId;
+
+  factory AiSuggestedAction.fromJson(Map<String, dynamic> json) =>
+      AiSuggestedAction(
+        type: (json['type'] ?? '') as String,
+        label: (json['label'] ?? '') as String,
+        route: (json['route'] ?? '') as String,
+        referenceId: json['referenceId']?.toString(),
+      );
+}
+
+class AiChatReply {
+  const AiChatReply({
+    this.conversationId,
+    required this.reply,
+    this.suggestedActions = const [],
+    this.needMoreInfo = false,
+    this.missingInfoQuestions = const [],
+    this.safetyWarning,
+  });
+
+  final String? conversationId;
+  final String reply;
+  final List<AiSuggestedAction> suggestedActions;
+  final bool needMoreInfo;
+  final List<String> missingInfoQuestions;
+  final String? safetyWarning;
+
+  factory AiChatReply.fromJson(Map<String, dynamic> json) => AiChatReply(
+    conversationId: json['conversationId']?.toString(),
+    reply: (json['reply'] ?? '') as String,
+    suggestedActions: ((json['suggestedActions'] as List?) ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map(AiSuggestedAction.fromJson)
+        .toList(),
+    needMoreInfo: (json['needMoreInfo'] ?? false) as bool,
+    missingInfoQuestions: ((json['missingInfoQuestions'] as List?) ?? const [])
+        .map((e) => e.toString())
+        .toList(),
+    safetyWarning: json['safetyWarning'] as String?,
+  );
+}
+
+class AiChatConversationSummary {
+  const AiChatConversationSummary({
+    required this.conversationId,
+    required this.title,
+    this.lastMessagePreview,
+    required this.createdAt,
+    required this.updatedAt,
+    required this.lastMessageAt,
+  });
+
+  final String conversationId;
+  final String title;
+  final String? lastMessagePreview;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final DateTime lastMessageAt;
+
+  factory AiChatConversationSummary.fromJson(Map<String, dynamic> json) =>
+      AiChatConversationSummary(
+        conversationId: json['conversationId'].toString(),
+        title: (json['title'] ?? 'New chat') as String,
+        lastMessagePreview: json['lastMessagePreview'] as String?,
+        createdAt:
+            DateTime.tryParse(json['createdAt']?.toString() ?? '') ??
+            DateTime.now(),
+        updatedAt:
+            DateTime.tryParse(json['updatedAt']?.toString() ?? '') ??
+            DateTime.now(),
+        lastMessageAt:
+            DateTime.tryParse(json['lastMessageAt']?.toString() ?? '') ??
+            DateTime.now(),
+      );
+}
+
+class AiChatMessageItem {
+  const AiChatMessageItem({
+    required this.id,
+    required this.role,
+    required this.content,
+    required this.createdAt,
+  });
+
+  final String id;
+  final String role;
+  final String content;
+  final DateTime createdAt;
+
+  bool get isUser => role.toLowerCase() == 'user';
+
+  factory AiChatMessageItem.fromJson(Map<String, dynamic> json) =>
+      AiChatMessageItem(
+        id: json['id'].toString(),
+        role: (json['role'] ?? 'assistant') as String,
+        content: (json['content'] ?? '') as String,
+        createdAt:
+            DateTime.tryParse(json['createdAt']?.toString() ?? '') ??
+            DateTime.now(),
+      );
+}
+
+class AiChatConversationDetail {
+  const AiChatConversationDetail({
+    required this.conversationId,
+    required this.title,
+    required this.createdAt,
+    required this.updatedAt,
+    required this.lastMessageAt,
+    this.messages = const [],
+  });
+
+  final String conversationId;
+  final String title;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final DateTime lastMessageAt;
+  final List<AiChatMessageItem> messages;
+
+  factory AiChatConversationDetail.fromJson(Map<String, dynamic> json) =>
+      AiChatConversationDetail(
+        conversationId: json['conversationId'].toString(),
+        title: (json['title'] ?? 'New chat') as String,
+        createdAt:
+            DateTime.tryParse(json['createdAt']?.toString() ?? '') ??
+            DateTime.now(),
+        updatedAt:
+            DateTime.tryParse(json['updatedAt']?.toString() ?? '') ??
+            DateTime.now(),
+        lastMessageAt:
+            DateTime.tryParse(json['lastMessageAt']?.toString() ?? '') ??
+            DateTime.now(),
+        messages: ((json['messages'] as List?) ?? const [])
+            .whereType<Map<String, dynamic>>()
+            .map(AiChatMessageItem.fromJson)
+            .toList(),
+      );
+}
+
+class AiRoutineStepPlan {
+  const AiRoutineStepPlan({
+    required this.stepOrder,
+    required this.stepName,
+    required this.productId,
+    required this.productName,
+    required this.frequency,
+    required this.instruction,
+    required this.aiReason,
+    this.warning,
+  });
+
+  final int stepOrder;
+  final String stepName;
+  final String productId;
+  final String productName;
+  final String frequency;
+  final String instruction;
+  final String aiReason;
+  final String? warning;
+
+  factory AiRoutineStepPlan.fromJson(Map<String, dynamic> json) =>
+      AiRoutineStepPlan(
+        stepOrder: (json['stepOrder'] ?? 0) as int,
+        stepName: (json['stepName'] ?? '') as String,
+        productId: json['productId'].toString(),
+        productName: (json['productName'] ?? '') as String,
+        frequency: (json['frequency'] ?? 'daily') as String,
+        instruction: (json['instruction'] ?? '') as String,
+        aiReason: (json['aiReason'] ?? '') as String,
+        warning: json['warning'] as String?,
+      );
+}
+
+class AiRoutinePlan {
+  const AiRoutinePlan({
+    required this.routineId,
+    required this.routineName,
+    this.morning = const [],
+    this.night = const [],
+    this.warnings = const [],
+    this.missingCategories = const [],
+    this.overallAdvice,
+  });
+
+  final String routineId;
+  final String routineName;
+  final List<AiRoutineStepPlan> morning;
+  final List<AiRoutineStepPlan> night;
+  final List<String> warnings;
+  final List<String> missingCategories;
+  final String? overallAdvice;
+
+  factory AiRoutinePlan.fromJson(Map<String, dynamic> json) => AiRoutinePlan(
+    routineId: json['routineId'].toString(),
+    routineName: (json['routineName'] ?? '') as String,
+    morning: ((json['morning'] as List?) ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map(AiRoutineStepPlan.fromJson)
+        .toList(),
+    night: ((json['night'] as List?) ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map(AiRoutineStepPlan.fromJson)
+        .toList(),
+    warnings: ((json['warnings'] as List?) ?? const [])
+        .map((e) => e.toString())
+        .toList(),
+    missingCategories: ((json['missingCategories'] as List?) ?? const [])
+        .map((e) => e.toString())
+        .toList(),
+    overallAdvice: json['overallAdvice'] as String?,
+  );
+}
+
+class AiRecommendedProduct {
+  const AiRecommendedProduct({
+    required this.productId,
+    required this.name,
+    required this.brand,
+    required this.category,
+    required this.price,
+    required this.currency,
+    required this.matchScore,
+    required this.aiReason,
+    this.matchPercent,
+    this.whyRecommended,
+    this.warnings = const [],
+    this.cautions = const [],
+    this.alreadyInRoutine = false,
+    this.imageUrl,
+    this.description,
+    this.ingredientsText,
+    this.usageGuide,
+  });
+
+  final String productId;
+  final String name;
+  final String brand;
+  final String category;
+  final double price;
+  final String currency;
+  final int matchScore;
+  final String aiReason;
+  final int? matchPercent;
+  final String? whyRecommended;
+  final List<String> warnings;
+  final List<String> cautions;
+  final bool alreadyInRoutine;
+  final String? imageUrl;
+  final String? description;
+  final String? ingredientsText;
+  final String? usageGuide;
+
+  factory AiRecommendedProduct.fromJson(Map<String, dynamic> json) =>
+      AiRecommendedProduct(
+        productId: json['productId'].toString(),
+        name: (json['name'] ?? '') as String,
+        brand: (json['brand'] ?? '') as String,
+        category: (json['category'] ?? '') as String,
+        price: (json['price'] as num?)?.toDouble() ?? 0,
+        currency: (json['currency'] ?? 'VND') as String,
+        matchScore: ((json['matchPercent'] ?? json['matchScore']) ?? 0) as int,
+        aiReason: (json['aiReason'] ?? '') as String,
+        matchPercent: (json['matchPercent'] as num?)?.toInt(),
+        whyRecommended: json['whyRecommended'] as String?,
+        warnings: ((json['warnings'] as List?) ?? const [])
+            .map((e) => e.toString())
+            .toList(),
+        cautions: ((json['cautions'] as List?) ?? const [])
+            .map((e) => e.toString())
+            .toList(),
+        alreadyInRoutine: (json['alreadyInRoutine'] ?? false) as bool,
+        imageUrl: json['imageUrl'] as String?,
+        description: json['description'] as String?,
+        ingredientsText: json['ingredientsText'] as String?,
+        usageGuide: json['usageGuide'] as String?,
+      );
+}
+
+class AiProductRecommendationProfileSummary {
+  const AiProductRecommendationProfileSummary({
+    this.skinType = 'Not provided yet',
+    this.concerns = const [],
+    this.budget = 'Not provided yet',
+  });
+
+  final String skinType;
+  final List<String> concerns;
+  final String budget;
+
+  factory AiProductRecommendationProfileSummary.fromJson(
+    Map<String, dynamic> json,
+  ) => AiProductRecommendationProfileSummary(
+    skinType: (json['skinType'] ?? 'Not provided yet') as String,
+    concerns: ((json['concerns'] as List?) ?? const [])
+        .map((e) => e.toString())
+        .toList(),
+    budget: (json['budget'] ?? 'Not provided yet') as String,
+  );
+}
+
+class AiProductRecommendationCategory {
+  const AiProductRecommendationCategory({
+    required this.key,
+    required this.label,
+    this.reason = '',
+    this.items = const [],
+  });
+
+  final String key;
+  final String label;
+  final String reason;
+  final List<AiRecommendedProduct> items;
+
+  factory AiProductRecommendationCategory.fromJson(Map<String, dynamic> json) =>
+      AiProductRecommendationCategory(
+        key: (json['key'] ?? '') as String,
+        label: (json['label'] ?? '') as String,
+        reason: (json['reason'] ?? '') as String,
+        items: ((json['items'] as List?) ?? const [])
+            .whereType<Map<String, dynamic>>()
+            .map(AiRecommendedProduct.fromJson)
+            .toList(),
+      );
+}
+
+class RoutineTrackingStep {
+  const RoutineTrackingStep({
+    required this.stepId,
+    required this.productId,
+    required this.routineTime,
+    required this.stepOrder,
+    required this.productName,
+    required this.status,
+    this.completedAt,
+  });
+
+  final String stepId;
+  final String productId;
+  final String routineTime;
+  final int stepOrder;
+  final String productName;
+  final String status;
+  final DateTime? completedAt;
+
+  bool get isCompleted => status.trim().toLowerCase() == 'completed';
+  bool get isMorning => routineTime.trim().toLowerCase() == 'morning';
+  bool get isEvening => routineTime.trim().toLowerCase() == 'evening';
+
+  factory RoutineTrackingStep.fromJson(Map<String, dynamic> json) =>
+      RoutineTrackingStep(
+        stepId: json['stepId'].toString(),
+        productId: json['productId'].toString(),
+        routineTime: (json['routineTime'] ?? '') as String,
+        stepOrder: (json['stepOrder'] ?? 0) as int,
+        productName: (json['productName'] ?? '') as String,
+        status: (json['status'] ?? 'pending') as String,
+        completedAt: DateTime.tryParse(json['completedAt']?.toString() ?? ''),
+      );
+}
+
+class AiRoutineConflictWarning {
+  const AiRoutineConflictWarning({
+    required this.productAId,
+    required this.productAName,
+    required this.productBId,
+    required this.productBName,
+    required this.ingredientA,
+    required this.ingredientB,
+    required this.severity,
+    required this.message,
+    required this.recommendation,
+  });
+
+  final String productAId;
+  final String productAName;
+  final String productBId;
+  final String productBName;
+  final String ingredientA;
+  final String ingredientB;
+  final String severity;
+  final String message;
+  final String recommendation;
+
+  factory AiRoutineConflictWarning.fromJson(Map<String, dynamic> json) =>
+      AiRoutineConflictWarning(
+        productAId: json['productAId'].toString(),
+        productAName: (json['productAName'] ?? '') as String,
+        productBId: json['productBId'].toString(),
+        productBName: (json['productBName'] ?? '') as String,
+        ingredientA: (json['ingredientA'] ?? '') as String,
+        ingredientB: (json['ingredientB'] ?? '') as String,
+        severity: (json['severity'] ?? '') as String,
+        message: (json['message'] ?? '') as String,
+        recommendation: (json['recommendation'] ?? '') as String,
+      );
+}
+
+class AiAddProductToRoutineResponse {
+  const AiAddProductToRoutineResponse({
+    required this.added,
+    required this.requiresConfirmation,
+    required this.message,
+    this.routine,
+    this.warnings = const [],
+  });
+
+  final bool added;
+  final bool requiresConfirmation;
+  final String message;
+  final CurrentRegimen? routine;
+  final List<AiRoutineConflictWarning> warnings;
+
+  factory AiAddProductToRoutineResponse.fromJson(Map<String, dynamic> json) =>
+      AiAddProductToRoutineResponse(
+        added: (json['added'] ?? false) as bool,
+        requiresConfirmation: (json['requiresConfirmation'] ?? false) as bool,
+        message: (json['message'] ?? '') as String,
+        routine: json['routine'] is Map<String, dynamic>
+            ? CurrentRegimen.fromJson(json['routine'] as Map<String, dynamic>)
+            : null,
+        warnings: ((json['warnings'] as List?) ?? const [])
+            .whereType<Map<String, dynamic>>()
+            .map(AiRoutineConflictWarning.fromJson)
+            .toList(),
+      );
+}
+
+class AiSavedProduct {
+  const AiSavedProduct({
+    required this.productId,
+    required this.name,
+    required this.brand,
+    required this.category,
+    required this.isCustom,
+  });
+
+  final String productId;
+  final String name;
+  final String brand;
+  final String category;
+  final bool isCustom;
+
+  factory AiSavedProduct.fromJson(Map<String, dynamic> json) => AiSavedProduct(
+    productId: json['productId'].toString(),
+    name: (json['name'] ?? '') as String,
+    brand: (json['brand'] ?? 'My Product') as String,
+    category: (json['category'] ?? 'Custom') as String,
+    isCustom: (json['isCustom'] ?? false) as bool,
+  );
+}
+
+enum ProductsEntryPoint { bottomNav, analysisResult, progressCta, routineEmpty }
+
+enum RoutineEntryPoint { bottomNav, productAdded }
+
+enum ProgressEntryPoint { bottomNav, checkupSaved, analysisResult }
+
+class ProductsPageArgs {
+  const ProductsPageArgs({
+    this.initialCategory,
+    this.initialConcern,
+    this.initialBudget,
+    this.referenceId,
+    this.entryPoint = ProductsEntryPoint.bottomNav,
+  });
+
+  final String? initialCategory;
+  final String? initialConcern;
+  final double? initialBudget;
+  final String? referenceId;
+  final ProductsEntryPoint entryPoint;
+
+  bool get showGeneratePrompt => entryPoint == ProductsEntryPoint.analysisResult;
+
+  String get cacheKey => [
+        entryPoint.name,
+        initialCategory ?? '',
+        initialConcern ?? '',
+        initialBudget?.toString() ?? '',
+        referenceId ?? '',
+      ].join('|');
+}
+
+class RoutinePageArgs {
+  const RoutinePageArgs({
+    this.entryPoint = RoutineEntryPoint.bottomNav,
+  });
+
+  final RoutineEntryPoint entryPoint;
+
+  String get cacheKey => entryPoint.name;
+}
+
+class ProgressPageArgs {
+  const ProgressPageArgs({
+    this.entryPoint = ProgressEntryPoint.bottomNav,
+  });
+
+  final ProgressEntryPoint entryPoint;
+
+  String get cacheKey => entryPoint.name;
+}
+
+class ProductDetailPageArgs {
+  const ProductDetailPageArgs({
+    required this.product,
+    this.productsEntryPoint = ProductsEntryPoint.bottomNav,
+  });
+
+  final AiRecommendedProduct product;
+  final ProductsEntryPoint productsEntryPoint;
+}
+
+class ProductDetailActionResult {
+  const ProductDetailActionResult({
+    required this.addedToRoutine,
+  });
+
+  final bool addedToRoutine;
+}
+
+class AiProductRecommendResponse {
+  const AiProductRecommendResponse({
+    this.hasRecommendation = false,
+    this.sessionId,
+    this.sourceAnalysisId,
+    this.expiresAt,
+    this.status,
+    this.summary,
+    this.products = const [],
+    this.categories = const [],
+    this.profileSummary = const AiProductRecommendationProfileSummary(),
+    this.message,
+    this.note,
+    this.generatedAt,
+  });
+
+  final bool hasRecommendation;
+  final String? sessionId;
+  final String? sourceAnalysisId;
+  final DateTime? expiresAt;
+  final String? status;
+  final String? summary;
+  final List<AiRecommendedProduct> products;
+  final List<AiProductRecommendationCategory> categories;
+  final AiProductRecommendationProfileSummary profileSummary;
+  final String? message;
+  final String? note;
+  final DateTime? generatedAt;
+
+  factory AiProductRecommendResponse.fromJson(Map<String, dynamic> json) {
+    final categories = ((json['categories'] as List?) ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map(AiProductRecommendationCategory.fromJson)
+        .toList();
+    final products = ((json['products'] as List?) ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map(AiRecommendedProduct.fromJson)
+        .toList();
+
+    return AiProductRecommendResponse(
+      hasRecommendation: (json['hasRecommendation'] ?? false) as bool,
+      sessionId: json['sessionId']?.toString(),
+      sourceAnalysisId: json['sourceAnalysisId']?.toString(),
+      expiresAt: DateTime.tryParse(json['expiresAt']?.toString() ?? ''),
+      status: json['status'] as String?,
+      summary: json['summary'] as String?,
+      products: products.isNotEmpty
+          ? products
+          : categories.expand((category) => category.items).toList(),
+      categories: categories,
+      profileSummary: json['profileSummary'] is Map<String, dynamic>
+          ? AiProductRecommendationProfileSummary.fromJson(
+              json['profileSummary'] as Map<String, dynamic>,
+            )
+          : const AiProductRecommendationProfileSummary(),
+      message: json['message'] as String?,
+      note: json['note'] as String?,
+      generatedAt: DateTime.tryParse(json['generatedAt']?.toString() ?? ''),
+    );
+  }
+}
+
+class AiIngredientReason {
+  const AiIngredientReason({required this.ingredient, required this.reason});
+
+  final String ingredient;
+  final String reason;
+
+  factory AiIngredientReason.fromJson(Map<String, dynamic> json) =>
+      AiIngredientReason(
+        ingredient: (json['ingredient'] ?? '') as String,
+        reason: (json['reason'] ?? '') as String,
+      );
+}
+
+class AiIngredientCheckResponse {
+  const AiIngredientCheckResponse({
+    required this.suitability,
+    this.beneficialIngredients = const [],
+    this.cautionIngredients = const [],
+    this.overallExplanation = '',
+    this.usageSuggestion = '',
+    this.warnings = const [],
+  });
+
+  final String suitability;
+  final List<AiIngredientReason> beneficialIngredients;
+  final List<AiIngredientReason> cautionIngredients;
+  final String overallExplanation;
+  final String usageSuggestion;
+  final List<String> warnings;
+
+  factory AiIngredientCheckResponse.fromJson(Map<String, dynamic> json) =>
+      AiIngredientCheckResponse(
+        suitability: (json['suitability'] ?? 'caution') as String,
+        beneficialIngredients:
+            ((json['beneficialIngredients'] as List?) ?? const [])
+                .whereType<Map<String, dynamic>>()
+                .map(AiIngredientReason.fromJson)
+                .toList(),
+        cautionIngredients: ((json['cautionIngredients'] as List?) ?? const [])
+            .whereType<Map<String, dynamic>>()
+            .map(AiIngredientReason.fromJson)
+            .toList(),
+        overallExplanation: (json['overallExplanation'] ?? '') as String,
+        usageSuggestion: (json['usageSuggestion'] ?? '') as String,
+        warnings: ((json['warnings'] as List?) ?? const [])
+            .map((e) => e.toString())
+            .toList(),
+      );
+}
+
+class AiConflictItem {
+  const AiConflictItem({
+    required this.ingredientA,
+    required this.ingredientB,
+    required this.severity,
+    required this.reason,
+    required this.recommendation,
+  });
+
+  final String ingredientA;
+  final String ingredientB;
+  final String severity;
+  final String reason;
+  final String recommendation;
+
+  factory AiConflictItem.fromJson(Map<String, dynamic> json) => AiConflictItem(
+    ingredientA: (json['ingredientA'] ?? '') as String,
+    ingredientB: (json['ingredientB'] ?? '') as String,
+    severity: (json['severity'] ?? 'low') as String,
+    reason: (json['reason'] ?? '') as String,
+    recommendation: (json['recommendation'] ?? '') as String,
+  );
+}
+
+class AiRoutineConflictCheckResponse {
+  const AiRoutineConflictCheckResponse({
+    required this.hasConflict,
+    this.conflicts = const [],
+    this.overallAdvice = '',
+  });
+
+  final bool hasConflict;
+  final List<AiConflictItem> conflicts;
+  final String overallAdvice;
+
+  factory AiRoutineConflictCheckResponse.fromJson(Map<String, dynamic> json) =>
+      AiRoutineConflictCheckResponse(
+        hasConflict: (json['hasConflict'] ?? false) as bool,
+        conflicts: ((json['conflicts'] as List?) ?? const [])
+            .whereType<Map<String, dynamic>>()
+            .map(AiConflictItem.fromJson)
+            .toList(),
+        overallAdvice: (json['overallAdvice'] ?? '') as String,
+      );
+}
+
+class AiReportSummary {
+  const AiReportSummary({
+    required this.reportId,
+    required this.reportType,
+    required this.summary,
+    required this.progressEvaluation,
+    required this.createdAt,
+  });
+
+  final String reportId;
+  final String reportType;
+  final String summary;
+  final String progressEvaluation;
+  final DateTime createdAt;
+
+  factory AiReportSummary.fromJson(Map<String, dynamic> json) =>
+      AiReportSummary(
+        reportId: json['reportId'].toString(),
+        reportType: (json['reportType'] ?? 'after_analysis') as String,
+        summary: (json['summary'] ?? '') as String,
+        progressEvaluation:
+            (json['progressEvaluation'] ?? 'insufficient_data') as String,
+        createdAt:
+            DateTime.tryParse(json['createdAt']?.toString() ?? '') ??
+            DateTime.now(),
+      );
+}
+
+class AiReportGenerateResponse {
+  const AiReportGenerateResponse({
+    required this.reportId,
+    required this.reportType,
+    required this.createdAt,
+    required this.summary,
+    required this.progressEvaluation,
+    this.mainFindings = const [],
+    this.routineFeedback,
+    this.productFeedback,
+    this.nextPlan = const [],
+    this.warnings = const [],
+  });
+
+  final String reportId;
+  final String reportType;
+  final DateTime createdAt;
+  final String summary;
+  final String progressEvaluation;
+  final List<String> mainFindings;
+  final String? routineFeedback;
+  final String? productFeedback;
+  final List<String> nextPlan;
+  final List<String> warnings;
+
+  factory AiReportGenerateResponse.fromJson(Map<String, dynamic> json) =>
+      AiReportGenerateResponse(
+        reportId: json['reportId'].toString(),
+        reportType: (json['reportType'] ?? 'after_analysis') as String,
+        createdAt:
+            DateTime.tryParse(json['createdAt']?.toString() ?? '') ??
+            DateTime.now(),
+        summary: (json['summary'] ?? '') as String,
+        progressEvaluation:
+            (json['progressEvaluation'] ?? 'insufficient_data') as String,
+        mainFindings: ((json['mainFindings'] as List?) ?? const [])
+            .map((e) => e.toString())
+            .toList(),
+        routineFeedback: json['routineFeedback'] as String?,
+        productFeedback: json['productFeedback'] as String?,
+        nextPlan: ((json['nextPlan'] as List?) ?? const [])
+            .map((e) => e.toString())
+            .toList(),
+        warnings: ((json['warnings'] as List?) ?? const [])
+            .map((e) => e.toString())
+            .toList(),
+      );
 }

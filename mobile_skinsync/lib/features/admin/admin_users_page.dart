@@ -15,14 +15,32 @@ class AdminUsersPage extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Admin Users', style: Theme.of(context).textTheme.headlineMedium),
+          Text(
+            'Admin Users',
+            style: Theme.of(context).textTheme.headlineMedium,
+          ),
           const SizedBox(height: 16),
-          const AppTextField(label: 'Search users', hint: 'Email, name, or status'),
+          const AppTextField(
+            label: 'Search users',
+            hint: 'Email, name, or status',
+          ),
           const SizedBox(height: 16),
           ...const [
-            _UserRow(name: 'Linh Nguyen', email: 'linh@skinsync.app', status: 'Active'),
-            _UserRow(name: 'Mai Tran', email: 'mai@skinsync.app', status: 'Pending'),
-            _UserRow(name: 'Anh Le', email: 'anh@skinsync.app', status: 'Suspended'),
+            _UserRow(
+              name: 'Linh Nguyen',
+              email: 'linh@skinsync.app',
+              status: 'Active',
+            ),
+            _UserRow(
+              name: 'Mai Tran',
+              email: 'mai@skinsync.app',
+              status: 'Pending',
+            ),
+            _UserRow(
+              name: 'Anh Le',
+              email: 'anh@skinsync.app',
+              status: 'Suspended',
+            ),
           ],
         ],
       ),

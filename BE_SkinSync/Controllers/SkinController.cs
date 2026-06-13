@@ -8,7 +8,7 @@ namespace SkinSync.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[AllowAnonymous]
+[Authorize]
 public class SkinController : ControllerBase
 {
     private readonly ISkinService _skinService;

@@ -8,10 +8,13 @@ public static class DbSeeder
     public static readonly Guid DemoUserId = Guid.Parse("11111111-1111-1111-1111-111111111111");
     public static readonly Guid AdminUserId = Guid.Parse("22222222-2222-2222-2222-222222222222");
 
-    public static async Task SeedAsync(AppDbContext dbContext, CancellationToken cancellationToken = default)
+    public static Task EnsureDatabaseAsync(AppDbContext dbContext, CancellationToken cancellationToken = default)
     {
-        await dbContext.Database.MigrateAsync(cancellationToken);
+        return dbContext.Database.MigrateAsync(cancellationToken);
+    }
 
+    public static async Task SeedDemoDataAsync(AppDbContext dbContext, CancellationToken cancellationToken = default)
+    {
         var demoUser = await dbContext.Users.FirstOrDefaultAsync(u => u.Id == DemoUserId, cancellationToken);
         if (demoUser is null)
         {

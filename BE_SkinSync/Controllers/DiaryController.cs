@@ -1,6 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 using SkinSync.Base;
+using SkinSync.Data;
 using SkinSync.Helpers;
 using SkinSync.Mappers;
 using SkinSync.Models.Dtos.Diary;
@@ -16,11 +19,13 @@ public class DiaryController : ControllerBase
 {
     private readonly IDiaryRepository _diaryRepository;
     private readonly IWebHostEnvironment _environment;
+    private readonly AppDbContext _dbContext;
 
-    public DiaryController(IDiaryRepository diaryRepository, IWebHostEnvironment environment)
+    public DiaryController(IDiaryRepository diaryRepository, IWebHostEnvironment environment, AppDbContext dbContext)
     {
         _diaryRepository = diaryRepository;
         _environment = environment;
+        _dbContext = dbContext;
     }
 
     [HttpGet("today")]
@@ -71,6 +76,9 @@ public class DiaryController : ControllerBase
 
         var date = request.Date ?? DateOnly.FromDateTime(DateTime.UtcNow.Date);
         var existing = await _diaryRepository.GetByUserAndDateAsync(id, date, cancellationToken);
+        var completedStepIds = ParseCompletedStepIds(request.CompletedStepIdsJson);
+        await SyncRoutineTrackingsAsync(id, date, completedStepIds, cancellationToken);
+        var (morningCompleted, eveningCompleted) = await ResolveRoutineCompletionAsync(id, date, cancellationToken);
 
         string? imageUrl = existing?.DailyImageUrl;
         if (request.Image is not null && request.Image.Length > 0)
@@ -89,26 +97,21 @@ public class DiaryController : ControllerBase
 
         if (existing is null)
         {
-            var payload = new DailyLogPayload
-            {
-                Note = request.Notes,
-                AcneLevel = request.AcneLevel,
-                DrynessLevel = request.DrynessLevel,
-                RednessLevel = request.RednessLevel,
-                IrritationLevel = request.IrritationLevel,
-                HydrationLevel = request.HydrationLevel
-            };
-
             var newLog = new DailyLog
             {
                 Id = Guid.NewGuid(),
                 UserId = id,
                 Date = date,
-                MorningCompleted = request.MorningCompleted,
-                EveningCompleted = request.EveningCompleted,
+                MorningCompleted = morningCompleted,
+                EveningCompleted = eveningCompleted,
                 SkinFeeling = request.SkinFeeling,
                 IsIrritated = request.IsIrritated,
-                Notes = DailyLogPayloadHelper.Serialize(payload),
+                Notes = string.IsNullOrWhiteSpace(request.Notes) ? null : request.Notes.Trim(),
+                AcneLevel = request.AcneLevel,
+                DrynessLevel = request.DrynessLevel,
+                RednessLevel = request.RednessLevel,
+                IrritationLevel = request.IrritationLevel,
+                HydrationLevel = request.HydrationLevel,
                 DailyImageUrl = imageUrl
             };
 
@@ -116,21 +119,16 @@ public class DiaryController : ControllerBase
             return ResponseEntity<DiaryCheckInResponseDto>.Ok(newLog.ToCheckInDto(), "Cáº­p nháº­t check-in thÃ nh cÃ´ng.");
         }
 
-        var updatedPayload = new DailyLogPayload
-        {
-            Note = request.Notes,
-            AcneLevel = request.AcneLevel,
-            DrynessLevel = request.DrynessLevel,
-            RednessLevel = request.RednessLevel,
-            IrritationLevel = request.IrritationLevel,
-            HydrationLevel = request.HydrationLevel
-        };
-
-        existing.MorningCompleted = request.MorningCompleted;
-        existing.EveningCompleted = request.EveningCompleted;
+        existing.MorningCompleted = morningCompleted;
+        existing.EveningCompleted = eveningCompleted;
         existing.SkinFeeling = request.SkinFeeling;
         existing.IsIrritated = request.IsIrritated;
-        existing.Notes = DailyLogPayloadHelper.Serialize(updatedPayload);
+        existing.Notes = string.IsNullOrWhiteSpace(request.Notes) ? null : request.Notes.Trim();
+        existing.AcneLevel = request.AcneLevel;
+        existing.DrynessLevel = request.DrynessLevel;
+        existing.RednessLevel = request.RednessLevel;
+        existing.IrritationLevel = request.IrritationLevel;
+        existing.HydrationLevel = request.HydrationLevel;
         existing.DailyImageUrl = imageUrl;
 
         await _diaryRepository.UpdateAsync(existing, cancellationToken);
@@ -173,5 +171,124 @@ public class DiaryController : ControllerBase
         };
 
         return ResponseEntity<PagingResult<MonthlyDiaryDayDto>>.Ok(response, "Fetched monthly diary successfully.");
+    }
+
+    private async Task<(bool MorningCompleted, bool EveningCompleted)> ResolveRoutineCompletionAsync(
+        Guid userId,
+        DateOnly date,
+        CancellationToken cancellationToken)
+    {
+        var regimen = await _dbContext.UserRegimens
+            .AsNoTracking()
+            .Include(x => x.Items)
+            .FirstOrDefaultAsync(x => x.UserId == userId && x.IsActive, cancellationToken);
+
+        if (regimen is null)
+        {
+            return (false, false);
+        }
+
+        var trackings = await _dbContext.RoutineTrackings
+            .AsNoTracking()
+            .Where(x => x.UserId == userId && x.TrackingDate == date)
+            .ToListAsync(cancellationToken);
+
+        var trackingByStep = trackings.ToDictionary(x => x.StepId, x => x.Status, EqualityComparer<Guid>.Default);
+        var morningCompleted = regimen.Items
+            .Where(x => RoutineScheduleHelper.IsMorning(x.RoutineTime))
+            .Select(x => x.Id)
+            .DefaultIfEmpty(Guid.Empty)
+            .All(stepId => stepId != Guid.Empty && trackingByStep.TryGetValue(stepId, out var status) && status == "completed");
+        var eveningCompleted = regimen.Items
+            .Where(x => RoutineScheduleHelper.IsEvening(x.RoutineTime))
+            .Select(x => x.Id)
+            .DefaultIfEmpty(Guid.Empty)
+            .All(stepId => stepId != Guid.Empty && trackingByStep.TryGetValue(stepId, out var status) && status == "completed");
+
+        return (morningCompleted, eveningCompleted);
+    }
+
+    private static HashSet<Guid>? ParseCompletedStepIds(string? rawValue)
+    {
+        if (string.IsNullOrWhiteSpace(rawValue))
+        {
+            return null;
+        }
+
+        try
+        {
+            var items = JsonSerializer.Deserialize<List<string>>(rawValue);
+            if (items is null || items.Count == 0)
+            {
+                return new HashSet<Guid>();
+            }
+
+            return items
+                .Select(x => Guid.TryParse(x, out var parsed) ? parsed : Guid.Empty)
+                .Where(x => x != Guid.Empty)
+                .ToHashSet();
+        }
+        catch (JsonException)
+        {
+            return new HashSet<Guid>();
+        }
+    }
+
+    private async Task SyncRoutineTrackingsAsync(
+        Guid userId,
+        DateOnly date,
+        HashSet<Guid>? completedStepIds,
+        CancellationToken cancellationToken)
+    {
+        if (completedStepIds is null)
+        {
+            return;
+        }
+
+        var regimen = await _dbContext.UserRegimens
+            .Include(x => x.Items)
+            .FirstOrDefaultAsync(x => x.UserId == userId && x.IsActive, cancellationToken);
+
+        if (regimen is null)
+        {
+            return;
+        }
+
+        var activeStepIds = regimen.Items.Select(x => x.Id).ToHashSet();
+        completedStepIds.RemoveWhere(x => !activeStepIds.Contains(x));
+
+        var existingTrackings = await _dbContext.RoutineTrackings
+            .Where(x => x.UserId == userId && x.TrackingDate == date && activeStepIds.Contains(x.StepId))
+            .ToListAsync(cancellationToken);
+
+        foreach (var tracking in existingTrackings.Where(x => !completedStepIds.Contains(x.StepId)))
+        {
+            _dbContext.RoutineTrackings.Remove(tracking);
+        }
+
+        foreach (var step in regimen.Items.Where(x => completedStepIds.Contains(x.Id)))
+        {
+            var tracking = existingTrackings.FirstOrDefault(x => x.StepId == step.Id);
+            if (tracking is null)
+            {
+                _dbContext.RoutineTrackings.Add(new RoutineTracking
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = userId,
+                    StepId = step.Id,
+                    TrackingDate = date,
+                    RoutineTime = step.RoutineTime,
+                    Status = "completed",
+                    CompletedAt = DateTime.UtcNow
+                });
+                continue;
+            }
+
+            tracking.RoutineTime = step.RoutineTime;
+            tracking.Status = "completed";
+            tracking.CompletedAt = DateTime.UtcNow;
+        }
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
     }
 }

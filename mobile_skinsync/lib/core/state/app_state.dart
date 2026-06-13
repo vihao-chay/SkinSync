@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -31,17 +32,55 @@ class AppState extends ChangeNotifier {
   ProgressOverview? progress;
   DailyLog? todayLog;
   List<ReminderItem> reminders = const [];
+  List<SubscriptionPlan> subscriptionPlans = const [];
+  CurrentSubscription? subscription;
   bool isBusy = false;
+  bool isBootstrapping = true;
   bool hasPendingOnboarding = false;
+  bool hasResolvedProfileState = false;
   String? errorMessage;
+  String? profileLoadErrorMessage;
+  String? analysisLoadErrorMessage;
+  String? regimenLoadErrorMessage;
+  String? trackingLoadErrorMessage;
+  String? progressLoadErrorMessage;
+  String? remindersLoadErrorMessage;
+  String? todayLogLoadErrorMessage;
+  String? subscriptionPlansLoadErrorMessage;
+  String? subscriptionStatusLoadErrorMessage;
   int _messageVersion = 0;
 
   bool get isAuthenticated => session != null;
   bool get shouldShowOnboarding =>
       isAuthenticated &&
-      hasPendingOnboarding &&
-      profile?.isOnboardingCompleted != true;
+      (hasPendingOnboarding ||
+          (hasResolvedProfileState &&
+              profileLoadErrorMessage == null &&
+              !_hasCompletedOnboarding(profile)));
   AppUser? get user => session?.user;
+  ApiClient get apiClient => _apiClient;
+  String? get homeDataErrorMessage => _firstErrorMessage([
+    profileLoadErrorMessage,
+    analysisLoadErrorMessage,
+    regimenLoadErrorMessage,
+    trackingLoadErrorMessage,
+    progressLoadErrorMessage,
+    todayLogLoadErrorMessage,
+  ]);
+  String? get routineDataErrorMessage => _firstErrorMessage([
+    regimenLoadErrorMessage,
+    trackingLoadErrorMessage,
+    remindersLoadErrorMessage,
+  ]);
+  String? get todayCheckupDataErrorMessage => _firstErrorMessage([
+    regimenLoadErrorMessage,
+    trackingLoadErrorMessage,
+    todayLogLoadErrorMessage,
+  ]);
+  String? get membershipLoadErrorMessage => _firstErrorMessage([
+    subscriptionPlansLoadErrorMessage,
+    subscriptionStatusLoadErrorMessage,
+  ]);
   String get onboardingDisplayNameSeed {
     final fullName = user?.fullName.trim() ?? '';
     if (fullName.isNotEmpty && !_looksLikeEmail(fullName)) {
@@ -69,19 +108,29 @@ class AppState extends ChangeNotifier {
   int get messageVersion => _messageVersion;
 
   Future<void> bootstrap() async {
-    session = await _sessionStore.read();
-    _apiClient.attachSession(session);
-    if (session != null) {
-      hasPendingOnboarding = await _sessionStore.isOnboardingPendingFor(
-        session!.user.id,
-      );
-      await _loadProfile();
-      if (profile?.isOnboardingCompleted == true) {
-        await _clearOnboardingPendingForCurrentUser();
-        await refreshHome();
-      }
-    }
+    isBootstrapping = true;
     notifyListeners();
+
+    try {
+      await _sessionStore.clear();
+      session = null;
+      profile = null;
+      latestAnalysis = null;
+      regimen = null;
+      trackingToday = null;
+      progress = null;
+      todayLog = null;
+      reminders = const [];
+      subscriptionPlans = const [];
+      subscription = null;
+      hasPendingOnboarding = false;
+      hasResolvedProfileState = false;
+      _resetLoadErrors();
+      _apiClient.attachSession(null);
+    } finally {
+      isBootstrapping = false;
+      notifyListeners();
+    }
   }
 
   Future<void> login(String email, String password) async {
@@ -185,7 +234,11 @@ class AppState extends ChangeNotifier {
     progress = null;
     todayLog = null;
     reminders = const [];
+    subscriptionPlans = const [];
+    subscription = null;
     hasPendingOnboarding = false;
+    hasResolvedProfileState = false;
+    _resetLoadErrors();
     _apiClient.attachSession(null);
     await _sessionStore.clear();
     notifyListeners();
@@ -205,8 +258,9 @@ class AppState extends ChangeNotifier {
         _loadProgress(),
         _loadReminders(),
         _loadTodayLog(),
+        _loadSubscription(),
       ]);
-      if (profile?.isOnboardingCompleted == true) {
+      if (profileLoadErrorMessage == null && _hasCompletedOnboarding(profile)) {
         await _clearOnboardingPendingForCurrentUser();
       }
     }, showBusy: false);
@@ -247,23 +301,267 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> analyzeSkin(File imageFile) async {
+    await analyzeSkinPhoto(imageFile);
+  }
+
+  Future<AnalysisResult> analyzeSkinPhoto(
+    File imageFile, {
+    String source = 'unknown',
+    String additionalNote = '',
+  }) async {
+    late AnalysisResult parsedResult;
     await _runBusy(() async {
       final response = await _apiClient.multipart(
-        '/api/analysis/scan',
+        '/api/skin-analysis',
         file: imageFile,
-        fields: const {},
+        fields: {'additionalNote': additionalNote, 'source': source},
       );
+      parsedResult = _analysisResultFromAiResponse(response);
+      latestAnalysis = parsedResult;
 
-      latestAnalysis = AnalysisResult.fromJson(
-        response['analysis'] as Map<String, dynamic>,
-      );
-      regimen = CurrentRegimen(
-        regimenId: response['regimenId'].toString(),
-        name: 'AI generated routine',
-      );
-      await _loadRegimen();
-      await _loadTracking();
       await _loadProgress();
+    });
+    return parsedResult;
+  }
+
+  Future<AiChatReply> sendAiChat(String message) async {
+    return sendAiChatInConversation(message);
+  }
+
+  Future<AiChatReply> sendAiChatInConversation(
+    String message, {
+    String? conversationId,
+    String? entryPoint,
+    String? referenceId,
+    String? prefillContext,
+  }) async {
+    final response = await _apiClient.post(
+      '/api/ai/chat',
+      body: {
+        'message': message,
+        if (conversationId != null && conversationId.isNotEmpty)
+          'conversationId': conversationId,
+        if (entryPoint != null && entryPoint.isNotEmpty)
+          'entryPoint': entryPoint,
+        if (referenceId != null && referenceId.isNotEmpty)
+          'referenceId': referenceId,
+        if (prefillContext != null && prefillContext.isNotEmpty)
+          'prefillContext': prefillContext,
+      },
+    );
+    final data = _readAiData(response);
+    return AiChatReply.fromJson(data);
+  }
+
+  Future<List<AiChatConversationSummary>> fetchAiChatConversations() async {
+    final response = await _apiClient.get('/api/ai/chat/conversations');
+    final data = _readAiCollection(response);
+    return data
+        .whereType<Map<String, dynamic>>()
+        .map(AiChatConversationSummary.fromJson)
+        .toList();
+  }
+
+  Future<AiChatConversationSummary> createAiChatConversation({
+    String? title,
+  }) async {
+    final response = await _apiClient.post(
+      '/api/ai/chat/conversations',
+      body: {'title': title ?? ''},
+    );
+    final data = _readAiData(response);
+    return AiChatConversationSummary.fromJson(data);
+  }
+
+  Future<AiChatConversationDetail> fetchAiChatConversationDetail(
+    String conversationId,
+  ) async {
+    final response = await _apiClient.get(
+      '/api/ai/chat/conversations/$conversationId',
+    );
+    final data = _readAiData(response);
+    return AiChatConversationDetail.fromJson(data);
+  }
+
+  Future<AiRoutinePlan> generateRoutine({
+    String? routinePreference,
+    double? budgetMax,
+  }) async {
+    final response = await _apiClient.post(
+      '/api/ai/routine/generate',
+      body: {
+        'routinePreference':
+            routinePreference ??
+            _mapRoutinePreference(profile?.currentRoutineLevel),
+        if (budgetMax != null)
+          'budgetRange': {
+            'min': 0,
+            'max': budgetMax.round(),
+            'currency': 'VND',
+          },
+      },
+    );
+    final data = _readAiData(response);
+    await _loadRegimen();
+    await _loadTracking();
+    await _loadProgress();
+    notifyListeners();
+    return AiRoutinePlan.fromJson(data);
+  }
+
+  Future<AiProductRecommendResponse> getLatestRecommendations() async {
+    debugPrint('[SkinSync] latest recommendation read');
+    final response = await _apiClient.get(
+      '/api/ai/products/recommendations/latest',
+    );
+    final data = _readAiData(response);
+    return AiProductRecommendResponse.fromJson(data);
+  }
+
+  Future<AiProductRecommendResponse> generateRecommendations({
+    String? category,
+    String? concern,
+    double? budgetMax,
+    int limitPerCategory = 5,
+  }) async {
+    debugPrint('[SkinSync] manual recommendation generate');
+    final response = await _apiClient.post(
+      '/api/ai/products/recommendations/generate',
+      body: {
+        if (category != null && category.trim().isNotEmpty) 'category': category,
+        if (concern != null && concern.trim().isNotEmpty) 'concern': concern,
+        if (budgetMax != null)
+          'budgetRange': {
+            'min': 0,
+            'max': budgetMax.round(),
+            'currency': 'VND',
+          },
+        'limitPerCategory': limitPerCategory,
+      },
+    );
+    final data = _readAiData(response);
+    return AiProductRecommendResponse.fromJson(data);
+  }
+
+  Future<AiIngredientCheckResponse> checkIngredients({
+    required String productName,
+    required String ingredientsText,
+  }) async {
+    final response = await _apiClient.post(
+      '/api/ai/ingredient-check',
+      body: {'productName': productName, 'ingredientsText': ingredientsText},
+    );
+    final data = _readAiData(response);
+    return AiIngredientCheckResponse.fromJson(data);
+  }
+
+  Future<AiSavedProduct> saveIngredientProduct({
+    required String productName,
+    required String ingredientsText,
+    String category = 'Custom',
+  }) async {
+    final response = await _apiClient.post(
+      '/api/ai/ingredient-check/save-product',
+      body: {
+        'productName': productName,
+        'ingredientsText': ingredientsText,
+        'category': category,
+      },
+    );
+    final data = _readAiData(response);
+    return AiSavedProduct.fromJson(data);
+  }
+
+  Future<AiAddProductToRoutineResponse> addProductToRoutine({
+    required String productId,
+    required String routineType,
+    bool allowConflicts = false,
+  }) async {
+    debugPrint('[SkinSync] routine add');
+    final response = await _apiClient.post(
+      '/api/ai/products/$productId/add-to-routine',
+      body: {'routineType': routineType, 'allowConflicts': allowConflicts},
+    );
+    final data = _readAiData(response);
+    final parsed = AiAddProductToRoutineResponse.fromJson(data);
+    if (parsed.routine != null) {
+      regimen = parsed.routine;
+    } else {
+      await _loadRegimen();
+    }
+    await _loadTracking();
+    await _loadProgress();
+    notifyListeners();
+    return parsed;
+  }
+
+  Future<AiRoutineConflictCheckResponse> checkRoutineConflicts({
+    String? routineId,
+  }) async {
+    final activeRoutineId = routineId ?? regimen?.regimenId;
+    if (activeRoutineId == null || activeRoutineId.isEmpty) {
+      throw ApiException('Generate a routine before checking conflicts.', 400);
+    }
+
+    final response = await _apiClient.post(
+      '/api/ai/routine/conflict-check',
+      body: {'routineId': activeRoutineId},
+    );
+    final data = _readAiData(response);
+    return AiRoutineConflictCheckResponse.fromJson(data);
+  }
+
+  Future<List<AiReportSummary>> fetchAiReports() async {
+    final response = await _apiClient.get('/api/ai/reports');
+    final data = _readAiCollection(response);
+    return data
+        .whereType<Map<String, dynamic>>()
+        .map(AiReportSummary.fromJson)
+        .toList();
+  }
+
+  Future<AiReportGenerateResponse> generateAiReport(String reportType) async {
+    final response = await _apiClient.post(
+      '/api/ai/report/generate',
+      body: {'reportType': reportType},
+    );
+    final data = _readAiData(response);
+    return AiReportGenerateResponse.fromJson(data);
+  }
+
+  Future<AiReportGenerateResponse> fetchAiReport(String reportId) async {
+    final response = await _apiClient.get('/api/ai/reports/$reportId');
+    final data = _readAiData(response);
+    return AiReportGenerateResponse.fromJson(data);
+  }
+
+  Future<void> refreshSubscription() async {
+    await _runBusy(() async {
+      await _loadSubscription();
+    }, showBusy: false);
+  }
+
+  Future<void> subscribeToPlan(String planCode) async {
+    final normalized = planCode.trim().toLowerCase();
+    if (normalized != 'plus' && normalized != 'premium') {
+      throw ApiException('Please choose Plus or Premium.', 400);
+    }
+
+    await _runBusy(() async {
+      final data = await _apiClient.post(
+        '/api/subscriptions/subscribe',
+        body: {'planCode': normalized},
+      );
+      subscription = CurrentSubscription.fromJson(data);
+      await _replaceCurrentUserPlanType(subscription?.plan.code);
+    });
+  }
+
+  Future<void> cancelSubscription() async {
+    await _runBusy(() async {
+      final data = await _apiClient.post('/api/subscriptions/cancel');
+      subscription = CurrentSubscription.fromJson(data);
+      await _replaceCurrentUserPlanType(subscription?.plan.code ?? 'free');
     });
   }
 
@@ -298,45 +596,112 @@ class AppState extends ChangeNotifier {
     }, showBusy: false);
   }
 
+  Future<AiReminderSuggestResponse> optimizeAiReminders({
+    bool applySuggestions = true,
+  }) async {
+    final response = await _apiClient.post(
+      '/api/ai/reminders/suggest',
+      body: {'applySuggestions': applySuggestions},
+    );
+    final data = _readAiData(response);
+    final parsed = AiReminderSuggestResponse.fromJson(data);
+    await _loadReminders();
+    notifyListeners();
+    return parsed;
+  }
+
   Future<void> saveDailyLog({
     required String skinFeeling,
     required String notes,
-    required int acneLevel,
-    required int hydrationLevel,
+    int? acneLevel,
+    int? drynessLevel,
+    int? rednessLevel,
+    int? hydrationLevel,
+    File? imageFile,
+    List<String>? completedStepIds,
   }) async {
+    debugPrint('[SkinSync] check-up save');
     await _runBusy(() async {
+      final normalizedFeeling = skinFeeling.trim().toLowerCase();
+      final fields = <String, String>{
+        'skinFeeling': normalizedFeeling,
+        'notes': notes,
+        'morningCompleted':
+            trackingToday?.morningCompleted.toString() ?? 'false',
+        'eveningCompleted':
+            trackingToday?.eveningCompleted.toString() ?? 'false',
+        'isIrritated':
+            (normalizedFeeling == 'irritated' || normalizedFeeling == 'sensitive')
+                .toString(),
+        if (completedStepIds != null)
+          'completedStepIdsJson': jsonEncode(completedStepIds),
+      };
+      if (acneLevel != null) {
+        fields['acneLevel'] = acneLevel.toString();
+      }
+      if (drynessLevel != null) {
+        fields['drynessLevel'] = drynessLevel.toString();
+      }
+      if (rednessLevel != null) {
+        fields['rednessLevel'] = rednessLevel.toString();
+      }
+      if (hydrationLevel != null) {
+        fields['hydrationLevel'] = hydrationLevel.toString();
+      }
+
       await _apiClient.multipart(
         '/api/diary/check-in',
-        fields: {
-          'skinFeeling': skinFeeling,
-          'notes': notes,
-          'morningCompleted':
-              trackingToday?.morningCompleted.toString() ?? 'false',
-          'eveningCompleted':
-              trackingToday?.eveningCompleted.toString() ?? 'false',
-          'isIrritated': 'false',
-          'acneLevel': acneLevel.toString(),
-          'hydrationLevel': hydrationLevel.toString(),
-        },
+        fields: fields,
+        file: imageFile,
       );
+      await _loadTracking();
       await _loadTodayLog();
       await _loadProgress();
     });
   }
 
   Future<void> _loadProfile() async {
+    profileLoadErrorMessage = null;
+    hasResolvedProfileState = false;
     try {
       profile = SkinProfile.fromJson(
         await _apiClient.get('/api/user-profiles/onboarding'),
       );
-    } catch (_) {
-      try {
-        profile = SkinProfile.fromJson(
-          await _apiClient.get('/api/users/survey'),
+      hasResolvedProfileState = true;
+      return;
+    } on ApiException catch (error) {
+      if (!_isExpectedEmptyError(error)) {
+        profileLoadErrorMessage = _friendlyErrorMessage(
+          error.message,
+          statusCode: error.statusCode,
         );
-      } catch (_) {
-        profile = null;
       }
+    } catch (_) {
+      profileLoadErrorMessage =
+          'Could not load your profile right now. Please try again.';
+    }
+
+    try {
+      profile = SkinProfile.fromJson(
+        await _apiClient.get('/api/users/survey'),
+      );
+      profileLoadErrorMessage = null;
+      hasResolvedProfileState = true;
+    } on ApiException catch (error) {
+      if (_isExpectedEmptyError(error)) {
+        profile = null;
+        profileLoadErrorMessage = null;
+        hasResolvedProfileState = true;
+        return;
+      }
+
+      profileLoadErrorMessage = _friendlyErrorMessage(
+        error.message,
+        statusCode: error.statusCode,
+      );
+    } catch (_) {
+      profileLoadErrorMessage =
+          'Could not load your profile right now. Please try again.';
     }
   }
 
@@ -345,16 +710,28 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> submitOnboarding(Map<String, dynamic> payload) async {
+  Future<void> saveSkinProfile(
+    Map<String, dynamic> payload, {
+    bool refreshRoutine = false,
+  }) async {
     await _runBusy(() async {
       final response = await _apiClient.post(
         '/api/user-profiles/onboarding',
         body: payload,
       );
       profile = SkinProfile.fromJson(response);
+      profileLoadErrorMessage = null;
+      hasResolvedProfileState = true;
       await _clearOnboardingPendingForCurrentUser();
+      if (refreshRoutine) {
+        await _generateRoutineFromLatestProfile();
+      }
       await refreshHome();
     });
+  }
+
+  Future<void> submitOnboarding(Map<String, dynamic> payload) async {
+    await saveSkinProfile(payload);
   }
 
   Future<void> markOnboardingPendingForCurrentUser() async {
@@ -380,46 +757,122 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> _loadLatestAnalysis() async {
+    analysisLoadErrorMessage = null;
+    String? pendingErrorMessage;
+    try {
+      final history = await _apiClient.get('/api/skin-analysis/history');
+      final items = (history['items'] as List?) ?? const [];
+      if (items.isNotEmpty && items.first is Map<String, dynamic>) {
+        latestAnalysis = _analysisResultFromAiResponse(
+          items.first as Map<String, dynamic>,
+        );
+        return;
+      }
+    } on ApiException catch (error) {
+      if (!_isExpectedEmptyError(error)) {
+        pendingErrorMessage = _friendlyErrorMessage(
+          error.message,
+          statusCode: error.statusCode,
+        );
+      }
+    } catch (_) {
+      pendingErrorMessage =
+          'Could not load your latest analysis right now. Please try again.';
+    }
+
     try {
       latestAnalysis = AnalysisResult.fromJson(
         await _apiClient.get('/api/analysis/latest'),
       );
+      analysisLoadErrorMessage = null;
+    } on ApiException catch (error) {
+      if (_isExpectedEmptyError(error)) {
+        latestAnalysis = null;
+        analysisLoadErrorMessage = pendingErrorMessage;
+        return;
+      }
+
+      latestAnalysis = null;
+      analysisLoadErrorMessage = _friendlyErrorMessage(
+        error.message,
+        statusCode: error.statusCode,
+      );
     } catch (_) {
       latestAnalysis = null;
+      analysisLoadErrorMessage =
+          pendingErrorMessage ??
+          'Could not load your latest analysis right now. Please try again.';
     }
   }
 
   Future<void> _loadRegimen() async {
+    regimenLoadErrorMessage = null;
     try {
       regimen = CurrentRegimen.fromJson(
         await _apiClient.get('/api/regimens/current'),
       );
+    } on ApiException catch (error) {
+      if (_isExpectedEmptyError(error)) {
+        regimen = null;
+        return;
+      }
+
+      regimenLoadErrorMessage = _friendlyErrorMessage(
+        error.message,
+        statusCode: error.statusCode,
+      );
     } catch (_) {
-      regimen = null;
+      regimenLoadErrorMessage =
+          'Could not load your routine right now. Please try again.';
     }
   }
 
   Future<void> _loadTracking() async {
+    trackingLoadErrorMessage = null;
     try {
       trackingToday = RoutineTrackingToday.fromJson(
         await _apiClient.get('/api/routine-tracking/today'),
       );
+    } on ApiException catch (error) {
+      if (_isExpectedEmptyError(error)) {
+        trackingToday = null;
+        return;
+      }
+
+      trackingLoadErrorMessage = _friendlyErrorMessage(
+        error.message,
+        statusCode: error.statusCode,
+      );
     } catch (_) {
-      trackingToday = null;
+      trackingLoadErrorMessage =
+          'Could not load today\'s routine tracking right now. Please try again.';
     }
   }
 
   Future<void> _loadProgress() async {
+    progressLoadErrorMessage = null;
     try {
       progress = ProgressOverview.fromJson(
         await _apiClient.get('/api/progress/overview'),
       );
+    } on ApiException catch (error) {
+      if (_isExpectedEmptyError(error)) {
+        progress = null;
+        return;
+      }
+
+      progressLoadErrorMessage = _friendlyErrorMessage(
+        error.message,
+        statusCode: error.statusCode,
+      );
     } catch (_) {
-      progress = null;
+      progressLoadErrorMessage =
+          'Could not load your progress overview right now. Please try again.';
     }
   }
 
   Future<void> _loadReminders() async {
+    remindersLoadErrorMessage = null;
     try {
       final data = await _apiClient.get('/api/reminders');
       final list = (data['items'] as List?) ?? const [];
@@ -427,16 +880,85 @@ class AppState extends ChangeNotifier {
           .whereType<Map<String, dynamic>>()
           .map(ReminderItem.fromJson)
           .toList();
+    } on ApiException catch (error) {
+      reminders = const [];
+      if (_isExpectedEmptyError(error)) {
+        return;
+      }
+
+      remindersLoadErrorMessage = _friendlyErrorMessage(
+        error.message,
+        statusCode: error.statusCode,
+      );
     } catch (_) {
       reminders = const [];
+      remindersLoadErrorMessage =
+          'Could not load your reminders right now. Please try again.';
     }
   }
 
   Future<void> _loadTodayLog() async {
+    todayLogLoadErrorMessage = null;
     try {
       todayLog = DailyLog.fromJson(await _apiClient.get('/api/diary/today'));
+    } on ApiException catch (error) {
+      if (_isExpectedEmptyError(error)) {
+        todayLog = null;
+        return;
+      }
+
+      todayLogLoadErrorMessage = _friendlyErrorMessage(
+        error.message,
+        statusCode: error.statusCode,
+      );
     } catch (_) {
-      todayLog = null;
+      todayLogLoadErrorMessage =
+          'Could not load today\'s diary right now. Please try again.';
+    }
+  }
+
+  Future<void> _loadSubscription() async {
+    subscriptionPlansLoadErrorMessage = null;
+    subscriptionStatusLoadErrorMessage = null;
+    try {
+      final planData = await _apiClient.get('/api/subscription-plans');
+      final items = (planData['items'] as List?) ?? const [];
+      subscriptionPlans = items
+          .whereType<Map<String, dynamic>>()
+          .map(SubscriptionPlan.fromJson)
+          .toList();
+    } on ApiException catch (error) {
+      subscriptionPlans = const [];
+      if (!_isExpectedEmptyError(error)) {
+        subscriptionPlansLoadErrorMessage = _friendlyErrorMessage(
+          error.message,
+          statusCode: error.statusCode,
+        );
+      }
+    } catch (_) {
+      subscriptionPlans = const [];
+      subscriptionPlansLoadErrorMessage =
+          'Could not load membership plans right now. Please try again.';
+    }
+
+    try {
+      subscription = CurrentSubscription.fromJson(
+        await _apiClient.get('/api/subscriptions/me'),
+      );
+      await _replaceCurrentUserPlanType(subscription?.plan.code);
+    } on ApiException catch (error) {
+      if (_isExpectedEmptyError(error)) {
+        subscription = null;
+        return;
+      }
+
+      subscriptionStatusLoadErrorMessage = _friendlyErrorMessage(
+        error.message,
+        statusCode: error.statusCode,
+      );
+    } catch (_) {
+      subscriptionStatusLoadErrorMessage =
+          'Could not load your membership right now. Please try again.';
     }
   }
 
@@ -498,6 +1020,8 @@ class AppState extends ChangeNotifier {
     _apiClient.attachSession(nextSession);
     if (nextSession == null) {
       hasPendingOnboarding = false;
+      hasResolvedProfileState = false;
+      _resetLoadErrors();
       await _sessionStore.clear();
       return;
     }
@@ -539,6 +1063,8 @@ class AppState extends ChangeNotifier {
     hasPendingOnboarding = await _sessionStore.isOnboardingPendingFor(
       session!.user.id,
     );
+    hasResolvedProfileState = false;
+    _resetLoadErrors();
   }
 
   Future<void> _replaceCurrentUserFullName(String? fullName) async {
@@ -552,6 +1078,22 @@ class AppState extends ChangeNotifier {
       accessToken: currentSession.accessToken,
       refreshToken: currentSession.refreshToken,
       user: currentSession.user.copyWith(fullName: trimmed),
+    );
+    _apiClient.attachSession(session);
+    await _sessionStore.save(session!);
+  }
+
+  Future<void> _replaceCurrentUserPlanType(String? planType) async {
+    final trimmed = planType?.trim().toLowerCase() ?? '';
+    final currentSession = session;
+    if (trimmed.isEmpty || currentSession == null) {
+      return;
+    }
+
+    session = AuthSession(
+      accessToken: currentSession.accessToken,
+      refreshToken: currentSession.refreshToken,
+      user: currentSession.user.copyWith(planType: trimmed),
     );
     _apiClient.attachSession(session);
     await _sessionStore.save(session!);
@@ -598,6 +1140,220 @@ class AppState extends ChangeNotifier {
     return null;
   }
 
+  Future<void> _generateRoutineFromLatestProfile() async {
+    try {
+      final routinePreference = _mapRoutinePreference(
+        profile?.currentRoutineLevel,
+      );
+      final monthlyBudget = profile?.monthlyBudget;
+      await _apiClient.post(
+        '/api/ai/routine/generate',
+        body: {
+          'routinePreference': routinePreference,
+          if (monthlyBudget != null)
+            'budgetRange': {
+              'min': 0,
+              'max': monthlyBudget.round(),
+              'currency': 'VND',
+            },
+        },
+      );
+    } catch (_) {
+      // Keep the analysis result even if routine generation is temporarily unavailable.
+    }
+  }
+
+  Map<String, dynamic> _readAiData(Map<String, dynamic> response) {
+    final data = response['data'];
+    if (data is Map<String, dynamic>) {
+      return data;
+    }
+    return response;
+  }
+
+  List<dynamic> _readAiCollection(Map<String, dynamic> response) {
+    final data = response['data'];
+    if (data is List) {
+      return data;
+    }
+
+    final items = response['items'];
+    if (items is List) {
+      return items;
+    }
+
+    return const [];
+  }
+
+  AnalysisResult _analysisResultFromAiResponse(Map<String, dynamic> data) {
+    final concerns = ((data['detectedConcerns'] as List?) ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .toList();
+    final recommendations = ((data['recommendations'] as List?) ?? const [])
+        .map((item) {
+          if (item is Map<String, dynamic>) {
+            return (item['description'] ?? item['content'] ?? '').toString();
+          }
+          return item.toString();
+        })
+        .toList();
+    final warnings =
+        (((data['riskFlags'] as List?) ??
+                (data['warnings'] as List?) ??
+                const []))
+            .map((item) => item.toString())
+            .toList();
+
+    final issues = concerns
+        .map(
+          (item) => AnalysisIssue(
+            issueType: (item['label'] ?? item['concern'] ?? 'unknown')
+                .toString(),
+            severityScore:
+                (item['score'] as int?) ??
+                _severityToScore((item['severity'] ?? 'low').toString()),
+            description: item['description']?.toString(),
+          ),
+        )
+        .toList();
+
+    final confidenceValue = data['confidenceScore'];
+    final confidenceScore =
+        (confidenceValue is num
+                ? (confidenceValue <= 1
+                          ? confidenceValue * 100
+                          : confidenceValue)
+                      .round()
+                : concerns.isEmpty
+                ? 80
+                : (concerns
+                              .map(
+                                (item) =>
+                                    (((item['confidence'] as num?) ?? 0.8) *
+                                            100)
+                                        .round(),
+                              )
+                              .reduce((a, b) => a + b) ~/
+                          concerns.length)
+                      .clamp(0, 100))
+            .toInt();
+    final overallScoreValue =
+        (data['skinScore'] ?? data['overallScore']) as num?;
+    final overallScore =
+        ((overallScoreValue?.round()) ??
+                (issues.isEmpty
+                    ? 88
+                    : (100 -
+                              (issues
+                                      .map((item) => item.severityScore)
+                                      .reduce((a, b) => a + b) ~/
+                                  issues.length))
+                          .clamp(0, 100)))
+            .toInt();
+
+    return AnalysisResult(
+      id:
+          (data['analysisResultId'] ??
+                  data['analysisId'] ??
+                  DateTime.now().millisecondsSinceEpoch)
+              .toString(),
+      analysisSessionId: data['analysisSessionId']?.toString(),
+      progressEntryId: data['progressEntryId']?.toString(),
+      photoId: data['photoId']?.toString(),
+      source: data['source']?.toString(),
+      imageUrl: data['imageUrl']?.toString() ?? '',
+      skinType:
+          data['skinType']?.toString() ??
+          data['skinTypeEstimate']?.toString() ??
+          profile?.skinType ??
+          'Unknown',
+      overallScore: overallScore,
+      confidenceScore: confidenceScore,
+      overview: (data['skinSummary'] ?? data['overview'])?.toString(),
+      disclaimer: data['disclaimer']?.toString(),
+      warnings: warnings,
+      issues: issues,
+      recommendations: recommendations
+          .asMap()
+          .entries
+          .map(
+            (entry) => AnalysisRecommendation(
+              title: 'Recommendation ${entry.key + 1}',
+              content: entry.value,
+            ),
+          )
+          .toList(),
+      canGenerateProducts: (data['canGenerateProducts'] ?? false) as bool,
+    );
+  }
+
+  int _severityToScore(String severity) {
+    switch (severity.trim().toLowerCase()) {
+      case 'high':
+        return 85;
+      case 'medium':
+        return 60;
+      default:
+        return 35;
+    }
+  }
+
+  String _mapRoutinePreference(String? value) {
+    final normalized = value?.trim().toLowerCase() ?? '';
+    if (normalized.contains('simple') || normalized.contains('beginner')) {
+      return 'simple';
+    }
+    if (normalized.contains('advanced')) {
+      return 'advanced';
+    }
+    return 'balanced';
+  }
+
+  bool _hasCompletedOnboarding(SkinProfile? value) {
+    if (value == null) {
+      return false;
+    }
+
+    if (value.isOnboardingCompleted) {
+      return true;
+    }
+
+    return (value.displayName?.trim().isNotEmpty ?? false) ||
+        (value.skinType?.trim().isNotEmpty ?? false) ||
+        value.monthlyBudget != null ||
+        (value.budgetLabel?.trim().isNotEmpty ?? false) ||
+        (value.currentRoutineLevel?.trim().isNotEmpty ?? false) ||
+        value.concerns.any((item) => item.trim().isNotEmpty) ||
+        value.goals.any((item) => item.trim().isNotEmpty) ||
+        value.skinGoals.any((item) => item.trim().isNotEmpty);
+  }
+
+  bool _isExpectedEmptyError(ApiException error) {
+    return error.statusCode == 404;
+  }
+
+  String? _firstErrorMessage(List<String?> candidates) {
+    for (final candidate in candidates) {
+      final trimmed = candidate?.trim() ?? '';
+      if (trimmed.isNotEmpty) {
+        return trimmed;
+      }
+    }
+    return null;
+  }
+
+  void _resetLoadErrors() {
+    profileLoadErrorMessage = null;
+    analysisLoadErrorMessage = null;
+    regimenLoadErrorMessage = null;
+    trackingLoadErrorMessage = null;
+    progressLoadErrorMessage = null;
+    remindersLoadErrorMessage = null;
+    todayLogLoadErrorMessage = null;
+    subscriptionPlansLoadErrorMessage = null;
+    subscriptionStatusLoadErrorMessage = null;
+  }
+
   void _setError(String message, {int? statusCode}) {
     errorMessage = _friendlyErrorMessage(message, statusCode: statusCode);
     _messageVersion++;
@@ -628,6 +1384,21 @@ class AppState extends ChangeNotifier {
 
     if (lower.contains('already') && lower.contains('email')) {
       return 'This email is already registered.';
+    }
+
+    if (lower.contains('monthly quota exceeded') &&
+        lower.contains('skin_analysis')) {
+      return 'You have reached this month\'s skin scan quota for your current plan.';
+    }
+
+    if (lower.contains('not available on your current plan')) {
+      if (lower.contains('skin_progress_compare')) {
+        return 'Progress compare is not included in your current plan yet.';
+      }
+      if (lower.contains('skin_analysis')) {
+        return 'Skin analysis is not included in your current plan yet.';
+      }
+      return 'This feature is not included in your current plan yet.';
     }
 
     return raw.isEmpty ? 'Something went wrong. Please try again.' : raw;

@@ -1,3 +1,4 @@
+using SkinSync.Helpers;
 using SkinSync.Models.Dtos;
 using SkinSync.Models.Entities;
 
@@ -8,7 +9,7 @@ public static class RegimenMapper
     public static CurrentRegimenResponseDto ToCurrentRegimenDto(this UserRegimen regimen)
     {
         var morning = regimen.Items
-            .Where(i => i.RoutineTime.Equals("Morning", StringComparison.OrdinalIgnoreCase))
+            .Where(i => RoutineScheduleHelper.IsMorning(i.RoutineTime))
             .OrderBy(i => i.StepOrder)
             .Select(i => new RegimenProductDto
             {
@@ -31,7 +32,7 @@ public static class RegimenMapper
             .ToList();
 
         var evening = regimen.Items
-            .Where(i => i.RoutineTime.Equals("Evening", StringComparison.OrdinalIgnoreCase))
+            .Where(i => RoutineScheduleHelper.IsEvening(i.RoutineTime))
             .OrderBy(i => i.StepOrder)
             .Select(i => new RegimenProductDto
             {

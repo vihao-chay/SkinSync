@@ -16,7 +16,10 @@ class AdminAiConfigPage extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Admin AI Config', style: Theme.of(context).textTheme.headlineMedium),
+          Text(
+            'Admin AI Config',
+            style: Theme.of(context).textTheme.headlineMedium,
+          ),
           const SizedBox(height: 16),
           const PremiumCard(
             child: Column(
@@ -28,7 +31,11 @@ class AdminAiConfigPage extends StatelessWidget {
                 SizedBox(height: 12),
                 AppTextField(label: 'Max tokens', hint: '1200'),
                 SizedBox(height: 12),
-                AppTextField(label: 'Prompt settings', hint: 'Premium skincare analysis prompt', maxLines: 4),
+                AppTextField(
+                  label: 'Prompt settings',
+                  hint: 'Premium skincare analysis prompt',
+                  maxLines: 4,
+                ),
               ],
             ),
           ),

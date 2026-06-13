@@ -2,152 +2,514 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/models/app_models.dart';
+import '../../core/routes/app_routes.dart';
 import '../../core/state/app_state.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
-import '../../core/widgets/brand_logo.dart';
+import '../../core/widgets/app_button.dart';
+import '../../core/widgets/app_card.dart';
+import '../../core/widgets/app_scaffold.dart';
+import '../../core/widgets/empty_state_card.dart';
+import '../../core/widgets/error_state_card.dart';
+import '../../core/widgets/linear_progress_stat.dart';
+import '../../core/widgets/main_shell.dart';
+import '../../core/widgets/metric_card.dart';
+import '../../core/widgets/routine_checklist_item.dart';
+import '../../core/widgets/section_header.dart';
+import '../../core/widgets/status_chip.dart';
 
 class RoutinePage extends StatefulWidget {
-  const RoutinePage({super.key});
+  const RoutinePage({
+    super.key,
+    RoutinePageArgs? args,
+  }) : args = args ?? const RoutinePageArgs();
+
+  final RoutinePageArgs args;
 
   @override
   State<RoutinePage> createState() => _RoutinePageState();
 }
 
 class _RoutinePageState extends State<RoutinePage> {
-  bool morning = true;
+  bool _showMorning = true;
+  bool _optimizing = false;
+  bool _didSeedDraft = false;
+  bool _didHandleEntryPoint = false;
+  String? _actionErrorMessage;
+  Set<String> _draftCompletedStepIds = <String>{};
+
+  Future<void> _optimizeReminders(AppState appState) async {
+    setState(() => _optimizing = true);
+    try {
+      final result = await appState.optimizeAiReminders();
+      if (!mounted) {
+        return;
+      }
+      setState(() => _actionErrorMessage = null);
+      await showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        builder: (context) => _ReminderSuggestionSheet(result: result),
+      );
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _actionErrorMessage =
+              appState.errorMessage ?? 'Could not optimize reminders right now.';
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _optimizing = false);
+      }
+    }
+  }
+
+  Future<void> _saveReminder(
+    AppState appState,
+    String routineType,
+    String time,
+  ) async {
+    try {
+      await appState.saveReminder(routineType, time, true);
+      if (mounted) {
+        setState(() => _actionErrorMessage = null);
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _actionErrorMessage =
+              appState.errorMessage ?? 'Could not save your reminder right now.';
+        });
+      }
+    }
+  }
+
+  void _seedDraftCompletedIds(RoutineTrackingToday? tracking) {
+    if (_didSeedDraft) {
+      return;
+    }
+    _draftCompletedStepIds = {...?tracking?.completedStepIds};
+    _didSeedDraft = true;
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_didHandleEntryPoint) {
+      return;
+    }
+    _didHandleEntryPoint = true;
+    if (widget.args.entryPoint == RoutineEntryPoint.productAdded) {
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        if (!mounted) {
+          return;
+        }
+        await context.read<AppState>().refreshHome();
+        if (!mounted) {
+          return;
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Routine reloaded from your saved backend regimen.'),
+          ),
+        );
+      });
+    }
+  }
+
+  Future<void> _toggleRoutineStepOptimistic(
+    AppState appState,
+    String stepId,
+  ) async {
+    final wasCompleted = _draftCompletedStepIds.contains(stepId);
+    setState(() {
+      if (wasCompleted) {
+        _draftCompletedStepIds.remove(stepId);
+      } else {
+        _draftCompletedStepIds.add(stepId);
+      }
+      _actionErrorMessage = null;
+    });
+
+    try {
+      await appState.toggleRoutineStep(stepId, wasCompleted);
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        if (wasCompleted) {
+          _draftCompletedStepIds.add(stepId);
+        } else {
+          _draftCompletedStepIds.remove(stepId);
+        }
+        _actionErrorMessage =
+            appState.errorMessage ?? 'Could not update this routine step.';
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final appState = context.watch<AppState>();
     final regimen = appState.regimen;
     final tracking = appState.trackingToday;
+    _seedDraftCompletedIds(tracking);
     final reminders = appState.reminders;
-    final steps = morning
+    final completedIds = _draftCompletedStepIds;
+    final steps = _showMorning
         ? regimen?.morning ?? const <RegimenStep>[]
         : regimen?.evening ?? const <RegimenStep>[];
-    final completedIds = tracking?.completedStepIds.toSet() ?? <String>{};
+    final totalSteps = tracking?.totalSteps ??
+        ((regimen?.morning.length ?? 0) + (regimen?.evening.length ?? 0));
+    final completedSteps = completedIds.length;
+    final progress = totalSteps == 0 ? 0.0 : completedSteps / totalSteps;
 
-    return RefreshIndicator(
-      color: AppColors.primaryDark,
+    return AppScaffold(
+      title: 'My routine',
+      subtitle: 'A calm, premium checklist for your skincare day, with reminders and AI guidance built in.',
       onRefresh: appState.refreshHome,
-      child: ListView(
+      body: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(
           AppSpacing.pagePadding,
-          6,
+          0,
           AppSpacing.pagePadding,
-          106,
+          AppSpacing.pageBottomPaddingWithActions,
         ),
         children: [
-          const _MiniTopBar(),
-          const SizedBox(height: 20),
-          Text(
-            'My Routine',
-            style: Theme.of(
-              context,
-            ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w800),
+          if (appState.routineDataErrorMessage != null ||
+              _actionErrorMessage != null) ...[
+            ErrorStateCard(
+              title: 'Routine data needs attention',
+              description:
+                  _actionErrorMessage ?? appState.routineDataErrorMessage!,
+              ctaLabel: 'Try again',
+              onCta: appState.refreshHome,
+            ),
+            const SizedBox(height: AppSpacing.sectionGap),
+          ],
+          AppCard(
+            variant: AppCardVariant.hero,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const StatusChip(
+                  label: 'Consistency matters',
+                  icon: Icons.spa_outlined,
+                  tone: StatusChipTone.accent,
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Text(
+                  regimen == null
+                      ? 'Choose products first to build a calm routine that actually fits your shelf.'
+                      : '$completedSteps of $totalSteps steps completed today.',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: AppColors.mutedText,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                LinearProgressStat(
+                  label: 'Today progress',
+                  value: '$completedSteps/$totalSteps',
+                  progress: progress,
+                  caption: regimen == null
+                      ? 'No active routine yet.'
+                      : _showMorning
+                          ? 'Morning steps are in focus.'
+                          : 'Evening steps are in focus.',
+                ),
+                const SizedBox(height: AppSpacing.md),
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final actions = regimen == null
+                        ? [
+                            AppButton(
+                              label: 'Open Products',
+                              icon: const Icon(Icons.shopping_bag_outlined),
+                              onPressed: () => MainShell.navigateToTab(
+                                context,
+                                AppRoutes.products,
+                                arguments: const ProductsPageArgs(
+                                  entryPoint: ProductsEntryPoint.routineEmpty,
+                                ),
+                              ),
+                            ),
+                            AppButton(
+                              label: 'Optimize with AI',
+                              variant: AppButtonVariant.secondary,
+                              icon: const Icon(Icons.auto_awesome_outlined),
+                              isLoading: _optimizing,
+                              onPressed: () => _optimizeReminders(appState),
+                            ),
+                          ]
+                        : [
+                            AppButton(
+                              label: 'Open Today Check-up',
+                              icon: const Icon(Icons.check_circle_outline_rounded),
+                              onPressed: () => Navigator.pushNamed(
+                                context,
+                                AppRoutes.todayCheckup,
+                              ),
+                            ),
+                            AppButton(
+                              label: 'Optimize with AI',
+                              variant: AppButtonVariant.secondary,
+                              icon: const Icon(Icons.auto_awesome_outlined),
+                              isLoading: _optimizing,
+                              onPressed: () => _optimizeReminders(appState),
+                            ),
+                          ];
+                    if (constraints.maxWidth < 360) {
+                      return Column(
+                        children: [
+                          actions[0],
+                          const SizedBox(height: AppSpacing.sm),
+                          actions[1],
+                        ],
+                      );
+                    }
+                    return Row(
+                      children: [
+                        Expanded(child: actions[0]),
+                        const SizedBox(width: AppSpacing.sm),
+                        Expanded(child: actions[1]),
+                      ],
+                    );
+                  },
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            '${tracking?.completedSteps ?? 0} of ${tracking?.totalSteps ?? 0} steps completed today',
-            style: Theme.of(
-              context,
-            ).textTheme.labelSmall?.copyWith(color: AppColors.foreground),
+          const SizedBox(height: AppSpacing.sectionGap),
+          SectionHeader(
+            icon: Icons.wb_sunny_outlined,
+            title: 'Routine Flow',
+            subtitle: 'Switch between morning and evening without losing your progress context.',
           ),
-          const SizedBox(height: 18),
-          _SegmentedControl(
-            morning: morning,
-            onChanged: (value) => setState(() => morning = value),
+          const SizedBox(height: AppSpacing.md),
+          _RoutineSegmentedControl(
+            showMorning: _showMorning,
+            onChanged: (value) => setState(() => _showMorning = value),
           ),
-          const SizedBox(height: 16),
-          _RemindersCard(
-            reminders: reminders,
-            onMorning: () => appState.saveReminder('Morning', '07:00', true),
-            onEvening: () => appState.saveReminder('Evening', '21:00', true),
-          ),
-          const SizedBox(height: 16),
-          if (regimen == null || steps.isEmpty)
-            const _EmptyRoutineCard()
-          else
+          const SizedBox(height: AppSpacing.sectionGap),
+          if (regimen == null || (regimen.morning.isEmpty && regimen.evening.isEmpty))
+            EmptyStateCard(
+              icon: Icons.checklist_rtl_outlined,
+              title: 'Choose products first to build your routine',
+              description: 'Routine steps only appear from your active regimen. Open Products and add items you want to use.',
+              ctaLabel: 'Open Products',
+              onCta: () => MainShell.navigateToTab(
+                context,
+                AppRoutes.products,
+                arguments: const ProductsPageArgs(
+                  entryPoint: ProductsEntryPoint.routineEmpty,
+                ),
+              ),
+            )
+          else ...[
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final cards = [
+                  MetricCard(
+                    label: 'Morning steps',
+                    value: '${regimen.morning.length}',
+                    icon: Icons.wb_sunny_outlined,
+                  ),
+                  MetricCard(
+                    label: 'Evening steps',
+                    value: '${regimen.evening.length}',
+                    icon: Icons.nightlight_round,
+                  ),
+                  MetricCard(
+                    label: 'Completed today',
+                    value: '$completedSteps/$totalSteps',
+                    icon: Icons.check_circle_outline_rounded,
+                  ),
+                ];
+                return Wrap(
+                  spacing: AppSpacing.sm,
+                  runSpacing: AppSpacing.sm,
+                  children: cards
+                      .map(
+                        (card) => SizedBox(
+                          width: constraints.maxWidth < 360
+                              ? constraints.maxWidth
+                              : (constraints.maxWidth - AppSpacing.sm) / 2,
+                          child: card,
+                        ),
+                      )
+                      .toList(),
+                );
+              },
+            ),
+            const SizedBox(height: AppSpacing.sectionGap),
+            SectionHeader(
+              icon: _showMorning ? Icons.wb_sunny_outlined : Icons.nightlight_round,
+              title: _showMorning ? 'Morning checklist' : 'Evening checklist',
+              subtitle: _showMorning
+                  ? 'Prep, treat, and protect before the day starts.'
+                  : 'Cleanse, recover, and support overnight repair.',
+            ),
+            const SizedBox(height: AppSpacing.md),
             ...steps.map(
               (step) => Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: _RoutineStepCard(
+                padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                child: RoutineChecklistItem(
                   step: step,
                   completed: completedIds.contains(step.stepId),
-                  onChanged: () => appState.toggleRoutineStep(
+                  onChanged: () => _toggleRoutineStepOptimistic(
+                    appState,
                     step.stepId,
-                    completedIds.contains(step.stepId),
                   ),
                 ),
               ),
             ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MiniTopBar extends StatelessWidget {
-  const _MiniTopBar();
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 28,
-      child: Row(
-        children: [
-          const BrandLogo(size: 24, radius: 8, showShadow: false),
-          const Spacer(),
-          Text(
-            'SkinSync',
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.w800,
-              fontSize: 14,
+          ],
+          const SizedBox(height: AppSpacing.sectionGap),
+          AppCard(
+            variant: AppCardVariant.accent,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SectionHeader(
+                  icon: Icons.auto_awesome_outlined,
+                  title: 'Optimize this routine with AI',
+                  subtitle: 'Review cadence, reminders, and fit before changing anything.',
+                ),
+                const SizedBox(height: AppSpacing.md),
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final cards = [
+                      _ReminderTile(
+                        title: 'Morning reminder',
+                        item: _findReminder(reminders, 'morning'),
+                        fallback: 'Not provided yet',
+                      ),
+                      _ReminderTile(
+                        title: 'Evening reminder',
+                        item: _findReminder(reminders, 'evening'),
+                        fallback: 'Not provided yet',
+                      ),
+                    ];
+                    if (constraints.maxWidth < 360) {
+                      return Column(
+                        children: cards
+                            .map(
+                              (card) => Padding(
+                                padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                                child: card,
+                              ),
+                            )
+                            .toList(),
+                      );
+                    }
+                    return Row(
+                      children: [
+                        Expanded(child: cards[0]),
+                        const SizedBox(width: AppSpacing.sm),
+                        Expanded(child: cards[1]),
+                      ],
+                    );
+                  },
+                ),
+                const SizedBox(height: AppSpacing.md),
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final compact = constraints.maxWidth < 380;
+                    final buttonWidth = compact
+                        ? constraints.maxWidth
+                        : (constraints.maxWidth - AppSpacing.sm * 2) / 3;
+                    return Wrap(
+                      spacing: AppSpacing.sm,
+                      runSpacing: AppSpacing.sm,
+                      children: [
+                        SizedBox(
+                          width: buttonWidth,
+                          child: AppButton(
+                            label: 'Add product',
+                            variant: AppButtonVariant.secondary,
+                            onPressed: () => MainShell.navigateToTab(
+                              context,
+                              AppRoutes.products,
+                              arguments: const ProductsPageArgs(),
+                            ),
+                          ),
+                        ),
+                        SizedBox(
+                          width: buttonWidth,
+                          child: AppButton(
+                            label: 'Set 07:00',
+                            variant: AppButtonVariant.secondary,
+                            onPressed: () => _saveReminder(appState, 'Morning', '07:00'),
+                          ),
+                        ),
+                        SizedBox(
+                          width: buttonWidth,
+                          child: AppButton(
+                            label: 'Set 21:00',
+                            variant: AppButtonVariant.secondary,
+                            onPressed: () => _saveReminder(appState, 'Evening', '21:00'),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                AppButton(
+                  label: 'Optimize reminders',
+                  variant: AppButtonVariant.ai,
+                  icon: const Icon(Icons.auto_awesome_rounded),
+                  isLoading: _optimizing,
+                  onPressed: () => _optimizeReminders(appState),
+                ),
+              ],
             ),
           ),
-          const Spacer(),
-          const Icon(
-            Icons.notifications_none_rounded,
-            size: 17,
-            color: AppColors.foreground,
-          ),
         ],
       ),
     );
   }
+
+  ReminderItem? _findReminder(List<ReminderItem> reminders, String type) {
+    for (final item in reminders) {
+      if (item.routineType.toLowerCase().contains(type)) {
+        return item;
+      }
+    }
+    return null;
+  }
 }
 
-class _SegmentedControl extends StatelessWidget {
-  const _SegmentedControl({required this.morning, required this.onChanged});
+class _RoutineSegmentedControl extends StatelessWidget {
+  const _RoutineSegmentedControl({
+    required this.showMorning,
+    required this.onChanged,
+  });
 
-  final bool morning;
+  final bool showMorning;
   final ValueChanged<bool> onChanged;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 34,
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(
-        color: AppColors.secondary,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.border.withValues(alpha: 0.35)),
-      ),
+    return AppCard(
+      padding: const EdgeInsets.all(6),
       child: Row(
         children: [
           Expanded(
-            child: _Segment(
+            child: _SegmentButton(
               label: 'Morning',
-              selected: morning,
+              selected: showMorning,
               onTap: () => onChanged(true),
             ),
           ),
+          const SizedBox(width: AppSpacing.xs),
           Expanded(
-            child: _Segment(
+            child: _SegmentButton(
               label: 'Evening',
-              selected: !morning,
+              selected: !showMorning,
               onTap: () => onChanged(false),
             ),
           ),
@@ -157,8 +519,8 @@ class _SegmentedControl extends StatelessWidget {
   }
 }
 
-class _Segment extends StatelessWidget {
-  const _Segment({
+class _SegmentButton extends StatelessWidget {
+  const _SegmentButton({
     required this.label,
     required this.selected,
     required this.onTap,
@@ -170,21 +532,24 @@ class _Segment extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(6),
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: selected ? Colors.white : Colors.transparent,
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: Text(
-          label,
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-            color: AppColors.foreground,
-            fontWeight: FontWeight.w800,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 220),
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          decoration: BoxDecoration(
+            color: selected ? AppColors.secondary : Colors.transparent,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            label,
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+              color: selected ? AppColors.primaryDark : AppColors.mutedText,
+            ),
           ),
         ),
       ),
@@ -192,259 +557,50 @@ class _Segment extends StatelessWidget {
   }
 }
 
-class _RemindersCard extends StatelessWidget {
-  const _RemindersCard({
-    required this.reminders,
-    required this.onMorning,
-    required this.onEvening,
+class _ReminderTile extends StatelessWidget {
+  const _ReminderTile({
+    required this.title,
+    required this.item,
+    required this.fallback,
   });
 
-  final List<ReminderItem> reminders;
-  final VoidCallback onMorning;
-  final VoidCallback onEvening;
+  final String title;
+  final ReminderItem? item;
+  final String fallback;
 
   @override
   Widget build(BuildContext context) {
-    final morningReminder =
-        _findReminder('morning') ??
-        const ReminderItem(
-          reminderId: 'm',
-          time: '07:00',
-          routineType: 'Morning',
-          isEnabled: true,
-        );
-    final eveningReminder =
-        _findReminder('evening') ??
-        const ReminderItem(
-          reminderId: 'e',
-          time: '21:00',
-          routineType: 'Evening',
-          isEnabled: true,
-        );
-
-    return _SoftCard(
-      padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+    final statusText = item == null
+        ? fallback
+        : '${item?.time ?? 'Not provided yet'} • ${item?.priority ?? 'normal'}';
+    return AppCard(
+      variant: AppCardVariant.metric,
+      padding: const EdgeInsets.all(14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Reminders',
-            style: Theme.of(
-              context,
-            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 12),
-          _ReminderRow(item: morningReminder),
-          const SizedBox(height: 8),
-          _ReminderRow(item: eveningReminder),
-          const SizedBox(height: 12),
-          _ReminderButton(
-            label: 'Set Morning Reminder 07:00',
-            onPressed: onMorning,
-          ),
-          const SizedBox(height: 8),
-          _ReminderButton(
-            label: 'Set Evening Reminder 21:00',
-            onPressed: onEvening,
-          ),
-        ],
-      ),
-    );
-  }
-
-  ReminderItem? _findReminder(String type) {
-    for (final item in reminders) {
-      if (item.routineType.toLowerCase().contains(type)) {
-        return item;
-      }
-    }
-    return null;
-  }
-}
-
-class _ReminderRow extends StatelessWidget {
-  const _ReminderRow({required this.item});
-
-  final ReminderItem item;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(
-          item.isEnabled
-              ? Icons.notifications_active_outlined
-              : Icons.notifications_off_outlined,
-          size: 16,
-          color: AppColors.primaryDark,
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            '${item.routineType}: ${item.time}',
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: AppColors.foreground,
+            title,
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
               fontWeight: FontWeight.w700,
             ),
           ),
-        ),
-        Text(
-          item.isEnabled ? 'On' : 'Off',
-          style: Theme.of(
-            context,
-          ).textTheme.labelSmall?.copyWith(color: AppColors.foreground),
-        ),
-      ],
-    );
-  }
-}
-
-class _ReminderButton extends StatelessWidget {
-  const _ReminderButton({required this.label, required this.onPressed});
-
-  final String label;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      height: 30,
-      child: FilledButton(
-        style: FilledButton.styleFrom(
-          backgroundColor: const Color(0xFF4B5568),
-          foregroundColor: Colors.white,
-          textStyle: Theme.of(
-            context,
-          ).textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w800),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),
-          padding: EdgeInsets.zero,
-        ),
-        onPressed: onPressed,
-        child: Text(label),
-      ),
-    );
-  }
-}
-
-class _RoutineStepCard extends StatelessWidget {
-  const _RoutineStepCard({
-    required this.step,
-    required this.completed,
-    required this.onChanged,
-  });
-
-  final RegimenStep step;
-  final bool completed;
-  final VoidCallback onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return _SoftCard(
-      padding: const EdgeInsets.fromLTRB(10, 14, 14, 14),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Transform.scale(
-            scale: 0.78,
-            child: Checkbox(
-              value: completed,
-              activeColor: const Color(0xFF4D7BFF),
-              side: BorderSide(color: AppColors.border.withValues(alpha: 0.9)),
-              onChanged: (_) => onChanged(),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            statusText,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+              fontFamily: 'Inter',
             ),
           ),
-          const SizedBox(width: 4),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '${step.stepOrder}. ${_titleCase(step.category)}',
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    height: 1.15,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  '${step.brand} ${step.name}'.trim(),
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: AppColors.foreground,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                if ((step.purpose ?? '').trim().isNotEmpty) ...[
-                  const SizedBox(height: 5),
-                  Text(
-                    step.purpose!,
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: AppColors.foreground,
-                      height: 1.35,
-                    ),
-                  ),
-                ],
-                if ((step.instruction ?? '').trim().isNotEmpty) ...[
-                  const SizedBox(height: 5),
-                  Text(
-                    step.instruction!,
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: AppColors.mutedText,
-                      height: 1.35,
-                    ),
-                  ),
-                ],
-                if ((step.caution ?? '').trim().isNotEmpty) ...[
-                  const SizedBox(height: 6),
-                  Text(
-                    'Caution: ${step.caution!}',
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: AppColors.warning,
-                      height: 1.35,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _titleCase(String value) {
-    if (value.isEmpty) {
-      return value;
-    }
-    return value[0].toUpperCase() + value.substring(1).toLowerCase();
-  }
-}
-
-class _EmptyRoutineCard extends StatelessWidget {
-  const _EmptyRoutineCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return _SoftCard(
-      padding: const EdgeInsets.all(18),
-      child: Column(
-        children: [
-          Icon(
-            Icons.spa_outlined,
-            color: AppColors.primaryDark.withValues(alpha: 0.65),
-            size: 34,
-          ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpacing.xs),
           Text(
-            'No routine yet',
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Complete a skin analysis to generate your morning and evening steps.',
-            textAlign: TextAlign.center,
+            item?.reason?.trim().isNotEmpty == true
+                ? item?.reason ?? fallback
+                : 'SkinSync can adapt this reminder once it learns your routine pattern.',
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.bodySmall,
           ),
         ],
@@ -453,33 +609,70 @@ class _EmptyRoutineCard extends StatelessWidget {
   }
 }
 
-class _SoftCard extends StatelessWidget {
-  const _SoftCard({
-    required this.child,
-    this.padding = const EdgeInsets.all(16),
-  });
+class _ReminderSuggestionSheet extends StatelessWidget {
+  const _ReminderSuggestionSheet({required this.result});
 
-  final Widget child;
-  final EdgeInsetsGeometry padding;
+  final AiReminderSuggestResponse result;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: padding,
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.94),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.border.withValues(alpha: 0.30)),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primaryDark.withValues(alpha: 0.05),
-            blurRadius: 14,
-            offset: const Offset(0, 7),
-          ),
-        ],
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 44,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.border,
+                borderRadius: BorderRadius.circular(999),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            Text(
+              'SkinSync AI reminder plan',
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              result.overallAdvice.isEmpty
+                  ? 'SkinSync did not return a summary yet.'
+                  : result.overallAdvice,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: AppColors.mutedText,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            ...result.suggestions.map(
+              (item) => Padding(
+                padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                child: AppCard(
+                  variant: AppCardVariant.metric,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${item.routineType} • ${item.time}',
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.xs),
+                      Text(item.reason),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
-      child: child,
     );
   }
 }

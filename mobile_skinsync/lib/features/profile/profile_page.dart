@@ -2,9 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/models/app_models.dart';
+import '../../core/routes/app_routes.dart';
 import '../../core/state/app_state.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
+import '../../core/widgets/app_button.dart';
+import '../../core/widgets/app_card.dart';
+import '../../core/widgets/app_scaffold.dart';
+import '../../core/widgets/error_state_card.dart';
+import '../../core/widgets/membership_usage_card.dart';
+import '../../core/widgets/profile_header_card.dart';
+import '../../core/widgets/section_header.dart';
+import '../../core/widgets/status_chip.dart';
+
+const _paymentQrAsset = 'bank.jpg';
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
@@ -15,319 +27,561 @@ class ProfilePage extends StatelessWidget {
     final user = appState.user;
     final profile = appState.profile;
 
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.pagePadding,
-        16,
-        AppSpacing.pagePadding,
-        106,
+    return AppScaffold(
+      title: 'Skin Profile',
+      subtitle: 'Your skin details, preferences, and membership in one polished summary.',
+      onRefresh: appState.refreshProfileState,
+      compactHeader: true,
+      body: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.pagePadding,
+          0,
+          AppSpacing.pagePadding,
+          AppSpacing.pageBottomPaddingWithActions,
+        ),
+        children: [
+          ProfileHeaderCard(
+            name: appState.profileDisplayName,
+            email: _friendlyText(user?.email),
+            skinType: _friendlyText(profile?.skinType),
+            avatarUrl: user?.avatarUrl,
+            onEdit: () => Navigator.pushNamed(context, AppRoutes.editProfile),
+          ),
+          const SizedBox(height: AppSpacing.sectionGap),
+          _SubscriptionSection(
+            plans: appState.subscriptionPlans,
+            current: appState.subscription,
+            fallbackPlanCode: user?.planType ?? 'free',
+            isBusy: appState.isBusy,
+            errorMessage: appState.membershipLoadErrorMessage,
+            onRetry: appState.refreshSubscription,
+          ),
+          const SizedBox(height: AppSpacing.sectionGap),
+          SectionHeader(
+            icon: Icons.badge_outlined,
+            title: 'Skin profile summary',
+            subtitle: 'Compact fields SkinSync uses for routines, products, and analysis.',
+          ),
+          const SizedBox(height: AppSpacing.md),
+          _ProfileInfoGrid(
+            items: [
+              _ProfileInfoItem(label: 'Skin type', value: _friendlyText(profile?.skinType)),
+              _ProfileInfoItem(label: 'Gender', value: _formatGender(profile?.gender)),
+              _ProfileInfoItem(label: 'Date of birth', value: _formatDateOfBirth(profile?.dateOfBirth)),
+              _ProfileInfoItem(label: 'Budget', value: _friendlyText(profile?.budgetLabel)),
+              _ProfileInfoItem(
+                label: 'Sensitivity',
+                value: profile?.sensitivityLevel == null ? 'Not provided yet' : '${profile!.sensitivityLevel}/10',
+                emphasizeValue: profile?.sensitivityLevel != null,
+              ),
+              _ProfileInfoItem(label: 'Routine level', value: _friendlyText(profile?.currentRoutineLevel)),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sectionGap),
+          AppCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SectionHeader(
+                  icon: Icons.tune_rounded,
+                  title: 'Concerns & goals',
+                  subtitle: 'Short chips are easier to scan than long vertical lists.',
+                ),
+                const SizedBox(height: AppSpacing.md),
+                _ChipSection(label: 'Concerns', values: profile?.concerns ?? const []),
+                const SizedBox(height: AppSpacing.md),
+                _ChipSection(
+                  label: 'Goals',
+                  values: profile?.goals.isNotEmpty == true ? profile!.goals : profile?.skinGoals ?? const [],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sectionGap),
+          AppCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SectionHeader(
+                  icon: Icons.favorite_border_rounded,
+                  title: 'Care preferences',
+                  subtitle: 'Signals that help recommendations stay gentle and relevant.',
+                ),
+                const SizedBox(height: AppSpacing.md),
+                _ChipSection(label: 'Allergies', values: profile?.allergies ?? const []),
+                const SizedBox(height: AppSpacing.md),
+                _ChipSection(label: 'Avoid ingredients', values: profile?.avoidIngredients ?? const []),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sectionGap),
+          AppCard(
+            variant: AppCardVariant.accent,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SectionHeader(
+                  icon: Icons.logout_rounded,
+                  title: 'Account actions',
+                  subtitle: 'Sign out safely whenever you need to switch accounts.',
+                ),
+                const SizedBox(height: AppSpacing.md),
+                AppButton(
+                  label: 'Logout',
+                  variant: AppButtonVariant.danger,
+                  icon: const Icon(Icons.logout_rounded),
+                  onPressed: () => context.read<AppState>().logout(),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
+    );
+  }
+}
+
+class _SubscriptionSection extends StatelessWidget {
+  const _SubscriptionSection({
+    required this.plans,
+    required this.current,
+    required this.fallbackPlanCode,
+    required this.isBusy,
+    required this.errorMessage,
+    required this.onRetry,
+  });
+
+  final List<SubscriptionPlan> plans;
+  final CurrentSubscription? current;
+  final String fallbackPlanCode;
+  final bool isBusy;
+  final String? errorMessage;
+  final Future<void> Function() onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final currentCode = (current?.plan.code ?? fallbackPlanCode).toLowerCase();
+    final visiblePlans = plans.where((plan) => plan.code == 'plus' || plan.code == 'premium').toList();
+    final currentPlan = current?.plan ??
+        plans.cast<SubscriptionPlan?>().firstWhere(
+              (plan) => plan?.code == currentCode,
+              orElse: () => null,
+            );
+
+    return Column(
       children: [
-        _ProfileHeaderCard(
-          name: appState.profileDisplayName,
-          email: user?.email ?? '',
-          skinType: profile?.skinType ?? 'No skin type yet',
-          avatarUrl: user?.avatarUrl,
+        if (errorMessage != null) ...[
+          ErrorStateCard(
+            title: 'Membership data could not load',
+            description: errorMessage!,
+            ctaLabel: 'Try again',
+            onCta: onRetry,
+          ),
+          const SizedBox(height: AppSpacing.sectionGap),
+        ],
+        MembershipUsageCard(
+          planName: _planName(currentPlan, currentCode),
+          planCode: currentCode,
+          priceLabel: _planPrice(currentPlan),
+          usage: (current?.usage ?? const []).where(_isPrimaryUsage).toList(),
+          showUpgrade: currentCode == 'free',
+          onUpgrade: () {
+            if (visiblePlans.isNotEmpty) {
+              _subscribe(context, visiblePlans.first);
+            }
+          },
         ),
-        const SizedBox(height: 14),
-        _SummaryCard(
-          skinType: profile?.skinType,
-          dateOfBirth: profile?.dateOfBirth,
-          gender: profile?.gender,
-          concerns: profile?.concerns ?? const [],
-          goals: profile?.goals ?? const [],
-          budget: profile?.budgetLabel,
-        ),
-        const SizedBox(height: 14),
-        _LogoutCard(onTap: () => context.read<AppState>().logout()),
+        if (visiblePlans.isNotEmpty) ...[
+          const SizedBox(height: AppSpacing.md),
+          ...visiblePlans.map(
+            (plan) => Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+              child: _PlanOption(
+                plan: plan,
+                isCurrent: currentCode == plan.code,
+                isBusy: isBusy,
+                onSubscribe: () => _subscribe(context, plan),
+              ),
+            ),
+          ),
+        ],
+        if (currentCode != 'free') ...[
+          const SizedBox(height: AppSpacing.sm),
+          AppButton(
+            label: 'Cancel to Free',
+            variant: AppButtonVariant.secondary,
+            icon: const Icon(Icons.close_rounded),
+            isLoading: isBusy,
+            onPressed: isBusy ? null : () => _cancel(context),
+          ),
+        ],
       ],
     );
   }
-}
 
-class _ProfileHeaderCard extends StatelessWidget {
-  const _ProfileHeaderCard({
-    required this.name,
-    required this.email,
-    required this.skinType,
-    this.avatarUrl,
-  });
+  Future<void> _subscribe(BuildContext context, SubscriptionPlan plan) async {
+    final shouldActivate = await _showPaymentDialog(context, plan);
+    if (!shouldActivate || !context.mounted) {
+      return;
+    }
 
-  final String name;
-  final String email;
-  final String skinType;
-  final String? avatarUrl;
+    try {
+      await context.read<AppState>().subscribeToPlan(plan.code);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${_capitalize(plan.code)} activated.')),
+        );
+      }
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              context.read<AppState>().errorMessage ?? 'Could not update subscription.',
+            ),
+          ),
+        );
+      }
+    }
+  }
 
-  @override
-  Widget build(BuildContext context) {
-    final url = avatarUrl?.trim();
+  Future<void> _cancel(BuildContext context) async {
+    try {
+      await context.read<AppState>().cancelSubscription();
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Plan changed to Free.')),
+        );
+      }
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              context.read<AppState>().errorMessage ?? 'Could not cancel subscription.',
+            ),
+          ),
+        );
+      }
+    }
+  }
 
-    return _SoftCard(
-      padding: const EdgeInsets.fromLTRB(18, 20, 18, 22),
-      child: Column(
-        children: [
-          CircleAvatar(
-            radius: 34,
-            backgroundColor: AppColors.secondary,
-            backgroundImage: url == null || url.isEmpty
-                ? null
-                : NetworkImage(url),
-            child: url == null || url.isEmpty
-                ? const Icon(
-                    Icons.person_rounded,
-                    size: 32,
+  Future<bool> _showPaymentDialog(BuildContext context, SubscriptionPlan plan) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        final textTheme = Theme.of(dialogContext).textTheme;
+        return AlertDialog(
+          title: Text('Pay for ${plan.name}'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _planPrice(plan),
+                  style: textTheme.titleMedium?.copyWith(
                     color: AppColors.primaryDark,
-                  )
-                : null,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            name,
-            textAlign: TextAlign.center,
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 5),
-          Text(
-            email,
-            textAlign: TextAlign.center,
-            style: Theme.of(
-              context,
-            ).textTheme.labelSmall?.copyWith(color: AppColors.mutedText),
-          ),
-          const SizedBox(height: 14),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            decoration: BoxDecoration(
-              color: AppColors.secondary.withValues(alpha: 0.72),
-              borderRadius: BorderRadius.circular(999),
-              border: Border.all(
-                color: AppColors.border.withValues(alpha: 0.25),
-              ),
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                Center(
+                  child: Container(
+                    constraints: const BoxConstraints(maxWidth: 260),
+                    padding: const EdgeInsets.all(AppSpacing.sm),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: AspectRatio(
+                      aspectRatio: 397 / 500,
+                      child: Image.asset(
+                        _paymentQrAsset,
+                        fit: BoxFit.contain,
+                        errorBuilder: (context, error, stackTrace) => Center(
+                          child: Text(
+                            'Payment image unavailable',
+                            textAlign: TextAlign.center,
+                            style: textTheme.bodySmall?.copyWith(color: AppColors.mutedText),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                Text(
+                  'Scan this QR and complete the transfer, then confirm below to activate your plan.',
+                  style: textTheme.bodySmall?.copyWith(
+                    color: AppColors.mutedText,
+                    height: 1.35,
+                  ),
+                ),
+              ],
             ),
-            child: Text(
-              skinType,
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: AppColors.foreground,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
           ),
-        ],
-      ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Later'),
+            ),
+            FilledButton.icon(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              icon: const Icon(Icons.check_circle_rounded),
+              label: const Text('I paid'),
+            ),
+          ],
+        );
+      },
     );
+
+    return confirmed ?? false;
   }
 }
 
-class _SummaryCard extends StatelessWidget {
-  const _SummaryCard({
-    required this.skinType,
-    required this.dateOfBirth,
-    required this.gender,
-    required this.concerns,
-    required this.goals,
-    required this.budget,
+class _PlanOption extends StatelessWidget {
+  const _PlanOption({
+    required this.plan,
+    required this.isCurrent,
+    required this.isBusy,
+    required this.onSubscribe,
   });
 
-  final String? skinType;
-  final String? dateOfBirth;
-  final String? gender;
-  final List<String> concerns;
-  final List<String> goals;
-  final String? budget;
+  final SubscriptionPlan plan;
+  final bool isCurrent;
+  final bool isBusy;
+  final VoidCallback onSubscribe;
 
   @override
   Widget build(BuildContext context) {
-    return _SoftCard(
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    return AppCard(
+      variant: isCurrent ? AppCardVariant.accent : AppCardVariant.metric,
+      padding: const EdgeInsets.all(14),
+      child: Row(
         children: [
-          Text(
-            'Skin Profile Summary',
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  plan.name,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  _planPrice(plan),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppColors.mutedText,
+                  ),
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 14),
-          Divider(color: AppColors.border.withValues(alpha: 0.35), height: 1),
-          const SizedBox(height: 14),
-          _SummaryRow(label: 'SKIN TYPE', value: _empty(skinType)),
-          const SizedBox(height: 14),
-          _SummaryRow(
-            label: 'DATE OF BIRTH',
-            value: _formatDateOfBirth(dateOfBirth),
+          AppButton(
+            label: isCurrent ? 'Active' : 'Choose',
+            expand: false,
+            variant: isCurrent ? AppButtonVariant.secondary : AppButtonVariant.primary,
+            icon: Icon(isCurrent ? Icons.check_rounded : Icons.arrow_upward_rounded),
+            isLoading: isBusy && !isCurrent,
+            onPressed: isCurrent || isBusy ? null : onSubscribe,
           ),
-          const SizedBox(height: 14),
-          _SummaryRow(label: 'GENDER', value: _formatGender(gender)),
-          const SizedBox(height: 14),
-          _SummaryRow(label: 'CONCERNS', value: _listValue(concerns)),
-          const SizedBox(height: 14),
-          _SummaryRow(label: 'GOALS', value: _listValue(goals)),
-          const SizedBox(height: 14),
-          _SummaryRow(label: 'BUDGET', value: _empty(budget)),
         ],
       ),
     );
   }
+}
 
-  String _empty(String? value) {
-    final trimmed = value?.trim() ?? '';
-    return trimmed.isEmpty ? '-' : trimmed;
-  }
+class _ProfileInfoGrid extends StatelessWidget {
+  const _ProfileInfoGrid({required this.items});
 
-  String _listValue(List<String> values) {
-    final cleaned = values.where((item) => item.trim().isNotEmpty).toList();
-    return cleaned.isEmpty ? '-' : cleaned.join(', ');
-  }
+  final List<_ProfileInfoItem> items;
 
-  String _formatDateOfBirth(String? value) {
-    final trimmed = value?.trim() ?? '';
-    if (trimmed.isEmpty) {
-      return '-';
-    }
-
-    final parsed = DateTime.tryParse(trimmed);
-    if (parsed == null) {
-      return trimmed;
-    }
-
-    return DateFormat('dd/MM/yyyy').format(parsed);
-  }
-
-  String _formatGender(String? value) {
-    switch ((value ?? '').trim().toLowerCase()) {
-      case 'male':
-        return 'Male';
-      case 'female':
-        return 'Female';
-      case 'other':
-        return 'Other';
-      case 'prefernotosay':
-      case 'prefer_not_to_say':
-      case 'prefer not to say':
-        return 'Prefer not to say';
-      default:
-        return _empty(value);
-    }
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Wrap(
+          spacing: AppSpacing.sm,
+          runSpacing: AppSpacing.sm,
+          children: items
+              .map(
+                (item) => SizedBox(
+                  width: constraints.maxWidth < 340
+                      ? constraints.maxWidth
+                      : (constraints.maxWidth - AppSpacing.sm) / 2,
+                  child: AppCard(
+                    variant: AppCardVariant.metric,
+                    padding: const EdgeInsets.all(14),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          item.label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                                color: AppColors.primaryDark,
+                              ),
+                        ),
+                        const SizedBox(height: AppSpacing.xs),
+                        Text(
+                          item.value,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: item.emphasizeValue
+                              ? Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    fontFamily: 'Inter',
+                                    fontWeight: FontWeight.w800,
+                                    fontFeatures: const [FontFeature.tabularFigures()],
+                                  )
+                              : Theme.of(context).textTheme.bodyMedium,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              )
+              .toList(),
+        );
+      },
+    );
   }
 }
 
-class _SummaryRow extends StatelessWidget {
-  const _SummaryRow({required this.label, required this.value});
+class _ProfileInfoItem {
+  const _ProfileInfoItem({
+    required this.label,
+    required this.value,
+    this.emphasizeValue = false,
+  });
 
   final String label;
   final String value;
+  final bool emphasizeValue;
+}
+
+class _ChipSection extends StatelessWidget {
+  const _ChipSection({
+    required this.label,
+    required this.values,
+  });
+
+  final String label;
+  final List<String> values;
 
   @override
   Widget build(BuildContext context) {
+    final cleaned = values.where((item) => item.trim().isNotEmpty).toList();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-            color: AppColors.foreground,
-            fontSize: 10,
-            letterSpacing: 0.9,
-            fontWeight: FontWeight.w800,
-          ),
+          style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                color: AppColors.primaryDark,
+              ),
         ),
-        const SizedBox(height: 6),
-        Text(
-          value,
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-            color: AppColors.mutedText,
-            height: 1.35,
+        const SizedBox(height: AppSpacing.sm),
+        if (cleaned.isEmpty)
+          const StatusChip(
+            label: 'Not provided yet',
+            icon: Icons.info_outline_rounded,
+          )
+        else
+          Wrap(
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.sm,
+            children: cleaned
+                .map(
+                  (item) => StatusChip(
+                    label: item,
+                    icon: Icons.circle_outlined,
+                    tone: StatusChipTone.accent,
+                  ),
+                )
+                .toList(),
           ),
-        ),
       ],
     );
   }
 }
 
-class _LogoutCard extends StatelessWidget {
-  const _LogoutCard({required this.onTap});
+String _friendlyText(String? value) {
+  final trimmed = value?.trim() ?? '';
+  return trimmed.isEmpty ? 'Not provided yet' : trimmed;
+}
 
-  final VoidCallback onTap;
+String _formatDateOfBirth(String? value) {
+  final trimmed = value?.trim() ?? '';
+  if (trimmed.isEmpty) {
+    return 'Not provided yet';
+  }
 
-  @override
-  Widget build(BuildContext context) {
-    return _SoftCard(
-      onTap: onTap,
-      padding: const EdgeInsets.fromLTRB(16, 15, 16, 15),
-      child: Row(
-        children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              color: AppColors.error.withValues(alpha: 0.10),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Icon(
-              Icons.logout_rounded,
-              color: AppColors.error,
-              size: 17,
-            ),
-          ),
-          const SizedBox(width: 14),
-          Text(
-            'Logout',
-            style: Theme.of(context).textTheme.labelLarge?.copyWith(
-              color: AppColors.error,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ],
-      ),
-    );
+  final parsed = DateTime.tryParse(trimmed);
+  if (parsed == null) {
+    return trimmed;
+  }
+
+  return DateFormat('dd/MM/yyyy').format(parsed);
+}
+
+String _formatGender(String? value) {
+  switch ((value ?? '').trim().toLowerCase()) {
+    case 'male':
+      return 'Male';
+    case 'female':
+      return 'Female';
+    case 'other':
+      return 'Other';
+    case 'prefernotosay':
+    case 'prefer_not_to_say':
+    case 'prefer not to say':
+      return 'Prefer not to say';
+    default:
+      return _friendlyText(value);
   }
 }
 
-class _SoftCard extends StatelessWidget {
-  const _SoftCard({
-    required this.child,
-    this.padding = const EdgeInsets.all(16),
-    this.onTap,
-  });
-
-  final Widget child;
-  final EdgeInsetsGeometry padding;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final content = Container(
-      width: double.infinity,
-      padding: padding,
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.94),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.72)),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primaryDark.withValues(alpha: 0.06),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: child,
-    );
-
-    if (onTap == null) {
-      return content;
-    }
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(18),
-        onTap: onTap,
-        child: content,
-      ),
-    );
+bool _isPrimaryUsage(SubscriptionUsage usage) {
+  switch (usage.featureKey) {
+    case 'skin_analysis':
+    case 'ai_chat':
+    case 'routine_generation':
+    case 'ingredient_check':
+    case 'conflict_check':
+    case 'progress_entry':
+    case 'skin_progress_compare':
+      return true;
+    default:
+      return false;
   }
+}
+
+String _planName(SubscriptionPlan? plan, String fallbackCode) {
+  if (plan != null && plan.name.trim().isNotEmpty) {
+    return plan.name;
+  }
+  return _capitalize(fallbackCode);
+}
+
+String _planPrice(SubscriptionPlan? plan) {
+  if (plan == null || plan.priceVnd <= 0) {
+    return 'Free';
+  }
+
+  final formatter = NumberFormat.decimalPattern('vi_VN');
+  return '${formatter.format(plan.priceVnd.round())} VND/mo';
+}
+
+String _capitalize(String value) {
+  final trimmed = value.trim();
+  if (trimmed.isEmpty) {
+    return 'Free';
+  }
+  return trimmed[0].toUpperCase() + trimmed.substring(1).toLowerCase();
 }

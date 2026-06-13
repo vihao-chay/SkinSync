@@ -6,9 +6,12 @@ using SkinSync.Data;
 using SkinSync.Mappers;
 using SkinSync.Models.Dtos.Admin;
 using SkinSync.Models.Dtos.Products;
+using SkinSync.Models.Dtos.Subscriptions;
 using SkinSync.Models.Entities;
 using SkinSync.Models.Enums;
 using SkinSync.Repositories;
+using SkinSync.Services;
+using SkinSync.Services.AIPlatform;
 
 namespace SkinSync.Controllers;
 
@@ -19,19 +22,19 @@ public class AdminController : ControllerBase
 {
     private readonly AppDbContext _dbContext;
     private readonly IUserRepository _userRepository;
-    private readonly IAnalysisRepository _analysisRepository;
     private readonly IProductRepository _productRepository;
+    private readonly ISubscriptionPlanService _subscriptionPlanService;
 
     public AdminController(
         AppDbContext dbContext,
         IUserRepository userRepository,
-        IAnalysisRepository analysisRepository,
-        IProductRepository productRepository)
+        IProductRepository productRepository,
+        ISubscriptionPlanService subscriptionPlanService)
     {
         _dbContext = dbContext;
         _userRepository = userRepository;
-        _analysisRepository = analysisRepository;
         _productRepository = productRepository;
+        _subscriptionPlanService = subscriptionPlanService;
     }
 
     [HttpGet("dashboard")]
@@ -39,7 +42,7 @@ public class AdminController : ControllerBase
     {
         var totalUsers = await _dbContext.Users.CountAsync(cancellationToken);
         var activeUsers = await _dbContext.Users.CountAsync(x => x.Status == "active", cancellationToken);
-        var totalAnalyses = await _analysisRepository.CountAsync(cancellationToken);
+        var totalAnalyses = await _dbContext.SkinProgressAnalyses.CountAsync(cancellationToken);
 
         var skinTypes = await _dbContext.UserProfiles
             .AsNoTracking()
@@ -200,5 +203,22 @@ public class AdminController : ControllerBase
         user.Role = role;
         await _userRepository.UpdateAsync(user, cancellationToken);
         return Ok(user.ToAdminUserDto());
+    }
+
+    [HttpPatch("users/{id:guid}/plan")]
+    public async Task<ResponseEntity<AdminUserItemDto>> UpdateUserPlan(Guid id, [FromBody] UpdateUserPlanRequestDto request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _subscriptionPlanService.ChangeUserPlanAsync(id, request.PlanCode, cancellationToken);
+            var user = await _userRepository.GetByIdAsync(id, cancellationToken);
+            return user is null
+                ? ResponseEntity<AdminUserItemDto>.Fail("User not found.", 404)
+                : ResponseEntity<AdminUserItemDto>.Ok(user.ToAdminUserDto(), "User plan updated successfully.");
+        }
+        catch (AiFeatureException ex)
+        {
+            return ResponseEntity<AdminUserItemDto>.Fail(ex.Message, ex.StatusCode);
+        }
     }
 }
