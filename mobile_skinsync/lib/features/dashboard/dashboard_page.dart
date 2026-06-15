@@ -6,10 +6,13 @@ import '../../core/models/app_models.dart';
 import '../../core/routes/app_routes.dart';
 import '../../core/state/app_state.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_card.dart';
+import '../../core/widgets/circular_score.dart';
 import '../../core/widgets/main_shell.dart';
+import '../../core/widgets/stitch_top_bar.dart';
 import '../../core/widgets/status_chip.dart';
 
 class DashboardPage extends StatefulWidget {
@@ -21,22 +24,21 @@ class DashboardPage extends StatefulWidget {
 
 class _DashboardPageState extends State<DashboardPage> {
   AiProductRecommendResponse? _latestRecommendation;
-  bool _loadingRecommendations = true;
   String? _recommendationError;
+  bool _loadingRecommendations = true;
 
   @override
   void initState() {
     super.initState();
-    _loadLatestRecommendation();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadRecommendations());
   }
 
   Future<void> _refreshAll() async {
-    final appState = context.read<AppState>();
-    await appState.refreshHome();
-    await _loadLatestRecommendation();
+    await context.read<AppState>().refreshHome();
+    await _loadRecommendations();
   }
 
-  Future<void> _loadLatestRecommendation() async {
+  Future<void> _loadRecommendations() async {
     if (!mounted) {
       return;
     }
@@ -47,18 +49,16 @@ class _DashboardPageState extends State<DashboardPage> {
 
     try {
       final result = await context.read<AppState>().getLatestRecommendations();
-      if (!mounted) {
-        return;
+      if (mounted) {
+        setState(() => _latestRecommendation = result);
       }
-      setState(() => _latestRecommendation = result);
     } catch (_) {
-      if (!mounted) {
-        return;
+      if (mounted) {
+        setState(() {
+          _latestRecommendation = null;
+          _recommendationError = context.read<AppState>().errorMessage;
+        });
       }
-      setState(() {
-        _latestRecommendation = null;
-        _recommendationError = context.read<AppState>().errorMessage;
-      });
     } finally {
       if (mounted) {
         setState(() => _loadingRecommendations = false);
@@ -72,21 +72,18 @@ class _DashboardPageState extends State<DashboardPage> {
     final latestAnalysis = appState.latestAnalysis;
     final regimen = appState.regimen;
     final tracking = appState.trackingToday;
-    final user = appState.user;
-
+    final progress = appState.progress;
     final totalSteps = tracking?.totalSteps ?? 0;
     final completedSteps = tracking?.completedSteps ?? 0;
-    final routineProgress =
-        totalSteps == 0 ? 0.0 : completedSteps / totalSteps;
-    final previewSteps = [...?regimen?.morning, ...?regimen?.evening].take(3).toList();
-    final recommendedProducts = (_latestRecommendation?.products ?? const [])
+    final routineProgress = totalSteps == 0 ? 0.0 : completedSteps / totalSteps;
+    final routineSteps = [...?regimen?.morning, ...?regimen?.evening].take(3).toList();
+    final products = (_latestRecommendation?.products ?? const <AiRecommendedProduct>[])
         .where((item) => item.name.trim().isNotEmpty)
         .take(2)
         .toList();
-    final score = latestAnalysis?.overallScore;
 
     return ColoredBox(
-      color: const Color(0xFFF5F4EE),
+      color: AppColors.pageBackground,
       child: SafeArea(
         bottom: false,
         child: Center(
@@ -97,156 +94,116 @@ class _DashboardPageState extends State<DashboardPage> {
               onRefresh: _refreshAll,
               child: ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.pagePadding,
-                  12,
-                  AppSpacing.pagePadding,
-                  AppSpacing.pageBottomPaddingWithActions,
+                padding: const EdgeInsets.only(
+                  bottom: AppSpacing.pageBottomPaddingWithActions,
                 ),
                 children: [
-                  _HomeHeader(
-                    avatarUrl: user?.avatarUrl,
-                    score: score,
-                    onProfileTap: () =>
-                        MainShell.navigateToTab(context, AppRoutes.profile),
-                    onProgressTap: () => MainShell.navigateToTab(
+                  StitchTopBar(
+                    avatarUrl: appState.user?.avatarUrl,
+                    onLeadingTap: () => MainShell.navigateToTab(
+                      context,
+                      AppRoutes.profile,
+                    ),
+                    onTrailingTap: () => MainShell.navigateToTab(
                       context,
                       AppRoutes.progress,
                     ),
-                    onProductsTap: () => MainShell.navigateToTab(
-                      context,
-                      AppRoutes.products,
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.pagePadding,
+                      4,
+                      AppSpacing.pagePadding,
+                      0,
                     ),
-                  ),
-                  const SizedBox(height: AppSpacing.lg),
-                  _GreetingSection(
-                    firstName: _firstName(appState.profileDisplayName),
-                    hasRoutine: regimen != null,
-                    hasAnalysis: latestAnalysis != null,
-                  ),
-                  const SizedBox(height: AppSpacing.lg),
-                  _SkinHealthHeroCard(
-                    score: score,
-                    lastScanLabel: _lastScanLabel(latestAnalysis),
-                    onOpenAnalysis: () =>
-                        Navigator.pushNamed(context, AppRoutes.upload),
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  _SkinConcernMetricsCard(
-                    acne: _issueScore(latestAnalysis, 'acne'),
-                    redness: _issueScore(latestAnalysis, 'redness'),
-                    oiliness: _issueScore(latestAnalysis, 'oil'),
-                    onScanWithAi: () =>
-                        Navigator.pushNamed(context, AppRoutes.upload),
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  _DailyRoutineCard(
-                    completedSteps: completedSteps,
-                    totalSteps: totalSteps,
-                    progress: routineProgress,
-                    hasRoutine: regimen != null,
-                    onOpen: () {
-                      if (regimen != null) {
-                        Navigator.pushNamed(context, AppRoutes.todayCheckup);
-                        return;
-                      }
-                      MainShell.navigateToTab(
-                        context,
-                        AppRoutes.products,
-                        arguments: const ProductsPageArgs(
-                          entryPoint: ProductsEntryPoint.routineEmpty,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _Greeting(
+                          name: _firstName(appState.profileDisplayName),
+                          hasRoutine: regimen != null,
+                          hasAnalysis: latestAnalysis != null,
                         ),
-                      );
-                    },
-                  ),
-                  if (previewSteps.isNotEmpty) ...[
-                    const SizedBox(height: AppSpacing.lg),
-                    _SectionRow(
-                      title: 'Today routine',
-                      trailing: 'Open',
-                      onTap: () =>
-                          MainShell.navigateToTab(context, AppRoutes.routine),
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                    ...previewSteps.map(
-                      (step) => Padding(
-                        padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                        child: _RoutinePreviewTile(step: step),
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: AppSpacing.lg),
-                  _SectionRow(
-                    title: 'For You',
-                    trailing: recommendedProducts.isNotEmpty ? 'Open' : null,
-                    onTap: recommendedProducts.isNotEmpty
-                        ? () => MainShell.navigateToTab(
+                        const SizedBox(height: AppSpacing.md),
+                        _SkinHealthCard(
+                          score: latestAnalysis?.overallScore,
+                          insight: progress?.progressInsight,
+                          onScan: () => Navigator.pushNamed(
+                            context,
+                            AppRoutes.upload,
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.md),
+                        _SectionTitle(
+                          title: 'Key Metrics',
+                          actionLabel: 'Details',
+                          onAction: () => MainShell.navigateToTab(
+                            context,
+                            AppRoutes.progress,
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.sm),
+                        _MetricGrid(
+                          acne: _issueScore(latestAnalysis, 'acne'),
+                          redness: _issueScore(latestAnalysis, 'redness'),
+                          hydration: _hydrationLabel(appState.todayLog),
+                          routinePercent: routineProgress,
+                        ),
+                        const SizedBox(height: AppSpacing.md),
+                        _RoutinePreviewCard(
+                          completedSteps: completedSteps,
+                          totalSteps: totalSteps,
+                          progress: routineProgress,
+                          steps: routineSteps,
+                          onOpen: () {
+                            if (regimen != null) {
+                              Navigator.pushNamed(
+                                context,
+                                AppRoutes.todayCheckup,
+                              );
+                              return;
+                            }
+                            MainShell.navigateToTab(
                               context,
                               AppRoutes.products,
-                            )
-                        : null,
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  if (_loadingRecommendations)
-                    const _HomeSkeletonLoading()
-                  else if (recommendedProducts.isNotEmpty)
-                    SizedBox(
-                      height: 224,
-                      child: ListView.separated(
-                        scrollDirection: Axis.horizontal,
-                        itemCount: recommendedProducts.length,
-                        separatorBuilder: (_, _) =>
-                            const SizedBox(width: AppSpacing.sm),
-                        itemBuilder: (context, index) {
-                          final product = recommendedProducts[index];
-                          return SizedBox(
-                            width: 168,
-                            child: _ForYouProductPreview(
-                              product: product,
-                              onTap: () => Navigator.pushNamed(
-                                context,
-                                AppRoutes.productDetail,
-                                arguments: ProductDetailPageArgs(
-                                  product: product,
-                                  productsEntryPoint:
-                                      ProductsEntryPoint.bottomNav,
-                                ),
+                              arguments: const ProductsPageArgs(
+                                entryPoint: ProductsEntryPoint.routineEmpty,
                               ),
-                            ),
-                          );
-                        },
-                      ),
-                    )
-                  else
-                    _EmptyRecommendationCard(
-                      message: _recommendationError?.trim().isNotEmpty == true
-                          ? _recommendationError!
-                          : 'Scan with AI first, then generate products manually.',
-                      onOpenProducts: () => MainShell.navigateToTab(
-                        context,
-                        AppRoutes.products,
-                      ),
-                    ),
-                  const SizedBox(height: AppSpacing.lg),
-                  _QuickActionRow(
-                    onScan: () => Navigator.pushNamed(context, AppRoutes.upload),
-                    onCheckup: () {
-                      if (regimen != null) {
-                        Navigator.pushNamed(context, AppRoutes.todayCheckup);
-                        return;
-                      }
-                      MainShell.navigateToTab(
-                        context,
-                        AppRoutes.products,
-                        arguments: const ProductsPageArgs(
-                          entryPoint: ProductsEntryPoint.routineEmpty,
+                            );
+                          },
                         ),
-                      );
-                    },
-                    onProgress: () =>
-                        MainShell.navigateToTab(context, AppRoutes.progress),
-                    onProducts: () =>
-                        MainShell.navigateToTab(context, AppRoutes.products),
+                        const SizedBox(height: AppSpacing.md),
+                        _ForYouSection(
+                          loading: _loadingRecommendations,
+                          errorMessage: _recommendationError,
+                          products: products,
+                          onOpenProducts: () => MainShell.navigateToTab(
+                            context,
+                            AppRoutes.products,
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.md),
+                        AppButton(
+                          label: 'Scan with AI',
+                          icon: const Icon(Icons.document_scanner_outlined),
+                          onPressed: () => Navigator.pushNamed(
+                            context,
+                            AppRoutes.upload,
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.sm),
+                        _QuickActionGrid(
+                          onChat: () => Navigator.pushNamed(
+                            context,
+                            AppRoutes.aiChat,
+                          ),
+                          onProgress: () => MainShell.navigateToTab(
+                            context,
+                            AppRoutes.progress,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -265,149 +222,42 @@ class _DashboardPageState extends State<DashboardPage> {
     return trimmed.split(' ').first.trim();
   }
 
-  String _lastScanLabel(AnalysisResult? result) {
-    if (result == null) {
-      return 'No scan yet';
-    }
-    return 'Scan available';
-  }
-
   int? _issueScore(AnalysisResult? result, String contains) {
     if (result == null) {
       return null;
     }
+    final needle = contains.toLowerCase();
     for (final issue in result.issues) {
-      if (issue.issueType.toLowerCase().contains(contains)) {
+      if (issue.issueType.toLowerCase().contains(needle)) {
         return issue.severityScore.clamp(0, 100);
       }
     }
     return null;
   }
-}
 
-class _HomeHeader extends StatelessWidget {
-  const _HomeHeader({
-    required this.avatarUrl,
-    required this.score,
-    required this.onProfileTap,
-    required this.onProgressTap,
-    required this.onProductsTap,
-  });
-
-  final String? avatarUrl;
-  final int? score;
-  final VoidCallback onProfileTap;
-  final VoidCallback onProgressTap;
-  final VoidCallback onProductsTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        GestureDetector(
-          onTap: onProfileTap,
-          child: CircleAvatar(
-            radius: 16,
-            backgroundColor: AppColors.secondary,
-            backgroundImage: _networkImage(avatarUrl),
-            child: _networkImage(avatarUrl) == null
-                ? const Icon(
-                    Icons.person_outline_rounded,
-                    size: 18,
-                    color: AppColors.primaryDark,
-                  )
-                : null,
-          ),
-        ),
-        const SizedBox(width: AppSpacing.sm),
-        if (score != null) ...[
-          Text(
-            '$score%',
-            style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                  fontFamily: 'Inter',
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.primaryDark,
-                  fontFeatures: const [FontFeature.tabularFigures()],
-                ),
-          ),
-          const SizedBox(width: 6),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.8),
-              borderRadius: BorderRadius.circular(999),
-              border: Border.all(color: AppColors.border),
-            ),
-            child: Text(
-              'Skin health',
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: AppColors.mutedText,
-                  ),
-            ),
-          ),
-        ],
-        const Spacer(),
-        _HeaderIconButton(
-          icon: Icons.notifications_none_rounded,
-          onTap: onProgressTap,
-        ),
-        const SizedBox(width: 8),
-        _HeaderIconButton(
-          icon: Icons.grid_view_rounded,
-          onTap: onProductsTap,
-        ),
-      ],
-    );
-  }
-
-  ImageProvider<Object>? _networkImage(String? value) {
-    final url = value?.trim() ?? '';
-    if (url.isEmpty) {
-      return null;
+  String _hydrationLabel(DailyLog? log) {
+    final hydration = log?.hydrationLevel;
+    if (hydration == null) {
+      return 'Optimal';
     }
-    return NetworkImage(url);
+    if (hydration >= 7) {
+      return 'Optimal';
+    }
+    if (hydration >= 4) {
+      return 'Balanced';
+    }
+    return 'Low';
   }
 }
 
-class _HeaderIconButton extends StatelessWidget {
-  const _HeaderIconButton({
-    required this.icon,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Ink(
-          width: 34,
-          height: 34,
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.78),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.border),
-          ),
-          child: Icon(icon, size: 18, color: AppColors.primaryDark),
-        ),
-      ),
-    );
-  }
-}
-
-class _GreetingSection extends StatelessWidget {
-  const _GreetingSection({
-    required this.firstName,
+class _Greeting extends StatelessWidget {
+  const _Greeting({
+    required this.name,
     required this.hasRoutine,
     required this.hasAnalysis,
   });
 
-  final String firstName;
+  final String name;
   final bool hasRoutine;
   final bool hasAnalysis;
 
@@ -417,22 +267,21 @@ class _GreetingSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          firstName.isEmpty ? 'Hello' : 'Hello $firstName',
-          style: Theme.of(context).textTheme.displaySmall?.copyWith(
+          name.isEmpty ? 'Hello' : 'Hello, $name',
+          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.w800,
                 color: AppColors.heading,
-                fontWeight: FontWeight.w700,
-                height: 1.05,
               ),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 2),
         Text(
           hasRoutine
-              ? 'Ready for your routine today?'
+              ? 'Your skincare day is ready.'
               : hasAnalysis
-                  ? 'Your skin journey starts here.'
-                  : 'Start with a quick AI skin scan.',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: AppColors.mutedText,
+                  ? 'Your skin insights are ready.'
+                  : 'Start with a quick AI skin scan today.',
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: AppColors.foreground,
               ),
         ),
       ],
@@ -440,410 +289,60 @@ class _GreetingSection extends StatelessWidget {
   }
 }
 
-class _SkinHealthHeroCard extends StatelessWidget {
-  const _SkinHealthHeroCard({
+class _SkinHealthCard extends StatelessWidget {
+  const _SkinHealthCard({
     required this.score,
-    required this.lastScanLabel,
-    required this.onOpenAnalysis,
+    required this.insight,
+    required this.onScan,
   });
 
   final int? score;
-  final String lastScanLabel;
-  final VoidCallback onOpenAnalysis;
+  final String? insight;
+  final VoidCallback onScan;
 
   @override
   Widget build(BuildContext context) {
+    final resolvedScore = score ?? 0;
     return AppCard(
-      variant: AppCardVariant.hero,
-      padding: const EdgeInsets.all(20),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Your Skin Health',
-                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                        color: AppColors.mutedText,
-                      ),
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  score == null ? '--' : '$score%',
-                  style: Theme.of(context).textTheme.displayMedium?.copyWith(
-                        fontFamily: 'Inter',
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.heading,
-                        fontFeatures: const [FontFeature.tabularFigures()],
-                      ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  lastScanLabel,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppColors.mutedText,
-                      ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: AppSpacing.md),
-          SizedBox(
-            width: 108,
-            height: 108,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                SizedBox(
-                  width: 94,
-                  height: 94,
-                  child: CircularProgressIndicator(
-                    value: score == null ? 0 : score! / 100,
-                    strokeWidth: 10,
-                    backgroundColor: AppColors.border.withValues(alpha: 0.55),
-                    valueColor: const AlwaysStoppedAnimation<Color>(
-                      Color(0xFFF1BD3D),
-                    ),
-                  ),
-                ),
-                Container(
-                  width: 52,
-                  height: 52,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF8E8A6),
-                    shape: BoxShape.circle,
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: Icon(
-                    score == null
-                        ? Icons.camera_alt_outlined
-                        : Icons.spa_outlined,
-                    color: AppColors.primaryDark,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SkinConcernMetricsCard extends StatelessWidget {
-  const _SkinConcernMetricsCard({
-    required this.acne,
-    required this.redness,
-    required this.oiliness,
-    required this.onScanWithAi,
-  });
-
-  final int? acne;
-  final int? redness;
-  final int? oiliness;
-  final VoidCallback onScanWithAi;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppCard(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.fromLTRB(18, 16, 18, 14),
       child: Column(
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: _CircularMetric(label: 'Acne', value: acne),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: _CircularMetric(label: 'Redness', value: redness),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: _CircularMetric(label: 'Oiliness', value: oiliness),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.md),
-          _ScanWithAiPill(onTap: onScanWithAi),
-        ],
-      ),
-    );
-  }
-}
-
-class _CircularMetric extends StatelessWidget {
-  const _CircularMetric({
-    required this.label,
-    required this.value,
-  });
-
-  final String label;
-  final int? value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        SizedBox(
-          width: 60,
-          height: 60,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              CircularProgressIndicator(
-                value: value == null ? 0 : value! / 100,
-                strokeWidth: 7,
-                backgroundColor: AppColors.secondary,
-                valueColor: AlwaysStoppedAnimation<Color>(
-                  value == null ? AppColors.border : AppColors.primaryDark,
+          Text(
+            'Your Skin Health',
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w800,
                 ),
-              ),
-              Text(
-                value == null ? '--' : '$value',
-                style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      fontFamily: 'Inter',
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.primaryDark,
-                    ),
-              ),
-            ],
           ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          label,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: AppColors.mutedText,
-              ),
-        ),
-      ],
-    );
-  }
-}
-
-class _ScanWithAiPill extends StatelessWidget {
-  const _ScanWithAiPill({required this.onTap});
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(999),
-        child: Ink(
-          padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
-          decoration: BoxDecoration(
-            color: const Color(0xFFFFF8E6),
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(color: AppColors.border),
+          const SizedBox(height: 12),
+          CircularScore(
+            score: resolvedScore,
+            size: 126,
+            label: score == null ? 'No scan' : 'Balanced',
           ),
-          child: Row(
-            children: [
-              const Icon(
-                Icons.auto_awesome_rounded,
-                size: 18,
-                color: Color(0xFFF1BD3D),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  'Scan with AI',
-                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                        color: AppColors.primaryDark,
-                        fontWeight: FontWeight.w700,
-                      ),
-                ),
-              ),
-              Container(
-                width: 30,
-                height: 30,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFF1BD3D),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.arrow_forward_rounded,
-                  size: 18,
-                  color: AppColors.primaryDark,
-                ),
-              ),
-            ],
+          const SizedBox(height: 10),
+          Text(
+            score == null
+                ? 'Scan your skin to unlock today\'s baseline.'
+                : insight?.trim().isNotEmpty == true
+                    ? insight!
+                    : 'Baseline saved from your latest analysis.',
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.bodySmall,
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _DailyRoutineCard extends StatelessWidget {
-  const _DailyRoutineCard({
-    required this.completedSteps,
-    required this.totalSteps,
-    required this.progress,
-    required this.hasRoutine,
-    required this.onOpen,
-  });
-
-  final int completedSteps;
-  final int totalSteps;
-  final double progress;
-  final bool hasRoutine;
-  final VoidCallback onOpen;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppCard(
-      child: InkWell(
-        borderRadius: BorderRadius.circular(24),
-        onTap: onOpen,
-        child: Padding(
-          padding: const EdgeInsets.all(18),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 34,
-                    height: 34,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFFFF4CE),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.calendar_today_outlined,
-                      size: 16,
-                      color: AppColors.primaryDark,
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Today',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: AppColors.mutedText,
-                              ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          'Daily Routine',
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.w700,
-                              ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Text(
-                    'Open',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: AppColors.mutedText,
-                        ),
-                  ),
-                  const SizedBox(width: 4),
-                  const Icon(
-                    Icons.chevron_right_rounded,
-                    size: 18,
-                    color: AppColors.mutedText,
-                  ),
-                ],
+          const SizedBox(height: 12),
+          SizedBox(
+            height: 34,
+            child: OutlinedButton.icon(
+              onPressed: onScan,
+              icon: const Icon(Icons.camera_alt_outlined, size: 15),
+              label: const Text('Skin scan today'),
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size(0, 34),
+                padding: const EdgeInsets.symmetric(horizontal: 14),
               ),
-              const SizedBox(height: AppSpacing.md),
-              Text(
-                hasRoutine ? '$completedSteps/$totalSteps done' : 'No routine yet',
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-              ),
-              if (hasRoutine) ...[
-                const SizedBox(height: AppSpacing.sm),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(999),
-                  child: LinearProgressIndicator(
-                    value: progress,
-                    minHeight: 8,
-                    backgroundColor: AppColors.secondary,
-                    valueColor: const AlwaysStoppedAnimation<Color>(
-                      AppColors.primaryDark,
-                    ),
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _RoutinePreviewTile extends StatelessWidget {
-  const _RoutinePreviewTile({required this.step});
-
-  final RegimenStep step;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppCard(
-      variant: AppCardVariant.metric,
-      padding: const EdgeInsets.all(14),
-      child: Row(
-        children: [
-          Container(
-            width: 28,
-            height: 28,
-            decoration: BoxDecoration(
-              color: AppColors.secondary,
-              shape: BoxShape.circle,
-              border: Border.all(color: AppColors.border),
             ),
-            alignment: Alignment.center,
-            child: Text(
-              '${step.stepOrder}',
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    fontFamily: 'Inter',
-                    fontWeight: FontWeight.w800,
-                  ),
-            ),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  step.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  step.category,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppColors.mutedText,
-                      ),
-                ),
-              ],
-            ),
-          ),
-          const Icon(
-            Icons.chevron_right_rounded,
-            color: AppColors.mutedText,
           ),
         ],
       ),
@@ -851,16 +350,16 @@ class _RoutinePreviewTile extends StatelessWidget {
   }
 }
 
-class _SectionRow extends StatelessWidget {
-  const _SectionRow({
+class _SectionTitle extends StatelessWidget {
+  const _SectionTitle({
     required this.title,
-    this.trailing,
-    this.onTap,
+    this.actionLabel,
+    this.onAction,
   });
 
   final String title;
-  final String? trailing;
-  final VoidCallback? onTap;
+  final String? actionLabel;
+  final VoidCallback? onAction;
 
   @override
   Widget build(BuildContext context) {
@@ -869,87 +368,457 @@ class _SectionRow extends StatelessWidget {
         Expanded(
           child: Text(
             title,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w800,
                 ),
           ),
         ),
-        if (trailing != null)
+        if (actionLabel != null)
           TextButton(
-            onPressed: onTap,
-            child: Text(trailing!),
+            onPressed: onAction,
+            child: Text(actionLabel!),
           ),
       ],
     );
   }
 }
 
-class _ForYouProductPreview extends StatelessWidget {
-  const _ForYouProductPreview({
-    required this.product,
-    required this.onTap,
+class _MetricGrid extends StatelessWidget {
+  const _MetricGrid({
+    required this.acne,
+    required this.redness,
+    required this.hydration,
+    required this.routinePercent,
   });
 
-  final AiRecommendedProduct product;
-  final VoidCallback onTap;
+  final int? acne;
+  final int? redness;
+  final String hydration;
+  final double routinePercent;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: _MetricMiniCard(
+                label: 'Acne',
+                value: _scoreLabel(acne),
+                tone: _scoreTone(acne),
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: _MetricMiniCard(
+                label: 'Redness',
+                value: _scoreLabel(redness),
+                tone: _scoreTone(redness),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        _MetricMiniCard(
+          label: 'Hydration',
+          value: hydration,
+          trailing: '${(routinePercent * 100).round()}%',
+          tone: StatusChipTone.success,
+        ),
+      ],
+    );
+  }
+
+  String _scoreLabel(int? value) {
+    if (value == null) {
+      return 'Low';
+    }
+    if (value >= 70) {
+      return 'High';
+    }
+    if (value >= 40) {
+      return 'Mild';
+    }
+    return 'Low';
+  }
+
+  StatusChipTone _scoreTone(int? value) {
+    if (value == null || value < 40) {
+      return StatusChipTone.success;
+    }
+    if (value < 70) {
+      return StatusChipTone.warning;
+    }
+    return StatusChipTone.danger;
+  }
+}
+
+class _MetricMiniCard extends StatelessWidget {
+  const _MetricMiniCard({
+    required this.label,
+    required this.value,
+    required this.tone,
+    this.trailing,
+  });
+
+  final String label;
+  final String value;
+  final String? trailing;
+  final StatusChipTone tone;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = switch (tone) {
+      StatusChipTone.success => AppColors.success,
+      StatusChipTone.warning => AppColors.warning,
+      StatusChipTone.danger => AppColors.error,
+      _ => AppColors.primaryDark,
+    };
+    return AppCard(
+      variant: AppCardVariant.metric,
+      padding: const EdgeInsets.all(14),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: AppColors.heading,
+                        fontWeight: FontWeight.w800,
+                      ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        value,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                              fontFamily: 'Inter',
+                              fontWeight: FontWeight.w800,
+                            ),
+                      ),
+                    ),
+                    const SizedBox(width: 5),
+                    Container(
+                      width: 7,
+                      height: 7,
+                      decoration: BoxDecoration(
+                        color: color,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          if (trailing != null) ...[
+            const SizedBox(width: 8),
+            Container(
+              width: 46,
+              height: 46,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: AppColors.primaryDark, width: 3),
+              ),
+              child: Text(
+                trailing!,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.primaryDark,
+                    ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _RoutinePreviewCard extends StatelessWidget {
+  const _RoutinePreviewCard({
+    required this.completedSteps,
+    required this.totalSteps,
+    required this.progress,
+    required this.steps,
+    required this.onOpen,
+  });
+
+  final int completedSteps;
+  final int totalSteps;
+  final double progress;
+  final List<RegimenStep> steps;
+  final VoidCallback onOpen;
 
   @override
   Widget build(BuildContext context) {
     return AppCard(
-      onTap: onTap,
-      padding: const EdgeInsets.all(10),
+      onTap: onOpen,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(18),
-              child: Container(
-                width: double.infinity,
-                color: AppColors.surfaceStrong,
-                child: _ProductImage(product: product),
-              ),
-            ),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Text(
-            product.name,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
-          ),
-          const SizedBox(height: 4),
           Row(
             children: [
               Expanded(
                 child: Text(
-                  product.brand.trim().isEmpty ? 'Product' : product.brand,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppColors.mutedText,
+                  'Today\'s Routine',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w800,
                       ),
                 ),
               ),
-              const SizedBox(width: 6),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-                decoration: BoxDecoration(
-                  color: AppColors.secondary,
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Text(
-                  '${product.matchPercent ?? product.matchScore}%',
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        fontFamily: 'Inter',
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.primaryDark,
-                      ),
-                ),
+              StatusChip(
+                label: totalSteps == 0 ? 'Not set' : '$completedSteps/$totalSteps steps',
+                tone: StatusChipTone.accent,
               ),
             ],
+          ),
+          const SizedBox(height: 10),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(AppRadius.pill),
+            child: LinearProgressIndicator(
+              value: progress,
+              minHeight: 6,
+              backgroundColor: AppColors.secondary,
+              valueColor: const AlwaysStoppedAnimation<Color>(
+                AppColors.primaryDark,
+              ),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          if (steps.isEmpty)
+            Text(
+              'Build your first routine from AI product recommendations.',
+              style: Theme.of(context).textTheme.bodySmall,
+            )
+          else
+            SizedBox(
+              height: 92,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: steps.length,
+                separatorBuilder: (_, _) => const SizedBox(width: 12),
+                itemBuilder: (context, index) => _RoutineBubble(step: steps[index]),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RoutineBubble extends StatelessWidget {
+  const _RoutineBubble({required this.step});
+
+  final RegimenStep step;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 78,
+      child: Column(
+        children: [
+          Container(
+            width: 54,
+            height: 54,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: AppColors.surfaceStrong,
+              shape: BoxShape.circle,
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Icon(
+              _categoryIcon(step.category),
+              color: AppColors.primaryDark,
+              size: 22,
+            ),
+          ),
+          const SizedBox(height: 7),
+          Text(
+            step.category,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.heading,
+                ),
+          ),
+          Text(
+            step.name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.labelSmall,
+          ),
+        ],
+      ),
+    );
+  }
+
+  IconData _categoryIcon(String category) {
+    return switch (category.trim().toLowerCase()) {
+      'cleanser' => Icons.soap_outlined,
+      'toner' => Icons.opacity_outlined,
+      'serum' => Icons.science_outlined,
+      'moisturizer' => Icons.spa_outlined,
+      'sunscreen' => Icons.wb_sunny_outlined,
+      _ => Icons.local_florist_outlined,
+    };
+  }
+}
+
+class _ForYouSection extends StatelessWidget {
+  const _ForYouSection({
+    required this.loading,
+    required this.products,
+    required this.onOpenProducts,
+    this.errorMessage,
+  });
+
+  final bool loading;
+  final List<AiRecommendedProduct> products;
+  final VoidCallback onOpenProducts;
+  final String? errorMessage;
+
+  @override
+  Widget build(BuildContext context) {
+    if (loading) {
+      return const _ForYouLoading();
+    }
+    if (products.isEmpty) {
+      return AppCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const StatusChip(
+              label: 'No recommendations yet',
+              icon: Icons.auto_awesome_rounded,
+              tone: StatusChipTone.accent,
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              errorMessage?.trim().isNotEmpty == true
+                  ? errorMessage!
+                  : 'Scan with AI, then generate product recommendations.',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            AppButton(
+              label: 'Open Shop',
+              variant: AppButtonVariant.secondary,
+              onPressed: onOpenProducts,
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _SectionTitle(
+          title: 'For You',
+          actionLabel: 'Shop',
+          onAction: onOpenProducts,
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        SizedBox(
+          height: 208,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: products.length,
+            separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.sm),
+            itemBuilder: (context, index) => SizedBox(
+              width: 164,
+              child: _ProductPreview(product: products[index]),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ForYouLoading extends StatelessWidget {
+  const _ForYouLoading();
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: const [
+        Expanded(child: _LoadingBlock()),
+        SizedBox(width: AppSpacing.sm),
+        Expanded(child: _LoadingBlock()),
+      ],
+    );
+  }
+}
+
+class _LoadingBlock extends StatelessWidget {
+  const _LoadingBlock();
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      variant: AppCardVariant.metric,
+      child: SizedBox(
+        height: 128,
+        child: Center(
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            color: AppColors.primaryDark.withValues(alpha: 0.7),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ProductPreview extends StatelessWidget {
+  const _ProductPreview({required this.product});
+
+  final AiRecommendedProduct product;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      padding: const EdgeInsets.all(10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(child: _ProductImage(product: product)),
+          const SizedBox(height: 8),
+          Text(
+            product.brand.trim().isEmpty ? 'Product' : product.brand,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: AppColors.primaryDark,
+                  fontWeight: FontWeight.w800,
+                ),
+          ),
+          Text(
+            product.name,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '${product.matchPercent ?? product.matchScore}% match',
+            style: Theme.of(context).textTheme.labelSmall,
           ),
         ],
       ),
@@ -967,233 +836,62 @@ class _ProductImage extends StatelessWidget {
     final raw = product.imageUrl?.trim() ?? '';
     final url = raw.isEmpty
         ? ''
-        : (raw.startsWith('http') ? raw : '${AppConfig.apiBaseUrl}$raw');
+        : raw.startsWith('http')
+            ? raw
+            : '${AppConfig.apiBaseUrl}$raw';
 
-    if (url.isEmpty) {
-      return const Center(
-        child: Icon(
-          Icons.shopping_bag_outlined,
-          color: AppColors.primaryDark,
-          size: 30,
-        ),
-      );
-    }
-
-    return Image.network(
-      url,
-      fit: BoxFit.cover,
-      errorBuilder: (_, _, _) => const Center(
-        child: Icon(
-          Icons.image_not_supported_outlined,
-          color: AppColors.primaryDark,
-          size: 30,
-        ),
-      ),
-    );
-  }
-}
-
-class _EmptyRecommendationCard extends StatelessWidget {
-  const _EmptyRecommendationCard({
-    required this.message,
-    required this.onOpenProducts,
-  });
-
-  final String message;
-  final VoidCallback onOpenProducts;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const StatusChip(
-            label: 'No recommendations yet',
-            icon: Icons.auto_awesome_rounded,
-            tone: StatusChipTone.accent,
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Text(
-            message,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: AppColors.mutedText,
-                ),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          AppButton(
-            label: 'Open Products',
-            variant: AppButtonVariant.secondary,
-            onPressed: onOpenProducts,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _QuickActionRow extends StatelessWidget {
-  const _QuickActionRow({
-    required this.onScan,
-    required this.onCheckup,
-    required this.onProgress,
-    required this.onProducts,
-  });
-
-  final VoidCallback onScan;
-  final VoidCallback onCheckup;
-  final VoidCallback onProgress;
-  final VoidCallback onProducts;
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final compact = constraints.maxWidth < 360;
-        final width = compact
-            ? constraints.maxWidth
-            : (constraints.maxWidth - AppSpacing.sm) / 2;
-        final items = [
-          _QuickActionItem(
-            icon: Icons.auto_awesome_rounded,
-            label: 'Scan with AI',
-            onTap: onScan,
-          ),
-          _QuickActionItem(
-            icon: Icons.check_circle_outline_rounded,
-            label: 'Open Check-up',
-            onTap: onCheckup,
-          ),
-          _QuickActionItem(
-            icon: Icons.query_stats_rounded,
-            label: 'View Progress',
-            onTap: onProgress,
-          ),
-          _QuickActionItem(
-            icon: Icons.shopping_bag_outlined,
-            label: 'Products',
-            onTap: onProducts,
-          ),
-        ];
-        return Wrap(
-          spacing: AppSpacing.sm,
-          runSpacing: AppSpacing.sm,
-          children: items
-              .map(
-                (item) => SizedBox(
-                  width: width,
-                  child: item,
-                ),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(AppRadius.medium),
+      child: Container(
+        width: double.infinity,
+        color: AppColors.surfaceStrong,
+        child: url.isEmpty
+            ? const Icon(
+                Icons.spa_outlined,
+                color: AppColors.primaryDark,
               )
-              .toList(),
-        );
-      },
-    );
-  }
-}
-
-class _QuickActionItem extends StatelessWidget {
-  const _QuickActionItem({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppCard(
-      onTap: onTap,
-      variant: AppCardVariant.metric,
-      padding: const EdgeInsets.all(14),
-      child: Row(
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: const BoxDecoration(
-              color: AppColors.secondary,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, size: 18, color: AppColors.primaryDark),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-            ),
-          ),
-          const Icon(
-            Icons.arrow_forward_ios_rounded,
-            size: 14,
-            color: AppColors.mutedText,
-          ),
-        ],
+            : Image.network(
+                url,
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) => const Icon(
+                  Icons.image_not_supported_outlined,
+                  color: AppColors.primaryDark,
+                ),
+              ),
       ),
     );
   }
 }
 
-class _HomeSkeletonLoading extends StatelessWidget {
-  const _HomeSkeletonLoading();
+class _QuickActionGrid extends StatelessWidget {
+  const _QuickActionGrid({
+    required this.onChat,
+    required this.onProgress,
+  });
+
+  final VoidCallback onChat;
+  final VoidCallback onProgress;
 
   @override
   Widget build(BuildContext context) {
     return Row(
-      children: const [
-        Expanded(child: _SkeletonProductCard()),
-        SizedBox(width: AppSpacing.sm),
-        Expanded(child: _SkeletonProductCard()),
+      children: [
+        Expanded(
+          child: OutlinedButton.icon(
+            onPressed: onChat,
+            icon: const Icon(Icons.chat_bubble_outline_rounded, size: 16),
+            label: const Text('AI Care'),
+          ),
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        Expanded(
+          child: OutlinedButton.icon(
+            onPressed: onProgress,
+            icon: const Icon(Icons.show_chart_rounded, size: 16),
+            label: const Text('View Progress'),
+          ),
+        ),
       ],
-    );
-  }
-}
-
-class _SkeletonProductCard extends StatelessWidget {
-  const _SkeletonProductCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return AppCard(
-      padding: const EdgeInsets.all(10),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            height: 132,
-            decoration: BoxDecoration(
-              color: AppColors.secondary,
-              borderRadius: BorderRadius.circular(18),
-            ),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Container(
-            height: 14,
-            width: 100,
-            decoration: BoxDecoration(
-              color: AppColors.secondary,
-              borderRadius: BorderRadius.circular(999),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Container(
-            height: 12,
-            width: 60,
-            decoration: BoxDecoration(
-              color: AppColors.border.withValues(alpha: 0.5),
-              borderRadius: BorderRadius.circular(999),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

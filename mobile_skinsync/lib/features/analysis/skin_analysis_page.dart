@@ -5,9 +5,14 @@ import '../../core/models/app_models.dart';
 import '../../core/routes/app_routes.dart';
 import '../../core/state/app_state.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
-import '../../core/widgets/brand_logo.dart';
+import '../../core/widgets/app_button.dart';
+import '../../core/widgets/app_card.dart';
+import '../../core/widgets/circular_score.dart';
 import '../../core/widgets/main_shell.dart';
+import '../../core/widgets/stitch_top_bar.dart';
+import '../../core/widgets/status_chip.dart';
 import 'product_ingredient_analysis_page.dart';
 import 'widgets/analysis_mode_tabs.dart';
 
@@ -41,198 +46,140 @@ class _SkinAnalysisPageState extends State<SkinAnalysisPage> {
       );
     }
 
-    return DecoratedBox(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [AppColors.gradientTop, AppColors.gradientBottom],
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
+    return ColoredBox(
+      color: AppColors.pageBackground,
+      child: SafeArea(
+        bottom: false,
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 460),
+            child: Column(
+              children: [
+                StitchTopBar(
+                  leadingIcon: Icons.arrow_back_rounded,
+                  trailingIcon: Icons.ios_share_rounded,
+                  onLeadingTap: () => MainShell.navigateToTab(
+                    context,
+                    AppRoutes.dashboard,
+                  ),
+                  onTrailingTap: () => Navigator.pushNamed(
+                    context,
+                    AppRoutes.aiChatConversation,
+                    arguments: AiChatLaunchArgs(
+                      entryPoint: 'analysis_result',
+                      referenceId: result.progressEntryId ?? result.id,
+                      prefillMessage:
+                          'Can you explain this analysis and what I should do next?',
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: RefreshIndicator(
+                    color: AppColors.primaryDark,
+                    onRefresh: appState.refreshHome,
+                    child: ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.fromLTRB(
+                        AppSpacing.pagePadding,
+                        4,
+                        AppSpacing.pagePadding,
+                        18,
+                      ),
+                      children: [
+                        Text(
+                          'Analysis Results',
+                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                fontWeight: FontWeight.w800,
+                              ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          result.source?.trim().isNotEmpty == true
+                              ? 'Saved from ${result.source}'
+                              : 'Saved from your latest skin scan.',
+                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                color: AppColors.foreground,
+                              ),
+                        ),
+                        const SizedBox(height: AppSpacing.md),
+                        AnalysisModeTabs(
+                          selectedMode: _selectedMode,
+                          onChanged: (mode) => setState(() => _selectedMode = mode),
+                        ),
+                        const SizedBox(height: AppSpacing.md),
+                        _ScoreHero(result: result),
+                        const SizedBox(height: AppSpacing.md),
+                        _OverviewCard(result: result),
+                        const SizedBox(height: AppSpacing.md),
+                        _DetectedAreas(issues: result.issues),
+                        const SizedBox(height: AppSpacing.md),
+                        _RecommendationList(
+                          recommendations: result.recommendations,
+                        ),
+                        if (result.warnings.isNotEmpty) ...[
+                          const SizedBox(height: AppSpacing.md),
+                          _SafetyWarning(warnings: result.warnings),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+                SafeArea(
+                  top: false,
+                  child: Container(
+                    padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface.withValues(alpha: 0.96),
+                      border: Border(
+                        top: BorderSide(
+                          color: AppColors.border.withValues(alpha: 0.7),
+                        ),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: AppButton(
+                            label: 'Ask SkinSync AI',
+                            icon: const Icon(Icons.auto_awesome_rounded),
+                            onPressed: () => Navigator.pushNamed(
+                              context,
+                              AppRoutes.aiChatConversation,
+                              arguments: AiChatLaunchArgs(
+                                entryPoint: 'analysis_result',
+                                referenceId: result.progressEntryId ?? result.id,
+                                prefillMessage:
+                                    'Can you explain this analysis and what I should do next?',
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.sm),
+                        Expanded(
+                          child: AppButton(
+                            label: 'View Products',
+                            variant: AppButtonVariant.secondary,
+                            onPressed: () => MainShell.navigateToTab(
+                              context,
+                              AppRoutes.products,
+                              arguments: ProductsPageArgs(
+                                initialConcern: result.issues.isNotEmpty
+                                    ? result.issues.first.issueType
+                                    : 'any',
+                                referenceId: result.progressEntryId ?? result.id,
+                                entryPoint: ProductsEntryPoint.analysisResult,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
-      ),
-      child: Column(
-        children: [
-          Expanded(
-            child: RefreshIndicator(
-              color: AppColors.primaryDark,
-              onRefresh: appState.refreshHome,
-              child: ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.pagePadding,
-                  6,
-                  AppSpacing.pagePadding,
-                  18,
-                ),
-                children: [
-                  const _MiniTopBar(),
-                  const SizedBox(height: 14),
-                  AnalysisModeTabs(
-                    selectedMode: _selectedMode,
-                    onChanged: (mode) => setState(() => _selectedMode = mode),
-                  ),
-                  const SizedBox(height: 20),
-                  Text(
-                    'Skin Analysis',
-                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.heading,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    result.overview ??
-                        'Skin score ${result.overallScore}/100 with balanced overall condition.',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: AppColors.mutedText,
-                      height: 1.45,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  _ScoreCard(result: result),
-                  const SizedBox(height: 12),
-                  GridView.count(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    crossAxisCount: 2,
-                    mainAxisSpacing: 10,
-                    crossAxisSpacing: 10,
-                    childAspectRatio: 1.42,
-                    children: [
-                      _MetricCard(
-                        icon: Icons.face_retouching_natural_outlined,
-                        label: 'Skin score',
-                        value: '${result.overallScore}/100',
-                      ),
-                      _MetricCard(
-                        icon: Icons.verified_user_outlined,
-                        label: 'Confidence',
-                        value: '${result.confidenceScore}%',
-                      ),
-                      _MetricCard(
-                        icon: Icons.troubleshoot_rounded,
-                        label: 'Concerns found',
-                        value: '${result.issues.length}',
-                      ),
-                      _MetricCard(
-                        icon: Icons.tips_and_updates_outlined,
-                        label: 'Action tips',
-                        value: '${result.recommendations.length}',
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  _RecommendationsCard(
-                    recommendations: result.recommendations,
-                    warnings: result.warnings,
-                  ),
-                  const SizedBox(height: 12),
-                ],
-              ),
-            ),
-          ),
-          SafeArea(
-            top: false,
-            child: Container(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
-              decoration: BoxDecoration(
-                color: AppColors.cream.withValues(alpha: 0.94),
-                border: Border(
-                  top: BorderSide(color: AppColors.border.withValues(alpha: 0.7)),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.primaryDark.withValues(alpha: 0.06),
-                    blurRadius: 18,
-                    offset: const Offset(0, -4),
-                  ),
-                ],
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  SizedBox(
-                    width: double.infinity,
-                    height: 48,
-                    child: FilledButton(
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                      ),
-                      onPressed: () =>
-                          MainShell.navigateToTab(
-                            context,
-                            AppRoutes.products,
-                            arguments: ProductsPageArgs(
-                              initialConcern: result.issues.isNotEmpty
-                                  ? result.issues.first.issueType
-                                  : 'any',
-                              referenceId:
-                                  result.progressEntryId ?? result.id,
-                              entryPoint: ProductsEntryPoint.analysisResult,
-                            ),
-                          ),
-                      child: const Text('Review Product Recommendations'),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () =>
-                              MainShell.navigateToTab(context, AppRoutes.dashboard),
-                          child: const Text('Back to Home'),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () => Navigator.pushNamed(
-                            context,
-                            AppRoutes.aiChatConversation,
-                            arguments: AiChatLaunchArgs(
-                              entryPoint: 'analysis_result',
-                              referenceId: result.progressEntryId ?? result.id,
-                              prefillMessage:
-                                  'Can you explain this analysis and what I should do next?',
-                            ),
-                          ),
-                          child: const Text('Ask AI'),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton(
-                      onPressed: () => MainShell.navigateToTab(
-                        context,
-                        AppRoutes.products,
-                        arguments: ProductsPageArgs(
-                          initialConcern: result.issues.isNotEmpty
-                              ? result.issues.first.issueType
-                              : 'any',
-                          referenceId: result.progressEntryId ?? result.id,
-                          entryPoint: ProductsEntryPoint.analysisResult,
-                        ),
-                      ),
-                      child: const Text('Open Products'),
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  TextButton(
-                    onPressed: () => Navigator.pushNamed(context, AppRoutes.upload),
-                    child: const Text('Analyze Again'),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -251,60 +198,293 @@ class _EmptyAnalysis extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(16, 6, 16, 106),
+    return ColoredBox(
+      color: AppColors.pageBackground,
+      child: SafeArea(
+        bottom: false,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.pagePadding,
+            8,
+            AppSpacing.pagePadding,
+            AppSpacing.pageBottomPaddingWithActions,
+          ),
+          children: [
+            const StitchTopBar(),
+            const SizedBox(height: AppSpacing.md),
+            AnalysisModeTabs(selectedMode: selectedMode, onChanged: onModeChanged),
+            const SizedBox(height: AppSpacing.md),
+            AppCard(
+              child: Column(
+                children: [
+                  const Icon(
+                    Icons.auto_awesome_rounded,
+                    size: 42,
+                    color: AppColors.primaryDark,
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  Text(
+                    'No analysis yet',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(
+                    'Complete the skin quiz and upload a clear photo to generate your first AI report.',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  AppButton(label: 'Start Quiz', onPressed: onStart),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ScoreHero extends StatelessWidget {
+  const _ScoreHero({required this.result});
+
+  final AnalysisResult result;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+      child: Column(
+        children: [
+          CircularScore(
+            score: result.overallScore,
+            size: 132,
+            label: '/100',
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            _balanceTitle(result.overallScore),
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
+          ),
+          const SizedBox(height: 4),
+          StatusChip(
+            label: '${result.confidenceScore}% confidence',
+            icon: Icons.verified_outlined,
+            tone: StatusChipTone.success,
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _balanceTitle(int score) {
+    if (score >= 80) {
+      return 'Excellent Balance';
+    }
+    if (score >= 60) {
+      return 'Stable Balance';
+    }
+    return 'Needs Attention';
+  }
+}
+
+class _OverviewCard extends StatelessWidget {
+  const _OverviewCard({required this.result});
+
+  final AnalysisResult result;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const _MiniTopBar(),
-        const SizedBox(height: 14),
-        AnalysisModeTabs(selectedMode: selectedMode, onChanged: onModeChanged),
-        const SizedBox(height: 28),
-        _SoftCard(
-          padding: const EdgeInsets.all(22),
-          child: Column(
-            children: [
-              Container(
-                width: 54,
-                height: 54,
-                decoration: const BoxDecoration(
-                  color: AppColors.secondary,
-                  shape: BoxShape.circle,
+        _SmallSectionLabel('AI Overview'),
+        const SizedBox(height: AppSpacing.sm),
+        Text(
+          result.overview?.trim().isNotEmpty == true
+              ? result.overview!
+              : 'Your latest analysis is ready. Keep tracking routine consistency and product fit over time.',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: AppColors.heading,
+                height: 1.55,
+              ),
+        ),
+      ],
+    );
+  }
+}
+
+class _DetectedAreas extends StatelessWidget {
+  const _DetectedAreas({required this.issues});
+
+  final List<AnalysisIssue> issues;
+
+  @override
+  Widget build(BuildContext context) {
+    final visible = issues.isEmpty
+        ? const <AnalysisIssue>[
+            AnalysisIssue(issueType: 'Redness', severityScore: 20),
+            AnalysisIssue(issueType: 'Texture', severityScore: 25),
+          ]
+        : issues.take(3).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _SmallSectionLabel('Detected Areas'),
+        const SizedBox(height: AppSpacing.sm),
+        Row(
+          children: visible
+              .map(
+                (issue) => Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: _IssueCard(issue: issue),
+                  ),
                 ),
-                child: const Icon(
-                  Icons.auto_awesome_rounded,
-                  color: AppColors.primaryDark,
+              )
+              .toList(),
+        ),
+      ],
+    );
+  }
+}
+
+class _IssueCard extends StatelessWidget {
+  const _IssueCard({required this.issue});
+
+  final AnalysisIssue issue;
+
+  @override
+  Widget build(BuildContext context) {
+    final high = issue.severityScore >= 70;
+    final medium = issue.severityScore >= 40;
+    final tone = high
+        ? StatusChipTone.danger
+        : medium
+            ? StatusChipTone.warning
+            : StatusChipTone.success;
+    return AppCard(
+      variant: AppCardVariant.metric,
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          StatusChip(
+            label: high
+                ? 'High'
+                : medium
+                    ? 'Mild'
+                    : 'Good',
+            tone: tone,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            issue.issueType,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  fontWeight: FontWeight.w800,
                 ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'No analysis yet',
-                style: Theme.of(
-                  context,
-                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                'Complete the skin quiz and upload a photo to generate your first AI report.',
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-              const SizedBox(height: 18),
-              SizedBox(
-                width: double.infinity,
-                height: 40,
-                child: FilledButton(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+          ),
+          Text(
+            issue.description?.trim().isNotEmpty == true
+                ? issue.description!
+                : '${issue.severityScore}/100',
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.labelSmall,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RecommendationList extends StatelessWidget {
+  const _RecommendationList({required this.recommendations});
+
+  final List<AnalysisRecommendation> recommendations;
+
+  @override
+  Widget build(BuildContext context) {
+    final items = recommendations.isEmpty
+        ? const [
+            AnalysisRecommendation(
+              title: 'Increase ceramide intake',
+              content: 'Keep your routine gentle and consistent while tracking changes.',
+            ),
+            AnalysisRecommendation(
+              title: 'Adjust SPF application',
+              content: 'Reapply sunscreen through the day when you are outside.',
+            ),
+          ]
+        : recommendations.take(4).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _SmallSectionLabel('Recommendations'),
+        const SizedBox(height: AppSpacing.sm),
+        ...items.map(
+          (item) => Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+            child: AppCard(
+              variant: AppCardVariant.metric,
+              padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+              child: Row(
+                children: [
+                  Container(
+                    width: 28,
+                    height: 28,
+                    decoration: const BoxDecoration(
+                      color: AppColors.secondary,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.spa_outlined,
+                      size: 15,
+                      color: AppColors.primaryDark,
                     ),
                   ),
-                  onPressed: onStart,
-                  child: const Text('Start Quiz'),
-                ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          item.title.trim().isEmpty
+                              ? item.content
+                              : item.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                                fontWeight: FontWeight.w800,
+                              ),
+                        ),
+                        if (item.title.trim().isNotEmpty)
+                          Text(
+                            item.content,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.labelSmall,
+                          ),
+                      ],
+                    ),
+                  ),
+                  const Icon(
+                    Icons.expand_more_rounded,
+                    color: AppColors.mutedText,
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ],
@@ -312,285 +492,66 @@ class _EmptyAnalysis extends StatelessWidget {
   }
 }
 
-class _MiniTopBar extends StatelessWidget {
-  const _MiniTopBar();
+class _SafetyWarning extends StatelessWidget {
+  const _SafetyWarning({required this.warnings});
 
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 28,
-      child: Row(
-        children: [
-          const BrandLogo(size: 24, radius: 8, showShadow: false),
-          const Spacer(),
-          Text(
-            'SkinSync',
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.w800,
-              fontSize: 14,
-            ),
-          ),
-          const Spacer(),
-          const Icon(
-            Icons.notifications_none_rounded,
-            size: 17,
-            color: AppColors.foreground,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ScoreCard extends StatelessWidget {
-  const _ScoreCard({required this.result});
-
-  final AnalysisResult result;
-
-  @override
-  Widget build(BuildContext context) {
-    return _SoftCard(
-      padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Current reading',
-            style: Theme.of(context).textTheme.labelMedium?.copyWith(
-              color: AppColors.mutedText,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.2,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Expanded(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      '${result.overallScore}',
-                      style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                        color: AppColors.primaryDark,
-                        fontWeight: FontWeight.w800,
-                        height: 0.95,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 4),
-                      child: Text(
-                        '/100',
-                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          color: AppColors.mutedText,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: AppColors.secondary,
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Text(
-                  _friendlySkinType(result.skinType),
-                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: AppColors.primaryDark,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'Confidence ${result.confidenceScore}%',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: AppColors.foreground,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MetricCard extends StatelessWidget {
-  const _MetricCard({
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
-
-  final IconData icon;
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return _SoftCard(
-      padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: const BoxDecoration(
-              color: AppColors.secondary,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, size: 16, color: AppColors.primaryDark),
-          ),
-          const SizedBox(height: 20),
-          Text(
-            label,
-            style: Theme.of(context).textTheme.labelMedium?.copyWith(
-              color: AppColors.mutedText,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w800,
-              color: AppColors.heading,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _RecommendationsCard extends StatelessWidget {
-  const _RecommendationsCard({
-    required this.recommendations,
-    required this.warnings,
-  });
-
-  final List<AnalysisRecommendation> recommendations;
   final List<String> warnings;
 
   @override
   Widget build(BuildContext context) {
-    final items = recommendations.isEmpty
-        ? const [
-            'Keep your routine gentle and consistent while tracking changes.',
-          ]
-        : recommendations.map((item) => item.content).toList();
-
-    return _SoftCard(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
-      child: Column(
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.error.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(AppRadius.medium),
+        border: Border.all(color: AppColors.error.withValues(alpha: 0.24)),
+      ),
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Recommendations',
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 14),
-          ...items.map(
-            (tip) => Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(top: 5),
-                    child: Container(
-                      width: 4,
-                      height: 4,
-                      decoration: const BoxDecoration(
-                        color: AppColors.foreground,
-                        shape: BoxShape.circle,
+          const Icon(Icons.warning_amber_rounded, color: AppColors.error),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Sensitivity Warning',
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        color: AppColors.error,
+                        fontWeight: FontWeight.w800,
                       ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      tip,
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: AppColors.foreground,
-                        height: 1.35,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          if (warnings.isNotEmpty) ...[
-            const SizedBox(height: 4),
-            Divider(color: AppColors.border.withValues(alpha: 0.34)),
-            const SizedBox(height: 8),
-            ...warnings.map(
-              (warning) => Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Text(
-                  warning,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: AppColors.warning,
-                    height: 1.35,
-                  ),
                 ),
-              ),
+                const SizedBox(height: 4),
+                Text(
+                  warnings.take(2).join('\n'),
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: AppColors.error,
+                        height: 1.45,
+                      ),
+                ),
+              ],
             ),
-          ],
+          ),
         ],
       ),
     );
   }
 }
 
-class _SoftCard extends StatelessWidget {
-  const _SoftCard({
-    required this.child,
-    this.padding = const EdgeInsets.all(16),
-  });
+class _SmallSectionLabel extends StatelessWidget {
+  const _SmallSectionLabel(this.text);
 
-  final Widget child;
-  final EdgeInsetsGeometry padding;
+  final String text;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: padding,
-      decoration: BoxDecoration(
-        color: AppColors.surface.withValues(alpha: 0.96),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: AppColors.border.withValues(alpha: 0.65)),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primaryDark.withValues(alpha: 0.05),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
+    return Text(
+      text.toUpperCase(),
+      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+            color: AppColors.heading,
+            fontWeight: FontWeight.w900,
           ),
-        ],
-      ),
-      child: child,
     );
   }
-}
-
-String _friendlySkinType(String value) {
-  final trimmed = value.trim();
-  if (trimmed.isEmpty || trimmed.toLowerCase() == 'unknown') {
-    return 'Skin type updating';
-  }
-  return trimmed;
 }

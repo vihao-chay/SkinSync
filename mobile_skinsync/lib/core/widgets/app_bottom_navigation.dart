@@ -21,25 +21,26 @@ class AppBottomNavigation extends StatelessWidget {
     final theme = Theme.of(context);
     return SafeArea(
       top: false,
-      minimum: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 460),
-        child: Container(
+      minimum: const EdgeInsets.fromLTRB(8, 0, 8, 6),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 460),
+          child: Container(
           width: double.infinity,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(AppRadius.section),
-            boxShadow: AppShadows.elevated,
+            borderRadius: BorderRadius.circular(AppRadius.medium),
+            boxShadow: AppShadows.soft,
           ),
           child: Material(
             color: AppColors.surface.withValues(alpha: 0.98),
-            borderRadius: BorderRadius.circular(AppRadius.section),
+            borderRadius: BorderRadius.circular(AppRadius.medium),
             clipBehavior: Clip.antiAlias,
             child: Ink(
-              padding: const EdgeInsets.fromLTRB(8, 6, 8, 7),
+              padding: const EdgeInsets.fromLTRB(5, 5, 5, 5),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(AppRadius.section),
+                borderRadius: BorderRadius.circular(AppRadius.medium),
                 border: Border.all(
-                  color: AppColors.border.withValues(alpha: 0.92),
+                  color: AppColors.border.withValues(alpha: 0.75),
                 ),
               ),
               child: Row(
@@ -48,34 +49,32 @@ class AppBottomNavigation extends StatelessWidget {
                   final selected = selectedIndex == index;
                   return Expanded(
                     child: InkWell(
-                      borderRadius: BorderRadius.circular(AppRadius.medium),
+                      borderRadius: BorderRadius.circular(AppRadius.small),
                       onTap: () => onTap(index),
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 180),
                         curve: Curves.easeOut,
                         padding: const EdgeInsets.symmetric(
                           horizontal: 4,
-                          vertical: 8,
+                          vertical: 6,
                         ),
                         decoration: BoxDecoration(
                           color: selected
-                              ? AppColors.secondary
+                              ? AppColors.secondary.withValues(alpha: 0.86)
                               : Colors.transparent,
-                          borderRadius: BorderRadius.circular(
-                            AppRadius.medium,
-                          ),
+                          borderRadius: BorderRadius.circular(AppRadius.small),
                         ),
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(
                               destination.icon,
-                              size: 21,
+                              size: 18,
                               color: selected
                                   ? AppColors.primaryDark
                                   : AppColors.mutedText,
                             ),
-                            const SizedBox(height: 6),
+                            const SizedBox(height: 4),
                             Text(
                               destination.label,
                               maxLines: 1,
@@ -100,6 +99,7 @@ class AppBottomNavigation extends StatelessWidget {
               ),
             ),
           ),
+        ),
         ),
       ),
     );

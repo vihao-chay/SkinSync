@@ -37,21 +37,26 @@ class AppCard extends StatelessWidget {
         color: borderColor ?? _borderForVariant(variant),
       ),
     );
-    final card = Material(
-      color: resolvedBackground,
-      shape: shape,
-      shadowColor: AppShadows.soft.first.color,
-      elevation: variant == AppCardVariant.metric ? 1 : 0,
-      child: Container(
-        width: double.infinity,
-        padding: padding,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(resolvedRadius),
-          boxShadow: variant == AppCardVariant.metric
-              ? AppShadows.soft.sublist(0, 1)
-              : AppShadows.soft,
+    final card = Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: resolvedBackground,
+        borderRadius: BorderRadius.circular(resolvedRadius),
+        border: Border.all(color: borderColor ?? _borderForVariant(variant)),
+        boxShadow: variant == AppCardVariant.muted
+            ? const []
+            : variant == AppCardVariant.metric
+                ? AppShadows.soft.sublist(0, 1)
+                : AppShadows.soft,
+      ),
+      child: Material(
+        color: Colors.transparent,
+        shape: shape,
+        clipBehavior: Clip.antiAlias,
+        child: Padding(
+          padding: padding,
+          child: child,
         ),
-        child: child,
       ),
     );
 

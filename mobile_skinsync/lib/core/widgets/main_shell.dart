@@ -156,33 +156,45 @@ class _MainShellState extends State<MainShell> {
 
     return Scaffold(
       backgroundColor: AppColors.pageBackground,
-      body: IndexedStack(
-        index: _selectedIndex,
-        sizing: StackFit.expand,
+      body: Stack(
+        fit: StackFit.expand,
         children: [
-          const _ShellPage(pageName: 'Home', child: DashboardPage()),
-          _ShellPage(
-            key: ValueKey('routine-${_routineArgs.cacheKey}'),
-            pageName: 'Routine',
-            child: RoutinePage(args: _routineArgs),
+          Positioned.fill(
+            child: IndexedStack(
+              index: _selectedIndex,
+              sizing: StackFit.expand,
+              children: [
+                const _ShellPage(pageName: 'Home', child: DashboardPage()),
+                _ShellPage(
+                  key: ValueKey('routine-${_routineArgs.cacheKey}'),
+                  pageName: 'Routine',
+                  child: RoutinePage(args: _routineArgs),
+                ),
+                _ShellPage(
+                  key: ValueKey('products-${_productsArgs.cacheKey}'),
+                  pageName: 'Products',
+                  child: ProductsPage(args: _productsArgs),
+                ),
+                _ShellPage(
+                  key: ValueKey('progress-${_progressArgs.cacheKey}'),
+                  pageName: 'Progress',
+                  child: ProgressPage(args: _progressArgs),
+                ),
+                const _ShellPage(pageName: 'Profile', child: ProfilePage()),
+              ],
+            ),
           ),
-          _ShellPage(
-            key: ValueKey('products-${_productsArgs.cacheKey}'),
-            pageName: 'Products',
-            child: ProductsPage(args: _productsArgs),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: AppBottomNavigation(
+              destinations: _destinations,
+              selectedIndex: _selectedIndex,
+              onTap: _onTap,
+            ),
           ),
-          _ShellPage(
-            key: ValueKey('progress-${_progressArgs.cacheKey}'),
-            pageName: 'Progress',
-            child: ProgressPage(args: _progressArgs),
-          ),
-          const _ShellPage(pageName: 'Profile', child: ProfilePage()),
         ],
-      ),
-      bottomNavigationBar: AppBottomNavigation(
-        destinations: _destinations,
-        selectedIndex: _selectedIndex,
-        onTap: _onTap,
       ),
     );
   }
