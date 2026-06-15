@@ -76,11 +76,15 @@ class _DashboardPageState extends State<DashboardPage> {
     final totalSteps = tracking?.totalSteps ?? 0;
     final completedSteps = tracking?.completedSteps ?? 0;
     final routineProgress = totalSteps == 0 ? 0.0 : completedSteps / totalSteps;
-    final routineSteps = [...?regimen?.morning, ...?regimen?.evening].take(3).toList();
-    final products = (_latestRecommendation?.products ?? const <AiRecommendedProduct>[])
-        .where((item) => item.name.trim().isNotEmpty)
-        .take(2)
-        .toList();
+    final routineSteps = [
+      ...?regimen?.morning,
+      ...?regimen?.evening,
+    ].take(3).toList();
+    final products =
+        (_latestRecommendation?.products ?? const <AiRecommendedProduct>[])
+            .where((item) => item.name.trim().isNotEmpty)
+            .take(2)
+            .toList();
 
     return ColoredBox(
       color: AppColors.pageBackground,
@@ -100,14 +104,10 @@ class _DashboardPageState extends State<DashboardPage> {
                 children: [
                   StitchTopBar(
                     avatarUrl: appState.user?.avatarUrl,
-                    onLeadingTap: () => MainShell.navigateToTab(
-                      context,
-                      AppRoutes.profile,
-                    ),
-                    onTrailingTap: () => MainShell.navigateToTab(
-                      context,
-                      AppRoutes.progress,
-                    ),
+                    onLeadingTap: () =>
+                        MainShell.navigateToTab(context, AppRoutes.profile),
+                    onTrailingTap: () =>
+                        MainShell.navigateToTab(context, AppRoutes.progress),
                   ),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(
@@ -128,10 +128,8 @@ class _DashboardPageState extends State<DashboardPage> {
                         _SkinHealthCard(
                           score: latestAnalysis?.overallScore,
                           insight: progress?.progressInsight,
-                          onScan: () => Navigator.pushNamed(
-                            context,
-                            AppRoutes.upload,
-                          ),
+                          onScan: () =>
+                              Navigator.pushNamed(context, AppRoutes.upload),
                         ),
                         const SizedBox(height: AppSpacing.md),
                         _SectionTitle(
@@ -183,20 +181,14 @@ class _DashboardPageState extends State<DashboardPage> {
                           ),
                         ),
                         const SizedBox(height: AppSpacing.md),
-                        AppButton(
-                          label: 'Scan with AI',
-                          icon: const Icon(Icons.document_scanner_outlined),
-                          onPressed: () => Navigator.pushNamed(
-                            context,
-                            AppRoutes.upload,
-                          ),
+                        _PrimaryScanAction(
+                          onPressed: () =>
+                              Navigator.pushNamed(context, AppRoutes.upload),
                         ),
                         const SizedBox(height: AppSpacing.sm),
                         _QuickActionGrid(
-                          onChat: () => Navigator.pushNamed(
-                            context,
-                            AppRoutes.aiChat,
-                          ),
+                          onChat: () =>
+                              Navigator.pushNamed(context, AppRoutes.aiChat),
                           onProgress: () => MainShell.navigateToTab(
                             context,
                             AppRoutes.progress,
@@ -269,20 +261,20 @@ class _Greeting extends StatelessWidget {
         Text(
           name.isEmpty ? 'Hello' : 'Hello, $name',
           style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.w800,
-                color: AppColors.heading,
-              ),
+            fontWeight: FontWeight.w800,
+            color: AppColors.heading,
+          ),
         ),
         const SizedBox(height: 2),
         Text(
           hasRoutine
               ? 'Your skincare day is ready.'
               : hasAnalysis
-                  ? 'Your skin insights are ready.'
-                  : 'Start with a quick AI skin scan today.',
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: AppColors.foreground,
-              ),
+              ? 'Your skin insights are ready.'
+              : 'Start with a quick AI skin scan today.',
+          style: Theme.of(
+            context,
+          ).textTheme.labelSmall?.copyWith(color: AppColors.foreground),
         ),
       ],
     );
@@ -309,23 +301,24 @@ class _SkinHealthCard extends StatelessWidget {
         children: [
           Text(
             'Your Skin Health',
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 12),
           CircularScore(
             score: resolvedScore,
-            size: 126,
+            size: 136,
             label: score == null ? 'No scan' : 'Balanced',
+            progressColor: AppColors.primary,
           ),
           const SizedBox(height: 10),
           Text(
             score == null
                 ? 'Scan your skin to unlock today\'s baseline.'
                 : insight?.trim().isNotEmpty == true
-                    ? insight!
-                    : 'Baseline saved from your latest analysis.',
+                ? insight!
+                : 'Baseline saved from your latest analysis.',
             textAlign: TextAlign.center,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
@@ -351,11 +344,7 @@ class _SkinHealthCard extends StatelessWidget {
 }
 
 class _SectionTitle extends StatelessWidget {
-  const _SectionTitle({
-    required this.title,
-    this.actionLabel,
-    this.onAction,
-  });
+  const _SectionTitle({required this.title, this.actionLabel, this.onAction});
 
   final String title;
   final String? actionLabel;
@@ -368,16 +357,13 @@ class _SectionTitle extends StatelessWidget {
         Expanded(
           child: Text(
             title,
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
           ),
         ),
         if (actionLabel != null)
-          TextButton(
-            onPressed: onAction,
-            child: Text(actionLabel!),
-          ),
+          TextButton(onPressed: onAction, child: Text(actionLabel!)),
       ],
     );
   }
@@ -487,9 +473,9 @@ class _MetricMiniCard extends StatelessWidget {
                 Text(
                   label,
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: AppColors.heading,
-                        fontWeight: FontWeight.w800,
-                      ),
+                    color: AppColors.heading,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Row(
@@ -500,9 +486,9 @@ class _MetricMiniCard extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                              fontFamily: 'Inter',
-                              fontWeight: FontWeight.w800,
-                            ),
+                          fontFamily: 'PlusJakartaSans',
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 5),
@@ -532,9 +518,9 @@ class _MetricMiniCard extends StatelessWidget {
               child: Text(
                 trailing!,
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.primaryDark,
-                    ),
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.primaryDark,
+                ),
               ),
             ),
           ],
@@ -571,13 +557,15 @@ class _RoutinePreviewCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   'Today\'s Routine',
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
                 ),
               ),
               StatusChip(
-                label: totalSteps == 0 ? 'Not set' : '$completedSteps/$totalSteps steps',
+                label: totalSteps == 0
+                    ? 'Not set'
+                    : '$completedSteps/$totalSteps steps',
                 tone: StatusChipTone.accent,
               ),
             ],
@@ -607,7 +595,8 @@ class _RoutinePreviewCard extends StatelessWidget {
                 scrollDirection: Axis.horizontal,
                 itemCount: steps.length,
                 separatorBuilder: (_, _) => const SizedBox(width: 12),
-                itemBuilder: (context, index) => _RoutineBubble(step: steps[index]),
+                itemBuilder: (context, index) =>
+                    _RoutineBubble(step: steps[index]),
               ),
             ),
         ],
@@ -649,9 +638,9 @@ class _RoutineBubble extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.heading,
-                ),
+              fontWeight: FontWeight.w800,
+              color: AppColors.heading,
+            ),
           ),
           Text(
             step.name,
@@ -803,17 +792,17 @@ class _ProductPreview extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: AppColors.primaryDark,
-                  fontWeight: FontWeight.w800,
-                ),
+              color: AppColors.primaryDark,
+              fontWeight: FontWeight.w800,
+            ),
           ),
           Text(
             product.name,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 4),
           Text(
@@ -837,8 +826,8 @@ class _ProductImage extends StatelessWidget {
     final url = raw.isEmpty
         ? ''
         : raw.startsWith('http')
-            ? raw
-            : '${AppConfig.apiBaseUrl}$raw';
+        ? raw
+        : '${AppConfig.apiBaseUrl}$raw';
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(AppRadius.medium),
@@ -846,10 +835,7 @@ class _ProductImage extends StatelessWidget {
         width: double.infinity,
         color: AppColors.surfaceStrong,
         child: url.isEmpty
-            ? const Icon(
-                Icons.spa_outlined,
-                color: AppColors.primaryDark,
-              )
+            ? const Icon(Icons.spa_outlined, color: AppColors.primaryDark)
             : Image.network(
                 url,
                 fit: BoxFit.cover,
@@ -864,10 +850,7 @@ class _ProductImage extends StatelessWidget {
 }
 
 class _QuickActionGrid extends StatelessWidget {
-  const _QuickActionGrid({
-    required this.onChat,
-    required this.onProgress,
-  });
+  const _QuickActionGrid({required this.onChat, required this.onProgress});
 
   final VoidCallback onChat;
   final VoidCallback onProgress;
@@ -877,21 +860,114 @@ class _QuickActionGrid extends StatelessWidget {
     return Row(
       children: [
         Expanded(
-          child: OutlinedButton.icon(
+          child: _SecondaryActionCard(
             onPressed: onChat,
-            icon: const Icon(Icons.chat_bubble_outline_rounded, size: 16),
-            label: const Text('AI Care'),
+            icon: Icons.chat_bubble_outline_rounded,
+            label: 'AI Chat',
           ),
         ),
         const SizedBox(width: AppSpacing.sm),
         Expanded(
-          child: OutlinedButton.icon(
+          child: _SecondaryActionCard(
             onPressed: onProgress,
-            icon: const Icon(Icons.show_chart_rounded, size: 16),
-            label: const Text('View Progress'),
+            icon: Icons.trending_up_rounded,
+            label: 'View Progress',
           ),
         ),
       ],
+    );
+  }
+}
+
+class _PrimaryScanAction extends StatelessWidget {
+  const _PrimaryScanAction({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.primary,
+      borderRadius: BorderRadius.circular(AppRadius.large),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onPressed,
+        child: SizedBox(
+          height: 86,
+          width: double.infinity,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.document_scanner_outlined,
+                color: AppColors.onPrimary,
+                size: 26,
+              ),
+              const SizedBox(height: 7),
+              Text(
+                'Scan with AI',
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  color: AppColors.onPrimary,
+                  fontFamily: 'PlusJakartaSans',
+                  fontWeight: FontWeight.w700,
+                  fontSize: 14,
+                  height: 1.15,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SecondaryActionCard extends StatelessWidget {
+  const _SecondaryActionCard({
+    required this.onPressed,
+    required this.icon,
+    required this.label,
+  });
+
+  final VoidCallback onPressed;
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadius.large),
+        side: BorderSide(color: AppColors.border.withValues(alpha: 0.88)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onPressed,
+        child: SizedBox(
+          height: 78,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: AppColors.primary, size: 24),
+              const SizedBox(height: 8),
+              Text(
+                label,
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  color: AppColors.heading,
+                  fontFamily: 'PlusJakartaSans',
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                  height: 1.15,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

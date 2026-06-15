@@ -10,16 +10,18 @@ class CircularScore extends StatelessWidget {
     required this.score,
     this.size = 96,
     this.label = 'Skin score',
+    this.progressColor,
   });
 
   final int score;
   final double size;
   final String label;
+  final Color? progressColor;
 
   @override
   Widget build(BuildContext context) {
     final clamped = score.clamp(0, 100);
-    final color = _toneForScore(clamped);
+    final color = progressColor ?? AppColors.primary;
     return SizedBox(
       width: size,
       height: size,
@@ -29,19 +31,17 @@ class CircularScore extends StatelessWidget {
         curve: Curves.easeOutCubic,
         builder: (context, value, child) {
           return CustomPaint(
-            painter: _CircularScorePainter(
-              progress: value,
-              color: color,
-            ),
+            painter: _CircularScorePainter(progress: value, color: color),
             child: Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
                     '$clamped',
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontFamily: 'Inter',
-                      fontWeight: FontWeight.w800,
+                    style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                      fontFamily: 'PlayfairDisplay',
+                      color: AppColors.heading,
+                      fontWeight: FontWeight.w700,
                       fontFeatures: const [FontFeature.tabularFigures()],
                     ),
                   ),
@@ -59,23 +59,10 @@ class CircularScore extends StatelessWidget {
       ),
     );
   }
-
-  Color _toneForScore(int value) {
-    if (value >= 75) {
-      return AppColors.success;
-    }
-    if (value >= 45) {
-      return AppColors.warning;
-    }
-    return AppColors.error;
-  }
 }
 
 class _CircularScorePainter extends CustomPainter {
-  const _CircularScorePainter({
-    required this.progress,
-    required this.color,
-  });
+  const _CircularScorePainter({required this.progress, required this.color});
 
   final double progress;
   final Color color;
@@ -88,7 +75,7 @@ class _CircularScorePainter extends CustomPainter {
     final rect = Rect.fromCircle(center: center, radius: radius);
 
     final track = Paint()
-      ..color = AppColors.secondary
+      ..color = AppColors.surfaceContainerHigh
       ..style = PaintingStyle.stroke
       ..strokeWidth = stroke
       ..strokeCap = StrokeCap.round;
@@ -104,13 +91,7 @@ class _CircularScorePainter extends CustomPainter {
       ..strokeCap = StrokeCap.round;
 
     canvas.drawCircle(center, radius, track);
-    canvas.drawArc(
-      rect,
-      -math.pi / 2,
-      2 * math.pi * progress,
-      false,
-      arc,
-    );
+    canvas.drawArc(rect, -math.pi / 2, 2 * math.pi * progress, false, arc);
   }
 
   @override

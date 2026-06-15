@@ -58,7 +58,8 @@ class _ProductIngredientAnalysisPageState
         return;
       }
       setState(() {
-        _errorMessage = context.read<AppState>().errorMessage ??
+        _errorMessage =
+            context.read<AppState>().errorMessage ??
             'Could not load the latest saved product recommendations right now.';
       });
     } finally {
@@ -89,7 +90,8 @@ class _ProductIngredientAnalysisPageState
         return;
       }
       setState(() {
-        _errorMessage = context.read<AppState>().errorMessage ??
+        _errorMessage =
+            context.read<AppState>().errorMessage ??
             'Could not generate product recommendations right now.';
       });
     } finally {
@@ -103,7 +105,8 @@ class _ProductIngredientAnalysisPageState
   Widget build(BuildContext context) {
     final appState = context.watch<AppState>();
     final result = _result;
-    final categories = result?.categories.where((item) => item.items.isNotEmpty).toList() ??
+    final categories =
+        result?.categories.where((item) => item.items.isNotEmpty).toList() ??
         const <AiProductRecommendationCategory>[];
 
     return ListView(
@@ -126,25 +129,26 @@ class _ProductIngredientAnalysisPageState
                 children: [
                   Text(
                     'Product Recommendation',
-                    style: Theme.of(context)
-                        .textTheme
-                        .headlineMedium
-                        ?.copyWith(fontWeight: FontWeight.w800),
+                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                   const SizedBox(height: 6),
                   Text(
                     'Latest saved recommendations from your profile, analysis, routine, and recent check-ins. Generate manually when you want a new AI run.',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: AppColors.mutedText,
-                          height: 1.5,
-                        ),
+                      color: AppColors.mutedText,
+                      height: 1.5,
+                    ),
                   ),
                 ],
               ),
             ),
             const SizedBox(width: 8),
             AppButton(
-              label: result?.hasRecommendation == true ? 'Generate New' : 'Generate',
+              label: result?.hasRecommendation == true
+                  ? 'Generate New'
+                  : 'Generate',
               isLoading: _isGenerating,
               onPressed: _isGenerating ? null : _generateRecommendations,
             ),
@@ -152,11 +156,14 @@ class _ProductIngredientAnalysisPageState
         ),
         const SizedBox(height: 14),
         _SummaryStrip(
-          skinType: result?.profileSummary.skinType ??
+          skinType:
+              result?.profileSummary.skinType ??
               _friendlyText(appState.profile?.skinType),
-          budget: result?.profileSummary.budget ??
+          budget:
+              result?.profileSummary.budget ??
               _friendlyText(appState.profile?.budgetLabel),
-          concerns: result?.profileSummary.concerns ??
+          concerns:
+              result?.profileSummary.concerns ??
               appState.profile?.concerns ??
               const [],
         ),
@@ -164,21 +171,20 @@ class _ProductIngredientAnalysisPageState
           const SizedBox(height: 12),
           const _InfoCard(
             title: 'Generating recommendations',
-            body: 'Generating product recommendations from your latest skin analysis...',
+            body:
+                'Generating product recommendations from your latest skin analysis...',
           ),
         ],
         if (result?.note?.trim().isNotEmpty == true) ...[
           const SizedBox(height: 12),
-          _InfoCard(
-            title: 'Recommendation note',
-            body: result!.note!,
-          ),
+          _InfoCard(title: 'Recommendation note', body: result!.note!),
         ],
         const SizedBox(height: 18),
         if (_loading && result == null)
           const _InfoCard(
             title: 'Loading latest recommendations',
-            body: 'SkinSync is loading your most recent saved recommendation session.',
+            body:
+                'SkinSync is loading your most recent saved recommendation session.',
           )
         else if (_errorMessage != null && result == null)
           _InfoCard(
@@ -229,9 +235,9 @@ class _MiniTopBar extends StatelessWidget {
           Text(
             'SkinSync',
             style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w800,
-                  fontSize: 14,
-                ),
+              fontWeight: FontWeight.w800,
+              fontSize: 14,
+            ),
           ),
           const Spacer(),
           const Icon(
@@ -280,8 +286,8 @@ class _CategorySection extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.95),
-            borderRadius: BorderRadius.circular(18),
+        color: Colors.white.withValues(alpha: 0.95),
+        borderRadius: BorderRadius.circular(18),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -290,27 +296,29 @@ class _CategorySection extends StatelessWidget {
             category.label.trim().isEmpty
                 ? _categoryLabel(category.key)
                 : category.label,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
           ),
           if (category.reason.trim().isNotEmpty) ...[
             const SizedBox(height: 6),
             Text(
               category.reason,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppColors.mutedText,
-                    height: 1.5,
-                  ),
+                color: AppColors.mutedText,
+                height: 1.5,
+              ),
             ),
           ],
           const SizedBox(height: 12),
-          ...category.items.take(2).map(
-            (item) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: _ProductCard(item: item),
-            ),
-          ),
+          ...category.items
+              .take(2)
+              .map(
+                (item) => Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: _ProductCard(item: item),
+                ),
+              ),
         ],
       ),
     );
@@ -343,14 +351,16 @@ class _ProductCard extends StatelessWidget {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
               const SizedBox(width: 8),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.secondary,
                   borderRadius: BorderRadius.circular(999),
@@ -358,11 +368,11 @@ class _ProductCard extends StatelessWidget {
                 child: Text(
                   '${item.matchPercent ?? item.matchScore}%',
                   style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                        fontFamily: 'Inter',
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.primaryDark,
-                        fontFeatures: const [FontFeature.tabularFigures()],
-                      ),
+                    fontFamily: 'PlusJakartaSans',
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primaryDark,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
                 ),
               ),
             ],
@@ -387,10 +397,10 @@ class _ProductCard extends StatelessWidget {
           Text(
             '${item.price.toStringAsFixed(0)} ${item.currency}',
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontFamily: 'Inter',
-                  fontWeight: FontWeight.w800,
-                  fontFeatures: const [FontFeature.tabularFigures()],
-                ),
+              fontFamily: 'PlusJakartaSans',
+              fontWeight: FontWeight.w800,
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
           ),
         ],
       ),
@@ -399,10 +409,7 @@ class _ProductCard extends StatelessWidget {
 }
 
 class _MiniPill extends StatelessWidget {
-  const _MiniPill({
-    required this.label,
-    required this.value,
-  });
+  const _MiniPill({required this.label, required this.value});
 
   final String label;
   final String value;
@@ -421,16 +428,16 @@ class _MiniPill extends StatelessWidget {
         children: [
           Text(
             label,
-            style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  color: AppColors.primaryDark,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.labelMedium?.copyWith(color: AppColors.primaryDark),
           ),
           const SizedBox(height: 2),
           Text(
             value,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
           ),
         ],
       ),
@@ -457,9 +464,9 @@ class _InfoCard extends StatelessWidget {
         children: [
           Text(
             title,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 8),
           Text(body),
@@ -494,6 +501,7 @@ String _categoryLabel(String key) {
     'sunscreen' => 'Sunscreen',
     'treatment' => 'Treatment',
     'mask' => 'Mask',
-    _ => key.isEmpty ? 'Products' : '${key[0].toUpperCase()}${key.substring(1)}',
+    _ =>
+      key.isEmpty ? 'Products' : '${key[0].toUpperCase()}${key.substring(1)}',
   };
 }

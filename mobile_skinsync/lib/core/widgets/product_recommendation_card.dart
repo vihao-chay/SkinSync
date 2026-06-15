@@ -68,17 +68,17 @@ class ProductRecommendationCard extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: AppColors.heading,
-                            fontWeight: FontWeight.w900,
-                          ),
+                        color: AppColors.heading,
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
                     Text(
                       item.name,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w800,
-                          ),
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ],
                 ),
@@ -87,11 +87,11 @@ class ProductRecommendationCard extends StatelessWidget {
               Text(
                 _priceLabel(item),
                 style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      color: AppColors.primaryDark,
-                      fontFamily: 'Inter',
-                      fontWeight: FontWeight.w900,
-                      fontFeatures: const [FontFeature.tabularFigures()],
-                    ),
+                  color: AppColors.primaryDark,
+                  fontFamily: 'PlusJakartaSans',
+                  fontWeight: FontWeight.w900,
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
               ),
             ],
           ),
@@ -102,7 +102,9 @@ class ProductRecommendationCard extends StatelessWidget {
             decoration: BoxDecoration(
               color: AppColors.surfaceMuted,
               borderRadius: BorderRadius.circular(AppRadius.medium),
-              border: Border.all(color: AppColors.border.withValues(alpha: 0.7)),
+              border: Border.all(
+                color: AppColors.border.withValues(alpha: 0.7),
+              ),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -119,9 +121,9 @@ class ProductRecommendationCard extends StatelessWidget {
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: AppColors.heading,
-                          height: 1.45,
-                        ),
+                      color: AppColors.heading,
+                      height: 1.45,
+                    ),
                   ),
                 ),
               ],
@@ -132,16 +134,17 @@ class ProductRecommendationCard extends StatelessWidget {
             Wrap(
               spacing: AppSpacing.xs,
               runSpacing: AppSpacing.xs,
-              children: (item.cautions.isNotEmpty ? item.cautions : item.warnings)
-                  .take(2)
-                  .map(
-                    (warning) => StatusChip(
-                      label: warning,
-                      icon: Icons.warning_amber_rounded,
-                      tone: StatusChipTone.warning,
-                    ),
-                  )
-                  .toList(),
+              children:
+                  (item.cautions.isNotEmpty ? item.cautions : item.warnings)
+                      .take(2)
+                      .map(
+                        (warning) => StatusChip(
+                          label: warning,
+                          icon: Icons.warning_amber_rounded,
+                          tone: StatusChipTone.warning,
+                        ),
+                      )
+                      .toList(),
             ),
           ],
           const SizedBox(height: AppSpacing.sm),
@@ -249,10 +252,10 @@ class _ConfidenceBadge extends StatelessWidget {
           Text(
             '$value% match',
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: AppColors.primaryDark,
-                  fontWeight: FontWeight.w900,
-                  fontFeatures: const [FontFeature.tabularFigures()],
-                ),
+              color: AppColors.primaryDark,
+              fontWeight: FontWeight.w900,
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
           ),
         ],
       ),

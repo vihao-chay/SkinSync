@@ -18,10 +18,8 @@ import '../../core/widgets/stitch_top_bar.dart';
 import '../../core/widgets/status_chip.dart';
 
 class RoutinePage extends StatefulWidget {
-  const RoutinePage({
-    super.key,
-    RoutinePageArgs? args,
-  }) : args = args ?? const RoutinePageArgs();
+  const RoutinePage({super.key, RoutinePageArgs? args})
+    : args = args ?? const RoutinePageArgs();
 
   final RoutinePageArgs args;
 
@@ -116,7 +114,8 @@ class _RoutinePageState extends State<RoutinePage> {
       if (mounted) {
         setState(() {
           _actionErrorMessage =
-              appState.errorMessage ?? 'Could not save your reminder right now.';
+              appState.errorMessage ??
+              'Could not save your reminder right now.';
         });
       }
     }
@@ -139,7 +138,8 @@ class _RoutinePageState extends State<RoutinePage> {
       if (mounted) {
         setState(() {
           _actionErrorMessage =
-              appState.errorMessage ?? 'Could not optimize reminders right now.';
+              appState.errorMessage ??
+              'Could not optimize reminders right now.';
         });
       }
     } finally {
@@ -160,7 +160,8 @@ class _RoutinePageState extends State<RoutinePage> {
     final morningSteps = regimen?.morning ?? const <RegimenStep>[];
     final eveningSteps = regimen?.evening ?? const <RegimenStep>[];
     final activeSteps = _showMorning ? morningSteps : eveningSteps;
-    final totalSteps = tracking?.totalSteps ?? (morningSteps.length + eveningSteps.length);
+    final totalSteps =
+        tracking?.totalSteps ?? (morningSteps.length + eveningSteps.length);
     final completedSteps = _draftCompletedStepIds.length;
     final progress = totalSteps == 0 ? 0.0 : completedSteps / totalSteps;
 
@@ -182,14 +183,10 @@ class _RoutinePageState extends State<RoutinePage> {
                 children: [
                   StitchTopBar(
                     avatarUrl: appState.user?.avatarUrl,
-                    onLeadingTap: () => MainShell.navigateToTab(
-                      context,
-                      AppRoutes.profile,
-                    ),
-                    onTrailingTap: () => MainShell.navigateToTab(
-                      context,
-                      AppRoutes.progress,
-                    ),
+                    onLeadingTap: () =>
+                        MainShell.navigateToTab(context, AppRoutes.profile),
+                    onTrailingTap: () =>
+                        MainShell.navigateToTab(context, AppRoutes.progress),
                   ),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(
@@ -205,7 +202,8 @@ class _RoutinePageState extends State<RoutinePage> {
                             _actionErrorMessage != null) ...[
                           ErrorStateCard(
                             title: 'Routine data needs attention',
-                            description: _actionErrorMessage ??
+                            description:
+                                _actionErrorMessage ??
                                 appState.routineDataErrorMessage!,
                             ctaLabel: 'Try again',
                             onCta: appState.refreshHome,
@@ -220,22 +218,17 @@ class _RoutinePageState extends State<RoutinePage> {
                         const SizedBox(height: AppSpacing.md),
                         _RoutineSegmentedControl(
                           showMorning: _showMorning,
-                          onChanged: (value) => setState(() => _showMorning = value),
+                          onChanged: (value) =>
+                              setState(() => _showMorning = value),
                         ),
                         const SizedBox(height: AppSpacing.sm),
                         _ReminderRow(
                           morning: _findReminder(reminders, 'morning'),
                           evening: _findReminder(reminders, 'evening'),
-                          onMorning: () => _saveReminder(
-                            appState,
-                            'Morning',
-                            '07:00',
-                          ),
-                          onEvening: () => _saveReminder(
-                            appState,
-                            'Evening',
-                            '21:00',
-                          ),
+                          onMorning: () =>
+                              _saveReminder(appState, 'Morning', '07:00'),
+                          onEvening: () =>
+                              _saveReminder(appState, 'Evening', '21:00'),
                         ),
                         const SizedBox(height: AppSpacing.md),
                         if (regimen == null ||
@@ -264,7 +257,9 @@ class _RoutinePageState extends State<RoutinePage> {
                         else
                           ...activeSteps.map(
                             (step) => Padding(
-                              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                              padding: const EdgeInsets.only(
+                                bottom: AppSpacing.sm,
+                              ),
                               child: _RoutineStepTile(
                                 step: step,
                                 completed: _draftCompletedStepIds.contains(
@@ -338,9 +333,9 @@ class _ProgressHeader extends StatelessWidget {
         Text(
           'Today\'s Progress',
           textAlign: TextAlign.center,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w800,
-              ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
         ),
         const SizedBox(height: 4),
         Text(
@@ -421,9 +416,9 @@ class _SegmentButton extends StatelessWidget {
           child: Text(
             label,
             style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  color: selected ? AppColors.primaryDark : AppColors.foreground,
-                  fontWeight: FontWeight.w800,
-                ),
+              color: selected ? AppColors.primaryDark : AppColors.foreground,
+              fontWeight: FontWeight.w800,
+            ),
           ),
         ),
       ),
@@ -494,17 +489,17 @@ class _ReminderCard extends StatelessWidget {
                 Text(
                   label,
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: AppColors.heading,
-                        fontWeight: FontWeight.w800,
-                      ),
+                    color: AppColors.heading,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   time,
                   style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                        fontFamily: 'Inter',
-                        fontWeight: FontWeight.w800,
-                      ),
+                    fontFamily: 'PlusJakartaSans',
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ],
             ),
@@ -548,17 +543,17 @@ class _RoutineStepTile extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: AppColors.primaryDark,
-                        fontWeight: FontWeight.w800,
-                      ),
+                    color: AppColors.primaryDark,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
                 Text(
                   step.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w800),
                 ),
                 const SizedBox(height: 3),
                 Text(
@@ -623,8 +618,8 @@ class _StepImage extends StatelessWidget {
     final url = raw.isEmpty
         ? ''
         : raw.startsWith('http')
-            ? raw
-            : '${AppConfig.apiBaseUrl}$raw';
+        ? raw
+        : '${AppConfig.apiBaseUrl}$raw';
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(AppRadius.medium),
@@ -633,10 +628,7 @@ class _StepImage extends StatelessWidget {
         height: 72,
         color: AppColors.surfaceStrong,
         child: url.isEmpty
-            ? Icon(
-                _categoryIcon(step.category),
-                color: AppColors.primaryDark,
-              )
+            ? Icon(_categoryIcon(step.category), color: AppColors.primaryDark)
             : Image.network(
                 url,
                 fit: BoxFit.cover,
@@ -689,18 +681,18 @@ class _ReminderSuggestionSheet extends StatelessWidget {
             const SizedBox(height: AppSpacing.lg),
             Text(
               'SkinSync AI reminder plan',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: AppSpacing.sm),
             Text(
               result.overallAdvice.isEmpty
                   ? 'SkinSync did not return a summary yet.'
                   : result.overallAdvice,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppColors.mutedText,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: AppColors.mutedText),
             ),
             const SizedBox(height: AppSpacing.lg),
             ...result.suggestions.map(

@@ -207,16 +207,16 @@ class _ProfileHero extends StatelessWidget {
         Text(
           name,
           textAlign: TextAlign.center,
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.w800,
-              ),
+          style: Theme.of(
+            context,
+          ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
         ),
         Text(
           email,
           textAlign: TextAlign.center,
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: AppColors.foreground,
-              ),
+          style: Theme.of(
+            context,
+          ).textTheme.labelSmall?.copyWith(color: AppColors.foreground),
         ),
         const SizedBox(height: AppSpacing.sm),
         GestureDetector(
@@ -252,14 +252,19 @@ class _SubscriptionSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final currentCode = (current?.plan.code ?? fallbackPlanCode).toLowerCase();
-    final visiblePlans =
-        plans.where((plan) => plan.code == 'plus' || plan.code == 'premium').toList();
-    final currentPlan = current?.plan ??
+    final visiblePlans = plans
+        .where((plan) => plan.code == 'plus' || plan.code == 'premium')
+        .toList();
+    final currentPlan =
+        current?.plan ??
         plans.cast<SubscriptionPlan?>().firstWhere(
-              (plan) => plan?.code == currentCode,
-              orElse: () => null,
-            );
-    final usage = (current?.usage ?? const []).where(_isPrimaryUsage).take(3).toList();
+          (plan) => plan?.code == currentCode,
+          orElse: () => null,
+        );
+    final usage = (current?.usage ?? const [])
+        .where(_isPrimaryUsage)
+        .take(3)
+        .toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -285,7 +290,8 @@ class _SubscriptionSection extends StatelessWidget {
                       children: [
                         Text(
                           'Membership',
-                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(
                                 color: AppColors.heading,
                                 fontWeight: FontWeight.w900,
                               ),
@@ -293,9 +299,8 @@ class _SubscriptionSection extends StatelessWidget {
                         const SizedBox(height: 4),
                         Text(
                           _planName(currentPlan, currentCode),
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.w800,
-                              ),
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w800),
                         ),
                       ],
                     ),
@@ -392,9 +397,9 @@ class _SubscriptionSection extends StatelessWidget {
     try {
       await context.read<AppState>().cancelSubscription();
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Plan changed to Free.')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Plan changed to Free.')));
       }
     } catch (_) {
       if (context.mounted) {
@@ -511,9 +516,9 @@ class _UsageMiniTile extends StatelessWidget {
           Text(
             '${usage.used}',
             style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontFamily: 'Inter',
-                  fontWeight: FontWeight.w900,
-                ),
+              fontFamily: 'PlusJakartaSans',
+              fontWeight: FontWeight.w900,
+            ),
           ),
           Text(
             usage.displayName,
@@ -565,9 +570,9 @@ class _PlanOption extends StatelessWidget {
               children: [
                 Text(
                   plan.name,
-                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w800),
                 ),
                 Text(
                   _planPrice(plan),
@@ -579,8 +584,9 @@ class _PlanOption extends StatelessWidget {
           AppButton(
             label: isCurrent ? 'Active' : 'Choose',
             expand: false,
-            variant:
-                isCurrent ? AppButtonVariant.secondary : AppButtonVariant.primary,
+            variant: isCurrent
+                ? AppButtonVariant.secondary
+                : AppButtonVariant.primary,
             isLoading: isBusy && !isCurrent,
             onPressed: isCurrent || isBusy ? null : onSubscribe,
           ),
@@ -627,9 +633,7 @@ class _ProfileInfoGrid extends StatelessWidget {
                                 item.label,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .labelSmall
+                                style: Theme.of(context).textTheme.labelSmall
                                     ?.copyWith(
                                       color: AppColors.heading,
                                       fontWeight: FontWeight.w900,
@@ -643,9 +647,8 @@ class _ProfileInfoGrid extends StatelessWidget {
                           item.value,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                                fontWeight: FontWeight.w800,
-                              ),
+                          style: Theme.of(context).textTheme.labelLarge
+                              ?.copyWith(fontWeight: FontWeight.w800),
                         ),
                         if (item.progress != null) ...[
                           const SizedBox(height: 10),
@@ -690,10 +693,7 @@ class _ProfileInfoItem {
 }
 
 class _ChipSection extends StatelessWidget {
-  const _ChipSection({
-    required this.label,
-    required this.values,
-  });
+  const _ChipSection({required this.label, required this.values});
 
   final String label;
   final List<String> values;
@@ -736,10 +736,7 @@ class _ChipSection extends StatelessWidget {
 }
 
 class _AccountActions extends StatelessWidget {
-  const _AccountActions({
-    required this.onEdit,
-    required this.onLogout,
-  });
+  const _AccountActions({required this.onEdit, required this.onLogout});
 
   final VoidCallback onEdit;
   final VoidCallback onLogout;
@@ -800,9 +797,9 @@ class _ActionRow extends StatelessWidget {
       title: Text(
         label,
         style: Theme.of(context).textTheme.labelLarge?.copyWith(
-              color: color,
-              fontWeight: FontWeight.w700,
-            ),
+          color: color,
+          fontWeight: FontWeight.w700,
+        ),
       ),
       trailing: danger
           ? null
@@ -821,9 +818,9 @@ class _SectionLabel extends StatelessWidget {
     return Text(
       label.toUpperCase(),
       style: Theme.of(context).textTheme.labelSmall?.copyWith(
-            color: AppColors.heading,
-            fontWeight: FontWeight.w900,
-          ),
+        color: AppColors.heading,
+        fontWeight: FontWeight.w900,
+      ),
     );
   }
 }

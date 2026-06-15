@@ -20,13 +20,13 @@ class BrandLogo extends StatelessWidget {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(radius),
-        border: Border.all(color: AppColors.border.withValues(alpha: 0.45)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.62)),
         boxShadow: showShadow
             ? [
                 BoxShadow(
-                  color: AppColors.primaryDark.withValues(alpha: 0.08),
+                  color: AppColors.foreground.withValues(alpha: 0.06),
                   blurRadius: 12,
                   offset: const Offset(0, 5),
                 ),

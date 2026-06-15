@@ -13,10 +13,7 @@ import '../../core/widgets/section_header.dart';
 import '../../core/widgets/status_chip.dart';
 
 class ProductDetailPage extends StatefulWidget {
-  const ProductDetailPage({
-    super.key,
-    required this.args,
-  });
+  const ProductDetailPage({super.key, required this.args});
 
   final ProductDetailPageArgs args;
 
@@ -103,7 +100,8 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
           mounted) {
         final confirmed = await showModalBottomSheet<bool>(
           context: context,
-          builder: (context) => _ConflictWarningSheet(warnings: result.warnings),
+          builder: (context) =>
+              _ConflictWarningSheet(warnings: result.warnings),
         );
         if (confirmed == true && mounted) {
           await _submitAddToRoutine(
@@ -154,9 +152,9 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
               const SizedBox(height: AppSpacing.md),
               Text(
                 result.usageSuggestion,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppColors.mutedText,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: AppColors.mutedText),
               ),
               if (result.warnings.isNotEmpty) ...[
                 const SizedBox(height: AppSpacing.md),
@@ -185,7 +183,8 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            appState.errorMessage ?? 'Ingredient check is not available right now.',
+            appState.errorMessage ??
+                'Ingredient check is not available right now.',
           ),
         ),
       );
@@ -253,17 +252,19 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                             product.brand.trim().isEmpty
                                 ? 'Brand not provided'
                                 : product.brand,
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.w700,
-                                ),
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(fontWeight: FontWeight.w700),
                           ),
                           const SizedBox(height: AppSpacing.xs),
                           Text(
                             '${product.price.toStringAsFixed(0)} ${product.currency}',
-                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                  fontFamily: 'Inter',
+                            style: Theme.of(context).textTheme.titleLarge
+                                ?.copyWith(
+                                  fontFamily: 'PlusJakartaSans',
                                   fontWeight: FontWeight.w800,
-                                  fontFeatures: const [FontFeature.tabularFigures()],
+                                  fontFeatures: const [
+                                    FontFeature.tabularFigures(),
+                                  ],
                                 ),
                           ),
                         ],
@@ -276,8 +277,8 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                   Text(
                     product.description!,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: AppColors.mutedText,
-                        ),
+                      color: AppColors.mutedText,
+                    ),
                   ),
                 ],
               ],
@@ -291,7 +292,8 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                 const SectionHeader(
                   icon: Icons.psychology_alt_outlined,
                   title: 'AI explanation',
-                  subtitle: 'Real recommendation context from the saved session.',
+                  subtitle:
+                      'Real recommendation context from the saved session.',
                 ),
                 const SizedBox(height: AppSpacing.md),
                 _DetailText(
@@ -314,22 +316,25 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                 ),
                 const SizedBox(height: AppSpacing.md),
                 if (product.cautions.isEmpty && product.warnings.isEmpty)
-                  const _EmptyCopy('No caution or conflict notes were provided yet.')
+                  const _EmptyCopy(
+                    'No caution or conflict notes were provided yet.',
+                  )
                 else
                   Wrap(
                     spacing: AppSpacing.xs,
                     runSpacing: AppSpacing.xs,
-                    children: (product.cautions.isNotEmpty
-                            ? product.cautions
-                            : product.warnings)
-                        .map(
-                          (warning) => StatusChip(
-                            label: warning,
-                            icon: Icons.warning_amber_rounded,
-                            tone: StatusChipTone.warning,
-                          ),
-                        )
-                        .toList(),
+                    children:
+                        (product.cautions.isNotEmpty
+                                ? product.cautions
+                                : product.warnings)
+                            .map(
+                              (warning) => StatusChip(
+                                label: warning,
+                                icon: Icons.warning_amber_rounded,
+                                tone: StatusChipTone.warning,
+                              ),
+                            )
+                            .toList(),
                   ),
               ],
             ),
@@ -342,11 +347,14 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                 const SectionHeader(
                   icon: Icons.science_outlined,
                   title: 'Ingredients',
-                  subtitle: 'Use the real product ingredient list when available.',
+                  subtitle:
+                      'Use the real product ingredient list when available.',
                 ),
                 const SizedBox(height: AppSpacing.md),
                 if (product.ingredientsText?.trim().isNotEmpty != true)
-                  const _EmptyCopy('Ingredient details are not available for this product yet.')
+                  const _EmptyCopy(
+                    'Ingredient details are not available for this product yet.',
+                  )
                 else ...[
                   _DetailText(product.ingredientsText!),
                   const SizedBox(height: AppSpacing.md),
@@ -354,7 +362,9 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                     label: 'Check ingredients',
                     variant: AppButtonVariant.secondary,
                     isLoading: _isCheckingIngredients,
-                    onPressed: _isCheckingIngredients ? null : _checkIngredients,
+                    onPressed: _isCheckingIngredients
+                        ? null
+                        : _checkIngredients,
                   ),
                 ],
               ],
@@ -368,7 +378,8 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                 const SectionHeader(
                   icon: Icons.schedule_outlined,
                   title: 'How to use',
-                  subtitle: 'Backend-provided guidance for cadence and routine placement.',
+                  subtitle:
+                      'Backend-provided guidance for cadence and routine placement.',
                 ),
                 const SizedBox(height: AppSpacing.md),
                 _DetailText(
@@ -420,7 +431,10 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
   }
 
   bool get _isBusy =>
-      _isAddingMorning || _isAddingEvening || _isAddingBoth || _isCheckingIngredients;
+      _isAddingMorning ||
+      _isAddingEvening ||
+      _isAddingBoth ||
+      _isCheckingIngredients;
 }
 
 class _ProductImage extends StatelessWidget {
@@ -472,9 +486,9 @@ class _DetailText extends StatelessWidget {
     return Text(
       text,
       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: muted ? AppColors.mutedText : null,
-            height: 1.5,
-          ),
+        color: muted ? AppColors.mutedText : null,
+        height: 1.5,
+      ),
     );
   }
 }
@@ -488,19 +502,15 @@ class _EmptyCopy extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       text,
-      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: AppColors.mutedText,
-            height: 1.5,
-          ),
+      style: Theme.of(
+        context,
+      ).textTheme.bodySmall?.copyWith(color: AppColors.mutedText, height: 1.5),
     );
   }
 }
 
 class _BottomSheetFrame extends StatelessWidget {
-  const _BottomSheetFrame({
-    required this.title,
-    required this.child,
-  });
+  const _BottomSheetFrame({required this.title, required this.child});
 
   final String title;
   final Widget child;
@@ -528,8 +538,8 @@ class _BottomSheetFrame extends StatelessWidget {
               Text(
                 title,
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
+                  fontWeight: FontWeight.w700,
+                ),
               ),
               const SizedBox(height: AppSpacing.lg),
               child,
@@ -564,8 +574,8 @@ class _ConflictWarningSheet extends StatelessWidget {
                     Text(
                       '${warning.productAName} x ${warning.productBName}',
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                     const SizedBox(height: AppSpacing.xs),
                     Text(warning.message),
@@ -573,8 +583,8 @@ class _ConflictWarningSheet extends StatelessWidget {
                     Text(
                       warning.recommendation,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: AppColors.mutedText,
-                          ),
+                        color: AppColors.mutedText,
+                      ),
                     ),
                   ],
                 ),
