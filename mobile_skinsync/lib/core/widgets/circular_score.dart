@@ -4,17 +4,21 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
 
+enum CircularScoreTone { health, severity }
+
 class CircularScore extends StatelessWidget {
   const CircularScore({
     super.key,
     required this.score,
     this.size = 96,
-    this.label = 'Skin score',
+    this.label = 'Score',
+    this.tone = CircularScoreTone.health,
   });
 
   final int score;
   final double size;
   final String label;
+  final CircularScoreTone tone;
 
   @override
   Widget build(BuildContext context) {
@@ -61,6 +65,16 @@ class CircularScore extends StatelessWidget {
   }
 
   Color _toneForScore(int value) {
+    if (tone == CircularScoreTone.severity) {
+      if (value >= 75) {
+        return AppColors.error;
+      }
+      if (value >= 45) {
+        return AppColors.warning;
+      }
+      return AppColors.success;
+    }
+
     if (value >= 75) {
       return AppColors.success;
     }

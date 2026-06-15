@@ -47,6 +47,7 @@ class _ProductsPageState extends State<ProductsPage> {
     _CategoryTab('sunscreen', 'Sunscreen', Icons.wb_sunny_outlined),
     _CategoryTab('treatment', 'Treatment', Icons.healing_outlined),
     _CategoryTab('mask', 'Mask', Icons.masks_outlined),
+    _CategoryTab('exfoliant', 'Exfoliant', Icons.blur_circular_outlined),
   ];
 
   @override
@@ -168,7 +169,11 @@ class _ProductsPageState extends State<ProductsPage> {
   }
 
   Future<void> _openAddToRoutine(AiRecommendedProduct item) async {
-    String selection = item.alreadyInRoutine ? 'Evening' : 'Morning';
+    if (item.alreadyInRoutine) {
+      return;
+    }
+
+    String selection = 'Morning';
     final appState = context.read<AppState>();
 
     final didAdd = await showModalBottomSheet<bool>(
@@ -285,33 +290,27 @@ class _ProductsPageState extends State<ProductsPage> {
     required String selection,
     required bool allowConflicts,
   }) async {
-    final targets = selection == 'Both'
-        ? const ['Morning', 'Evening']
-        : [selection];
+    final result = await appState.addProductToRoutine(
+      productId: item.productId,
+      routineType: selection,
+      allowConflicts: allowConflicts,
+    );
 
-    for (final target in targets) {
-      final result = await appState.addProductToRoutine(
-        productId: item.productId,
-        routineType: target,
-        allowConflicts: allowConflicts,
+    if (result.requiresConfirmation &&
+        result.warnings.isNotEmpty &&
+        !allowConflicts &&
+        mounted) {
+      final confirmed = await showModalBottomSheet<bool>(
+        context: context,
+        builder: (context) => _ConflictWarningSheet(warnings: result.warnings),
       );
-
-      if (result.requiresConfirmation &&
-          result.warnings.isNotEmpty &&
-          !allowConflicts &&
-          mounted) {
-        final confirmed = await showModalBottomSheet<bool>(
-          context: context,
-          builder: (context) => _ConflictWarningSheet(warnings: result.warnings),
+      if (confirmed == true && mounted) {
+        await _submitAddToRoutine(
+          appState: appState,
+          item: item,
+          selection: selection,
+          allowConflicts: true,
         );
-        if (confirmed == true && mounted) {
-          await _submitAddToRoutine(
-            appState: appState,
-            item: item,
-            selection: target,
-            allowConflicts: true,
-          );
-        }
       }
     }
   }
@@ -321,8 +320,10 @@ class _ProductsPageState extends State<ProductsPage> {
       context,
       AppRoutes.productDetail,
       arguments: ProductDetailPageArgs(
-        product: item,
-        productsEntryPoint: widget.args.entryPoint,
+        productId: item.productId,
+        recommendationItem: item,
+        sourceProductsEntryPoint: widget.args.entryPoint,
+        alreadyInRoutine: item.alreadyInRoutine,
       ),
     );
 
@@ -476,7 +477,7 @@ class _ProductsPageState extends State<ProductsPage> {
 
     return AppScaffold(
       title: 'Products',
-      subtitle: 'AI-ranked products based on your latest skin analysis.',
+      subtitle: 'Picked from your latest skin analysis.',
       compactHeader: true,
       body: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
@@ -543,13 +544,34 @@ class _ProductsPageState extends State<ProductsPage> {
                   builder: (context, constraints) {
                     final cards = [
                       MetricCard(
+                        label: 'Skin Health',
+                        value: appState.latestAnalysis?.displaySkinHealthScore == null
+                            ? 'Not yet'
+                            : '${appState.latestAnalysis!.displaySkinHealthScore}/100',
+                        icon: Icons.favorite_border_rounded,
+                      ),
+                      MetricCard(
+                        label: 'Visible Concern',
+                        value:
+                            appState.latestAnalysis?.displayConcernSeverity == null
+                                ? 'Not yet'
+                                : '${appState.latestAnalysis!.displayConcernSeverity}/100',
+                        icon: Icons.monitor_heart_outlined,
+                      ),
+                      MetricCard(
+                        label: 'Confidence',
+                        value:
+                            '${appState.latestAnalysis?.displayConfidencePercent ?? 0}%',
+                        icon: Icons.verified_outlined,
+                      ),
+                      MetricCard(
                         label: 'Skin type',
                         value: profileSummary?.skinType ??
                             _friendlyText(appState.profile?.skinType),
                         icon: Icons.spa_outlined,
                       ),
                       MetricCard(
-                        label: 'Concern',
+                        label: 'Main concern',
                         value: _concernSummary(
                           profileSummary?.concerns ??
                               appState.profile?.concerns ??
@@ -591,9 +613,7 @@ class _ProductsPageState extends State<ProductsPage> {
                     recommendation?.hasRecommendation != true &&
                     !_isGenerating) ...[
                   const SizedBox(height: AppSpacing.md),
-                  const _InlineNotice(
-                    message: 'Your latest skin analysis is ready. Tap Generate to create a saved recommendation session.',
-                  ),
+                  const _InlineNotice(message: 'Ready to generate recommendations.'),
                 ],
                 if (recommendation?.summary?.trim().isNotEmpty == true) ...[
                   const SizedBox(height: AppSpacing.md),
@@ -616,11 +636,9 @@ class _ProductsPageState extends State<ProductsPage> {
             EmptyStateCard(
               icon: Icons.shopping_bag_outlined,
               title: 'No saved recommendations yet',
-              description: recommendation?.message ??
-                  'Products only show your latest saved recommendation session here.',
-              ctaLabel: appState.latestAnalysis?.canGenerateProducts == true
-                  ? 'Generate recommendations'
-                  : 'Analyze skin',
+                description:
+                    recommendation?.message ?? 'Ready to generate recommendations.',
+              ctaLabel: 'Generate Recommendations',
               onCta: () {
                 if (appState.latestAnalysis?.canGenerateProducts == true) {
                   _generateRecommendations();
@@ -628,12 +646,13 @@ class _ProductsPageState extends State<ProductsPage> {
                 }
                 Navigator.pushNamed(context, AppRoutes.upload);
               },
+              secondaryLabel: 'Analyze Skin',
+              onSecondary: () => Navigator.pushNamed(context, AppRoutes.upload),
             )
           else ...[
             SectionHeader(
               icon: Icons.tune_rounded,
               title: 'Browse by category',
-              subtitle: 'Switch between saved recommendation groups without starting a new AI run.',
             ),
             const SizedBox(height: AppSpacing.md),
             CategoryChipBar<_CategoryTab>(
@@ -660,10 +679,8 @@ class _ProductsPageState extends State<ProductsPage> {
               EmptyStateCard(
                 icon: Icons.inventory_2_outlined,
                 title: 'No ${category.label.toLowerCase()} matches yet',
-                description: recommendation.message?.trim().isNotEmpty == true
-                    ? recommendation.message!
-                    : 'Add more eligible products to the catalog or refresh manually when your skin context changes.',
-                ctaLabel: 'Generate recommendations',
+                description: 'Try another category.',
+                ctaLabel: 'Refresh Recommendations',
                 onCta: _generateRecommendations,
               )
             else
@@ -684,7 +701,7 @@ class _ProductsPageState extends State<ProductsPage> {
                 icon: Icons.inventory_2_outlined,
                 title: 'No recommendations yet',
                 description: recommendation.message!,
-                ctaLabel: 'Generate recommendations',
+                ctaLabel: 'Generate Recommendations',
                 onCta: _generateRecommendations,
               ),
             ],

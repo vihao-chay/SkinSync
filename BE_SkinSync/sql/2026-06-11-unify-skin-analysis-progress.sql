@@ -55,3 +55,13 @@ end $$;
 
 create index if not exists ix_skin_progress_analyses_status
     on public.skin_progress_analyses (status);
+
+alter table if exists public.skin_progress_analyses
+    add column if not exists "OverallConcernSeverity" integer null,
+    add column if not exists "SkinHealthScore" integer null;
+
+update public.skin_progress_analyses
+set "OverallConcernSeverity" = coalesce("OverallConcernSeverity", "OverallScore"),
+    "SkinHealthScore" = coalesce("SkinHealthScore", greatest(0, least(100, 100 - "OverallScore")))
+where "OverallConcernSeverity" is null
+   or "SkinHealthScore" is null;

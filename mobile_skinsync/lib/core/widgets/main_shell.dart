@@ -55,11 +55,11 @@ class _MainShellState extends State<MainShell> {
     ),
     AppBottomNavigationDestination(label: 'Routine', icon: Icons.spa_rounded),
     AppBottomNavigationDestination(
-      label: 'Shop',
+      label: 'Products',
       icon: Icons.shopping_bag_rounded,
     ),
     AppBottomNavigationDestination(
-      label: 'Stats',
+      label: 'Progress',
       icon: Icons.insights_rounded,
     ),
     AppBottomNavigationDestination(

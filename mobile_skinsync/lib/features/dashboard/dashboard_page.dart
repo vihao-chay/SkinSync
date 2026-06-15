@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../core/config/app_config.dart';
 import '../../core/models/app_models.dart';
 import '../../core/routes/app_routes.dart';
 import '../../core/state/app_state.dart';
@@ -10,6 +9,7 @@ import '../../core/theme/app_spacing.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/main_shell.dart';
+import '../../core/widgets/product_image.dart';
 import '../../core/widgets/status_chip.dart';
 
 class DashboardPage extends StatefulWidget {
@@ -83,7 +83,7 @@ class _DashboardPageState extends State<DashboardPage> {
         .where((item) => item.name.trim().isNotEmpty)
         .take(2)
         .toList();
-    final score = latestAnalysis?.overallScore;
+    final score = latestAnalysis?.displaySkinHealthScore;
 
     return ColoredBox(
       color: const Color(0xFFF5F4EE),
@@ -133,9 +133,7 @@ class _DashboardPageState extends State<DashboardPage> {
                   ),
                   const SizedBox(height: AppSpacing.md),
                   _SkinConcernMetricsCard(
-                    acne: _issueScore(latestAnalysis, 'acne'),
-                    redness: _issueScore(latestAnalysis, 'redness'),
-                    oiliness: _issueScore(latestAnalysis, 'oil'),
+                    metrics: _buildConcernMetrics(latestAnalysis),
                     onScanWithAi: () =>
                         Navigator.pushNamed(context, AppRoutes.upload),
                   ),
@@ -207,9 +205,11 @@ class _DashboardPageState extends State<DashboardPage> {
                                 context,
                                 AppRoutes.productDetail,
                                 arguments: ProductDetailPageArgs(
-                                  product: product,
-                                  productsEntryPoint:
+                                  productId: product.productId,
+                                  recommendationItem: product,
+                                  sourceProductsEntryPoint:
                                       ProductsEntryPoint.bottomNav,
+                                  alreadyInRoutine: product.alreadyInRoutine,
                                 ),
                               ),
                             ),
@@ -269,20 +269,113 @@ class _DashboardPageState extends State<DashboardPage> {
     if (result == null) {
       return 'No scan yet';
     }
-    return 'Scan available';
+    return 'Latest scan';
   }
 
-  int? _issueScore(AnalysisResult? result, String contains) {
+  List<_ConcernMetricSnapshot> _buildConcernMetrics(AnalysisResult? result) {
+    final third = _resolveConcernMetric(
+      result: result,
+      primaryLabel: 'Oiliness',
+      metricValue: result?.metrics.oiliness,
+      issueMatchers: const ['oil', 'oily', 'shine', 'pore'],
+      fallbackLabel: 'Moisture',
+      fallbackMetricValue: result?.metrics.moisture,
+      fallbackIssueMatchers: const ['dry', 'dehyd', 'moisture', 'hydrat'],
+    );
+
+    return [
+      _ConcernMetricSnapshot(
+        label: 'Acne',
+        value: _resolveConcernMetricValue(
+          result: result,
+          metricValue: result?.metrics.acne,
+          issueMatchers: const ['acne', 'breakout', 'pimple'],
+        ),
+      ),
+      _ConcernMetricSnapshot(
+        label: 'Redness',
+        value: _resolveConcernMetricValue(
+          result: result,
+          metricValue: result?.metrics.redness,
+          issueMatchers: const ['red', 'irrit', 'sensit'],
+        ),
+      ),
+      third,
+    ];
+  }
+
+  _ConcernMetricSnapshot _resolveConcernMetric({
+    required AnalysisResult? result,
+    required String primaryLabel,
+    required int? metricValue,
+    required List<String> issueMatchers,
+    String? fallbackLabel,
+    int? fallbackMetricValue,
+    List<String> fallbackIssueMatchers = const [],
+  }) {
+    final primaryValue = _resolveConcernMetricValue(
+      result: result,
+      metricValue: metricValue,
+      issueMatchers: issueMatchers,
+    );
+    if (primaryValue != null || fallbackLabel == null) {
+      return _ConcernMetricSnapshot(label: primaryLabel, value: primaryValue);
+    }
+
+    return _ConcernMetricSnapshot(
+      label: fallbackLabel,
+      value: _resolveConcernMetricValue(
+        result: result,
+        metricValue: fallbackMetricValue,
+        issueMatchers: fallbackIssueMatchers,
+      ),
+    );
+  }
+
+  int? _resolveConcernMetricValue({
+    required AnalysisResult? result,
+    required int? metricValue,
+    required List<String> issueMatchers,
+  }) {
     if (result == null) {
       return null;
     }
+
+    final issueScore = _issueScore(result, issueMatchers);
+    if (metricValue != null && metricValue > 0) {
+      return metricValue.clamp(0, 100);
+    }
+
+    if (issueScore != null) {
+      return issueScore;
+    }
+
+    if (metricValue == 0 && result.displayConcernSeverityScore == 0) {
+      return 0;
+    }
+
+    return null;
+  }
+
+  int? _issueScore(AnalysisResult result, List<String> matchers) {
     for (final issue in result.issues) {
-      if (issue.issueType.toLowerCase().contains(contains)) {
+      final normalized = issue.issueType.toLowerCase();
+      if (matchers.any(normalized.contains)) {
         return issue.severityScore.clamp(0, 100);
       }
     }
     return null;
   }
+}
+
+class _ConcernMetricSnapshot {
+  const _ConcernMetricSnapshot({
+    required this.label,
+    required this.value,
+  });
+
+  final String label;
+  final int? value;
 }
 
 class _HomeHeader extends StatelessWidget {
@@ -429,7 +522,7 @@ class _GreetingSection extends StatelessWidget {
           hasRoutine
               ? 'Ready for your routine today?'
               : hasAnalysis
-                  ? 'Your skin journey starts here.'
+                  ? 'Latest scan is ready.'
                   : 'Start with a quick AI skin scan.',
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                 color: AppColors.mutedText,
@@ -533,38 +626,48 @@ class _SkinHealthHeroCard extends StatelessWidget {
 
 class _SkinConcernMetricsCard extends StatelessWidget {
   const _SkinConcernMetricsCard({
-    required this.acne,
-    required this.redness,
-    required this.oiliness,
+    required this.metrics,
     required this.onScanWithAi,
   });
 
-  final int? acne;
-  final int? redness;
-  final int? oiliness;
+  final List<_ConcernMetricSnapshot> metrics;
   final VoidCallback onScanWithAi;
 
   @override
   Widget build(BuildContext context) {
+    final hasAnyMetric = metrics.any((item) => item.value != null);
     return AppCard(
       padding: const EdgeInsets.all(18),
       child: Column(
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: _CircularMetric(label: 'Acne', value: acne),
+          const SizedBox(height: AppSpacing.xs),
+          if (hasAnyMetric)
+            Row(
+              children: [
+                for (var index = 0; index < metrics.length; index++) ...[
+                  Expanded(
+                    child: _CircularMetric(
+                      label: metrics[index].label,
+                      value: metrics[index].value,
+                    ),
+                  ),
+                  if (index != metrics.length - 1)
+                    const SizedBox(width: AppSpacing.sm),
+                ],
+              ],
+            )
+          else
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              child: Text(
+                'No concern metrics yet.',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: AppColors.mutedText,
+                      height: 1.45,
+                    ),
               ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: _CircularMetric(label: 'Redness', value: redness),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: _CircularMetric(label: 'Oiliness', value: oiliness),
-              ),
-            ],
-          ),
+            ),
           const SizedBox(height: AppSpacing.md),
           _ScanWithAiPill(onTap: onScanWithAi),
         ],
@@ -907,7 +1010,15 @@ class _ForYouProductPreview extends StatelessWidget {
               child: Container(
                 width: double.infinity,
                 color: AppColors.surfaceStrong,
-                child: _ProductImage(product: product),
+                child: ProductImage(
+                  imageUrl: product.imageUrl,
+                  radius: 18,
+                  iconSize: 28,
+                  placeholderTitle: product.brand.trim().isEmpty
+                      ? product.name
+                      : product.brand,
+                  placeholderSubtitle: product.category,
+                ),
               ),
             ),
           ),
@@ -952,42 +1063,6 @@ class _ForYouProductPreview extends StatelessWidget {
             ],
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _ProductImage extends StatelessWidget {
-  const _ProductImage({required this.product});
-
-  final AiRecommendedProduct product;
-
-  @override
-  Widget build(BuildContext context) {
-    final raw = product.imageUrl?.trim() ?? '';
-    final url = raw.isEmpty
-        ? ''
-        : (raw.startsWith('http') ? raw : '${AppConfig.apiBaseUrl}$raw');
-
-    if (url.isEmpty) {
-      return const Center(
-        child: Icon(
-          Icons.shopping_bag_outlined,
-          color: AppColors.primaryDark,
-          size: 30,
-        ),
-      );
-    }
-
-    return Image.network(
-      url,
-      fit: BoxFit.cover,
-      errorBuilder: (_, _, _) => const Center(
-        child: Icon(
-          Icons.image_not_supported_outlined,
-          color: AppColors.primaryDark,
-          size: 30,
-        ),
       ),
     );
   }

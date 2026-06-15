@@ -103,9 +103,9 @@ public sealed class OpenAiService : IOpenAiService
     private async Task<OpenAiResult<T>> ExecuteJsonAsync<T>(object payload, CancellationToken cancellationToken)
     {
         var raw = await ExecuteRawAsync(payload, cancellationToken);
+        var content = ExtractMessageContent(raw.Body);
         try
         {
-            var content = ExtractMessageContent(raw.Body);
             var value = JsonSerializer.Deserialize<T>(content, JsonOptions);
             if (value is null)
             {
@@ -116,7 +116,11 @@ public sealed class OpenAiService : IOpenAiService
         }
         catch (JsonException ex)
         {
-            _logger.LogError(ex, "Failed to parse OpenAI JSON response.");
+            _logger.LogError(
+                ex,
+                "Failed to parse OpenAI JSON response. Path: {Path}. Content preview: {ContentPreview}",
+                ex.Path,
+                BuildContentPreview(content));
             throw new AiFeatureException("AI_SERVICE_ERROR", "Failed to parse AI response.", 502, ex);
         }
     }
@@ -239,6 +243,17 @@ public sealed class OpenAiService : IOpenAiService
     private static string ResolveModel(string? requested, string fallback)
     {
         return string.IsNullOrWhiteSpace(requested) ? fallback : requested.Trim();
+    }
+
+    private static string BuildContentPreview(string content)
+    {
+        if (string.IsNullOrWhiteSpace(content))
+        {
+            return "<empty>";
+        }
+
+        var normalized = content.Replace('\n', ' ').Replace('\r', ' ').Trim();
+        return normalized.Length <= 600 ? normalized : normalized[..600];
     }
 }
 

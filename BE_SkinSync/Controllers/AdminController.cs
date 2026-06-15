@@ -100,7 +100,7 @@ public class AdminController : ControllerBase
     [HttpGet("products/{id:guid}")]
     public async Task<IActionResult> GetProductById(Guid id, CancellationToken cancellationToken)
     {
-        var product = await _productRepository.GetByIdAsync(id, cancellationToken);
+        var product = await _productRepository.GetDetailByIdAsync(id, cancellationToken);
         return product is null ? NotFound("Product not found.") : Ok(product.ToDto());
     }
 
@@ -115,13 +115,17 @@ public class AdminController : ControllerBase
             Category = request.Category.Trim(),
             Description = request.Description?.Trim(),
             Ingredient = request.Ingredient?.Trim(),
+            KeyIngredients = ProductMapper.SerializeStringList(request.KeyIngredients),
+            TargetConcerns = ProductMapper.SerializeStringList(request.SkinConcerns),
             UsageGuide = request.UsageGuide?.Trim(),
             Price = request.Price,
-            SuitableSkinTypes = request.SuitableSkinTypes,
+            Currency = string.IsNullOrWhiteSpace(request.Currency) ? "VND" : request.Currency.Trim().ToUpperInvariant(),
+            SuitableSkinTypes = ProductMapper.SerializeStringList(request.SuitableSkinTypes),
             ImageUrl = request.ImageUrl,
             Rating = request.Rating,
             Status = request.Status,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
         };
 
         await _productRepository.AddAsync(product, cancellationToken);
@@ -142,12 +146,16 @@ public class AdminController : ControllerBase
         product.Category = request.Category.Trim();
         product.Description = request.Description?.Trim();
         product.Ingredient = request.Ingredient?.Trim();
+        product.KeyIngredients = ProductMapper.SerializeStringList(request.KeyIngredients);
+        product.TargetConcerns = ProductMapper.SerializeStringList(request.SkinConcerns);
         product.UsageGuide = request.UsageGuide?.Trim();
         product.Price = request.Price;
-        product.SuitableSkinTypes = request.SuitableSkinTypes;
+        product.Currency = string.IsNullOrWhiteSpace(request.Currency) ? "VND" : request.Currency.Trim().ToUpperInvariant();
+        product.SuitableSkinTypes = ProductMapper.SerializeStringList(request.SuitableSkinTypes);
         product.ImageUrl = request.ImageUrl;
         product.Rating = request.Rating;
         product.Status = request.Status;
+        product.UpdatedAt = DateTime.UtcNow;
 
         await _productRepository.UpdateAsync(product, cancellationToken);
         return Ok(product.ToDto());

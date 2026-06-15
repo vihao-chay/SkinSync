@@ -31,8 +31,40 @@ public class ProductRoutineService : IProductRoutineService
 
     public async Task<AiAddProductToRoutineResponseDto> AddToRoutineAsync(Guid userId, Guid productId, AiAddProductToRoutineRequestDto request, CancellationToken cancellationToken)
     {
-        var routineType = NormalizeRoutineType(request.RoutineType)
-            ?? throw new AiFeatureException("INVALID_REQUEST", "RoutineType must be morning or evening.", 400);
+        try
+        {
+            return await AddToRoutineInternalAsync(userId, productId, request, cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            _dbContext.ChangeTracker.Clear();
+
+            try
+            {
+                return await AddToRoutineInternalAsync(userId, productId, request, cancellationToken);
+            }
+            catch (DbUpdateConcurrencyException ex)
+            {
+                throw new AiFeatureException(
+                    "ROUTINE_CONFLICT",
+                    "Your routine was updated at the same time from another request. Please try again.",
+                    409,
+                    ex);
+            }
+        }
+    }
+
+    private async Task<AiAddProductToRoutineResponseDto> AddToRoutineInternalAsync(
+        Guid userId,
+        Guid productId,
+        AiAddProductToRoutineRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        var routineTargets = NormalizeRoutineTargets(request.RoutineType);
+        if (routineTargets.Count == 0)
+        {
+            throw new AiFeatureException("INVALID_REQUEST", "RoutineType must be morning, evening, or both.", 400);
+        }
 
         var regimen = await _dbContext.UserRegimens
             .Include(x => x.Items)
@@ -61,7 +93,7 @@ public class ProductRoutineService : IProductRoutineService
                 StartDate = DateOnly.FromDateTime(DateTime.UtcNow),
                 IsActive = true,
                 IsCustom = true,
-                Source = "manual",
+                Source = "user",
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
@@ -69,21 +101,35 @@ public class ProductRoutineService : IProductRoutineService
             _dbContext.UserRegimens.Add(regimen);
         }
 
-        if (regimen.Items.Any(x => x.ProductId == productId && x.RoutineTime == routineType))
-        {
-            throw new AiFeatureException("DUPLICATE_PRODUCT", "This product is already in the selected routine.", 409);
-        }
-
-        var conflictProductIds = regimen.Items
-            .Where(x => x.RoutineTime == routineType)
-            .Select(x => x.ProductId)
-            .Append(productId)
-            .Distinct()
+        var duplicateTargets = routineTargets
+            .Where(target => regimen.Items.Any(x => x.ProductId == productId && x.RoutineTime == target))
             .ToList();
 
-        var conflictResult = await _ingredientConflictService.CheckAsync(conflictProductIds, cancellationToken);
-        var warnings = conflictResult.Warnings
-            .Select(MapWarning)
+        if (duplicateTargets.Count > 0)
+        {
+            var duplicateMessage = duplicateTargets.Count == 2
+                ? "This product is already in both routine slots."
+                : $"This product is already in the {duplicateTargets[0].ToLowerInvariant()} routine.";
+            throw new AiFeatureException("DUPLICATE_PRODUCT", duplicateMessage, 409);
+        }
+
+        var warnings = new List<AiRoutineConflictWarningDto>();
+        foreach (var routineType in routineTargets)
+        {
+            var conflictProductIds = regimen.Items
+                .Where(x => x.RoutineTime == routineType)
+                .Select(x => x.ProductId)
+                .Append(productId)
+                .Distinct()
+                .ToList();
+
+            var conflictResult = await _ingredientConflictService.CheckAsync(conflictProductIds, cancellationToken);
+            warnings.AddRange(conflictResult.Warnings.Select(MapWarning));
+        }
+
+        warnings = warnings
+            .GroupBy(x => $"{x.ProductAId}:{x.ProductBId}:{x.IngredientA}:{x.IngredientB}:{x.Severity}")
+            .Select(x => x.First())
             .ToList();
 
         if (warnings.Count > 0 && !request.AllowConflicts)
@@ -98,24 +144,33 @@ public class ProductRoutineService : IProductRoutineService
             };
         }
 
-        var nextStepOrder = regimen.Items
-            .Where(x => x.RoutineTime == routineType)
-            .Select(x => x.StepOrder)
-            .DefaultIfEmpty(0)
-            .Max() + 1;
-
-        regimen.Items.Add(new RegimenItem
+        foreach (var routineType in routineTargets)
         {
-            Id = Guid.NewGuid(),
-            RegimenId = regimen.Id,
-            ProductId = product.Id,
-            Product = product,
-            RoutineTime = routineType,
-            StepOrder = nextStepOrder,
-            Instruction = product.UsageGuide,
-            Frequency = "daily",
-            CreatedAt = DateTime.UtcNow
-        });
+            var nextStepOrder = regimen.Items
+                .Where(x => x.RoutineTime == routineType)
+                .Select(x => x.StepOrder)
+                .DefaultIfEmpty(0)
+                .Max() + 1;
+
+            var instruction = string.IsNullOrWhiteSpace(request.Notes)
+                ? product.UsageGuide
+                : request.Notes.Trim();
+
+            var regimenItem = new RegimenItem
+            {
+                Id = Guid.NewGuid(),
+                RegimenId = regimen.Id,
+                ProductId = product.Id,
+                RoutineTime = routineType,
+                StepOrder = nextStepOrder,
+                Instruction = instruction,
+                Frequency = string.IsNullOrWhiteSpace(request.Frequency) ? "daily" : request.Frequency.Trim(),
+                CreatedAt = DateTime.UtcNow
+            };
+            _dbContext.RegimenItems.Add(regimenItem);
+            regimen.Items.Add(regimenItem);
+        }
+
         regimen.IsCustom = true;
         regimen.UpdatedAt = DateTime.UtcNow;
 
@@ -192,8 +247,14 @@ public class ProductRoutineService : IProductRoutineService
         };
     }
 
-    private static string? NormalizeRoutineType(string routineType)
+    private static IReadOnlyCollection<string> NormalizeRoutineTargets(string routineType)
     {
-        return Helpers.RoutineScheduleHelper.NormalizeRoutineValue(routineType);
+        if (string.Equals(routineType?.Trim(), "both", StringComparison.OrdinalIgnoreCase))
+        {
+            return [Helpers.RoutineScheduleHelper.Morning, Helpers.RoutineScheduleHelper.Evening];
+        }
+
+        var normalized = Helpers.RoutineScheduleHelper.NormalizeRoutineValue(routineType);
+        return normalized is null ? Array.Empty<string>() : [normalized];
     }
 }

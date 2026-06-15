@@ -103,13 +103,14 @@ public static class AnalysisMapper
 
     private static string? BuildOverview(AiAnalysis analysis, IReadOnlyCollection<AnalysisIssueItemDto> issues)
     {
+        var skinHealth = Math.Clamp(100 - analysis.OverallScore, 0, 100);
         if (issues.Count == 0)
         {
-            return $"Skin score {analysis.OverallScore}/100 with balanced overall condition.";
+            return $"Visible concern level {analysis.OverallScore}/100. Estimated skin health {skinHealth}/100.";
         }
 
         var top = issues.OrderByDescending(x => x.SeverityScore).Take(2).Select(x => x.IssueType.ToLowerInvariant());
-        return $"Skin score {analysis.OverallScore}/100. Key concerns detected: {string.Join(", ", top)}.";
+        return $"Visible concern level {analysis.OverallScore}/100 with key concerns: {string.Join(", ", top)}. Estimated skin health {skinHealth}/100.";
     }
 
     private static IReadOnlyCollection<string> BuildWarnings(AiAnalysis analysis)

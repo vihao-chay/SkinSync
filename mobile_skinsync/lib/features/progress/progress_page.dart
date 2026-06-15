@@ -134,9 +134,10 @@ class _ProgressPageState extends State<ProgressPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     CircularScore(
-                      score: progress?.currentScore ?? latestAnalysis?.overallScore ?? 0,
+                      score: latestAnalysis?.displaySkinHealthScore ?? 0,
                       size: 112,
-                      label: 'current',
+                      label: 'health',
+                      tone: CircularScoreTone.health,
                     ),
                     const SizedBox(width: AppSpacing.md),
                     Expanded(
@@ -169,19 +170,26 @@ class _ProgressPageState extends State<ProgressPage> {
                   builder: (context, constraints) {
                     final metrics = [
                       MetricCard(
-                        label: 'Current score',
-                        value: '${progress?.currentScore ?? latestAnalysis?.overallScore ?? 0}',
+                        label: 'Skin Health',
+                        value: latestAnalysis?.displaySkinHealthScore == null
+                            ? '--'
+                            : '${latestAnalysis!.displaySkinHealthScore}',
                         icon: Icons.favorite_outline_rounded,
+                        caption: 'Higher is better.',
+                      ),
+                      MetricCard(
+                        label: 'Visible Concern Level',
+                        value: latestAnalysis?.displayConcernSeverity ==
+                                null
+                            ? '--'
+                            : '${latestAnalysis!.displayConcernSeverity}',
+                        icon: Icons.visibility_outlined,
+                        caption: 'Higher means more visible concerns.',
                       ),
                       MetricCard(
                         label: 'Current streak',
                         value: '${progress?.currentStreak ?? 0} days',
                         icon: Icons.local_fire_department_outlined,
-                      ),
-                      MetricCard(
-                        label: 'Improvement',
-                        value: _formatPercent(progress?.improvementPercent),
-                        icon: Icons.trending_up_rounded,
                       ),
                       MetricCard(
                         label: 'Routine completion',
@@ -220,8 +228,8 @@ class _ProgressPageState extends State<ProgressPage> {
           const SizedBox(height: AppSpacing.sectionGap),
           SectionHeader(
             icon: Icons.show_chart_rounded,
-            title: 'Score Trend',
-            subtitle: 'Only show a trend when there is enough real data to support it.',
+            title: 'Skin Health Trend',
+            subtitle: 'Higher skin health means fewer visible concerns in saved scans.',
           ),
           const SizedBox(height: AppSpacing.md),
           const EmptyStateCard(
@@ -245,7 +253,7 @@ class _ProgressPageState extends State<ProgressPage> {
                     ? 'Latest daily log photo'
                     : 'Latest analysis photo',
                 value: latestAnalysis != null
-                    ? 'Skin score ${latestAnalysis.overallScore}/100 from your most recent scan.'
+                    ? 'Skin Health ${latestAnalysis.displaySkinHealthScore ?? '--'}/100 from your most recent scan.'
                     : 'A real saved photo is available for future comparison.',
               ),
             )
@@ -298,7 +306,7 @@ class _ProgressPageState extends State<ProgressPage> {
                   title: 'Latest analysis',
                   value: latestAnalysis == null
                       ? 'No analysis yet'
-                      : '${latestAnalysis.overallScore}/100 • ${latestAnalysis.skinType}',
+                      : 'Health ${latestAnalysis.displaySkinHealthScore ?? '--'}/100 • Concern ${latestAnalysis.displayConcernSeverityScore ?? '--'}/100 • ${latestAnalysis.skinType}',
                 ),
                 const SizedBox(height: AppSpacing.md),
                 _TimelineRow(
@@ -322,11 +330,6 @@ class _ProgressPageState extends State<ProgressPage> {
         ],
       ),
     );
-  }
-
-  String _formatPercent(double? value) {
-    final safe = value ?? 0;
-    return '${safe.toStringAsFixed(1)}%';
   }
 
   String _resolveImageUrl(String? raw) {

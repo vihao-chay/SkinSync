@@ -18,6 +18,8 @@ public class SkinProgressAnalysis
     public int TextureScore { get; set; }
     public int SensitivityScore { get; set; }
     public int OverallScore { get; set; }
+    public int? SkinHealthScore { get; set; }
+    public int? OverallConcernSeverity { get; set; }
     public decimal? ConfidenceScore { get; set; }
     public string DetectedConcerns { get; set; } = "[]";
     public string AiSummary { get; set; } = string.Empty;

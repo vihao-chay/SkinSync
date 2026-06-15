@@ -374,8 +374,11 @@ class AnalysisResult {
     this.source,
     required this.imageUrl,
     required this.skinType,
-    required this.overallScore,
+    this.overallScore,
+    this.skinHealthScore,
+    this.overallConcernSeverity,
     required this.confidenceScore,
+    this.metrics = const AnalysisMetrics(),
     this.overview,
     this.disclaimer,
     this.warnings = const [],
@@ -391,14 +394,54 @@ class AnalysisResult {
   final String? source;
   final String imageUrl;
   final String skinType;
-  final int overallScore;
+  final int? overallScore;
+  final int? skinHealthScore;
+  final int? overallConcernSeverity;
   final int confidenceScore;
+  final AnalysisMetrics metrics;
   final String? overview;
   final String? disclaimer;
   final List<String> warnings;
   final List<AnalysisIssue> issues;
   final List<AnalysisRecommendation> recommendations;
   final bool canGenerateProducts;
+
+  int? get displaySkinHealthScore =>
+      skinHealthScore ??
+      (displayConcernSeverityScore == null
+          ? null
+          : 100 - displayConcernSeverityScore!);
+
+  int? get legacyConcernScore => overallConcernSeverity ?? overallScore;
+
+  int? get displayConcernSeverityScore =>
+      overallConcernSeverity ??
+      overallScore ??
+      (skinHealthScore == null ? null : 100 - skinHealthScore!);
+
+  int? get displayConcernSeverity => displayConcernSeverityScore;
+
+  int get displayConfidencePercent => confidenceScore.clamp(0, 100);
+
+  int get displayConfidence => displayConfidencePercent;
+
+  bool get hasScoreData =>
+      displaySkinHealthScore != null || displayConcernSeverityScore != null;
+
+  bool get isLegacySeverityRecord =>
+      skinHealthScore == null &&
+      overallConcernSeverity == null &&
+      overallScore != null;
+
+  static int _parseConfidenceScore(Map<String, dynamic> json) {
+    final rawValue = json['confidence'] ?? json['confidenceScore'];
+    if (rawValue is num) {
+      final normalized = rawValue <= 1 ? rawValue * 100 : rawValue;
+      return normalized.round().clamp(0, 100);
+    }
+
+    return 0;
+  }
 
   factory AnalysisResult.fromJson(Map<String, dynamic> json) => AnalysisResult(
     id: (json['id'] ?? json['analysisResultId'] ?? json['analysisId'])
@@ -410,15 +453,29 @@ class AnalysisResult {
     imageUrl: (json['imageUrl'] ?? '') as String,
     skinType:
         ((json['skinType'] ?? json['skinTypeEstimate']) ?? 'Unknown') as String,
-    overallScore: ((json['overallScore'] ?? json['skinScore']) ?? 0) as int,
-    confidenceScore:
-        ((json['confidenceScore'] as num?)?.round() ??
-        (((json['confidenceScore'] as num?) ??
-                    (json['confidence'] as num?) ??
-                    0) *
-                100)
-            .round()),
-    overview: (json['overview'] ?? json['skinSummary']) as String?,
+    overallScore:
+        ((json['overallScore'] as num?) ?? (json['skinScore'] as num?))
+            ?.round(),
+    skinHealthScore:
+        ((json['skinHealthScore'] as num?) ??
+                (json['skinHealth'] as num?))
+            ?.round(),
+    overallConcernSeverity:
+        ((json['overallConcernSeverity'] as num?) ??
+                (json['visibleConcernLevel'] as num?))
+            ?.round(),
+    confidenceScore: _parseConfidenceScore(json),
+    metrics: json['metrics'] is Map<String, dynamic>
+        ? AnalysisMetrics.fromJson(json['metrics'] as Map<String, dynamic>)
+        : AnalysisMetrics(
+            acne: (json['acneLevel'] as num?)?.round(),
+            redness: (json['rednessLevel'] as num?)?.round(),
+            oiliness: (json['oilinessLevel'] as num?)?.round(),
+            dryness: (json['drynessLevel'] as num?)?.round(),
+            moisture: (json['hydrationLevel'] as num?)?.round(),
+            texture: (json['textureLevel'] as num?)?.round(),
+          ),
+    overview: (json['overview'] ?? json['summary'] ?? json['skinSummary']) as String?,
     disclaimer: json['disclaimer'] as String?,
     warnings:
         (((json['warnings'] as List?) ??
@@ -439,7 +496,9 @@ class AnalysisResult {
       if (item is Map<String, dynamic>) {
         return AnalysisRecommendation(
           title: (item['title'] ?? item['type'] ?? 'Recommendation') as String,
-          content: (item['content'] ?? item['description'] ?? '') as String,
+          content:
+              (item['content'] ?? item['description'] ?? item['reason'] ?? '')
+                  as String,
         );
       }
       return AnalysisRecommendation(
@@ -1044,6 +1103,247 @@ class AiRecommendedProduct {
       );
 }
 
+class ProductDetail {
+  const ProductDetail({
+    required this.id,
+    required this.name,
+    required this.brand,
+    required this.category,
+    required this.price,
+    required this.currency,
+    this.description,
+    this.imageUrl,
+    this.howToUse,
+    this.usageTime,
+    this.ingredients = const [],
+    this.skinTypes = const [],
+    this.skinConcerns = const [],
+    this.keyIngredients = const [],
+    this.cautions = const [],
+    this.conflicts = const [],
+    this.matchPercent,
+    this.whyRecommended,
+    this.alreadyInRoutine = false,
+  });
+
+  final String id;
+  final String name;
+  final String brand;
+  final String category;
+  final double price;
+  final String currency;
+  final String? description;
+  final String? imageUrl;
+  final String? howToUse;
+  final String? usageTime;
+  final List<String> ingredients;
+  final List<String> skinTypes;
+  final List<String> skinConcerns;
+  final List<String> keyIngredients;
+  final List<String> cautions;
+  final List<String> conflicts;
+  final int? matchPercent;
+  final String? whyRecommended;
+  final bool alreadyInRoutine;
+
+  bool get hasIngredientData => ingredients.isNotEmpty;
+
+  factory ProductDetail.fromJson(Map<String, dynamic> json) => ProductDetail(
+    id: json['id'].toString(),
+    name: (json['name'] ?? '') as String,
+    brand: (json['brand'] ?? '') as String,
+    category: (json['category'] ?? '') as String,
+    price: (json['price'] as num?)?.toDouble() ?? 0,
+    currency: (json['currency'] ?? 'VND') as String,
+    description: json['description'] as String?,
+    imageUrl: json['imageUrl'] as String?,
+    howToUse: (json['howToUse'] ?? json['usageGuide']) as String?,
+    usageTime: json['usageTime'] as String?,
+    ingredients: ((json['ingredients'] as List?) ?? const [])
+        .map((e) => e.toString())
+        .where((e) => e.trim().isNotEmpty)
+        .toList(),
+    skinTypes: ((json['suitableSkinTypes'] as List?) ?? const [])
+        .map((e) => e.toString())
+        .where((e) => e.trim().isNotEmpty)
+        .toList(),
+    skinConcerns: ((json['skinConcerns'] as List?) ?? const [])
+        .map((e) => e.toString())
+        .where((e) => e.trim().isNotEmpty)
+        .toList(),
+    keyIngredients: ((json['keyIngredients'] as List?) ?? const [])
+        .map((e) => e.toString())
+        .where((e) => e.trim().isNotEmpty)
+        .toList(),
+    cautions: ((json['cautions'] as List?) ?? const [])
+        .map((e) => e.toString())
+        .where((e) => e.trim().isNotEmpty)
+        .toList(),
+    conflicts: ((json['conflicts'] as List?) ?? const [])
+        .map((e) => e.toString())
+        .where((e) => e.trim().isNotEmpty)
+        .toList(),
+    matchPercent: (json['matchPercent'] as num?)?.toInt(),
+    whyRecommended: json['whyRecommended'] as String?,
+    alreadyInRoutine: (json['alreadyInRoutine'] ?? false) as bool,
+  );
+
+  ProductDetail mergeRecommendation(
+    AiRecommendedProduct? recommendation, {
+    bool? alreadyInRoutineOverride,
+  }) {
+    if (recommendation == null) {
+      return ProductDetail(
+        id: id,
+        name: name,
+        brand: brand,
+        category: category,
+        price: price,
+        currency: currency,
+        description: description,
+        imageUrl: imageUrl,
+        howToUse: howToUse,
+        usageTime: usageTime,
+        ingredients: ingredients,
+        skinTypes: skinTypes,
+        skinConcerns: skinConcerns,
+        keyIngredients: keyIngredients,
+        cautions: cautions,
+        conflicts: conflicts,
+        matchPercent: matchPercent,
+        whyRecommended: whyRecommended,
+        alreadyInRoutine: alreadyInRoutineOverride ?? alreadyInRoutine,
+      );
+    }
+
+    return ProductDetail(
+      id: id,
+      name: name.isEmpty ? recommendation.name : name,
+      brand: brand.isEmpty ? recommendation.brand : brand,
+      category: category.isEmpty ? recommendation.category : category,
+      price: price == 0 ? recommendation.price : price,
+      currency: currency.isEmpty ? recommendation.currency : currency,
+      description: description?.trim().isNotEmpty == true
+          ? description
+          : recommendation.description,
+      imageUrl: imageUrl?.trim().isNotEmpty == true ? imageUrl : recommendation.imageUrl,
+      howToUse: howToUse?.trim().isNotEmpty == true ? howToUse : recommendation.usageGuide,
+      usageTime: usageTime,
+      ingredients: ingredients.isNotEmpty
+          ? ingredients
+          : ((recommendation.ingredientsText?.trim().isNotEmpty ?? false)
+                ? recommendation.ingredientsText!
+                    .split(',')
+                    .map((e) => e.trim())
+                    .where((e) => e.isNotEmpty)
+                    .toList()
+                : const <String>[]),
+      skinTypes: skinTypes,
+      skinConcerns: skinConcerns,
+      keyIngredients: keyIngredients,
+      cautions: cautions.isNotEmpty ? cautions : recommendation.cautions,
+      conflicts: conflicts,
+      matchPercent: matchPercent ?? recommendation.matchPercent ?? recommendation.matchScore,
+      whyRecommended: whyRecommended?.trim().isNotEmpty == true
+          ? whyRecommended
+          : (recommendation.whyRecommended?.trim().isNotEmpty == true
+              ? recommendation.whyRecommended
+              : recommendation.aiReason),
+      alreadyInRoutine: alreadyInRoutineOverride ?? (alreadyInRoutine || recommendation.alreadyInRoutine),
+    );
+  }
+}
+
+class AnalysisMetrics {
+  const AnalysisMetrics({
+    this.acne,
+    this.redness,
+    this.oiliness,
+    this.dryness,
+    this.moisture,
+    this.texture,
+  });
+
+  final int? acne;
+  final int? redness;
+  final int? oiliness;
+  final int? dryness;
+  final int? moisture;
+  final int? texture;
+
+  List<AnalysisMetricDisplay> get displayItems => [
+    AnalysisMetricDisplay(
+      key: 'acne',
+      label: 'Acne visibility',
+      value: acne,
+      tone: AnalysisMetricTone.concern,
+      caption: 'Higher means acne is more visible.',
+    ),
+    AnalysisMetricDisplay(
+      key: 'redness',
+      label: 'Redness',
+      value: redness,
+      tone: AnalysisMetricTone.concern,
+      caption: 'Higher means redness is more visible.',
+    ),
+    AnalysisMetricDisplay(
+      key: 'oiliness',
+      label: 'Oiliness',
+      value: oiliness,
+      tone: AnalysisMetricTone.concern,
+      caption: 'Higher means visible shine or oil is stronger.',
+    ),
+    AnalysisMetricDisplay(
+      key: 'dryness',
+      label: 'Dryness',
+      value: dryness,
+      tone: AnalysisMetricTone.concern,
+      caption: 'Higher means dryness is more noticeable.',
+    ),
+    AnalysisMetricDisplay(
+      key: 'moisture',
+      label: 'Moisture',
+      value: moisture,
+      tone: AnalysisMetricTone.wellness,
+      caption: 'Higher is better for moisture balance.',
+    ),
+    AnalysisMetricDisplay(
+      key: 'texture',
+      label: 'Texture',
+      value: texture,
+      tone: AnalysisMetricTone.concern,
+      caption: 'Higher means uneven texture is more visible.',
+    ),
+  ];
+
+  factory AnalysisMetrics.fromJson(Map<String, dynamic> json) => AnalysisMetrics(
+    acne: (json['acne'] as num?)?.round(),
+    redness: (json['redness'] as num?)?.round(),
+    oiliness: (json['oiliness'] as num?)?.round(),
+    dryness: (json['dryness'] as num?)?.round(),
+    moisture: (json['moisture'] as num?)?.round(),
+    texture: (json['texture'] as num?)?.round(),
+  );
+}
+
+enum AnalysisMetricTone { concern, wellness }
+
+class AnalysisMetricDisplay {
+  const AnalysisMetricDisplay({
+    required this.key,
+    required this.label,
+    required this.value,
+    required this.tone,
+    required this.caption,
+  });
+
+  final String key;
+  final String label;
+  final int? value;
+  final AnalysisMetricTone tone;
+  final String caption;
+}
+
 class AiProductRecommendationProfileSummary {
   const AiProductRecommendationProfileSummary({
     this.skinType = 'Not provided yet',
@@ -1271,12 +1571,16 @@ class ProgressPageArgs {
 
 class ProductDetailPageArgs {
   const ProductDetailPageArgs({
-    required this.product,
-    this.productsEntryPoint = ProductsEntryPoint.bottomNav,
+    required this.productId,
+    this.recommendationItem,
+    this.sourceProductsEntryPoint = ProductsEntryPoint.bottomNav,
+    this.alreadyInRoutine,
   });
 
-  final AiRecommendedProduct product;
-  final ProductsEntryPoint productsEntryPoint;
+  final String productId;
+  final AiRecommendedProduct? recommendationItem;
+  final ProductsEntryPoint sourceProductsEntryPoint;
+  final bool? alreadyInRoutine;
 }
 
 class ProductDetailActionResult {

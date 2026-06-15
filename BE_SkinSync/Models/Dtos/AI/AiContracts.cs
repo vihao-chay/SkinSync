@@ -22,10 +22,25 @@ public class AiSkinAnalysisRequestDto
 
 public class AiDetectedConcernDto
 {
+    public string Key { get; set; } = "unknown";
+    public string Label { get; set; } = string.Empty;
     public string Concern { get; set; } = "unknown";
     public string Severity { get; set; } = "low";
+    public int SeverityScore { get; set; }
     public double Confidence { get; set; }
     public string Description { get; set; } = string.Empty;
+    public string Evidence { get; set; } = string.Empty;
+    public string RecommendationPriority { get; set; } = "medium";
+}
+
+public class AiSkinAnalysisMetricsDto
+{
+    public int Acne { get; set; }
+    public int Redness { get; set; }
+    public int Oiliness { get; set; }
+    public int Dryness { get; set; }
+    public int Moisture { get; set; }
+    public int Texture { get; set; }
 }
 
 public class AiSkinAnalysisResponseDto
@@ -39,6 +54,14 @@ public class AiSkinAnalysisResponseDto
     public string ImageUrl { get; set; } = string.Empty;
     public string? ThumbnailUrl { get; set; }
     public string? AiModel { get; set; }
+    /// <summary>Canonical health score. Higher is better.</summary>
+    public int SkinHealthScore { get; set; }
+    /// <summary>Canonical visible concern severity. Higher means worse visible concerns.</summary>
+    public int OverallConcernSeverity { get; set; }
+    /// <summary>Canonical confidence percent in the 0..100 range.</summary>
+    public int Confidence { get; set; }
+    public AiSkinAnalysisMetricsDto Metrics { get; set; } = new();
+    /// <summary>Legacy compatibility alias for visible concern severity. New UI must not present this as skin health.</summary>
     public int SkinScore { get; set; }
     public string SkinType { get; set; } = "unknown";
     public int OilinessLevel { get; set; }
@@ -50,8 +73,10 @@ public class AiSkinAnalysisResponseDto
     public int PoreLevel { get; set; }
     public int WrinkleLevel { get; set; }
     public int SensitivityLevel { get; set; }
+    /// <summary>Public numeric hydration/moisture score in the 0..100 range.</summary>
     public int HydrationLevel { get; set; }
     public string SkinSummary { get; set; } = string.Empty;
+    public string Summary { get; set; } = string.Empty;
     public IReadOnlyCollection<AiDetectedConcernDto> DetectedConcerns { get; set; } = Array.Empty<AiDetectedConcernDto>();
     public IReadOnlyCollection<SkinProgressRecommendationDto> Recommendations { get; set; } = Array.Empty<SkinProgressRecommendationDto>();
     public SkinProgressRoutineSuggestionsDto RoutineSuggestions { get; set; } = new();
@@ -59,6 +84,8 @@ public class AiSkinAnalysisResponseDto
     public IReadOnlyCollection<string> SafetyNotes { get; set; } = Array.Empty<string>();
     public IReadOnlyCollection<string> RiskFlags { get; set; } = Array.Empty<string>();
     public string Disclaimer { get; set; } = string.Empty;
+    public string SafetyNote { get; set; } = string.Empty;
+    /// <summary>Legacy compatibility ratio in the 0..1 range. Prefer <see cref="Confidence"/> for new UI.</summary>
     public decimal? ConfidenceScore { get; set; }
     public bool CanGenerateProducts { get; set; }
     public string? ErrorMessage { get; set; }
@@ -334,6 +361,8 @@ public class AiAddProductToRoutineRequestDto
 {
     public string RoutineType { get; set; } = "evening";
     public bool AllowConflicts { get; set; }
+    public string? Frequency { get; set; }
+    public string? Notes { get; set; }
 }
 
 public class AiRoutineConflictWarningDto

@@ -80,8 +80,7 @@ class _SkinAnalysisPageState extends State<SkinAnalysisPage> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    result.overview ??
-                        'Skin score ${result.overallScore}/100 with balanced overall condition.',
+                    _analysisOverview(result),
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: AppColors.mutedText,
                       height: 1.45,
@@ -100,13 +99,13 @@ class _SkinAnalysisPageState extends State<SkinAnalysisPage> {
                     children: [
                       _MetricCard(
                         icon: Icons.face_retouching_natural_outlined,
-                        label: 'Skin score',
-                        value: '${result.overallScore}/100',
+                        label: 'Visible Concern Level',
+                        value: _displayConcernSeverityMetric(result),
                       ),
                       _MetricCard(
                         icon: Icons.verified_user_outlined,
                         label: 'Confidence',
-                        value: '${result.confidenceScore}%',
+                        value: '${result.displayConfidencePercent}%',
                       ),
                       _MetricCard(
                         icon: Icons.troubleshoot_rounded,
@@ -174,7 +173,7 @@ class _SkinAnalysisPageState extends State<SkinAnalysisPage> {
                               entryPoint: ProductsEntryPoint.analysisResult,
                             ),
                           ),
-                      child: const Text('Review Product Recommendations'),
+                      child: const Text('View Products'),
                     ),
                   ),
                   const SizedBox(height: 10),
@@ -226,7 +225,7 @@ class _SkinAnalysisPageState extends State<SkinAnalysisPage> {
                   const SizedBox(height: 2),
                   TextButton(
                     onPressed: () => Navigator.pushNamed(context, AppRoutes.upload),
-                    child: const Text('Analyze Again'),
+                      child: const Text('Try Another Photo'),
                   ),
                 ],
               ),
@@ -366,7 +365,7 @@ class _ScoreCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Current reading',
+            'Skin Health',
             style: Theme.of(context).textTheme.labelMedium?.copyWith(
               color: AppColors.mutedText,
               fontWeight: FontWeight.w700,
@@ -378,30 +377,41 @@ class _ScoreCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Expanded(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      '${result.overallScore}',
-                      style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                        color: AppColors.primaryDark,
-                        fontWeight: FontWeight.w800,
-                        height: 0.95,
+                child: _hasPoorImageQuality(result)
+                    ? Text(
+                        'Unavailable',
+                        style: Theme.of(context).textTheme.headlineSmall
+                            ?.copyWith(
+                              color: AppColors.primaryDark,
+                              fontWeight: FontWeight.w800,
+                            ),
+                      )
+                    : Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            '${result.displaySkinHealthScore ?? '--'}',
+                            style: Theme.of(context).textTheme.displaySmall
+                                ?.copyWith(
+                                  color: AppColors.primaryDark,
+                                  fontWeight: FontWeight.w800,
+                                  height: 0.95,
+                                ),
+                          ),
+                          const SizedBox(width: 6),
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 4),
+                            child: Text(
+                              '/100',
+                              style: Theme.of(context).textTheme.titleSmall
+                                  ?.copyWith(
+                                    color: AppColors.mutedText,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                    const SizedBox(width: 6),
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 4),
-                      child: Text(
-                        '/100',
-                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          color: AppColors.mutedText,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -421,7 +431,7 @@ class _ScoreCard extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            'Confidence ${result.confidenceScore}%',
+            'Confidence ${result.displayConfidencePercent}%',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
               color: AppColors.foreground,
               fontWeight: FontWeight.w700,
@@ -474,8 +484,10 @@ class _MetricCard extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              fontFamily: 'Inter',
               fontWeight: FontWeight.w800,
               color: AppColors.heading,
+              fontFeatures: const [FontFeature.tabularFigures()],
             ),
           ),
         ],
@@ -500,6 +512,7 @@ class _RecommendationsCard extends StatelessWidget {
             'Keep your routine gentle and consistent while tracking changes.',
           ]
         : recommendations.map((item) => item.content).toList();
+    final friendlyWarnings = warnings.map(_friendlyWarning).toList();
 
     return _SoftCard(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
@@ -507,7 +520,7 @@ class _RecommendationsCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Recommendations',
+            'Recommended next steps',
             style: Theme.of(
               context,
             ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
@@ -544,11 +557,11 @@ class _RecommendationsCard extends StatelessWidget {
               ),
             ),
           ),
-          if (warnings.isNotEmpty) ...[
+          if (friendlyWarnings.isNotEmpty) ...[
             const SizedBox(height: 4),
             Divider(color: AppColors.border.withValues(alpha: 0.34)),
             const SizedBox(height: 8),
-            ...warnings.map(
+            ...friendlyWarnings.map(
               (warning) => Padding(
                 padding: const EdgeInsets.only(bottom: 8),
                 child: Text(
@@ -635,4 +648,50 @@ String _friendlySkinType(String value) {
     return 'Skin type updating';
   }
   return trimmed;
+}
+
+bool _hasPoorImageQuality(AnalysisResult result) => result.warnings.any(
+  (warning) => warning.trim().toLowerCase() == 'poor_image_quality',
+);
+
+String _displayConcernSeverityMetric(AnalysisResult result) =>
+    _hasPoorImageQuality(result)
+        ? 'Unavailable'
+        : result.displayConcernSeverityScore == null
+        ? '--'
+        : '${result.displayConcernSeverityScore}/100';
+
+String _analysisOverview(AnalysisResult result) {
+  if (result.overview?.trim().isNotEmpty == true) {
+    return result.overview!;
+  }
+
+  if (_hasPoorImageQuality(result)) {
+    return 'The photo quality was too low for a reliable score. Try a clearer image with brighter lighting and a front-facing angle.';
+  }
+
+  final health = result.displaySkinHealthScore;
+  final severity = result.displayConcernSeverityScore;
+  if (health != null && severity != null) {
+    return 'Skin Health $health/100 with Visible Concern Level $severity/100.';
+  }
+  if (health != null) {
+    return 'Skin Health $health/100 from the latest analysis.';
+  }
+  return 'Your latest analysis is ready.';
+}
+
+String _friendlyWarning(String warning) {
+  switch (warning.trim().toLowerCase()) {
+    case 'poor_image_quality':
+      return 'Image quality is too low for a detailed reading. Try brighter lighting and keep your face centered.';
+    case 'possible_irritation':
+      return 'Possible irritation detected. Keep your routine gentle and monitor your skin closely.';
+    case 'need_dermatologist':
+      return 'Consider seeing a dermatologist if the concern persists or becomes more severe.';
+    case 'severe_acne':
+      return 'Signs of more severe acne were detected. Consider professional advice if this continues.';
+    default:
+      return warning.replaceAll('_', ' ');
+  }
 }

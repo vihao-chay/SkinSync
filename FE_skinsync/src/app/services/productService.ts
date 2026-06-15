@@ -6,15 +6,24 @@ export interface ProductDetail {
   name: string;
   brand: string;
   category: string;
-  description: string;
-  ingredient: string;
-  usageGuide: string;
+  description?: string | null;
+  ingredient?: string | null;
+  ingredients?: string[];
+  usageGuide?: string | null;
+  howToUse?: string | null;
+  usageTime?: string | null;
   price: number;
+  currency: string;
   suitableSkinTypes: string[];
+  skinConcerns?: string[];
+  keyIngredients?: string[];
+  cautions?: string[];
+  conflicts?: string[];
   imageUrl?: string | null;
-  rating: number;
+  rating?: number | null;
   status: string;
   createdAt: string;
+  updatedAt?: string | null;
 }
 
 export async function getProductsApi(options?: {

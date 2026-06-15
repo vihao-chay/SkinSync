@@ -297,17 +297,30 @@ Photo metadata:
 {photoMetadataJson}
 
 Task:
-1. Estimate visible skin condition scores from 0 to 100.
-2. Identify visible skincare concerns.
-3. Estimate skin type, hydration level, and oiliness level if possible.
-4. Give a short progress-friendly summary.
-5. Give safe, practical recommendations.
+1. Estimate a visible skin health score from 0 to 100, where higher is better.
+2. Estimate an overall visible concern severity score from 0 to 100, where higher means more visible concerns.
+3. Identify visible skincare concerns only from what appears in the image.
+4. Estimate skin type, hydration level, and oiliness level if possible.
+5. Give a short, user-friendly summary.
+6. Give safe, practical skincare recommendations.
 
 Scoring rule:
-- 0 means not visible or very low.
-- 100 means very visible or severe.
+- skinHealthScore:
+  - 0 = very poor visible skin condition
+  - 100 = very healthy-looking visible skin condition
+  - Higher is better.
+- overallConcernSeverity:
+  - 0 = no visible concern or very low concern
+  - 100 = very visible or severe concerns
+  - Higher means more visible concerns.
+- If you can only estimate severity, compute skinHealthScore = 100 - overallConcernSeverity.
+- Keep skinHealthScore and overallConcernSeverity logically consistent.
 - Use conservative scores.
 - If image quality is poor, reduce confidence and add ""poor_image_quality"" to riskFlags.
+- If you are not confident about a field, omit it or return null.
+- Do not use 0 as a placeholder for unknown values.
+- Return an empty concerns array when you cannot identify any visible concern confidently.
+- In metrics, include only the keys you can estimate from the image with reasonable confidence.
 
 Important rules:
 - Do not diagnose medical conditions.
@@ -315,35 +328,24 @@ Important rules:
 - Do not comment on attractiveness.
 - Do not shame the user.
 - Do not suggest aggressive treatment.
+- Use careful wording such as ""appears"", ""looks like"", ""visible signs"", and ""may indicate"".
+- Do not infer hidden information that is not visible in the photo.
 - If there are serious-looking symptoms, recommend seeing a dermatologist.
 
 Return valid JSON only:
 {{
-  ""skinTypeEstimate"": ""oily | dry | combination | normal | sensitive | unknown"",
-  ""hydrationLevel"": ""low | balanced | high | unknown"",
-  ""oilinessLevel"": ""low | medium | high | only_t_zone | unknown"",
-  ""scores"": {{
-    ""acneScore"": 0,
-    ""rednessScore"": 0,
-    ""darkSpotScore"": 0,
-    ""oilinessScore"": 0,
-    ""drynessScore"": 0,
-    ""textureScore"": 0,
-    ""sensitivityScore"": 0,
-    ""overallScore"": 0
-  }},
-  ""detectedConcerns"": [
-    {{
-      ""concern"": ""acne | redness | dark_spots | oiliness | dryness | texture | sensitivity | unknown"",
-      ""severity"": ""low | medium | high"",
-      ""score"": 0,
-      ""confidence"": 0.0,
-      ""description"": ""string""
-    }}
-  ],
-  ""aiSummary"": ""string"",
-  ""recommendations"": [""string""],
+  ""skinHealthScore"": null,
+  ""overallConcernSeverity"": null,
+  ""confidence"": null,
+  ""skinTypeEstimate"": ""unknown"",
+  ""hydrationLevel"": ""unknown"",
+  ""oilinessLevel"": ""unknown"",
+  ""summary"": ""string"",
+  ""concerns"": [],
+  ""metrics"": {{}},
+  ""recommendations"": [],
   ""riskFlags"": [""poor_image_quality | possible_irritation | need_dermatologist""],
+  ""safetyNote"": ""string"",
   ""disclaimer"": ""string""
 }}";
     }

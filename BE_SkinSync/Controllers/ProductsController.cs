@@ -55,7 +55,8 @@ public class ProductsController : ControllerBase
 
         if (!string.IsNullOrWhiteSpace(skinType))
         {
-            source = source.Where(x => (x.SuitableSkinTypes ?? string.Empty).Contains(skinType.Trim(), StringComparison.OrdinalIgnoreCase));
+            source = source.Where(x => ProductMapper.ParseJsonArray(x.SuitableSkinTypes)
+                .Contains(skinType.Trim(), StringComparer.OrdinalIgnoreCase));
         }
 
         if (minPrice.HasValue)
@@ -70,18 +71,18 @@ public class ProductsController : ControllerBase
 
         return ResponseEntity<IEnumerable<ProductResponseDto>>.Ok(
             source.Select(x => x.ToDto()).ToList(),
-            "Láº¥y danh sÃ¡ch sáº£n pháº©m thÃ nh cÃ´ng.");
+            "Fetched products successfully.");
     }
 
     [HttpGet("{id:guid}")]
     public async Task<ResponseEntity<ProductResponseDto>> GetProduct(Guid id, CancellationToken cancellationToken)
     {
-        var product = await _productRepository.GetByIdAsync(id, cancellationToken);
+        var product = await _productRepository.GetDetailByIdAsync(id, cancellationToken);
         if (product is null || !product.Status.Equals("active", StringComparison.OrdinalIgnoreCase))
         {
-            return ResponseEntity<ProductResponseDto>.Fail("KhÃ´ng tÃ¬m tháº¥y sáº£n pháº©m.", 404);
+            return ResponseEntity<ProductResponseDto>.Fail("Product not found.", 404);
         }
 
-        return ResponseEntity<ProductResponseDto>.Ok(product.ToDto(), "Láº¥y chi tiáº¿t sáº£n pháº©m thÃ nh cÃ´ng.");
+        return ResponseEntity<ProductResponseDto>.Ok(product.ToDto(), "Fetched product detail successfully.");
     }
 }
