@@ -25,6 +25,8 @@ public class AppDbContext : DbContext
     public DbSet<AiChatMessage> AiChatMessages => Set<AiChatMessage>();
     public DbSet<SkinProgressPhoto> SkinProgressPhotos => Set<SkinProgressPhoto>();
     public DbSet<SkinProgressAnalysis> SkinProgressAnalyses => Set<SkinProgressAnalysis>();
+    public DbSet<ProductRecommendationSession> ProductRecommendationSessions => Set<ProductRecommendationSession>();
+    public DbSet<ProductRecommendationItem> ProductRecommendationItems => Set<ProductRecommendationItem>();
     public DbSet<SkinPhotoComparison> SkinPhotoComparisons => Set<SkinPhotoComparison>();
     public DbSet<SkinProgressReport> SkinProgressReports => Set<SkinProgressReport>();
     public DbSet<SubscriptionPlan> SubscriptionPlans => Set<SubscriptionPlan>();
@@ -452,6 +454,56 @@ public class AppDbContext : DbContext
                 .WithMany(x => x.Analyses)
                 .HasForeignKey(x => x.PhotoId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ProductRecommendationSession>(entity =>
+        {
+            entity.ToTable("product_recommendation_sessions", table =>
+            {
+                table.HasCheckConstraint("ck_product_recommendation_sessions_status", "\"Status\" IN ('completed', 'partial', 'failed', 'expired')");
+            });
+            entity.HasKey(x => x.Id);
+            entity.HasIndex(x => new { x.UserId, x.GeneratedAt }).IsDescending(false, true);
+            entity.HasIndex(x => x.SourceAnalysisId);
+            entity.Property(x => x.GeneratedAt).HasColumnType("timestamp with time zone").HasDefaultValueSql("timezone('utc', now())");
+            entity.Property(x => x.ExpiresAt).HasColumnType("timestamp with time zone");
+            entity.Property(x => x.Status).HasMaxLength(20).HasDefaultValue("completed").IsRequired();
+            entity.Property(x => x.Summary).HasColumnType("text");
+            entity.Property(x => x.CreatedAt).HasColumnType("timestamp with time zone").HasDefaultValueSql("timezone('utc', now())");
+            entity.HasOne(x => x.User)
+                .WithMany(x => x.ProductRecommendationSessions)
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(x => x.SourceAnalysis)
+                .WithMany()
+                .HasForeignKey(x => x.SourceAnalysisId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<ProductRecommendationItem>(entity =>
+        {
+            entity.ToTable("product_recommendation_items", table =>
+            {
+                table.HasCheckConstraint("ck_product_recommendation_items_match_percent", "\"MatchPercent\" BETWEEN 0 AND 100");
+                table.HasCheckConstraint("ck_product_recommendation_items_rank", "\"Rank\" > 0");
+            });
+            entity.HasKey(x => x.Id);
+            entity.HasIndex(x => new { x.SessionId, x.Category, x.Rank }).IsUnique();
+            entity.HasIndex(x => new { x.SessionId, x.ProductId }).IsUnique();
+            entity.HasIndex(x => x.ProductId);
+            entity.Property(x => x.Category).HasMaxLength(50).IsRequired();
+            entity.Property(x => x.WhyRecommended).HasColumnType("text").HasDefaultValue(string.Empty).IsRequired();
+            entity.Property(x => x.Cautions).HasColumnType("jsonb").HasDefaultValueSql("'[]'::jsonb").IsRequired();
+            entity.Property(x => x.AlreadyInRoutine).HasDefaultValue(false).IsRequired();
+            entity.Property(x => x.CreatedAt).HasColumnType("timestamp with time zone").HasDefaultValueSql("timezone('utc', now())");
+            entity.HasOne(x => x.Session)
+                .WithMany(x => x.Items)
+                .HasForeignKey(x => x.SessionId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(x => x.Product)
+                .WithMany(x => x.ProductRecommendationItems)
+                .HasForeignKey(x => x.ProductId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<SkinPhotoComparison>(entity =>

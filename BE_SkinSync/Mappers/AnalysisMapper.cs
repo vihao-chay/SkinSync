@@ -88,13 +88,7 @@ public static class AnalysisMapper
             }
         }
 
-        return analysis.OverallScore switch
-        {
-            < 65 => "Sensitive",
-            < 75 => "Oily",
-            < 85 => "Combination",
-            _ => "Normal"
-        };
+        return "Unknown";
     }
 
     private static int DeriveConfidenceScore(AiAnalysis analysis)
@@ -104,7 +98,7 @@ public static class AnalysisMapper
             .Select(x => x.ConfidenceScore!.Value)
             .ToList();
 
-        return scores.Count == 0 ? 78 : (int)Math.Round(scores.Average());
+        return scores.Count == 0 ? 0 : (int)Math.Round(scores.Average());
     }
 
     private static string? BuildOverview(AiAnalysis analysis, IReadOnlyCollection<AnalysisIssueItemDto> issues)
@@ -124,12 +118,6 @@ public static class AnalysisMapper
         if (analysis.OverallScore < 60)
         {
             warnings.Add("Skin condition appears stressed; keep actives gentle and consider professional advice if symptoms persist.");
-        }
-
-        if ((analysis.AnalysisIssues?.Count ?? 0) == 0 &&
-            string.Equals(analysis.AiModel, "local-simulator", StringComparison.OrdinalIgnoreCase))
-        {
-            warnings.Add("AI fallback was used for this analysis because the primary provider was unavailable.");
         }
 
         return warnings;

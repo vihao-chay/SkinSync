@@ -5,6 +5,8 @@ import '../../core/models/app_models.dart';
 import '../../core/routes/app_routes.dart';
 import '../../core/state/app_state.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_spacing.dart';
+import '../../core/widgets/app_button.dart';
 import '../../core/widgets/glass_header.dart';
 
 class AiChatPage extends StatefulWidget {
@@ -47,16 +49,20 @@ class _AiChatPageState extends State<AiChatPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.pageBackground,
-      appBar: const GlassHeader(
+      appBar: GlassHeader(
         currentRoute: AppRoutes.aiChat,
         title: 'SkinSync AI',
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _newChat,
-        backgroundColor: AppColors.primaryDark,
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.add_comment_outlined),
-        label: const Text('New chat'),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: AppButton(
+              label: 'New chat',
+              expand: false,
+              icon: const Icon(Icons.add_comment_outlined),
+              onPressed: _newChat,
+            ),
+          ),
+        ],
       ),
       body: SafeArea(
         top: false,
@@ -90,7 +96,12 @@ class _AiChatPageState extends State<AiChatPage> {
 
               return ListView.separated(
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(16, 14, 16, 88),
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.pagePadding,
+                  14,
+                  AppSpacing.pagePadding,
+                  AppSpacing.pageBottomPadding,
+                ),
                 itemBuilder: (context, index) {
                   final item = conversations[index];
                   return _ConversationTile(

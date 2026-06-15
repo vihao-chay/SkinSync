@@ -14,11 +14,13 @@ class AppRoutes {
   static const aiConflictCheck = '/ai/conflict-check';
   static const aiReports = '/ai/reports';
   static const dashboard = '/dashboard';
+  static const productDetail = '/products/detail';
   static const todayCheckup = '/today-checkup';
   static const routine = '/routine';
   static const products = '/products';
   static const progress = '/progress';
   static const profile = '/profile';
+  static const editProfile = '/profile/edit';
 
   static const admin = '/admin';
   static const adminUsers = '/admin/users';

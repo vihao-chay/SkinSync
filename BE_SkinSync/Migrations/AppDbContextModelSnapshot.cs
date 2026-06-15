@@ -451,6 +451,117 @@ namespace SkinSync.Migrations
                     b.ToTable("product_ingredients", (string)null);
                 });
 
+            modelBuilder.Entity("SkinSync.Models.Entities.ProductRecommendationItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("AlreadyInRoutine")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("Cautions")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("jsonb")
+                        .HasDefaultValueSql("'[]'::jsonb");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("timezone('utc', now())");
+
+                    b.Property<int>("MatchPercent")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Rank")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("SessionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("WhyRecommended")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text")
+                        .HasDefaultValue("");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductId");
+
+                    b.HasIndex("SessionId", "ProductId")
+                        .IsUnique();
+
+                    b.HasIndex("SessionId", "Category", "Rank")
+                        .IsUnique();
+
+                    b.ToTable("product_recommendation_items", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_product_recommendation_items_match_percent", "\"MatchPercent\" BETWEEN 0 AND 100");
+
+                            t.HasCheckConstraint("ck_product_recommendation_items_rank", "\"Rank\" > 0");
+                        });
+                });
+
+            modelBuilder.Entity("SkinSync.Models.Entities.ProductRecommendationSession", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("timezone('utc', now())");
+
+                    b.Property<DateTime?>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("GeneratedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("timezone('utc', now())");
+
+                    b.Property<Guid?>("SourceAnalysisId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("completed");
+
+                    b.Property<string>("Summary")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SourceAnalysisId");
+
+                    b.HasIndex("UserId", "GeneratedAt")
+                        .IsDescending(false, true);
+
+                    b.ToTable("product_recommendation_sessions", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_product_recommendation_sessions_status", "\"Status\" IN ('completed', 'partial', 'failed', 'expired')");
+                        });
+                });
+
             modelBuilder.Entity("SkinSync.Models.Entities.RegimenItem", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1553,6 +1664,43 @@ namespace SkinSync.Migrations
                     b.Navigation("Product");
                 });
 
+            modelBuilder.Entity("SkinSync.Models.Entities.ProductRecommendationItem", b =>
+                {
+                    b.HasOne("SkinSync.Models.Entities.Product", "Product")
+                        .WithMany("ProductRecommendationItems")
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SkinSync.Models.Entities.ProductRecommendationSession", "Session")
+                        .WithMany("Items")
+                        .HasForeignKey("SessionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Product");
+
+                    b.Navigation("Session");
+                });
+
+            modelBuilder.Entity("SkinSync.Models.Entities.ProductRecommendationSession", b =>
+                {
+                    b.HasOne("SkinSync.Models.Entities.SkinProgressAnalysis", "SourceAnalysis")
+                        .WithMany()
+                        .HasForeignKey("SourceAnalysisId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("SkinSync.Models.Entities.User", "User")
+                        .WithMany("ProductRecommendationSessions")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("SourceAnalysis");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("SkinSync.Models.Entities.RegimenItem", b =>
                 {
                     b.HasOne("SkinSync.Models.Entities.Product", "Product")
@@ -1770,7 +1918,14 @@ namespace SkinSync.Migrations
                 {
                     b.Navigation("ProductIngredients");
 
+                    b.Navigation("ProductRecommendationItems");
+
                     b.Navigation("RegimenItems");
+                });
+
+            modelBuilder.Entity("SkinSync.Models.Entities.ProductRecommendationSession", b =>
+                {
+                    b.Navigation("Items");
                 });
 
             modelBuilder.Entity("SkinSync.Models.Entities.RegimenItem", b =>
@@ -1797,6 +1952,8 @@ namespace SkinSync.Migrations
                     b.Navigation("AiUsageLogs");
 
                     b.Navigation("DailyLogs");
+
+                    b.Navigation("ProductRecommendationSessions");
 
                     b.Navigation("Profile");
 

@@ -8,6 +8,7 @@ public class DiaryCheckInRequestDto
     public DateOnly? Date { get; set; }
     public bool MorningCompleted { get; set; }
     public bool EveningCompleted { get; set; }
+    public string? CompletedStepIdsJson { get; set; }
 
     [Required]
     [MaxLength(30)]

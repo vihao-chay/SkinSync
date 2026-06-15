@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/config/app_config.dart';
 import '../../core/models/app_models.dart';
 import '../../core/routes/app_routes.dart';
 import '../../core/state/app_state.dart';
@@ -8,596 +9,372 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_card.dart';
-import '../../core/widgets/app_scaffold.dart';
-import '../../core/widgets/empty_state_card.dart';
-import '../../core/widgets/section_header.dart';
-import '../../core/widgets/skin_sync_ai_button.dart';
+import '../../core/widgets/main_shell.dart';
+import '../../core/widgets/status_chip.dart';
 
-class DashboardPage extends StatelessWidget {
+class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
+
+  @override
+  State<DashboardPage> createState() => _DashboardPageState();
+}
+
+class _DashboardPageState extends State<DashboardPage> {
+  AiProductRecommendResponse? _latestRecommendation;
+  bool _loadingRecommendations = true;
+  String? _recommendationError;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLatestRecommendation();
+  }
+
+  Future<void> _refreshAll() async {
+    final appState = context.read<AppState>();
+    await appState.refreshHome();
+    await _loadLatestRecommendation();
+  }
+
+  Future<void> _loadLatestRecommendation() async {
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _loadingRecommendations = true;
+      _recommendationError = null;
+    });
+
+    try {
+      final result = await context.read<AppState>().getLatestRecommendations();
+      if (!mounted) {
+        return;
+      }
+      setState(() => _latestRecommendation = result);
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _latestRecommendation = null;
+        _recommendationError = context.read<AppState>().errorMessage;
+      });
+    } finally {
+      if (mounted) {
+        setState(() => _loadingRecommendations = false);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final appState = context.watch<AppState>();
-    final analysis = appState.latestAnalysis;
+    final latestAnalysis = appState.latestAnalysis;
     final regimen = appState.regimen;
     final tracking = appState.trackingToday;
-    final todayLog = appState.todayLog;
-    final concerns = analysis?.issues.map((item) => item.issueType).toList() ?? [];
-    final firstName = _firstName(appState.profileDisplayName);
+    final user = appState.user;
 
-    return AppScaffold(
-      title: 'Good evening, $firstName',
-      subtitle:
-          'Your premium skincare dashboard keeps today\'s routine, scan insights, and gentle next steps in one calm place.',
-      headerTrailing: _ProfileShortcut(
-        displayName: appState.profileDisplayName,
-        onTap: () => Navigator.pushReplacementNamed(context, AppRoutes.profile),
-      ),
-      onRefresh: appState.refreshHome,
-      body: ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.pagePadding,
-          0,
-          AppSpacing.pagePadding,
-          AppSpacing.pageBottomPaddingWithActions,
-        ),
-        children: [
-          _HeroCard(
-            analysis: analysis,
-            completedSteps: tracking?.completedSteps ?? 0,
-            totalSteps: tracking?.totalSteps ?? 0,
-            todayLog: todayLog,
-            onCheckIn: () => Navigator.pushNamed(context, AppRoutes.todayCheckup),
-          ),
-          const SizedBox(height: AppSpacing.sectionGap),
-          _TodayCard(
-            tracking: tracking,
-            todayLog: todayLog,
-            onCheckup: () => Navigator.pushNamed(context, AppRoutes.todayCheckup),
-          ),
-          const SizedBox(height: AppSpacing.sectionGap),
-          SectionHeader(
-            title: 'Today at a glance',
-            subtitle: 'The most important signals from your latest scan and routine.',
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Row(
-            children: [
-              Expanded(
-                child: _InsightCard(
-                  eyebrow: 'Skin score',
-                  value: analysis == null ? 'Not scanned yet' : '${analysis.overallScore}/100',
-                  description: analysis == null
-                      ? 'Upload a photo to unlock your first AI analysis.'
-                      : (analysis.overview?.trim().isNotEmpty == true
-                            ? analysis.overview!
-                            : 'Your current skin condition looks balanced overall.'),
-                  icon: Icons.auto_awesome_rounded,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: _InsightCard(
-                  eyebrow: 'Skin type',
-                  value: _friendlyText(analysis?.skinType),
-                  description: concerns.isEmpty
-                      ? 'No major concerns highlighted yet.'
-                      : 'Top focus: ${concerns.take(2).join(', ')}',
-                  icon: Icons.spa_outlined,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.sectionGap),
-          SectionHeader(
-            title: 'Routine rhythm',
-            subtitle: 'Keep your morning and evening rituals consistent.',
-            trailing: TextButton(
-              onPressed: () => Navigator.pushNamed(context, AppRoutes.routine),
-              child: const Text('Open routine'),
-            ),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          if (regimen == null)
-            EmptyStateCard(
-              icon: Icons.spa_outlined,
-              title: 'No routine generated yet',
-              description:
-                  'Complete a skin scan and SkinSync will prepare a routine tailored to your skin goals.',
-              ctaLabel: 'Start skin scan',
-              onCta: () => Navigator.pushNamed(context, AppRoutes.upload),
-            )
-          else
-            Column(
-              children: [
-                _RoutinePreviewCard(
-                  title: 'Morning routine',
-                  accent: const Color(0xFFE9D5BC),
-                  steps: regimen.morning,
-                  completed: tracking?.morningCompleted ?? false,
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                _RoutinePreviewCard(
-                  title: 'Evening routine',
-                  accent: const Color(0xFFDCC5B4),
-                  steps: regimen.evening,
-                  completed: tracking?.eveningCompleted ?? false,
-                ),
-              ],
-            ),
-          const SizedBox(height: AppSpacing.sectionGap),
-          SectionHeader(
-            title: 'Quick actions',
-            subtitle: 'Jump straight into the next best skincare task.',
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Wrap(
-            spacing: AppSpacing.sm,
-            runSpacing: AppSpacing.sm,
-            children: [
-              _QuickActionChip(
-                label: 'Today check-in',
-                icon: Icons.check_circle_outline_rounded,
-                onTap: () => Navigator.pushNamed(context, AppRoutes.todayCheckup),
-              ),
-              _QuickActionChip(
-                label: 'Scan skin',
-                icon: Icons.camera_alt_outlined,
-                onTap: () => Navigator.pushNamed(context, AppRoutes.upload),
-              ),
-              _QuickActionChip(
-                label: 'Ask SkinSync AI',
-                icon: Icons.auto_awesome_rounded,
-                onTap: () => Navigator.pushNamed(
-                  context,
-                  AppRoutes.aiChatConversation,
-                  arguments: const AiChatLaunchArgs(entryPoint: 'home'),
-                ),
-              ),
-              _QuickActionChip(
-                label: 'AI tools',
-                icon: Icons.hub_outlined,
-                onTap: () => Navigator.pushNamed(context, AppRoutes.aiHub),
-              ),
-              _QuickActionChip(
-                label: 'Explore products',
-                icon: Icons.shopping_bag_outlined,
-                onTap: () => Navigator.pushNamed(context, AppRoutes.products),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.sectionGap),
-          SkinSyncAiButton(
-            title: 'Want help deciding the next step?',
-            description:
-                'SkinSync AI can interpret today\'s routine status, diary updates, and latest scan before you act.',
-            label: 'Ask SkinSync AI',
-            onPressed: () => Navigator.pushNamed(
-              context,
-              AppRoutes.aiChatConversation,
-              arguments: const AiChatLaunchArgs(entryPoint: 'home'),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  static String _firstName(String fullName) {
-    final parts = fullName.trim().split(RegExp(r'\s+'));
-    if (parts.isEmpty || parts.first.isEmpty) {
-      return 'there';
-    }
-    return parts.first;
-  }
-}
-
-class _ProfileShortcut extends StatelessWidget {
-  const _ProfileShortcut({
-    required this.displayName,
-    required this.onTap,
-  });
-
-  final String displayName;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final initials = displayName
-        .trim()
-        .split(RegExp(r'\s+'))
-        .where((part) => part.isNotEmpty)
+    final totalSteps = tracking?.totalSteps ?? 0;
+    final completedSteps = tracking?.completedSteps ?? 0;
+    final routineProgress =
+        totalSteps == 0 ? 0.0 : completedSteps / totalSteps;
+    final previewSteps = [...?regimen?.morning, ...?regimen?.evening].take(3).toList();
+    final recommendedProducts = (_latestRecommendation?.products ?? const [])
+        .where((item) => item.name.trim().isNotEmpty)
         .take(2)
-        .map((part) => part[0].toUpperCase())
-        .join();
+        .toList();
+    final score = latestAnalysis?.overallScore;
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(999),
-        child: Ink(
-          padding: const EdgeInsets.all(4),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.92),
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(color: AppColors.border),
-          ),
-          child: CircleAvatar(
-            radius: 22,
-            backgroundColor: AppColors.secondary,
-            child: Text(
-              initials.isEmpty ? 'SS' : initials,
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                color: AppColors.primaryDark,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _HeroCard extends StatelessWidget {
-  const _HeroCard({
-    required this.analysis,
-    required this.completedSteps,
-    required this.totalSteps,
-    required this.todayLog,
-    required this.onCheckIn,
-  });
-
-  final AnalysisResult? analysis;
-  final int completedSteps;
-  final int totalSteps;
-  final DailyLog? todayLog;
-  final VoidCallback onCheckIn;
-
-  @override
-  Widget build(BuildContext context) {
-    final progress = totalSteps == 0 ? 0.0 : completedSteps / totalSteps;
-    return AppCard(
-      backgroundColor: AppColors.surfaceStrong,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Today\'s complexion story',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Text(
-            analysis?.overview?.trim().isNotEmpty == true
-                ? analysis!.overview!
-                : 'Start with a quick check-in or fresh scan to build a more complete picture of your skin today.',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: AppColors.mutedText,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.lg),
-          Row(
-            children: [
-              Expanded(
-                child: _MetricTile(
-                  label: 'Confidence',
-                  value: analysis == null ? 'Not provided yet' : '${analysis!.confidenceScore}%',
+    return ColoredBox(
+      color: const Color(0xFFF5F4EE),
+      child: SafeArea(
+        bottom: false,
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 460),
+            child: RefreshIndicator(
+              color: AppColors.primaryDark,
+              onRefresh: _refreshAll,
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.pagePadding,
+                  12,
+                  AppSpacing.pagePadding,
+                  AppSpacing.pageBottomPaddingWithActions,
                 ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: _MetricTile(
-                  label: 'Routine progress',
-                  value: totalSteps == 0 ? 'Not provided yet' : '$completedSteps/$totalSteps',
-                ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: _MetricTile(
-                  label: 'Diary today',
-                  value: todayLog?.hasDiaryDetails == true
-                      ? 'Updated'
-                      : 'Not updated yet',
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.md),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(999),
-            child: LinearProgressIndicator(
-              minHeight: 8,
-              value: progress,
-              backgroundColor: Colors.white.withValues(alpha: 0.65),
-              valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primaryDark),
-            ),
-          ),
-          const SizedBox(height: AppSpacing.lg),
-          Row(
-            children: [
-              Expanded(
-                child: AppButton(
-                  label: 'Check in now',
-                  icon: const Icon(Icons.favorite_border_rounded),
-                  onPressed: onCheckIn,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TodayCard extends StatelessWidget {
-  const _TodayCard({
-    required this.tracking,
-    required this.todayLog,
-    required this.onCheckup,
-  });
-
-  final RoutineTrackingToday? tracking;
-  final DailyLog? todayLog;
-  final VoidCallback onCheckup;
-
-  @override
-  Widget build(BuildContext context) {
-    final completed = tracking?.completedSteps ?? 0;
-    final total = tracking?.totalSteps ?? 0;
-    final diaryStatus = todayLog?.hasDiaryDetails == true
-        ? 'Diary updated'
-        : 'Diary not updated yet';
-    final hasCompletedRoutineBlock =
-        (tracking?.morningCompleted ?? false) ||
-        (tracking?.eveningCompleted ?? false);
-
-    return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Today',
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
+                children: [
+                  _HomeHeader(
+                    avatarUrl: user?.avatarUrl,
+                    score: score,
+                    onProfileTap: () =>
+                        MainShell.navigateToTab(context, AppRoutes.profile),
+                    onProgressTap: () => MainShell.navigateToTab(
+                      context,
+                      AppRoutes.progress,
                     ),
-                    const SizedBox(height: AppSpacing.xs),
-                    Text(
-                      'Your daily check-up combines routine completion and skin diary details in one quick stop.',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppColors.mutedText,
+                    onProductsTap: () => MainShell.navigateToTab(
+                      context,
+                      AppRoutes.products,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  _GreetingSection(
+                    firstName: _firstName(appState.profileDisplayName),
+                    hasRoutine: regimen != null,
+                    hasAnalysis: latestAnalysis != null,
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  _SkinHealthHeroCard(
+                    score: score,
+                    lastScanLabel: _lastScanLabel(latestAnalysis),
+                    onOpenAnalysis: () =>
+                        Navigator.pushNamed(context, AppRoutes.upload),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  _SkinConcernMetricsCard(
+                    acne: _issueScore(latestAnalysis, 'acne'),
+                    redness: _issueScore(latestAnalysis, 'redness'),
+                    oiliness: _issueScore(latestAnalysis, 'oil'),
+                    onScanWithAi: () =>
+                        Navigator.pushNamed(context, AppRoutes.upload),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  _DailyRoutineCard(
+                    completedSteps: completedSteps,
+                    totalSteps: totalSteps,
+                    progress: routineProgress,
+                    hasRoutine: regimen != null,
+                    onOpen: () {
+                      if (regimen != null) {
+                        Navigator.pushNamed(context, AppRoutes.todayCheckup);
+                        return;
+                      }
+                      MainShell.navigateToTab(
+                        context,
+                        AppRoutes.products,
+                        arguments: const ProductsPageArgs(
+                          entryPoint: ProductsEntryPoint.routineEmpty,
+                        ),
+                      );
+                    },
+                  ),
+                  if (previewSteps.isNotEmpty) ...[
+                    const SizedBox(height: AppSpacing.lg),
+                    _SectionRow(
+                      title: 'Today routine',
+                      trailing: 'Open',
+                      onTap: () =>
+                          MainShell.navigateToTab(context, AppRoutes.routine),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    ...previewSteps.map(
+                      (step) => Padding(
+                        padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                        child: _RoutinePreviewTile(step: step),
                       ),
                     ),
                   ],
-                ),
-              ),
-              AppButton(
-                label: 'Check-up now',
-                expand: false,
-                icon: const Icon(Icons.check_circle_outline_rounded),
-                onPressed: onCheckup,
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.lg),
-          Row(
-            children: [
-              Expanded(
-                child: _InsightCard(
-                  eyebrow: 'Routine today',
-                  value: total == 0 ? 'No steps yet' : '$completed/$total steps',
-                  description: tracking == null
-                      ? 'Today\'s tracking will appear after you start using your routine.'
-                      : hasCompletedRoutineBlock
-                      ? 'At least one routine block is fully completed today.'
-                      : 'Keep going step by step to complete today\'s routine.',
-                  icon: Icons.spa_outlined,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: _InsightCard(
-                  eyebrow: 'Diary today',
-                  value: diaryStatus,
-                  description: todayLog?.hasDiaryDetails == true
-                      ? _todayFeelingCopy(todayLog)
-                      : 'Add a quick diary update so Progress and AI reports have today\'s context.',
-                  icon: Icons.favorite_border_rounded,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MetricTile extends StatelessWidget {
-  const _MetricTile({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.72),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: Theme.of(context).textTheme.labelMedium,
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            value,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _InsightCard extends StatelessWidget {
-  const _InsightCard({
-    required this.eyebrow,
-    required this.value,
-    required this.description,
-    required this.icon,
-  });
-
-  final String eyebrow;
-  final String value;
-  final String description;
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, color: AppColors.primaryDark, size: 18),
-              const SizedBox(width: AppSpacing.xs),
-              Expanded(
-                child: Text(
-                  eyebrow,
-                  style: Theme.of(context).textTheme.labelMedium,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Text(
-            value,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Text(
-            description,
-            maxLines: 3,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _RoutinePreviewCard extends StatelessWidget {
-  const _RoutinePreviewCard({
-    required this.title,
-    required this.accent,
-    required this.steps,
-    required this.completed,
-  });
-
-  final String title;
-  final Color accent;
-  final List<RegimenStep> steps;
-  final bool completed;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: accent,
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                alignment: Alignment.center,
-                child: Icon(
-                  title.contains('Morning')
-                      ? Icons.wb_sunny_outlined
-                      : Icons.bedtime_outlined,
-                  color: AppColors.primaryDark,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: Text(
-                  title,
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
+                  const SizedBox(height: AppSpacing.lg),
+                  _SectionRow(
+                    title: 'For You',
+                    trailing: recommendedProducts.isNotEmpty ? 'Open' : null,
+                    onTap: recommendedProducts.isNotEmpty
+                        ? () => MainShell.navigateToTab(
+                              context,
+                              AppRoutes.products,
+                            )
+                        : null,
                   ),
-                ),
+                  const SizedBox(height: AppSpacing.sm),
+                  if (_loadingRecommendations)
+                    const _HomeSkeletonLoading()
+                  else if (recommendedProducts.isNotEmpty)
+                    SizedBox(
+                      height: 224,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: recommendedProducts.length,
+                        separatorBuilder: (_, _) =>
+                            const SizedBox(width: AppSpacing.sm),
+                        itemBuilder: (context, index) {
+                          final product = recommendedProducts[index];
+                          return SizedBox(
+                            width: 168,
+                            child: _ForYouProductPreview(
+                              product: product,
+                              onTap: () => Navigator.pushNamed(
+                                context,
+                                AppRoutes.productDetail,
+                                arguments: ProductDetailPageArgs(
+                                  product: product,
+                                  productsEntryPoint:
+                                      ProductsEntryPoint.bottomNav,
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    )
+                  else
+                    _EmptyRecommendationCard(
+                      message: _recommendationError?.trim().isNotEmpty == true
+                          ? _recommendationError!
+                          : 'Scan with AI first, then generate products manually.',
+                      onOpenProducts: () => MainShell.navigateToTab(
+                        context,
+                        AppRoutes.products,
+                      ),
+                    ),
+                  const SizedBox(height: AppSpacing.lg),
+                  _QuickActionRow(
+                    onScan: () => Navigator.pushNamed(context, AppRoutes.upload),
+                    onCheckup: () {
+                      if (regimen != null) {
+                        Navigator.pushNamed(context, AppRoutes.todayCheckup);
+                        return;
+                      }
+                      MainShell.navigateToTab(
+                        context,
+                        AppRoutes.products,
+                        arguments: const ProductsPageArgs(
+                          entryPoint: ProductsEntryPoint.routineEmpty,
+                        ),
+                      );
+                    },
+                    onProgress: () =>
+                        MainShell.navigateToTab(context, AppRoutes.progress),
+                    onProducts: () =>
+                        MainShell.navigateToTab(context, AppRoutes.products),
+                  ),
+                ],
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: completed ? AppColors.secondary : AppColors.surfaceMuted,
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Text(
-                  completed ? 'Completed' : 'Pending',
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _firstName(String value) {
+    final trimmed = value.trim();
+    if (trimmed.isEmpty || trimmed == 'You') {
+      return '';
+    }
+    return trimmed.split(' ').first.trim();
+  }
+
+  String _lastScanLabel(AnalysisResult? result) {
+    if (result == null) {
+      return 'No scan yet';
+    }
+    return 'Scan available';
+  }
+
+  int? _issueScore(AnalysisResult? result, String contains) {
+    if (result == null) {
+      return null;
+    }
+    for (final issue in result.issues) {
+      if (issue.issueType.toLowerCase().contains(contains)) {
+        return issue.severityScore.clamp(0, 100);
+      }
+    }
+    return null;
+  }
+}
+
+class _HomeHeader extends StatelessWidget {
+  const _HomeHeader({
+    required this.avatarUrl,
+    required this.score,
+    required this.onProfileTap,
+    required this.onProgressTap,
+    required this.onProductsTap,
+  });
+
+  final String? avatarUrl;
+  final int? score;
+  final VoidCallback onProfileTap;
+  final VoidCallback onProgressTap;
+  final VoidCallback onProductsTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        GestureDetector(
+          onTap: onProfileTap,
+          child: CircleAvatar(
+            radius: 16,
+            backgroundColor: AppColors.secondary,
+            backgroundImage: _networkImage(avatarUrl),
+            child: _networkImage(avatarUrl) == null
+                ? const Icon(
+                    Icons.person_outline_rounded,
+                    size: 18,
                     color: AppColors.primaryDark,
-                  ),
-                ),
-              ),
-            ],
+                  )
+                : null,
           ),
-          const SizedBox(height: AppSpacing.md),
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        if (score != null) ...[
           Text(
-            steps.isEmpty
-                ? 'Not provided yet'
-                : steps
-                    .take(4)
-                    .map((step) => '${step.stepOrder}. ${step.name}')
-                    .join('\n'),
-            style: Theme.of(context).textTheme.bodyMedium,
+            '$score%',
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.primaryDark,
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
+          ),
+          const SizedBox(width: 6),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.8),
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Text(
+              'Skin health',
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: AppColors.mutedText,
+                  ),
+            ),
           ),
         ],
-      ),
+        const Spacer(),
+        _HeaderIconButton(
+          icon: Icons.notifications_none_rounded,
+          onTap: onProgressTap,
+        ),
+        const SizedBox(width: 8),
+        _HeaderIconButton(
+          icon: Icons.grid_view_rounded,
+          onTap: onProductsTap,
+        ),
+      ],
     );
+  }
+
+  ImageProvider<Object>? _networkImage(String? value) {
+    final url = value?.trim() ?? '';
+    if (url.isEmpty) {
+      return null;
+    }
+    return NetworkImage(url);
   }
 }
 
-class _QuickActionChip extends StatelessWidget {
-  const _QuickActionChip({
-    required this.label,
+class _HeaderIconButton extends StatelessWidget {
+  const _HeaderIconButton({
     required this.icon,
     required this.onTap,
   });
 
-  final String label;
   final IconData icon;
   final VoidCallback onTap;
 
@@ -606,23 +383,296 @@ class _QuickActionChip extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        borderRadius: BorderRadius.circular(999),
         onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
         child: Ink(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          width: 34,
+          height: 34,
           decoration: BoxDecoration(
-            color: AppColors.surface,
+            color: Colors.white.withValues(alpha: 0.78),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Icon(icon, size: 18, color: AppColors.primaryDark),
+        ),
+      ),
+    );
+  }
+}
+
+class _GreetingSection extends StatelessWidget {
+  const _GreetingSection({
+    required this.firstName,
+    required this.hasRoutine,
+    required this.hasAnalysis,
+  });
+
+  final String firstName;
+  final bool hasRoutine;
+  final bool hasAnalysis;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          firstName.isEmpty ? 'Hello' : 'Hello $firstName',
+          style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                color: AppColors.heading,
+                fontWeight: FontWeight.w700,
+                height: 1.05,
+              ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          hasRoutine
+              ? 'Ready for your routine today?'
+              : hasAnalysis
+                  ? 'Your skin journey starts here.'
+                  : 'Start with a quick AI skin scan.',
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: AppColors.mutedText,
+              ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SkinHealthHeroCard extends StatelessWidget {
+  const _SkinHealthHeroCard({
+    required this.score,
+    required this.lastScanLabel,
+    required this.onOpenAnalysis,
+  });
+
+  final int? score;
+  final String lastScanLabel;
+  final VoidCallback onOpenAnalysis;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      variant: AppCardVariant.hero,
+      padding: const EdgeInsets.all(20),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Your Skin Health',
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        color: AppColors.mutedText,
+                      ),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  score == null ? '--' : '$score%',
+                  style: Theme.of(context).textTheme.displayMedium?.copyWith(
+                        fontFamily: 'Inter',
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.heading,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  lastScanLabel,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AppColors.mutedText,
+                      ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          SizedBox(
+            width: 108,
+            height: 108,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                SizedBox(
+                  width: 94,
+                  height: 94,
+                  child: CircularProgressIndicator(
+                    value: score == null ? 0 : score! / 100,
+                    strokeWidth: 10,
+                    backgroundColor: AppColors.border.withValues(alpha: 0.55),
+                    valueColor: const AlwaysStoppedAnimation<Color>(
+                      Color(0xFFF1BD3D),
+                    ),
+                  ),
+                ),
+                Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8E8A6),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Icon(
+                    score == null
+                        ? Icons.camera_alt_outlined
+                        : Icons.spa_outlined,
+                    color: AppColors.primaryDark,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SkinConcernMetricsCard extends StatelessWidget {
+  const _SkinConcernMetricsCard({
+    required this.acne,
+    required this.redness,
+    required this.oiliness,
+    required this.onScanWithAi,
+  });
+
+  final int? acne;
+  final int? redness;
+  final int? oiliness;
+  final VoidCallback onScanWithAi;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: _CircularMetric(label: 'Acne', value: acne),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: _CircularMetric(label: 'Redness', value: redness),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: _CircularMetric(label: 'Oiliness', value: oiliness),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          _ScanWithAiPill(onTap: onScanWithAi),
+        ],
+      ),
+    );
+  }
+}
+
+class _CircularMetric extends StatelessWidget {
+  const _CircularMetric({
+    required this.label,
+    required this.value,
+  });
+
+  final String label;
+  final int? value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        SizedBox(
+          width: 60,
+          height: 60,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              CircularProgressIndicator(
+                value: value == null ? 0 : value! / 100,
+                strokeWidth: 7,
+                backgroundColor: AppColors.secondary,
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  value == null ? AppColors.border : AppColors.primaryDark,
+                ),
+              ),
+              Text(
+                value == null ? '--' : '$value',
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      fontFamily: 'Inter',
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.primaryDark,
+                    ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: AppColors.mutedText,
+              ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ScanWithAiPill extends StatelessWidget {
+  const _ScanWithAiPill({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(999),
+        child: Ink(
+          padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFF8E6),
             borderRadius: BorderRadius.circular(999),
             border: Border.all(color: AppColors.border),
           ),
           child: Row(
-            mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, size: 18, color: AppColors.primaryDark),
-              const SizedBox(width: AppSpacing.xs),
-              Text(
-                label,
-                style: Theme.of(context).textTheme.labelLarge,
+              const Icon(
+                Icons.auto_awesome_rounded,
+                size: 18,
+                color: Color(0xFFF1BD3D),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Scan with AI',
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        color: AppColors.primaryDark,
+                        fontWeight: FontWeight.w700,
+                      ),
+                ),
+              ),
+              Container(
+                width: 30,
+                height: 30,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFF1BD3D),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.arrow_forward_rounded,
+                  size: 18,
+                  color: AppColors.primaryDark,
+                ),
               ),
             ],
           ),
@@ -632,22 +682,518 @@ class _QuickActionChip extends StatelessWidget {
   }
 }
 
-String _friendlyText(String? value) {
-  final trimmed = value?.trim() ?? '';
-  return trimmed.isEmpty ? 'Not provided yet' : trimmed;
+class _DailyRoutineCard extends StatelessWidget {
+  const _DailyRoutineCard({
+    required this.completedSteps,
+    required this.totalSteps,
+    required this.progress,
+    required this.hasRoutine,
+    required this.onOpen,
+  });
+
+  final int completedSteps;
+  final int totalSteps;
+  final double progress;
+  final bool hasRoutine;
+  final VoidCallback onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(24),
+        onTap: onOpen,
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 34,
+                    height: 34,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFFFF4CE),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.calendar_today_outlined,
+                      size: 16,
+                      color: AppColors.primaryDark,
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Today',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: AppColors.mutedText,
+                              ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Daily Routine',
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w700,
+                              ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Text(
+                    'Open',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppColors.mutedText,
+                        ),
+                  ),
+                  const SizedBox(width: 4),
+                  const Icon(
+                    Icons.chevron_right_rounded,
+                    size: 18,
+                    color: AppColors.mutedText,
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Text(
+                hasRoutine ? '$completedSteps/$totalSteps done' : 'No routine yet',
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+              ),
+              if (hasRoutine) ...[
+                const SizedBox(height: AppSpacing.sm),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(999),
+                  child: LinearProgressIndicator(
+                    value: progress,
+                    minHeight: 8,
+                    backgroundColor: AppColors.secondary,
+                    valueColor: const AlwaysStoppedAnimation<Color>(
+                      AppColors.primaryDark,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
-String _todayFeelingCopy(DailyLog? log) {
-  if (log == null) {
-    return 'Not provided yet';
-  }
+class _RoutinePreviewTile extends StatelessWidget {
+  const _RoutinePreviewTile({required this.step});
 
-  final feeling = log.skinFeeling?.trim();
-  if (feeling != null && feeling.isNotEmpty && feeling.toLowerCase() != 'normal') {
-    return 'Feeling: ${_friendlyText(feeling)}';
+  final RegimenStep step;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      variant: AppCardVariant.metric,
+      padding: const EdgeInsets.all(14),
+      child: Row(
+        children: [
+          Container(
+            width: 28,
+            height: 28,
+            decoration: BoxDecoration(
+              color: AppColors.secondary,
+              shape: BoxShape.circle,
+              border: Border.all(color: AppColors.border),
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              '${step.stepOrder}',
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w800,
+                  ),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  step.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  step.category,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AppColors.mutedText,
+                      ),
+                ),
+              ],
+            ),
+          ),
+          const Icon(
+            Icons.chevron_right_rounded,
+            color: AppColors.mutedText,
+          ),
+        ],
+      ),
+    );
   }
-  if (log.notes?.trim().isNotEmpty == true) {
-    return log.notes!;
+}
+
+class _SectionRow extends StatelessWidget {
+  const _SectionRow({
+    required this.title,
+    this.trailing,
+    this.onTap,
+  });
+
+  final String title;
+  final String? trailing;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            title,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+          ),
+        ),
+        if (trailing != null)
+          TextButton(
+            onPressed: onTap,
+            child: Text(trailing!),
+          ),
+      ],
+    );
   }
-  return 'Diary details added for today.';
+}
+
+class _ForYouProductPreview extends StatelessWidget {
+  const _ForYouProductPreview({
+    required this.product,
+    required this.onTap,
+  });
+
+  final AiRecommendedProduct product;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      onTap: onTap,
+      padding: const EdgeInsets.all(10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(18),
+              child: Container(
+                width: double.infinity,
+                color: AppColors.surfaceStrong,
+                child: _ProductImage(product: product),
+              ),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            product.name,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+          ),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  product.brand.trim().isEmpty ? 'Product' : product.brand,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AppColors.mutedText,
+                      ),
+                ),
+              ),
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                decoration: BoxDecoration(
+                  color: AppColors.secondary,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  '${product.matchPercent ?? product.matchScore}%',
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        fontFamily: 'Inter',
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.primaryDark,
+                      ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProductImage extends StatelessWidget {
+  const _ProductImage({required this.product});
+
+  final AiRecommendedProduct product;
+
+  @override
+  Widget build(BuildContext context) {
+    final raw = product.imageUrl?.trim() ?? '';
+    final url = raw.isEmpty
+        ? ''
+        : (raw.startsWith('http') ? raw : '${AppConfig.apiBaseUrl}$raw');
+
+    if (url.isEmpty) {
+      return const Center(
+        child: Icon(
+          Icons.shopping_bag_outlined,
+          color: AppColors.primaryDark,
+          size: 30,
+        ),
+      );
+    }
+
+    return Image.network(
+      url,
+      fit: BoxFit.cover,
+      errorBuilder: (_, _, _) => const Center(
+        child: Icon(
+          Icons.image_not_supported_outlined,
+          color: AppColors.primaryDark,
+          size: 30,
+        ),
+      ),
+    );
+  }
+}
+
+class _EmptyRecommendationCard extends StatelessWidget {
+  const _EmptyRecommendationCard({
+    required this.message,
+    required this.onOpenProducts,
+  });
+
+  final String message;
+  final VoidCallback onOpenProducts;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const StatusChip(
+            label: 'No recommendations yet',
+            icon: Icons.auto_awesome_rounded,
+            tone: StatusChipTone.accent,
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Text(
+            message,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: AppColors.mutedText,
+                ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          AppButton(
+            label: 'Open Products',
+            variant: AppButtonVariant.secondary,
+            onPressed: onOpenProducts,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _QuickActionRow extends StatelessWidget {
+  const _QuickActionRow({
+    required this.onScan,
+    required this.onCheckup,
+    required this.onProgress,
+    required this.onProducts,
+  });
+
+  final VoidCallback onScan;
+  final VoidCallback onCheckup;
+  final VoidCallback onProgress;
+  final VoidCallback onProducts;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 360;
+        final width = compact
+            ? constraints.maxWidth
+            : (constraints.maxWidth - AppSpacing.sm) / 2;
+        final items = [
+          _QuickActionItem(
+            icon: Icons.auto_awesome_rounded,
+            label: 'Scan with AI',
+            onTap: onScan,
+          ),
+          _QuickActionItem(
+            icon: Icons.check_circle_outline_rounded,
+            label: 'Open Check-up',
+            onTap: onCheckup,
+          ),
+          _QuickActionItem(
+            icon: Icons.query_stats_rounded,
+            label: 'View Progress',
+            onTap: onProgress,
+          ),
+          _QuickActionItem(
+            icon: Icons.shopping_bag_outlined,
+            label: 'Products',
+            onTap: onProducts,
+          ),
+        ];
+        return Wrap(
+          spacing: AppSpacing.sm,
+          runSpacing: AppSpacing.sm,
+          children: items
+              .map(
+                (item) => SizedBox(
+                  width: width,
+                  child: item,
+                ),
+              )
+              .toList(),
+        );
+      },
+    );
+  }
+}
+
+class _QuickActionItem extends StatelessWidget {
+  const _QuickActionItem({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      onTap: onTap,
+      variant: AppCardVariant.metric,
+      padding: const EdgeInsets.all(14),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: const BoxDecoration(
+              color: AppColors.secondary,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, size: 18, color: AppColors.primaryDark),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+            ),
+          ),
+          const Icon(
+            Icons.arrow_forward_ios_rounded,
+            size: 14,
+            color: AppColors.mutedText,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HomeSkeletonLoading extends StatelessWidget {
+  const _HomeSkeletonLoading();
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: const [
+        Expanded(child: _SkeletonProductCard()),
+        SizedBox(width: AppSpacing.sm),
+        Expanded(child: _SkeletonProductCard()),
+      ],
+    );
+  }
+}
+
+class _SkeletonProductCard extends StatelessWidget {
+  const _SkeletonProductCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      padding: const EdgeInsets.all(10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            height: 132,
+            decoration: BoxDecoration(
+              color: AppColors.secondary,
+              borderRadius: BorderRadius.circular(18),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Container(
+            height: 14,
+            width: 100,
+            decoration: BoxDecoration(
+              color: AppColors.secondary,
+              borderRadius: BorderRadius.circular(999),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            height: 12,
+            width: 60,
+            decoration: BoxDecoration(
+              color: AppColors.border.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(999),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

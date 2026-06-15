@@ -11,7 +11,9 @@ class AppScaffold extends StatelessWidget {
     this.subtitle,
     this.headerTrailing,
     this.onRefresh,
+    this.contentMaxWidth = 460,
     this.headerBottomSpacing = AppSpacing.sectionGap,
+    this.compactHeader = false,
   });
 
   final String title;
@@ -19,11 +21,17 @@ class AppScaffold extends StatelessWidget {
   final String? subtitle;
   final Widget? headerTrailing;
   final Future<void> Function()? onRefresh;
+  final double contentMaxWidth;
   final double headerBottomSpacing;
+  final bool compactHeader;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final safeBottom = MediaQuery.paddingOf(context).bottom;
+    final topPadding = compactHeader ? 10.0 : 16.0;
+    final bottomPadding = compactHeader ? 8.0 : 14.0;
+    final effectiveBottomSpacing = safeBottom + 8;
     final content = onRefresh == null
         ? body
         : RefreshIndicator(
@@ -36,55 +44,77 @@ class AppScaffold extends StatelessWidget {
       color: AppColors.pageBackground,
       child: SafeArea(
         bottom: false,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.pagePadding,
-                18,
-                AppSpacing.pagePadding,
-                18,
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          title,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.displaySmall?.copyWith(
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.heading,
-                          ),
-                        ),
-                        if (subtitle != null && subtitle!.trim().isNotEmpty) ...[
-                          const SizedBox(height: AppSpacing.sm),
-                          Text(
-                            subtitle!,
-                            maxLines: 3,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: AppColors.mutedText,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: contentMaxWidth),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    AppSpacing.pagePadding,
+                    topPadding,
+                    AppSpacing.pagePadding,
+                    bottomPadding,
                   ),
-                  if (headerTrailing != null) ...[
-                    const SizedBox(width: AppSpacing.sm),
-                    Flexible(child: headerTrailing!),
-                  ],
-                ],
-              ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              title,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.displaySmall?.copyWith(
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.heading,
+                                fontSize: compactHeader ? 26 : null,
+                                height: compactHeader ? 1.08 : null,
+                              ),
+                            ),
+                            if (subtitle != null &&
+                                subtitle!.trim().isNotEmpty) ...[
+                              SizedBox(height: compactHeader ? 6 : AppSpacing.sm),
+                              Text(
+                                subtitle!,
+                                maxLines: compactHeader ? 2 : 3,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: AppColors.mutedText,
+                                  height: compactHeader ? 1.45 : 1.55,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                      if (headerTrailing != null) ...[
+                        const SizedBox(width: AppSpacing.sm),
+                        SizedBox(
+                          width: compactHeader ? 56 : 64,
+                          child: headerTrailing!,
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                SizedBox(
+                  height: headerBottomSpacing > AppSpacing.sm
+                      ? headerBottomSpacing - AppSpacing.sm
+                      : 0,
+                ),
+                Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.only(bottom: effectiveBottomSpacing),
+                    child: content,
+                  ),
+                ),
+              ],
             ),
-            Expanded(child: content),
-          ],
+          ),
         ),
       ),
     );

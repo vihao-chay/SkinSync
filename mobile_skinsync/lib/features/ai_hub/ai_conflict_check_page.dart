@@ -6,6 +6,7 @@ import '../../core/routes/app_routes.dart';
 import '../../core/state/app_state.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/glass_header.dart';
+import '../../core/widgets/main_shell.dart';
 
 class AiConflictCheckPage extends StatefulWidget {
   const AiConflictCheckPage({super.key});
@@ -49,9 +50,9 @@ class _AiConflictCheckPageState extends State<AiConflictCheckPage> {
             _EmptyCard(
               title: 'No active routine yet',
               body:
-                  'Generate a routine first so the backend can evaluate conflicts from your current steps.',
+                  'Choose products first so the backend can evaluate conflicts from your active routine steps.',
               actionLabel: 'Open routine',
-              onTap: () => Navigator.pushNamed(context, AppRoutes.routine),
+              onTap: () => MainShell.navigateToTab(context, AppRoutes.routine),
             )
           else ...[
             FilledButton(

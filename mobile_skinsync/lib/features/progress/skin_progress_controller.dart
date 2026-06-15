@@ -21,6 +21,7 @@ class SkinProgressController extends ChangeNotifier {
   bool isComparing = false;
   bool isGeneratingReport = false;
   String? errorMessage;
+  String? reportsErrorMessage;
 
   Future<void> loadInitial() async {
     await Future.wait([refresh(), loadReports()]);
@@ -41,10 +42,12 @@ class SkinProgressController extends ChangeNotifier {
   }
 
   Future<void> loadReports() async {
+    reportsErrorMessage = null;
     try {
       reports = await _repository.fetchReports();
-    } catch (_) {
+    } catch (error) {
       reports = const [];
+      reportsErrorMessage = error.toString();
     }
     _notifySafely();
   }

@@ -25,5 +25,6 @@ public class User
     public ICollection<SkinProgressAnalysis> SkinProgressAnalyses { get; set; } = new List<SkinProgressAnalysis>();
     public ICollection<SkinPhotoComparison> SkinPhotoComparisons { get; set; } = new List<SkinPhotoComparison>();
     public ICollection<SkinProgressReport> SkinProgressReports { get; set; } = new List<SkinProgressReport>();
+    public ICollection<ProductRecommendationSession> ProductRecommendationSessions { get; set; } = new List<ProductRecommendationSession>();
     public ICollection<UserSubscription> Subscriptions { get; set; } = new List<UserSubscription>();
 }

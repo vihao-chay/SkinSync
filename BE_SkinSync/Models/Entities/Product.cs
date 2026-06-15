@@ -23,4 +23,5 @@ public class Product
 
     public ICollection<ProductIngredient> ProductIngredients { get; set; } = new List<ProductIngredient>();
     public ICollection<RegimenItem> RegimenItems { get; set; } = new List<RegimenItem>();
+    public ICollection<ProductRecommendationItem> ProductRecommendationItems { get; set; } = new List<ProductRecommendationItem>();
 }

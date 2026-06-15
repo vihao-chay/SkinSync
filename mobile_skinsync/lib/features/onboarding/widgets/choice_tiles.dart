@@ -44,19 +44,17 @@ class SingleChoiceTile extends StatelessWidget {
                   children: [
                     Text(
                       title,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
                         color: AppColors.foreground,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                     if (subtitle != null) ...[
                       const SizedBox(height: 4),
                       Text(
                         subtitle!,
-                        style: const TextStyle(
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: AppColors.mutedText,
-                          fontSize: 13,
                         ),
                       ),
                     ],
@@ -115,10 +113,9 @@ class MultipleChoiceTile extends StatelessWidget {
               Expanded(
                 child: Text(
                   title,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
                     color: AppColors.foreground,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),

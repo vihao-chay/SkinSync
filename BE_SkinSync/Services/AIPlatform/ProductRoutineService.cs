@@ -17,11 +17,16 @@ public class ProductRoutineService : IProductRoutineService
 {
     private readonly AppDbContext _dbContext;
     private readonly IIngredientConflictService _ingredientConflictService;
+    private readonly IProductRecommendationService _productRecommendationService;
 
-    public ProductRoutineService(AppDbContext dbContext, IIngredientConflictService ingredientConflictService)
+    public ProductRoutineService(
+        AppDbContext dbContext,
+        IIngredientConflictService ingredientConflictService,
+        IProductRecommendationService productRecommendationService)
     {
         _dbContext = dbContext;
         _ingredientConflictService = ingredientConflictService;
+        _productRecommendationService = productRecommendationService;
     }
 
     public async Task<AiAddProductToRoutineResponseDto> AddToRoutineAsync(Guid userId, Guid productId, AiAddProductToRoutineRequestDto request, CancellationToken cancellationToken)
@@ -32,12 +37,37 @@ public class ProductRoutineService : IProductRoutineService
         var regimen = await _dbContext.UserRegimens
             .Include(x => x.Items)
             .ThenInclude(x => x.Product)
-            .FirstOrDefaultAsync(x => x.UserId == userId && x.IsActive, cancellationToken)
-            ?? throw new AiFeatureException("ROUTINE_NOT_FOUND", "Generate a routine before adding products.", 404);
+            .FirstOrDefaultAsync(x => x.UserId == userId && x.IsActive, cancellationToken);
 
         var product = await _dbContext.Products
             .FirstOrDefaultAsync(x => x.Id == productId, cancellationToken)
             ?? throw new AiFeatureException("PRODUCT_NOT_FOUND", "Product not found.", 404);
+
+        if (regimen is null)
+        {
+            var latestAnalysisId = await _dbContext.SkinProgressAnalyses
+                .AsNoTracking()
+                .Where(x => x.UserId == userId && x.DiscardedAt == null && x.Status != "discarded")
+                .OrderByDescending(x => x.CompletedAt ?? x.CreatedAt)
+                .Select(x => (Guid?)x.Id)
+                .FirstOrDefaultAsync(cancellationToken);
+
+            regimen = new UserRegimen
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                SourceAnalysisId = latestAnalysisId,
+                Name = "My custom routine",
+                StartDate = DateOnly.FromDateTime(DateTime.UtcNow),
+                IsActive = true,
+                IsCustom = true,
+                Source = "manual",
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            _dbContext.UserRegimens.Add(regimen);
+        }
 
         if (regimen.Items.Any(x => x.ProductId == productId && x.RoutineTime == routineType))
         {
@@ -90,6 +120,7 @@ public class ProductRoutineService : IProductRoutineService
         regimen.UpdatedAt = DateTime.UtcNow;
 
         await _dbContext.SaveChangesAsync(cancellationToken);
+        await _productRecommendationService.MarkProductAsAlreadyInRoutineAsync(userId, productId, cancellationToken);
 
         await _dbContext.Entry(regimen)
             .Collection(x => x.Items)

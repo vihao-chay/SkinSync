@@ -12,7 +12,13 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_card.dart';
-import '../../core/widgets/glass_header.dart';
+import '../../core/widgets/app_scaffold.dart';
+import '../../core/widgets/empty_state_card.dart';
+import '../../core/widgets/error_state_card.dart';
+import '../../core/widgets/linear_progress_stat.dart';
+import '../../core/widgets/routine_checklist_item.dart';
+import '../../core/widgets/section_header.dart';
+import '../../core/widgets/status_chip.dart';
 
 class TodayCheckupPage extends StatefulWidget {
   const TodayCheckupPage({super.key});
@@ -22,233 +28,43 @@ class TodayCheckupPage extends StatefulWidget {
 }
 
 class _TodayCheckupPageState extends State<TodayCheckupPage> {
-  final _notesController = TextEditingController();
-  final _acneController = TextEditingController();
-  final _drynessController = TextEditingController();
-  final _rednessController = TextEditingController();
-  final _hydrationController = TextEditingController();
+  final TextEditingController _notesController = TextEditingController();
   final ImagePicker _picker = ImagePicker();
 
-  String _skinFeeling = 'normal';
+  String _skinFeeling = 'good';
+  bool _showMorning = true;
+  bool _saving = false;
+  bool _didSyncFromLog = false;
+  bool _didSyncChecklist = false;
   File? _selectedImage;
+  Set<String> _draftCompletedStepIds = <String>{};
 
   @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) {
-        return;
-      }
-      _seedFromTodayLog(context.read<AppState>().todayLog);
-    });
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_didSyncFromLog) {
+      return;
+    }
+
+    final log = context.read<AppState>().todayLog;
+    _notesController.text = log?.notes ?? '';
+    _skinFeeling = _resolveFeeling(log?.skinFeeling);
+    _didSyncFromLog = true;
+  }
+
+  void _syncDraftChecklist(RoutineTrackingToday? tracking) {
+    if (_didSyncChecklist) {
+      return;
+    }
+    _draftCompletedStepIds = {...?tracking?.completedStepIds};
+    _didSyncChecklist = true;
   }
 
   @override
   void dispose() {
     _notesController.dispose();
-    _acneController.dispose();
-    _drynessController.dispose();
-    _rednessController.dispose();
-    _hydrationController.dispose();
     super.dispose();
   }
-
-  @override
-  Widget build(BuildContext context) {
-    final appState = context.watch<AppState>();
-    final regimen = appState.regimen;
-    final tracking = appState.trackingToday;
-    final todayLog = appState.todayLog;
-    final completedIds = tracking?.completedStepIds.toSet() ?? <String>{};
-
-    return Scaffold(
-      backgroundColor: AppColors.pageBackground,
-      appBar: const GlassHeader(
-        currentRoute: '/today-checkup',
-        title: 'Today Check-up',
-      ),
-      body: SafeArea(
-        top: false,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.pagePadding,
-            12,
-            AppSpacing.pagePadding,
-            AppSpacing.pageBottomPaddingWithActions,
-          ),
-          children: [
-            _TodayOverviewCard(
-              tracking: tracking,
-              todayLog: todayLog,
-              onOpenRoutine: () => Navigator.pushNamed(context, AppRoutes.routine),
-            ),
-            const SizedBox(height: AppSpacing.sectionGap),
-            _SectionTitle(
-              title: 'Routine today',
-              subtitle:
-                  'Confirm the steps you actually completed today. This keeps routine tracking and check-up in sync.',
-            ),
-            const SizedBox(height: AppSpacing.md),
-            _RoutineBlock(
-              title: 'Morning routine',
-              icon: Icons.wb_sunny_outlined,
-              completed: tracking?.morningCompleted ?? todayLog?.morningCompleted ?? false,
-              steps: regimen?.morning ?? const <RegimenStep>[],
-              completedIds: completedIds,
-              onMarkAll: () => _markAll(
-                appState,
-                regimen?.morning ?? const <RegimenStep>[],
-                completedIds,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            _RoutineBlock(
-              title: 'Evening routine',
-              icon: Icons.bedtime_outlined,
-              completed: tracking?.eveningCompleted ?? todayLog?.eveningCompleted ?? false,
-              steps: regimen?.evening ?? const <RegimenStep>[],
-              completedIds: completedIds,
-              onMarkAll: () => _markAll(
-                appState,
-                regimen?.evening ?? const <RegimenStep>[],
-                completedIds,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.sectionGap),
-            _SectionTitle(
-              title: 'Skin diary today',
-              subtitle:
-                  'Log today\'s skin response in a quick 30 to 60 second check-in.',
-            ),
-            const SizedBox(height: AppSpacing.md),
-            AppCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'How does your skin feel today?',
-                    style: Theme.of(
-                      context,
-                    ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      for (final option in _skinFeelingOptions)
-                        _FeelingChip(
-                          label: option.label,
-                          selected: _skinFeeling == option.value,
-                          onTap: () => setState(() => _skinFeeling = option.value),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.lg),
-                  Text(
-                    'Daily symptom inputs',
-                    style: Theme.of(
-                      context,
-                    ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _ScoreField(
-                          controller: _acneController,
-                          label: 'Acne',
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.sm),
-                      Expanded(
-                        child: _ScoreField(
-                          controller: _rednessController,
-                          label: 'Redness',
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _ScoreField(
-                          controller: _drynessController,
-                          label: 'Dryness',
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.sm),
-                      Expanded(
-                        child: _ScoreField(
-                          controller: _hydrationController,
-                          label: 'Hydration',
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.lg),
-                  TextField(
-                    controller: _notesController,
-                    minLines: 3,
-                    maxLines: 4,
-                    decoration: InputDecoration(
-                      labelText: 'Notes',
-                      hintText:
-                          'Optional. Example: skin felt calm this morning, but a new serum caused mild redness.',
-                      filled: true,
-                      fillColor: Colors.white,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(18),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: AppSpacing.sectionGap),
-            _SectionTitle(
-              title: 'Today photo',
-              subtitle:
-                  'Optional diary photo for today only. This does not go into the progress timeline.',
-            ),
-            const SizedBox(height: AppSpacing.md),
-            _PhotoCard(
-              title: 'Diary photo',
-              subtitle: 'Saved only with today\'s check-up',
-              imageFile: _selectedImage,
-              imageUrl: todayLog?.dailyImageUrl,
-              onTap: _pickImage,
-            ),
-            const SizedBox(height: AppSpacing.sectionGap),
-            AppButton(
-              label: appState.isBusy ? 'Saving...' : 'Save Today Check-up',
-              icon: const Icon(Icons.favorite_border_rounded),
-              isLoading: appState.isBusy,
-              onPressed: () => _save(appState),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _seedFromTodayLog(DailyLog? log) {
-    _notesController.text = log?.notes ?? '';
-    _acneController.text = _scoreText(log?.acneLevel);
-    _drynessController.text = _scoreText(log?.drynessLevel);
-    _rednessController.text = _scoreText(log?.rednessLevel);
-    _hydrationController.text = _scoreText(log?.hydrationLevel);
-
-    final feeling = (log?.skinFeeling ?? 'normal').trim().toLowerCase();
-    _skinFeeling =
-        _skinFeelingOptions.any((option) => option.value == feeling)
-            ? feeling
-            : 'normal';
-    setState(() {});
-  }
-
-  String _scoreText(int? value) => value == null ? '' : value.toString();
 
   Future<void> _pickImage() async {
     final picked = await _picker.pickImage(
@@ -261,431 +77,393 @@ class _TodayCheckupPageState extends State<TodayCheckupPage> {
     setState(() => _selectedImage = File(picked.path));
   }
 
-  Future<void> _markAll(
-    AppState appState,
-    List<RegimenStep> steps,
-    Set<String> completedIds,
-  ) async {
-    for (final step in steps) {
-      if (!completedIds.contains(step.stepId)) {
-        await appState.toggleRoutineStep(step.stepId, false);
+  Future<void> _saveCheckup(AppState appState) async {
+    debugPrint('[SkinSync] check-up save');
+    setState(() => _saving = true);
+    try {
+      await appState.saveDailyLog(
+        skinFeeling: _skinFeeling,
+        notes: _notesController.text.trim(),
+        imageFile: _selectedImage,
+        completedStepIds: _draftCompletedStepIds.toList(),
+      );
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Today Check-up saved successfully.')),
+      );
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        AppRoutes.progress,
+        (route) => false,
+        arguments: const ProgressPageArgs(
+          entryPoint: ProgressEntryPoint.checkupSaved,
+        ),
+      );
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            appState.errorMessage ?? 'Could not save today check-up right now.',
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _saving = false);
       }
     }
   }
 
-  Future<void> _save(AppState appState) async {
-    await appState.saveDailyLog(
-      skinFeeling: _skinFeeling,
-      notes: _notesController.text.trim(),
-      acneLevel: int.tryParse(_acneController.text.trim()),
-      drynessLevel: int.tryParse(_drynessController.text.trim()),
-      rednessLevel: int.tryParse(_rednessController.text.trim()),
-      hydrationLevel: int.tryParse(_hydrationController.text.trim()),
-      imageFile: _selectedImage,
-    );
-    if (!mounted) {
-      return;
-    }
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Today Check-up saved successfully.')),
-    );
-    Navigator.of(context).maybePop();
-  }
-}
-
-class _TodayOverviewCard extends StatelessWidget {
-  const _TodayOverviewCard({
-    required this.tracking,
-    required this.todayLog,
-    required this.onOpenRoutine,
-  });
-
-  final RoutineTrackingToday? tracking;
-  final DailyLog? todayLog;
-  final VoidCallback onOpenRoutine;
-
   @override
   Widget build(BuildContext context) {
-    final completed = tracking?.completedSteps ?? 0;
-    final total = tracking?.totalSteps ?? 0;
-    final diaryReady = todayLog?.hasDiaryDetails ?? false;
+    final appState = context.watch<AppState>();
+    final regimen = appState.regimen;
+    final tracking = appState.trackingToday;
+    _syncDraftChecklist(tracking);
+    final todayLog = appState.todayLog;
+    final completedIds = _draftCompletedStepIds;
+    final morningSteps = regimen?.morning ?? const <RegimenStep>[];
+    final eveningSteps = regimen?.evening ?? const <RegimenStep>[];
+    final activeSteps = _showMorning ? morningSteps : eveningSteps;
+    final totalSteps = tracking?.totalSteps ?? (morningSteps.length + eveningSteps.length);
+    final completedSteps = completedIds.length;
+    final progress = totalSteps == 0 ? 0.0 : completedSteps / totalSteps;
+    final morningCompleted = morningSteps.isNotEmpty &&
+        morningSteps.every((step) => completedIds.contains(step.stepId));
+    final eveningCompleted = eveningSteps.isNotEmpty &&
+        eveningSteps.every((step) => completedIds.contains(step.stepId));
 
-    return AppCard(
-      backgroundColor: AppColors.surfaceStrong,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Today in one flow',
-            style: Theme.of(
-              context,
-            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Text(
-            'Confirm what you applied, then add a quick diary update so Dashboard and Progress stay in sync.',
-            style: Theme.of(
-              context,
-            ).textTheme.bodyMedium?.copyWith(color: AppColors.mutedText),
-          ),
-          const SizedBox(height: AppSpacing.lg),
-          Row(
-            children: [
-              Expanded(
-                child: _StatusTile(
-                  label: 'Routine today',
-                  value: total == 0 ? 'No steps yet' : '$completed/$total done',
-                ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: _StatusTile(
-                  label: 'Diary today',
-                  value: diaryReady ? 'Details added' : 'Not updated yet',
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.md),
-          AppButton(
-            label: 'Open routine',
-            variant: AppButtonVariant.secondary,
-            icon: const Icon(Icons.spa_outlined),
-            onPressed: onOpenRoutine,
-          ),
-        ],
+    return AppScaffold(
+      title: 'Today Check-up',
+      subtitle: 'Check off your active routine and log how your skin feels today.',
+      onRefresh: appState.refreshHome,
+      headerTrailing: _HeaderHomeButton(
+        onTap: () => Navigator.pushNamedAndRemoveUntil(
+          context,
+          AppRoutes.dashboard,
+          (route) => false,
+        ),
       ),
-    );
-  }
-}
-
-class _StatusTile extends StatelessWidget {
-  const _StatusTile({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.78),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      body: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.pagePadding,
+          0,
+          AppSpacing.pagePadding,
+          AppSpacing.pageBottomPaddingWithActions,
+        ),
         children: [
-          Text(label, style: Theme.of(context).textTheme.labelMedium),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            value,
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _RoutineBlock extends StatelessWidget {
-  const _RoutineBlock({
-    required this.title,
-    required this.icon,
-    required this.completed,
-    required this.steps,
-    required this.completedIds,
-    required this.onMarkAll,
-  });
-
-  final String title;
-  final IconData icon;
-  final bool completed;
-  final List<RegimenStep> steps;
-  final Set<String> completedIds;
-  final VoidCallback onMarkAll;
-
-  @override
-  Widget build(BuildContext context) {
-    final appState = context.read<AppState>();
-
-    return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: AppColors.secondary,
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                alignment: Alignment.center,
-                child: Icon(icon, color: AppColors.primaryDark),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    Text(
-                      completed ? 'Completed' : 'Still in progress',
-                      style: Theme.of(
-                        context,
-                      ).textTheme.bodySmall?.copyWith(color: AppColors.mutedText),
-                    ),
-                  ],
-                ),
-              ),
-              TextButton(
-                onPressed: steps.isEmpty ? null : onMarkAll,
-                child: const Text('Mark all'),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.md),
-          if (steps.isEmpty)
-            const _EmptyStateCard(
-              title: 'No routine steps yet',
-              body:
-                  'Generate or edit your routine first, then come back here to track what you actually used today.',
-            )
-          else
-            ...steps.map(
-              (step) => Padding(
-                padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                child: _CheckupStepCard(
-                  step: step,
-                  checked: completedIds.contains(step.stepId),
-                  onToggle: () => appState.toggleRoutineStep(
-                    step.stepId,
-                    completedIds.contains(step.stepId),
-                  ),
-                ),
-              ),
+          if (appState.todayCheckupDataErrorMessage != null) ...[
+            ErrorStateCard(
+              title: 'Today check-up needs attention',
+              description: appState.todayCheckupDataErrorMessage!,
+              ctaLabel: 'Try again',
+              onCta: appState.refreshHome,
             ),
-        ],
-      ),
-    );
-  }
-}
-
-class _CheckupStepCard extends StatelessWidget {
-  const _CheckupStepCard({
-    required this.step,
-    required this.checked,
-    required this.onToggle,
-  });
-
-  final RegimenStep step;
-  final bool checked;
-  final VoidCallback onToggle;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceMuted,
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 38,
-            height: 38,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(
-              '${step.stepOrder}',
-              style: Theme.of(
-                context,
-              ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w800),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
+            const SizedBox(height: AppSpacing.sectionGap),
+          ],
+          AppCard(
+            variant: AppCardVariant.hero,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  step.name,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                const StatusChip(
+                  label: 'Routine completion',
+                  icon: Icons.favorite_border_rounded,
+                  tone: StatusChipTone.accent,
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: AppSpacing.sm),
                 Text(
-                  _productLine(step),
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodySmall?.copyWith(color: AppColors.mutedText),
+                  '$completedSteps of $totalSteps routine steps completed today.',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: AppColors.mutedText,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                LinearProgressStat(
+                  label: 'Today progress',
+                  value: '$completedSteps/$totalSteps',
+                  progress: progress,
+                  caption: 'Completion saves through routine tracking and your daily log.',
+                ),
+                const SizedBox(height: AppSpacing.md),
+                Wrap(
+                  spacing: AppSpacing.sm,
+                  runSpacing: AppSpacing.sm,
+                  children: [
+                    StatusChip(
+                      label: morningCompleted ? 'Morning done' : 'Morning pending',
+                      icon: Icons.wb_sunny_outlined,
+                      tone: morningCompleted
+                          ? StatusChipTone.success
+                          : StatusChipTone.warning,
+                    ),
+                    StatusChip(
+                      label: eveningCompleted ? 'Evening done' : 'Evening pending',
+                      icon: Icons.nightlight_round,
+                      tone: eveningCompleted
+                          ? StatusChipTone.success
+                          : StatusChipTone.warning,
+                    ),
+                    StatusChip(
+                      label: _skinFeeling.replaceAll('_', ' '),
+                      icon: Icons.mood_outlined,
+                    ),
+                  ],
                 ),
               ],
             ),
           ),
-          Checkbox(
-            value: checked,
-            onChanged: (_) => onToggle(),
-            activeColor: AppColors.primaryDark,
+          const SizedBox(height: AppSpacing.sectionGap),
+          if (regimen == null ||
+              (morningSteps.isEmpty && eveningSteps.isEmpty) ||
+              tracking == null)
+            EmptyStateCard(
+              icon: Icons.checklist_rtl_outlined,
+              title: 'No active routine yet',
+              description: 'Today Check-up only uses products from your active routine. Build your routine first, then come back to track it here.',
+              ctaLabel: 'Open Products',
+              onCta: () => Navigator.pushNamedAndRemoveUntil(
+                context,
+                AppRoutes.products,
+                (route) => false,
+                arguments: const ProductsPageArgs(
+                  entryPoint: ProductsEntryPoint.routineEmpty,
+                ),
+              ),
+            )
+          else ...[
+            SectionHeader(
+              icon: Icons.checklist_rounded,
+              title: 'Checklist from active routine',
+              subtitle: 'Morning and evening steps are pulled directly from your active regimen.',
+            ),
+            const SizedBox(height: AppSpacing.md),
+            _RoutineSegmentedControl(
+              showMorning: _showMorning,
+              onChanged: (value) => setState(() => _showMorning = value),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            if (activeSteps.isEmpty)
+              const EmptyStateCard(
+                icon: Icons.spa_outlined,
+                title: 'No steps in this routine block',
+                description: 'Your active routine does not have steps for this time of day yet.',
+              )
+            else
+              ...activeSteps.map(
+                (step) => Padding(
+                  padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                  child: RoutineChecklistItem(
+                    step: step,
+                    completed: completedIds.contains(step.stepId),
+                    onChanged: () => setState(() {
+                      if (completedIds.contains(step.stepId)) {
+                        completedIds.remove(step.stepId);
+                      } else {
+                        completedIds.add(step.stepId);
+                      }
+                    }),
+                  ),
+                ),
+              ),
+          ],
+          const SizedBox(height: AppSpacing.sectionGap),
+          AppCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SectionHeader(
+                  icon: Icons.favorite_outline_rounded,
+                  title: 'How does your skin feel?',
+                  subtitle: 'Save a quick signal alongside today’s checklist.',
+                ),
+                const SizedBox(height: AppSpacing.md),
+                Material(
+                  color: Colors.transparent,
+                  child: Wrap(
+                    spacing: AppSpacing.sm,
+                    runSpacing: AppSpacing.sm,
+                    children: _skinFeelingOptions.map((option) {
+                      final selected = _skinFeeling == option.value;
+                      return ChoiceChip(
+                        avatar: Icon(
+                          option.icon,
+                          size: 16,
+                          color: selected
+                              ? AppColors.primaryDark
+                              : AppColors.mutedText,
+                        ),
+                        label: Text(option.label),
+                        selected: selected,
+                        onSelected: (_) => setState(() => _skinFeeling = option.value),
+                      );
+                    }).toList(),
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                TextField(
+                  controller: _notesController,
+                  minLines: 3,
+                  maxLines: 5,
+                  decoration: const InputDecoration(
+                    labelText: 'Notes',
+                    hintText: 'Any dryness, redness, wins, or product reactions worth tracking today?',
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sectionGap),
+          AppCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SectionHeader(
+                  icon: Icons.camera_alt_outlined,
+                  title: 'Photo check-in',
+                  subtitle: 'Use a real upload where available, with soft placeholders for the rest.',
+                ),
+                const SizedBox(height: AppSpacing.md),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _PhotoSlot(
+                        label: 'Front',
+                        imageFile: _selectedImage,
+                        imageUrl: todayLog?.dailyImageUrl,
+                        onTap: _pickImage,
+                        enabled: true,
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    const Expanded(
+                      child: _PhotoSlot(
+                        label: 'Left',
+                        imageFile: null,
+                        imageUrl: null,
+                        enabled: false,
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    const Expanded(
+                      child: _PhotoSlot(
+                        label: 'Right',
+                        imageFile: null,
+                        imageUrl: null,
+                        enabled: false,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sectionGap),
+          AppButton(
+            label: 'Save Today Check-up',
+            icon: const Icon(Icons.check_circle_outline_rounded),
+            isLoading: _saving,
+            onPressed: _saving ? null : () => _saveCheckup(appState),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          AppButton(
+            label: 'Back to Home',
+            variant: AppButtonVariant.secondary,
+            icon: const Icon(Icons.home_rounded),
+            onPressed: () => Navigator.pushNamedAndRemoveUntil(
+              context,
+              AppRoutes.dashboard,
+              (route) => false,
+            ),
           ),
         ],
       ),
     );
   }
 
-  String _productLine(RegimenStep step) {
-    final items = [
-      step.category.trim(),
-      step.brand.trim(),
-    ].where((item) => item.isNotEmpty);
-    final value = items.join(' • ');
-    return value.isEmpty ? 'Not provided yet' : value;
+  String _resolveFeeling(String? raw) {
+    final normalized = raw?.trim().toLowerCase() ?? '';
+    if (_skinFeelingOptions.any((option) => option.value == normalized)) {
+      return normalized;
+    }
+    return 'good';
   }
 }
 
-class _PhotoCard extends StatelessWidget {
-  const _PhotoCard({
-    required this.title,
-    required this.subtitle,
-    required this.imageFile,
-    required this.imageUrl,
-    required this.onTap,
+class _RoutineSegmentedControl extends StatelessWidget {
+  const _RoutineSegmentedControl({
+    required this.showMorning,
+    required this.onChanged,
   });
 
-  final String title;
-  final String subtitle;
-  final File? imageFile;
-  final String? imageUrl;
+  final bool showMorning;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      padding: const EdgeInsets.all(6),
+      child: Row(
+        children: [
+          Expanded(
+            child: _SegmentButton(
+              label: 'Morning',
+              selected: showMorning,
+              onTap: () => onChanged(true),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.xs),
+          Expanded(
+            child: _SegmentButton(
+              label: 'Evening',
+              selected: !showMorning,
+              onTap: () => onChanged(false),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HeaderHomeButton extends StatelessWidget {
+  const _HeaderHomeButton({required this.onTap});
+
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final fullUrl = (imageUrl ?? '').startsWith('http')
-        ? imageUrl
-        : ((imageUrl ?? '').isEmpty
-              ? null
-              : '${AppConfig.apiBaseUrl}$imageUrl');
-
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        height: 180,
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.96),
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: Theme.of(
-                context,
-              ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              subtitle,
-              style: Theme.of(
-                context,
-              ).textTheme.bodySmall?.copyWith(color: AppColors.mutedText),
-            ),
-            const SizedBox(height: 10),
-            Expanded(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(14),
-                child: Container(
-                  width: double.infinity,
-                  color: AppColors.secondary,
-                  child: imageFile != null
-                      ? Image.file(imageFile!, fit: BoxFit.cover)
-                      : fullUrl != null
-                      ? Image.network(fullUrl, fit: BoxFit.cover)
-                      : const Icon(Icons.add_a_photo_outlined),
-                ),
-              ),
-            ),
-          ],
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: onTap,
+        child: Ink(
+          width: 48,
+          height: 48,
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.82),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: const Icon(
+            Icons.home_rounded,
+            color: AppColors.primaryDark,
+          ),
         ),
       ),
     );
   }
 }
 
-class _SectionTitle extends StatelessWidget {
-  const _SectionTitle({required this.title, required this.subtitle});
-
-  final String title;
-  final String subtitle;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: Theme.of(
-            context,
-          ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
-        ),
-        const SizedBox(height: AppSpacing.xs),
-        Text(
-          subtitle,
-          style: Theme.of(
-            context,
-          ).textTheme.bodyMedium?.copyWith(color: AppColors.mutedText),
-        ),
-      ],
-    );
-  }
-}
-
-class _ScoreField extends StatelessWidget {
-  const _ScoreField({
-    required this.controller,
-    required this.label,
-  });
-
-  final TextEditingController controller;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return TextField(
-      controller: controller,
-      keyboardType: TextInputType.number,
-      decoration: InputDecoration(
-        labelText: label,
-        hintText: '0-10',
-        filled: true,
-        fillColor: Colors.white,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(18),
-        ),
-      ),
-    );
-  }
-}
-
-class _FeelingChip extends StatelessWidget {
-  const _FeelingChip({
+class _SegmentButton extends StatelessWidget {
+  const _SegmentButton({
     required this.label,
     required this.selected,
     required this.onTap,
@@ -697,78 +475,118 @@ class _FeelingChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(999),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: selected ? AppColors.secondary : Colors.white,
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(
-            color: selected ? AppColors.primaryDark : AppColors.border,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 220),
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          decoration: BoxDecoration(
+            color: selected ? AppColors.secondary : Colors.transparent,
+            borderRadius: BorderRadius.circular(20),
           ),
-        ),
-        child: Text(
-          label,
-          style: Theme.of(
-            context,
-          ).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w700),
+          alignment: Alignment.center,
+          child: Text(
+            label,
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+              color: selected ? AppColors.primaryDark : AppColors.mutedText,
+            ),
+          ),
         ),
       ),
     );
   }
 }
 
-class _EmptyStateCard extends StatelessWidget {
-  const _EmptyStateCard({required this.title, required this.body});
+class _PhotoSlot extends StatelessWidget {
+  const _PhotoSlot({
+    required this.label,
+    required this.imageFile,
+    required this.imageUrl,
+    this.onTap,
+    this.enabled = false,
+  });
 
-  final String title;
-  final String body;
+  final String label;
+  final File? imageFile;
+  final String? imageUrl;
+  final VoidCallback? onTap;
+  final bool enabled;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceMuted,
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            body,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: AppColors.mutedText,
-              height: 1.35,
+    final fullUrl = (imageUrl ?? '').startsWith('http')
+        ? imageUrl
+        : ((imageUrl ?? '').isEmpty ? null : '${AppConfig.apiBaseUrl}$imageUrl');
+
+    return GestureDetector(
+      onTap: enabled ? onTap : null,
+      child: Container(
+        height: 144,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: enabled ? Colors.white : AppColors.surfaceMuted,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
             ),
-          ),
-        ],
+            const SizedBox(height: 6),
+            Expanded(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(14),
+                child: Container(
+                  width: double.infinity,
+                  color: AppColors.secondary,
+                  child: imageFile != null
+                      ? Image.file(imageFile!, fit: BoxFit.cover)
+                      : fullUrl != null
+                          ? Image.network(fullUrl, fit: BoxFit.cover)
+                          : Icon(
+                              enabled
+                                  ? Icons.add_a_photo_outlined
+                                  : Icons.image_outlined,
+                              color: AppColors.primaryDark,
+                            ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              enabled ? 'Tap to capture' : 'Placeholder',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: AppColors.mutedText,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
 class _SkinFeelingOption {
-  const _SkinFeelingOption(this.label, this.value);
+  const _SkinFeelingOption(this.label, this.value, this.icon);
 
   final String label;
   final String value;
+  final IconData icon;
 }
 
 const _skinFeelingOptions = [
-  _SkinFeelingOption('Good', 'good'),
-  _SkinFeelingOption('Normal', 'normal'),
-  _SkinFeelingOption('Dry', 'dry'),
-  _SkinFeelingOption('Oily', 'oily'),
-  _SkinFeelingOption('Sensitive', 'sensitive'),
-  _SkinFeelingOption('Irritated', 'irritated'),
+  _SkinFeelingOption('Good', 'good', Icons.sentiment_satisfied_alt_outlined),
+  _SkinFeelingOption('Dry', 'dry', Icons.water_drop_outlined),
+  _SkinFeelingOption('Oily', 'oily', Icons.opacity_outlined),
+  _SkinFeelingOption('Red', 'irritated', Icons.favorite_border_rounded),
+  _SkinFeelingOption('Irritated', 'irritated', Icons.warning_amber_rounded),
+  _SkinFeelingOption('Breakout', 'acne_flare', Icons.blur_on_outlined),
 ];

@@ -47,8 +47,7 @@ class DatePickerField extends StatelessWidget {
                   children: [
                     Text(
                       label,
-                      style: const TextStyle(
-                        fontSize: 12,
+                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
                         color: AppColors.mutedText,
                         fontWeight: FontWeight.w700,
                       ),
@@ -56,10 +55,9 @@ class DatePickerField extends StatelessWidget {
                     const SizedBox(height: 6),
                     Text(
                       text,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
                         color: AppColors.foreground,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ],

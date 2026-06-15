@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 using SkinSync.Base;
 using SkinSync.Data;
 using SkinSync.Helpers;
@@ -75,6 +76,8 @@ public class DiaryController : ControllerBase
 
         var date = request.Date ?? DateOnly.FromDateTime(DateTime.UtcNow.Date);
         var existing = await _diaryRepository.GetByUserAndDateAsync(id, date, cancellationToken);
+        var completedStepIds = ParseCompletedStepIds(request.CompletedStepIdsJson);
+        await SyncRoutineTrackingsAsync(id, date, completedStepIds, cancellationToken);
         var (morningCompleted, eveningCompleted) = await ResolveRoutineCompletionAsync(id, date, cancellationToken);
 
         string? imageUrl = existing?.DailyImageUrl;
@@ -203,5 +206,89 @@ public class DiaryController : ControllerBase
             .All(stepId => stepId != Guid.Empty && trackingByStep.TryGetValue(stepId, out var status) && status == "completed");
 
         return (morningCompleted, eveningCompleted);
+    }
+
+    private static HashSet<Guid>? ParseCompletedStepIds(string? rawValue)
+    {
+        if (string.IsNullOrWhiteSpace(rawValue))
+        {
+            return null;
+        }
+
+        try
+        {
+            var items = JsonSerializer.Deserialize<List<string>>(rawValue);
+            if (items is null || items.Count == 0)
+            {
+                return new HashSet<Guid>();
+            }
+
+            return items
+                .Select(x => Guid.TryParse(x, out var parsed) ? parsed : Guid.Empty)
+                .Where(x => x != Guid.Empty)
+                .ToHashSet();
+        }
+        catch (JsonException)
+        {
+            return new HashSet<Guid>();
+        }
+    }
+
+    private async Task SyncRoutineTrackingsAsync(
+        Guid userId,
+        DateOnly date,
+        HashSet<Guid>? completedStepIds,
+        CancellationToken cancellationToken)
+    {
+        if (completedStepIds is null)
+        {
+            return;
+        }
+
+        var regimen = await _dbContext.UserRegimens
+            .Include(x => x.Items)
+            .FirstOrDefaultAsync(x => x.UserId == userId && x.IsActive, cancellationToken);
+
+        if (regimen is null)
+        {
+            return;
+        }
+
+        var activeStepIds = regimen.Items.Select(x => x.Id).ToHashSet();
+        completedStepIds.RemoveWhere(x => !activeStepIds.Contains(x));
+
+        var existingTrackings = await _dbContext.RoutineTrackings
+            .Where(x => x.UserId == userId && x.TrackingDate == date && activeStepIds.Contains(x.StepId))
+            .ToListAsync(cancellationToken);
+
+        foreach (var tracking in existingTrackings.Where(x => !completedStepIds.Contains(x.StepId)))
+        {
+            _dbContext.RoutineTrackings.Remove(tracking);
+        }
+
+        foreach (var step in regimen.Items.Where(x => completedStepIds.Contains(x.Id)))
+        {
+            var tracking = existingTrackings.FirstOrDefault(x => x.StepId == step.Id);
+            if (tracking is null)
+            {
+                _dbContext.RoutineTrackings.Add(new RoutineTracking
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = userId,
+                    StepId = step.Id,
+                    TrackingDate = date,
+                    RoutineTime = step.RoutineTime,
+                    Status = "completed",
+                    CompletedAt = DateTime.UtcNow
+                });
+                continue;
+            }
+
+            tracking.RoutineTime = step.RoutineTime;
+            tracking.Status = "completed";
+            tracking.CompletedAt = DateTime.UtcNow;
+        }
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
     }
 }
