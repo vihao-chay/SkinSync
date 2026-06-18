@@ -31,15 +31,15 @@ class LinearProgressStat extends StatelessWidget {
             Expanded(
               child: Text(
                 label,
-                style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                  color: AppColors.primaryDark,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.labelLarge?.copyWith(color: AppColors.primaryDark),
               ),
             ),
             Text(
               value,
               style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                fontFamily: 'Inter',
+                fontFamily: 'PlusJakartaSans',
                 fontFeatures: const [FontFeature.tabularFigures()],
               ),
             ),
@@ -88,9 +88,9 @@ class LinearProgressStat extends StatelessWidget {
           const SizedBox(height: AppSpacing.xs),
           Text(
             caption!,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: AppColors.mutedText,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: AppColors.mutedText),
           ),
         ],
       ],

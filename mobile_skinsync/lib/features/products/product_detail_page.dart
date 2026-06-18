@@ -14,10 +14,7 @@ import '../../core/widgets/section_header.dart';
 import '../../core/widgets/status_chip.dart';
 
 class ProductDetailPage extends StatefulWidget {
-  const ProductDetailPage({
-    super.key,
-    required this.args,
-  });
+  const ProductDetailPage({super.key, required this.args});
 
   final ProductDetailPageArgs args;
 
@@ -167,7 +164,9 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
     if (detail == null || !detail.hasIngredientData) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Ingredient data is not available for this product yet.'),
+          content: Text(
+            'Ingredient data is not available for this product yet.',
+          ),
         ),
       );
       return;
@@ -193,10 +192,16 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              _DetailText(
-                result.overallExplanation.trim().isEmpty
-                    ? 'Ingredient check completed.'
-                    : result.overallExplanation,
+              Text(
+                result.overallExplanation,
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Text(
+                result.usageSuggestion,
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: AppColors.mutedText),
               ),
               if (result.beneficialIngredients.isNotEmpty) ...[
                 const SizedBox(height: AppSpacing.md),
@@ -286,16 +291,13 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                   Text(
                     'Product detail could not load',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                   const SizedBox(height: AppSpacing.sm),
                   Text(_errorMessage!),
                   const SizedBox(height: AppSpacing.md),
-                  AppButton(
-                    label: 'Try again',
-                    onPressed: _loadDetail,
-                  ),
+                  AppButton(label: 'Try again', onPressed: _loadDetail),
                 ],
               ),
             ),
@@ -338,18 +340,16 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                     children: [
                       Text(
                         product.name,
-                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                              fontWeight: FontWeight.w700,
-                            ),
+                        style: Theme.of(context).textTheme.headlineSmall
+                            ?.copyWith(fontWeight: FontWeight.w700),
                       ),
                       const SizedBox(height: AppSpacing.xs),
                       Text(
                         product.brand.trim().isEmpty
                             ? 'Brand not provided'
                             : product.brand,
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              color: AppColors.mutedText,
-                            ),
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(color: AppColors.mutedText),
                       ),
                       const SizedBox(height: AppSpacing.sm),
                       Wrap(
@@ -383,10 +383,10 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
             Text(
               '${product.price.toStringAsFixed(0)} ${product.currency}',
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontFamily: 'Inter',
-                    fontWeight: FontWeight.w800,
-                    fontFeatures: const [FontFeature.tabularFigures()],
-                  ),
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w800,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
             ),
             if (product.description?.trim().isNotEmpty == true) ...[
               const SizedBox(height: AppSpacing.md),
@@ -427,13 +427,12 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
             ),
             const SizedBox(height: AppSpacing.md),
             if (cautions.isEmpty && conflicts.isEmpty)
-              const _EmptyCopy('No caution or conflict notes are available yet.')
+              const _EmptyCopy(
+                'No caution or conflict notes are available yet.',
+              )
             else ...[
               if (cautions.isNotEmpty)
-                _ChipGroup(
-                  tone: StatusChipTone.warning,
-                  items: cautions,
-                ),
+                _ChipGroup(tone: StatusChipTone.warning, items: cautions),
               if (cautions.isNotEmpty && conflicts.isNotEmpty)
                 const SizedBox(height: AppSpacing.sm),
               if (conflicts.isNotEmpty)
@@ -562,7 +561,6 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
   }
 
   bool get _isBusy =>
-      _isLoadingDetail ||
       _isAddingMorning ||
       _isAddingEvening ||
       _isAddingBoth ||
@@ -615,9 +613,9 @@ class _DetailText extends StatelessWidget {
     return Text(
       text,
       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: muted ? AppColors.mutedText : null,
-            height: 1.5,
-          ),
+        color: muted ? AppColors.mutedText : null,
+        height: 1.5,
+      ),
     );
   }
 }
@@ -631,19 +629,15 @@ class _EmptyCopy extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       text,
-      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: AppColors.mutedText,
-            height: 1.5,
-          ),
+      style: Theme.of(
+        context,
+      ).textTheme.bodySmall?.copyWith(color: AppColors.mutedText, height: 1.5),
     );
   }
 }
 
 class _ReasonGroup extends StatelessWidget {
-  const _ReasonGroup({
-    required this.title,
-    required this.items,
-  });
+  const _ReasonGroup({required this.title, required this.items});
 
   final String title;
   final List<String> items;
@@ -655,16 +649,16 @@ class _ReasonGroup extends StatelessWidget {
       children: [
         Text(
           title,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: AppSpacing.xs),
         ...items.map(
           (item) => Padding(
             padding: const EdgeInsets.only(bottom: 6),
             child: Text(
-              '• $item',
+              '- $item',
               style: Theme.of(context).textTheme.bodyMedium,
             ),
           ),
@@ -691,23 +685,14 @@ class _ChipGroup extends StatelessWidget {
       spacing: AppSpacing.xs,
       runSpacing: AppSpacing.xs,
       children: items
-          .map(
-            (item) => StatusChip(
-              label: item,
-              icon: icon,
-              tone: tone,
-            ),
-          )
+          .map((item) => StatusChip(label: item, icon: icon, tone: tone))
           .toList(),
     );
   }
 }
 
 class _DetailBlock extends StatelessWidget {
-  const _DetailBlock({
-    required this.title,
-    required this.body,
-  });
+  const _DetailBlock({required this.title, required this.body});
 
   final String title;
   final String body;
@@ -719,9 +704,9 @@ class _DetailBlock extends StatelessWidget {
       children: [
         Text(
           title,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: AppSpacing.xs),
         Text(body, style: Theme.of(context).textTheme.bodyMedium),
@@ -731,10 +716,7 @@ class _DetailBlock extends StatelessWidget {
 }
 
 class _BottomSheetFrame extends StatelessWidget {
-  const _BottomSheetFrame({
-    required this.title,
-    required this.child,
-  });
+  const _BottomSheetFrame({required this.title, required this.child});
 
   final String title;
   final Widget child;
@@ -762,8 +744,8 @@ class _BottomSheetFrame extends StatelessWidget {
               Text(
                 title,
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
+                  fontWeight: FontWeight.w700,
+                ),
               ),
               const SizedBox(height: AppSpacing.lg),
               child,
@@ -796,10 +778,10 @@ class _ConflictWarningSheet extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '${warning.productAName} × ${warning.productBName}',
+                      '${warning.productAName} x ${warning.productBName}',
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                     const SizedBox(height: AppSpacing.xs),
                     Text(warning.message),
@@ -807,8 +789,8 @@ class _ConflictWarningSheet extends StatelessWidget {
                     Text(
                       warning.recommendation,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: AppColors.mutedText,
-                          ),
+                        color: AppColors.mutedText,
+                      ),
                     ),
                   ],
                 ),

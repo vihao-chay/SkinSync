@@ -17,11 +17,11 @@ class AnalysisModeTabs extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 46,
-      padding: const EdgeInsets.all(5),
+      height: 28,
+      padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
-        color: const Color(0xFFF3EDE5),
-        borderRadius: BorderRadius.circular(14),
+        color: AppColors.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(999),
         border: Border.all(color: AppColors.border.withValues(alpha: 0.42)),
       ),
       child: Row(
@@ -29,15 +29,13 @@ class AnalysisModeTabs extends StatelessWidget {
           Expanded(
             child: _ModeButton(
               label: 'Skin',
-              icon: Icons.face_retouching_natural_outlined,
               selected: selectedMode == AnalysisMode.skin,
               onTap: () => onChanged(AnalysisMode.skin),
             ),
           ),
           Expanded(
             child: _ModeButton(
-              label: 'Product',
-              icon: Icons.science_outlined,
+              label: 'Products',
               selected: selectedMode == AnalysisMode.product,
               onTap: () => onChanged(AnalysisMode.product),
             ),
@@ -51,13 +49,11 @@ class AnalysisModeTabs extends StatelessWidget {
 class _ModeButton extends StatelessWidget {
   const _ModeButton({
     required this.label,
-    required this.icon,
     required this.selected,
     required this.onTap,
   });
 
   final String label;
-  final IconData icon;
   final bool selected;
   final VoidCallback onTap;
 
@@ -66,14 +62,14 @@ class _ModeButton extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(999),
         onTap: onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: selected ? Colors.white : Colors.transparent,
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(999),
             boxShadow: selected
                 ? [
                     BoxShadow(
@@ -84,24 +80,14 @@ class _ModeButton extends StatelessWidget {
                   ]
                 : null,
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                icon,
-                size: 16,
-                color: selected ? AppColors.primaryDark : AppColors.foreground,
-              ),
-              const SizedBox(width: 7),
-              Text(
-                label,
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: selected ? AppColors.primaryDark : AppColors.foreground,
-                  fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
-                  fontSize: 11,
-                ),
-              ),
-            ],
+          child: Text(
+            label,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: selected ? AppColors.primaryDark : AppColors.foreground,
+              fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+              fontSize: 9,
+              height: 1,
+            ),
           ),
         ),
       ),

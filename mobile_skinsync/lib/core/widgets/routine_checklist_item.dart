@@ -60,9 +60,8 @@ class RoutineChecklistItem extends StatelessWidget {
                         step.name,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w700),
                       ),
                     ),
                   ],
@@ -95,9 +94,9 @@ class RoutineChecklistItem extends StatelessWidget {
                     step.instruction!,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppColors.mutedText,
-                    ),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.copyWith(color: AppColors.mutedText),
                   ),
                 ],
                 if ((step.caution ?? '').trim().isNotEmpty) ...[
@@ -161,7 +160,7 @@ class _StepBubble extends StatelessWidget {
       child: Text(
         '$number',
         style: Theme.of(context).textTheme.labelLarge?.copyWith(
-          fontFamily: 'Inter',
+          fontFamily: 'PlusJakartaSans',
           fontWeight: FontWeight.w800,
         ),
       ),

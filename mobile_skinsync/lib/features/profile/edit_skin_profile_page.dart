@@ -74,9 +74,11 @@ class _EditSkinProfilePageState extends State<EditSkinProfilePage> {
 
     return AppScaffold(
       title: 'Edit profile',
-      subtitle: 'Update the details that shape your routine and recommendations.',
+      subtitle:
+          'Update the details that shape your routine and recommendations.',
       onRefresh: appState.refreshProfileState,
       compactHeader: true,
+      showBackButton: true,
       body: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(
@@ -110,7 +112,8 @@ class _EditSkinProfilePageState extends State<EditSkinProfilePage> {
                           _skinType == null ? const <String>[] : [_skinType!],
                         ),
                         selected: _skinType,
-                        onSelected: (value) => setState(() => _skinType = value),
+                        onSelected: (value) =>
+                            setState(() => _skinType = value),
                       ),
                     ),
                     _SelectionField(
@@ -145,10 +148,13 @@ class _EditSkinProfilePageState extends State<EditSkinProfilePage> {
                         title: 'Budget',
                         options: _mergedOptions(
                           OnboardingState.budgetOptions.keys,
-                          _budgetLabel == null ? const <String>[] : [_budgetLabel!],
+                          _budgetLabel == null
+                              ? const <String>[]
+                              : [_budgetLabel!],
                         ),
                         selected: _budgetLabel,
-                        onSelected: (value) => setState(() => _budgetLabel = value),
+                        onSelected: (value) =>
+                            setState(() => _budgetLabel = value),
                       ),
                     ),
                   ],
@@ -208,9 +214,7 @@ class _EditSkinProfilePageState extends State<EditSkinProfilePage> {
                       ),
                     ),
                     Text(
-                      _hasSensitivity
-                          ? '${_sensitivity.round()}/10'
-                          : 'Off',
+                      _hasSensitivity ? '${_sensitivity.round()}/10' : 'Off',
                       style: textTheme.labelLarge,
                     ),
                   ],
@@ -358,10 +362,8 @@ class _EditSkinProfilePageState extends State<EditSkinProfilePage> {
           if (profile == null) ...[
             const SizedBox(height: AppSpacing.sm),
             TextButton(
-              onPressed: () => Navigator.pushReplacementNamed(
-                context,
-                AppRoutes.onboarding,
-              ),
+              onPressed: () =>
+                  Navigator.pushReplacementNamed(context, AppRoutes.onboarding),
               child: const Text('Complete onboarding instead'),
             ),
           ],
@@ -514,9 +516,9 @@ class _SelectionField extends StatelessWidget {
             children: [
               Text(
                 label,
-                style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  color: AppColors.primaryDark,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.labelMedium?.copyWith(color: AppColors.primaryDark),
               ),
               const SizedBox(height: AppSpacing.xs),
               Row(
@@ -573,9 +575,9 @@ class _ChoiceChipCard extends StatelessWidget {
           ),
           child: Text(
             label,
-            style: Theme.of(context).textTheme.labelLarge?.copyWith(
-              color: AppColors.primaryDark,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.labelLarge?.copyWith(color: AppColors.primaryDark),
           ),
         ),
       ),
@@ -604,9 +606,9 @@ Future<void> _showChoiceSheet(
             children: [
               Text(
                 title,
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: AppSpacing.md),
               ...options.map(
@@ -633,14 +635,19 @@ Future<void> _showChoiceSheet(
   );
 }
 
-List<String> _mergedOptions(Iterable<String> defaults, Iterable<String> current) {
+List<String> _mergedOptions(
+  Iterable<String> defaults,
+  Iterable<String> current,
+) {
   final merged = <String>[];
   for (final item in [...current, ...defaults]) {
     final trimmed = item.trim();
     if (trimmed.isEmpty) {
       continue;
     }
-    if (!merged.any((existing) => existing.toLowerCase() == trimmed.toLowerCase())) {
+    if (!merged.any(
+      (existing) => existing.toLowerCase() == trimmed.toLowerCase(),
+    )) {
       merged.add(trimmed);
     }
   }

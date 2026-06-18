@@ -6,21 +6,17 @@ import '../../core/models/app_models.dart';
 import '../../core/routes/app_routes.dart';
 import '../../core/state/app_state.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
+import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/app_scaffold.dart';
 import '../../core/widgets/circular_score.dart';
-import '../../core/widgets/empty_state_card.dart';
-import '../../core/widgets/linear_progress_stat.dart';
-import '../../core/widgets/metric_card.dart';
-import '../../core/widgets/section_header.dart';
 import '../../core/widgets/status_chip.dart';
 
 class ProgressPage extends StatefulWidget {
-  const ProgressPage({
-    super.key,
-    ProgressPageArgs? args,
-  }) : args = args ?? const ProgressPageArgs();
+  const ProgressPage({super.key, ProgressPageArgs? args})
+    : args = args ?? const ProgressPageArgs();
 
   final ProgressPageArgs args;
 
@@ -56,53 +52,22 @@ class _ProgressPageState extends State<ProgressPage> {
     final latestAnalysis = appState.latestAnalysis;
     final tracking = appState.trackingToday;
     final todayLog = appState.todayLog;
-    final latestPhotoUrl = _resolveImageUrl(
-      todayLog?.dailyImageUrl?.trim().isNotEmpty == true
-          ? todayLog!.dailyImageUrl
-          : latestAnalysis?.imageUrl,
-    );
     final totalSteps = tracking?.totalSteps ?? 0;
     final completedSteps = tracking?.completedSteps ?? 0;
-    final routinePercent = totalSteps == 0 ? 0 : ((completedSteps / totalSteps) * 100).round();
-    final hasRealInsight = (progress?.dailyTip?.trim().isNotEmpty ?? false) ||
-        (progress?.progressInsight?.trim().isNotEmpty ?? false);
-    final hasVisualJourney = latestPhotoUrl.isNotEmpty;
-
+    final routineProgress = totalSteps == 0 ? 0.0 : completedSteps / totalSteps;
+    final currentScore = progress?.currentScore ?? latestAnalysis?.overallScore;
     final showCheckupSavedState =
         widget.args.entryPoint == ProgressEntryPoint.checkupSaved;
     final showAnalysisState =
         widget.args.entryPoint == ProgressEntryPoint.analysisResult;
 
-    if (progress == null && latestAnalysis == null) {
-      return AppScaffold(
-        title: 'Progress',
-        subtitle: 'Analysis history, routine completion, and daily logs stay in sync here.',
-        compactHeader: true,
-        body: ListView(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.pagePadding,
-            0,
-            AppSpacing.pagePadding,
-            AppSpacing.pageBottomPaddingWithActions,
-          ),
-          children: [
-            EmptyStateCard(
-              icon: Icons.insights_outlined,
-              title: 'No progress data yet',
-              description: 'Analyze your skin and start completing your routine to unlock a clearer progress story.',
-              ctaLabel: 'Analyze skin',
-              onCta: () => Navigator.pushNamed(context, AppRoutes.upload),
-            ),
-          ],
-        ),
-      );
-    }
-
     return AppScaffold(
       title: 'Progress',
-      subtitle: 'Analysis history, routine completion, and daily logs stay in sync here.',
+      subtitle: 'Your skin health history at a glance.',
       compactHeader: true,
+      onRefresh: appState.refreshHome,
       body: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(
           AppSpacing.pagePadding,
           0,
@@ -116,213 +81,137 @@ class _ProgressPageState extends State<ProgressPage> {
               icon: Icons.check_circle_outline_rounded,
               tone: StatusChipTone.success,
             ),
-            const SizedBox(height: AppSpacing.md),
+            const SizedBox(height: AppSpacing.sm),
           ] else if (showAnalysisState) ...[
             const StatusChip(
               label: 'Analysis saved',
               icon: Icons.analytics_outlined,
               tone: StatusChipTone.accent,
             ),
-            const SizedBox(height: AppSpacing.md),
+            const SizedBox(height: AppSpacing.sm),
           ],
-          AppCard(
-            variant: AppCardVariant.hero,
+          if (progress == null && latestAnalysis == null)
+            _NoProgressCard(onStart: _openUpload)
+          else ...[
+            _ProgressHero(
+              score: currentScore,
+              insight: progress?.progressInsight,
+              improvementPercent: progress?.improvementPercent,
+            ),
+            const SizedBox(height: AppSpacing.md),
+            _MetricsGrid(
+              currentScore: currentScore,
+              currentStreak: progress?.currentStreak,
+              improvementPercent: progress?.improvementPercent,
+              routinePercent: (routineProgress * 100).round(),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            _RoutineCompletionCard(
+              completedSteps: completedSteps,
+              totalSteps: totalSteps,
+              progress: routineProgress,
+            ),
+            const SizedBox(height: AppSpacing.md),
+            const _ProgressSectionTitle('Score Trend'),
+            const SizedBox(height: AppSpacing.xs),
+            const _ScoreTrendCard(),
+            const SizedBox(height: AppSpacing.md),
+            const _ProgressSectionTitle('Visual Journey'),
+            const SizedBox(height: AppSpacing.xs),
+            _VisualJourneyCard(
+              imageUrl: todayLog?.dailyImageUrl,
+              onAddPhoto: _openProgressUpload,
+            ),
+            const SizedBox(height: AppSpacing.md),
+            const _ProgressSectionTitle('Recent Activity'),
+            const SizedBox(height: AppSpacing.xs),
+            _RecentActivityCard(
+              latestAnalysis: latestAnalysis,
+              completedSteps: completedSteps,
+              totalSteps: totalSteps,
+              hasPhoto: todayLog?.dailyImageUrl?.trim().isNotEmpty == true,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  void _openUpload() {
+    Navigator.pushNamed(context, AppRoutes.upload);
+  }
+
+  void _openProgressUpload() {
+    Navigator.pushNamed(
+      context,
+      AppRoutes.upload,
+      arguments: const SkinAnalysisFlowArgs(source: 'progress'),
+    );
+  }
+}
+
+class _ProgressHero extends StatelessWidget {
+  const _ProgressHero({
+    required this.score,
+    required this.insight,
+    required this.improvementPercent,
+  });
+
+  final int? score;
+  final String? insight;
+  final double? improvementPercent;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasImprovement = improvementPercent != null;
+    return AppCard(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      child: Row(
+        children: [
+          CircularScore(
+            score: score ?? 0,
+            size: 104,
+            label: 'score',
+            progressColor: AppColors.primary,
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    CircularScore(
-                      score: latestAnalysis?.displaySkinHealthScore ?? 0,
-                      size: 112,
-                      label: 'health',
-                      tone: CircularScoreTone.health,
-                    ),
-                    const SizedBox(width: AppSpacing.md),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const StatusChip(
-                            label: 'Current Progress Snapshot',
-                            icon: Icons.query_stats_rounded,
-                            tone: StatusChipTone.accent,
-                          ),
-                          const SizedBox(height: 10),
-                          Text(
-                            progress?.progressInsight?.trim().isNotEmpty == true
-                                ? progress!.progressInsight!
-                                : 'Progress updates when analysis, routine tracking, and daily logs are saved.',
-                            maxLines: 4,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: AppColors.mutedText,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.md),
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    final metrics = [
-                      MetricCard(
-                        label: 'Skin Health',
-                        value: latestAnalysis?.displaySkinHealthScore == null
-                            ? '--'
-                            : '${latestAnalysis!.displaySkinHealthScore}',
-                        icon: Icons.favorite_outline_rounded,
-                        caption: 'Higher is better.',
-                      ),
-                      MetricCard(
-                        label: 'Visible Concern Level',
-                        value: latestAnalysis?.displayConcernSeverity ==
-                                null
-                            ? '--'
-                            : '${latestAnalysis!.displayConcernSeverity}',
-                        icon: Icons.visibility_outlined,
-                        caption: 'Higher means more visible concerns.',
-                      ),
-                      MetricCard(
-                        label: 'Current streak',
-                        value: '${progress?.currentStreak ?? 0} days',
-                        icon: Icons.local_fire_department_outlined,
-                      ),
-                      MetricCard(
-                        label: 'Routine completion',
-                        value: '$routinePercent%',
-                        icon: Icons.checklist_rounded,
-                      ),
-                    ];
-                    return Wrap(
-                      spacing: AppSpacing.sm,
-                      runSpacing: AppSpacing.sm,
-                      children: metrics
-                          .map(
-                            (metric) => SizedBox(
-                              width: constraints.maxWidth < 360
-                                  ? constraints.maxWidth
-                                  : (constraints.maxWidth - AppSpacing.sm) / 2,
-                              child: metric,
-                            ),
-                          )
-                          .toList(),
-                    );
-                  },
-                ),
-                const SizedBox(height: AppSpacing.md),
-                LinearProgressStat(
-                  label: 'Routine completion',
-                  value: '$routinePercent%',
-                  progress: totalSteps == 0 ? 0 : completedSteps / totalSteps,
-                  caption: totalSteps == 0
-                      ? 'No routine steps tracked yet.'
-                      : '$completedSteps of $totalSteps steps completed today.',
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: AppSpacing.sectionGap),
-          SectionHeader(
-            icon: Icons.show_chart_rounded,
-            title: 'Skin Health Trend',
-            subtitle: 'Higher skin health means fewer visible concerns in saved scans.',
-          ),
-          const SizedBox(height: AppSpacing.md),
-          const EmptyStateCard(
-            icon: Icons.show_chart_rounded,
-            title: 'Not enough trend data yet',
-            description:
-                'Complete more analyses and check-ups to unlock a clearer score trend.',
-          ),
-          const SizedBox(height: AppSpacing.sectionGap),
-          SectionHeader(
-            icon: Icons.photo_camera_back_outlined,
-            title: 'Visual Journey',
-            subtitle: 'Your latest analysis or daily log photo appears here when backend data is available.',
-          ),
-          const SizedBox(height: AppSpacing.md),
-          if (hasVisualJourney)
-            AppCard(
-              child: _VisualJourneyCard(
-                imageUrl: latestPhotoUrl,
-                title: todayLog?.dailyImageUrl?.trim().isNotEmpty == true
-                    ? 'Latest daily log photo'
-                    : 'Latest analysis photo',
-                value: latestAnalysis != null
-                    ? 'Skin Health ${latestAnalysis.displaySkinHealthScore ?? '--'}/100 from your most recent scan.'
-                    : 'A real saved photo is available for future comparison.',
-              ),
-            )
-          else
-            const EmptyStateCard(
-              icon: Icons.photo_library_outlined,
-              title: 'No comparison photos yet',
-              description:
-                  'Save daily or analysis photos over time to unlock a clearer visual journey.',
-            ),
-          const SizedBox(height: AppSpacing.sectionGap),
-          if (hasRealInsight) ...[
-            SectionHeader(
-              icon: Icons.tips_and_updates_outlined,
-              title: 'Insight Cards',
-              subtitle: 'Short reads grounded in your saved backend data.',
-            ),
-            const SizedBox(height: AppSpacing.md),
-            Wrap(
-              spacing: AppSpacing.sm,
-              runSpacing: AppSpacing.sm,
-              children: [
-                if (progress?.dailyTip?.trim().isNotEmpty == true)
-                  _InsightCard(
-                    icon: Icons.auto_awesome_rounded,
-                    title: 'Daily tip',
-                    body: progress!.dailyTip!,
+                Text(
+                  insight?.trim().isNotEmpty == true
+                      ? insight!
+                      : 'Progress updates after analysis, routine tracking, and daily logs are saved.',
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: AppColors.heading,
+                    height: 1.35,
                   ),
-                if (progress?.progressInsight?.trim().isNotEmpty == true)
-                  _InsightCard(
-                    icon: Icons.query_stats_rounded,
-                    title: 'Progress signal',
-                    body: progress!.progressInsight!,
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.secondary,
+                      borderRadius: BorderRadius.circular(AppRadius.pill),
+                    ),
+                    child: Text(
+                      hasImprovement
+                          ? '${improvementPercent!.toStringAsFixed(1)}% improve'
+                          : 'Not enough data',
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
                   ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.sectionGap),
-          ],
-          SectionHeader(
-            icon: Icons.timeline_rounded,
-            title: 'Recent Timeline',
-            subtitle: 'The latest moments feeding your progress.',
-          ),
-          const SizedBox(height: AppSpacing.md),
-          AppCard(
-            child: Column(
-              children: [
-                _TimelineRow(
-                  icon: Icons.analytics_outlined,
-                  title: 'Latest analysis',
-                  value: latestAnalysis == null
-                      ? 'No analysis yet'
-                      : 'Health ${latestAnalysis.displaySkinHealthScore ?? '--'}/100 • Concern ${latestAnalysis.displayConcernSeverityScore ?? '--'}/100 • ${latestAnalysis.skinType}',
-                ),
-                const SizedBox(height: AppSpacing.md),
-                _TimelineRow(
-                  icon: Icons.checklist_rounded,
-                  title: 'Latest check-up',
-                  value: '$completedSteps/$totalSteps routine steps completed today',
-                ),
-                const SizedBox(height: AppSpacing.md),
-                _TimelineRow(
-                  icon: Icons.photo_camera_back_outlined,
-                  title: 'Latest photo',
-                  value: latestPhotoUrl.isNotEmpty
-                      ? (todayLog?.dailyImageUrl?.trim().isNotEmpty == true
-                          ? 'Daily log photo saved'
-                          : 'Analysis photo saved')
-                      : 'No saved photo yet',
                 ),
               ],
             ),
@@ -331,62 +220,374 @@ class _ProgressPageState extends State<ProgressPage> {
       ),
     );
   }
-
-  String _resolveImageUrl(String? raw) {
-    final value = raw?.trim() ?? '';
-    if (value.isEmpty) {
-      return '';
-    }
-    return value.startsWith('http') ? value : '${AppConfig.apiBaseUrl}$value';
-  }
 }
 
-class _InsightCard extends StatelessWidget {
-  const _InsightCard({
-    required this.icon,
-    required this.title,
-    required this.body,
+class _MetricsGrid extends StatelessWidget {
+  const _MetricsGrid({
+    required this.currentScore,
+    required this.currentStreak,
+    required this.improvementPercent,
+    required this.routinePercent,
   });
 
-  final IconData icon;
-  final String title;
-  final String body;
+  final int? currentScore;
+  final int? currentStreak;
+  final double? improvementPercent;
+  final int routinePercent;
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: MediaQuery.sizeOf(context).width > 380 ? 170 : double.infinity,
-      child: AppCard(
-        variant: AppCardVariant.metric,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon, color: AppColors.primaryDark),
-            const SizedBox(height: AppSpacing.sm),
-            Text(
-              title,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
+    final items = [
+      _MetricData(
+        label: 'Current Score',
+        value: currentScore == null ? 'No data' : '$currentScore',
+        icon: Icons.favorite_outline_rounded,
+      ),
+      _MetricData(
+        label: 'Current Streak',
+        value: currentStreak == null ? '0 days' : '$currentStreak days',
+        icon: Icons.local_fire_department_outlined,
+        alert: currentStreak == null || currentStreak == 0,
+      ),
+      _MetricData(
+        label: 'Improvement',
+        value: improvementPercent == null
+            ? '0%'
+            : '${improvementPercent!.toStringAsFixed(1)}%',
+        icon: Icons.trending_up_rounded,
+      ),
+      _MetricData(
+        label: 'Routine',
+        value: '$routinePercent%',
+        icon: Icons.checklist_rounded,
+      ),
+    ];
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final tileWidth = (constraints.maxWidth - AppSpacing.sm) / 2;
+        return Wrap(
+          spacing: AppSpacing.sm,
+          runSpacing: AppSpacing.sm,
+          children: items
+              .map(
+                (item) => SizedBox(width: tileWidth, child: _MetricTile(item)),
+              )
+              .toList(),
+        );
+      },
+    );
+  }
+}
+
+class _MetricData {
+  const _MetricData({
+    required this.label,
+    required this.value,
+    required this.icon,
+    this.alert = false,
+  });
+
+  final String label;
+  final String value;
+  final IconData icon;
+  final bool alert;
+}
+
+class _MetricTile extends StatelessWidget {
+  const _MetricTile(this.data);
+
+  final _MetricData data;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      variant: AppCardVariant.metric,
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(data.icon, size: 14, color: AppColors.primary),
+              const Spacer(),
+              if (data.alert)
+                const Icon(
+                  Icons.error_outline_rounded,
+                  size: 13,
+                  color: AppColors.error,
+                ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            data.label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.labelSmall,
+          ),
+          const SizedBox(height: 2),
+          Text(
+            data.value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+              color: AppColors.heading,
+              fontFamily: 'PlusJakartaSans',
+              fontWeight: FontWeight.w800,
             ),
-            const SizedBox(height: 6),
-            Text(
-              body,
-              maxLines: 4,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: AppColors.mutedText,
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 }
 
-class _TimelineRow extends StatelessWidget {
-  const _TimelineRow({
+class _RoutineCompletionCard extends StatelessWidget {
+  const _RoutineCompletionCard({
+    required this.completedSteps,
+    required this.totalSteps,
+    required this.progress,
+  });
+
+  final int completedSteps;
+  final int totalSteps;
+  final double progress;
+
+  @override
+  Widget build(BuildContext context) {
+    final percent = (progress * 100).round();
+    return AppCard(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(
+                'Routine Completion',
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  color: AppColors.heading,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                totalSteps == 0
+                    ? 'No steps'
+                    : '$completedSteps/$totalSteps steps',
+                style: Theme.of(context).textTheme.labelSmall,
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(AppRadius.pill),
+            child: LinearProgressIndicator(
+              value: progress,
+              minHeight: 8,
+              backgroundColor: AppColors.surfaceContainerHigh,
+              valueColor: const AlwaysStoppedAnimation<Color>(
+                AppColors.primary,
+              ),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            totalSteps == 0
+                ? 'No routine steps tracked yet.'
+                : '$percent% complete today.',
+            style: Theme.of(context).textTheme.labelSmall,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ScoreTrendCard extends StatelessWidget {
+  const _ScoreTrendCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      padding: const EdgeInsets.fromLTRB(14, 18, 14, 18),
+      child: Column(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: AppColors.surfaceMuted,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.auto_graph_rounded,
+              size: 18,
+              color: AppColors.primary,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            'Not enough trend data yet',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: AppColors.mutedText,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _VisualJourneyCard extends StatelessWidget {
+  const _VisualJourneyCard({required this.imageUrl, required this.onAddPhoto});
+
+  final String? imageUrl;
+  final VoidCallback onAddPhoto;
+
+  @override
+  Widget build(BuildContext context) {
+    final resolvedUrl = _resolveImageUrl(imageUrl);
+    return AppCard(
+      padding: const EdgeInsets.all(10),
+      child: Container(
+        height: 176,
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: AppColors.surfaceContainerHigh,
+          borderRadius: BorderRadius.circular(AppRadius.medium),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: resolvedUrl == null
+            ? Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 42,
+                    height: 42,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.camera_alt_outlined,
+                      size: 17,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(
+                    'No comparison photo yet.',
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: AppColors.mutedText,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  OutlinedButton.icon(
+                    onPressed: onAddPhoto,
+                    icon: const Icon(Icons.camera_alt_outlined, size: 12),
+                    label: const Text('Take Progress Photo'),
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size(0, 30),
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      foregroundColor: AppColors.primary,
+                      side: BorderSide(
+                        color: AppColors.primary.withValues(alpha: 0.56),
+                      ),
+                      textStyle: const TextStyle(
+                        fontFamily: 'PlusJakartaSans',
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppRadius.pill),
+                      ),
+                    ),
+                  ),
+                ],
+              )
+            : Image.network(
+                resolvedUrl,
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) => Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.image_not_supported_outlined,
+                      color: AppColors.primary,
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    Text(
+                      'Photo preview unavailable.',
+                      style: Theme.of(context).textTheme.labelSmall,
+                    ),
+                  ],
+                ),
+              ),
+      ),
+    );
+  }
+
+  String? _resolveImageUrl(String? value) {
+    final raw = value?.trim() ?? '';
+    if (raw.isEmpty) {
+      return null;
+    }
+    return raw.startsWith('http') ? raw : '${AppConfig.apiBaseUrl}$raw';
+  }
+}
+
+class _RecentActivityCard extends StatelessWidget {
+  const _RecentActivityCard({
+    required this.latestAnalysis,
+    required this.completedSteps,
+    required this.totalSteps,
+    required this.hasPhoto,
+  });
+
+  final AnalysisResult? latestAnalysis;
+  final int completedSteps;
+  final int totalSteps;
+  final bool hasPhoto;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      child: Column(
+        children: [
+          _ActivityRow(
+            icon: Icons.analytics_outlined,
+            title: 'Latest analysis',
+            value: latestAnalysis == null
+                ? 'No analysis yet'
+                : '${latestAnalysis!.overallScore}/100',
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          _ActivityRow(
+            icon: Icons.fact_check_outlined,
+            title: 'Routine tracking',
+            value: '$completedSteps/$totalSteps steps',
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          _ActivityRow(
+            icon: Icons.photo_camera_back_outlined,
+            title: 'Latest photo',
+            value: hasPhoto ? 'Photo saved' : 'No photo yet',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ActivityRow extends StatelessWidget {
+  const _ActivityRow({
     required this.icon,
     required this.title,
     required this.value,
@@ -399,88 +600,87 @@ class _TimelineRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
-          width: 36,
-          height: 36,
-          decoration: BoxDecoration(
-            color: AppColors.secondary,
-            borderRadius: BorderRadius.circular(14),
-          ),
+          width: 28,
+          height: 28,
           alignment: Alignment.center,
-          child: Icon(icon, size: 18, color: AppColors.primaryDark),
+          decoration: const BoxDecoration(
+            color: AppColors.secondary,
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, size: 14, color: AppColors.primary),
         ),
         const SizedBox(width: AppSpacing.sm),
         Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                  color: AppColors.primaryDark,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                value,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: AppColors.mutedText,
-                ),
-              ),
-            ],
+          child: Text(
+            title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: AppColors.heading,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ),
+        const SizedBox(width: AppSpacing.sm),
+        Text(value, style: Theme.of(context).textTheme.labelSmall),
       ],
     );
   }
 }
 
-class _VisualJourneyCard extends StatelessWidget {
-  const _VisualJourneyCard({
-    required this.imageUrl,
-    required this.title,
-    required this.value,
-  });
+class _NoProgressCard extends StatelessWidget {
+  const _NoProgressCard({required this.onStart});
 
-  final String imageUrl;
-  final String title;
-  final String value;
+  final VoidCallback onStart;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(18),
-          child: Container(
-            width: 88,
-            height: 112,
-            color: AppColors.secondary,
-            child: Image.network(
-              imageUrl,
-              fit: BoxFit.cover,
-              errorBuilder: (_, _, _) => const Icon(
-                Icons.image_not_supported_outlined,
-                color: AppColors.primaryDark,
-                size: 28,
-              ),
+    return AppCard(
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 18),
+      child: Column(
+        children: [
+          const Icon(
+            Icons.insights_outlined,
+            color: AppColors.primary,
+            size: 34,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            'No progress data yet',
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+              color: AppColors.heading,
+              fontWeight: FontWeight.w800,
             ),
           ),
-        ),
-        const SizedBox(width: AppSpacing.md),
-        Expanded(
-          child: _TimelineRow(
-            icon: Icons.photo_camera_back_outlined,
-            title: title,
-            value: value,
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            'Analyze your skin to unlock progress tracking.',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.labelSmall,
           ),
-        ),
-      ],
+          const SizedBox(height: AppSpacing.md),
+          AppButton(label: 'Analyze skin', expand: false, onPressed: onStart),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProgressSectionTitle extends StatelessWidget {
+  const _ProgressSectionTitle(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text,
+      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+        color: AppColors.heading,
+        fontWeight: FontWeight.w800,
+      ),
     );
   }
 }

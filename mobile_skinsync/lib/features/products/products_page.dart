@@ -8,22 +8,18 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_card.dart';
-import '../../core/widgets/app_scaffold.dart';
 import '../../core/widgets/category_chip_bar.dart';
 import '../../core/widgets/empty_state_card.dart';
 import '../../core/widgets/error_state_card.dart';
 import '../../core/widgets/loading_skeleton.dart';
-import '../../core/widgets/metric_card.dart';
 import '../../core/widgets/main_shell.dart';
 import '../../core/widgets/product_recommendation_card.dart';
-import '../../core/widgets/section_header.dart';
+import '../../core/widgets/stitch_top_bar.dart';
 import '../../core/widgets/status_chip.dart';
 
 class ProductsPage extends StatefulWidget {
-  const ProductsPage({
-    super.key,
-    ProductsPageArgs? args,
-  }) : args = args ?? const ProductsPageArgs();
+  const ProductsPage({super.key, ProductsPageArgs? args})
+    : args = args ?? const ProductsPageArgs();
 
   final ProductsPageArgs args;
 
@@ -83,7 +79,8 @@ class _ProductsPageState extends State<ProductsPage> {
         return;
       }
       setState(() {
-        _errorMessage = context.read<AppState>().errorMessage ??
+        _errorMessage =
+            context.read<AppState>().errorMessage ??
             'Could not load your latest saved recommendations right now.';
       });
     } finally {
@@ -121,7 +118,8 @@ class _ProductsPageState extends State<ProductsPage> {
         return;
       }
       setState(() {
-        _errorMessage = context.read<AppState>().errorMessage ??
+        _errorMessage =
+            context.read<AppState>().errorMessage ??
             'Could not generate product recommendations right now.';
       });
     } finally {
@@ -131,7 +129,9 @@ class _ProductsPageState extends State<ProductsPage> {
     }
   }
 
-  AiProductRecommendResponse _normalizeResponse(AiProductRecommendResponse value) {
+  AiProductRecommendResponse _normalizeResponse(
+    AiProductRecommendResponse value,
+  ) {
     final mappedCategories = _tabs.map((tab) {
       final existing = value.categories.where(
         (category) => category.key.toLowerCase() == tab.key,
@@ -304,6 +304,7 @@ class _ProductsPageState extends State<ProductsPage> {
         context: context,
         builder: (context) => _ConflictWarningSheet(warnings: result.warnings),
       );
+
       if (confirmed == true && mounted) {
         await _submitAddToRoutine(
           appState: appState,
@@ -327,7 +328,9 @@ class _ProductsPageState extends State<ProductsPage> {
       ),
     );
 
-    if (!mounted || result is! ProductDetailActionResult || !result.addedToRoutine) {
+    if (!mounted ||
+        result is! ProductDetailActionResult ||
+        !result.addedToRoutine) {
       return;
     }
 
@@ -452,11 +455,10 @@ class _ProductsPageState extends State<ProductsPage> {
       if (mounted) {
         Navigator.pop(context);
       }
-      final message = appState.errorMessage ??
+      final message =
+          appState.errorMessage ??
           'Ingredient check is not available right now.';
-      messenger.showSnackBar(
-        SnackBar(content: Text(message)),
-      );
+      messenger.showSnackBar(SnackBar(content: Text(message)));
     }
   }
 
@@ -465,248 +467,244 @@ class _ProductsPageState extends State<ProductsPage> {
     final appState = context.watch<AppState>();
     final recommendation = _recommendation;
     final profileSummary = recommendation?.profileSummary;
-    final category = recommendation?.categories.firstWhere(
+    final category =
+        recommendation?.categories.firstWhere(
           (item) => item.key == _selectedCategory,
           orElse: () => AiProductRecommendationCategory(
             key: _selectedCategory,
             label: _selectedCategory,
           ),
         ) ??
-        AiProductRecommendationCategory(key: _selectedCategory, label: _selectedCategory);
-    final hasAnyItems = recommendation?.categories.any((c) => c.items.isNotEmpty) ?? false;
+        AiProductRecommendationCategory(
+          key: _selectedCategory,
+          label: _selectedCategory,
+        );
+    final hasAnyItems =
+        recommendation?.categories.any((c) => c.items.isNotEmpty) ?? false;
 
-    return AppScaffold(
-      title: 'Products',
-      subtitle: 'Picked from your latest skin analysis.',
-      compactHeader: true,
-      body: ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.pagePadding,
-          0,
-          AppSpacing.pagePadding,
-          AppSpacing.pageBottomPaddingWithActions,
-        ),
-        children: [
-          AppCard(
-            variant: AppCardVariant.hero,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    final button = AppButton(
-                      label: recommendation?.hasRecommendation == true
-                          ? 'Refresh'
-                          : 'Generate',
-                      expand: false,
-                      icon: const Icon(Icons.auto_awesome_rounded),
-                      isLoading: _isGenerating,
-                      onPressed:
-                          _isGenerating ? null : _generateRecommendations,
-                    );
-
-                    if (constraints.maxWidth < 380) {
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const StatusChip(
-                            label: 'Based on latest analysis',
-                            icon: Icons.auto_awesome_rounded,
-                            tone: StatusChipTone.accent,
-                          ),
-                          const SizedBox(height: AppSpacing.sm),
-                          SizedBox(width: double.infinity, child: button),
-                        ],
-                      );
-                    }
-
-                    return Row(
+    return ColoredBox(
+      color: AppColors.pageBackground,
+      child: SafeArea(
+        bottom: false,
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 460),
+            child: RefreshIndicator(
+              color: AppColors.primaryDark,
+              onRefresh: _fetchLatestRecommendations,
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.only(
+                  bottom: AppSpacing.pageBottomPaddingWithActions,
+                ),
+                children: [
+                  StitchTopBar(
+                    avatarUrl: appState.user?.avatarUrl,
+                    onLeadingTap: () =>
+                        MainShell.navigateToTab(context, AppRoutes.profile),
+                    onTrailingTap: _isGenerating
+                        ? null
+                        : _generateRecommendations,
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.pagePadding,
+                      4,
+                      AppSpacing.pagePadding,
+                      0,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Expanded(
-                          child: Align(
-                            alignment: Alignment.centerLeft,
-                            child: StatusChip(
-                              label: 'Based on latest analysis',
-                              icon: Icons.auto_awesome_rounded,
+                        Text(
+                          'Recommended for You',
+                          style: Theme.of(context).textTheme.headlineSmall
+                              ?.copyWith(fontWeight: FontWeight.w800),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          recommendation?.generatedAt == null
+                              ? 'Based on AI analysis and your skin profile.'
+                              : 'Based on AI analysis from ${_formatGeneratedAt(recommendation!.generatedAt!)}',
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(color: AppColors.foreground),
+                        ),
+                        const SizedBox(height: AppSpacing.sm),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: AppButton(
+                            label: recommendation?.hasRecommendation == true
+                                ? 'Refresh'
+                                : 'Generate',
+                            expand: false,
+                            icon: const Icon(Icons.auto_awesome_rounded),
+                            isLoading: _isGenerating,
+                            onPressed: _isGenerating
+                                ? null
+                                : _generateRecommendations,
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.md),
+                        _HorizontalChipStrip(
+                          children: [
+                            StatusChip(
+                              label:
+                                  profileSummary?.skinType ??
+                                  _friendlyText(appState.profile?.skinType),
+                              icon: Icons.spa_outlined,
                               tone: StatusChipTone.accent,
                             ),
+                            StatusChip(
+                              label: _concernSummary(
+                                profileSummary?.concerns ??
+                                    appState.profile?.concerns ??
+                                    const [],
+                              ),
+                              icon: Icons.psychology_alt_outlined,
+                            ),
+                            StatusChip(
+                              label: _friendlyText(
+                                appState.profile?.budgetLabel,
+                              ),
+                              icon: Icons.payments_outlined,
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: AppSpacing.md),
+                        CategoryChipBar<_CategoryTab>(
+                          items: _tabs,
+                          selected: _tabs.firstWhere(
+                            (tab) => tab.key == _selectedCategory,
+                          ),
+                          labelBuilder: (tab) => tab.label,
+                          onSelected: (tab) =>
+                              setState(() => _selectedCategory = tab.key),
+                        ),
+                        const SizedBox(height: AppSpacing.md),
+                        if (_isGenerating)
+                          const _InlineNotice(
+                            message:
+                                'Ranking products from your saved catalog...',
+                          ),
+                        if (widget.args.showGeneratePrompt &&
+                            recommendation?.hasRecommendation != true &&
+                            !_isGenerating)
+                          const _InlineNotice(
+                            message:
+                                'Your latest skin analysis is ready. Tap Generate to create a saved recommendation session.',
+                          ),
+                        if (recommendation?.summary?.trim().isNotEmpty == true)
+                          _InlineNotice(message: recommendation!.summary!),
+                        if ((_isGenerating ||
+                                widget.args.showGeneratePrompt ||
+                                recommendation?.summary?.trim().isNotEmpty ==
+                                    true) &&
+                            !_loading)
+                          const SizedBox(height: AppSpacing.md),
+                        if (_loading && recommendation == null)
+                          const _ProductsLoadingState()
+                        else if (_errorMessage != null &&
+                            recommendation == null)
+                          ErrorStateCard(
+                            title: 'Recommendations could not load',
+                            description: _errorMessage!,
+                            ctaLabel: 'Try again',
+                            onCta: _fetchLatestRecommendations,
+                          )
+                        else if (recommendation == null ||
+                            recommendation.hasRecommendation == false)
+                          EmptyStateCard(
+                            icon: Icons.shopping_bag_outlined,
+                            title: 'No saved recommendations yet',
+                            description:
+                                recommendation?.message ??
+                                'Products only show your latest saved recommendation session here.',
+                            ctaLabel:
+                                appState.latestAnalysis?.canGenerateProducts ==
+                                    true
+                                ? 'Generate recommendations'
+                                : 'Analyze skin',
+                            onCta: () {
+                              if (appState
+                                      .latestAnalysis
+                                      ?.canGenerateProducts ==
+                                  true) {
+                                _generateRecommendations();
+                                return;
+                              }
+                              Navigator.pushNamed(context, AppRoutes.upload);
+                            },
+                          )
+                        else if (category.items.isEmpty)
+                          EmptyStateCard(
+                            icon: Icons.inventory_2_outlined,
+                            title:
+                                'No ${category.label.toLowerCase()} matches yet',
+                            description:
+                                recommendation.message?.trim().isNotEmpty ==
+                                    true
+                                ? recommendation.message!
+                                : 'Refresh suggestions when your skin context changes.',
+                            ctaLabel: 'Generate recommendations',
+                            onCta: _generateRecommendations,
+                          )
+                        else ...[
+                          if (category.reason.trim().isNotEmpty) ...[
+                            AppCard(
+                              variant: AppCardVariant.accent,
+                              padding: const EdgeInsets.all(12),
+                              child: Text(
+                                category.reason,
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                            ),
+                            const SizedBox(height: AppSpacing.md),
+                          ],
+                          ...category.items.map(
+                            (item) => Padding(
+                              padding: const EdgeInsets.only(
+                                bottom: AppSpacing.md,
+                              ),
+                              child: ProductRecommendationCard(
+                                item: item,
+                                onViewDetails: () => _viewDetails(item),
+                                onAddToRoutine: () => _openAddToRoutine(item),
+                                onCheckIngredients: () =>
+                                    _checkIngredients(item),
+                              ),
+                            ),
+                          ),
+                          if (!hasAnyItems &&
+                              recommendation.message?.trim().isNotEmpty == true)
+                            EmptyStateCard(
+                              icon: Icons.inventory_2_outlined,
+                              title: 'No recommendations yet',
+                              description: recommendation.message!,
+                              ctaLabel: 'Generate recommendations',
+                              onCta: _generateRecommendations,
+                            ),
+                        ],
+                        const SizedBox(height: AppSpacing.sm),
+                        Center(
+                          child: AppButton(
+                            label: 'Refresh All Suggestions',
+                            expand: false,
+                            variant: AppButtonVariant.secondary,
+                            icon: const Icon(Icons.refresh_rounded),
+                            isLoading: _isGenerating,
+                            onPressed: _isGenerating
+                                ? null
+                                : _generateRecommendations,
                           ),
                         ),
-                        const SizedBox(width: AppSpacing.sm),
-                        button,
                       ],
-                    );
-                  },
-                ),
-                const SizedBox(height: AppSpacing.md),
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    final cards = [
-                      MetricCard(
-                        label: 'Skin Health',
-                        value: appState.latestAnalysis?.displaySkinHealthScore == null
-                            ? 'Not yet'
-                            : '${appState.latestAnalysis!.displaySkinHealthScore}/100',
-                        icon: Icons.favorite_border_rounded,
-                      ),
-                      MetricCard(
-                        label: 'Visible Concern',
-                        value:
-                            appState.latestAnalysis?.displayConcernSeverity == null
-                                ? 'Not yet'
-                                : '${appState.latestAnalysis!.displayConcernSeverity}/100',
-                        icon: Icons.monitor_heart_outlined,
-                      ),
-                      MetricCard(
-                        label: 'Confidence',
-                        value:
-                            '${appState.latestAnalysis?.displayConfidencePercent ?? 0}%',
-                        icon: Icons.verified_outlined,
-                      ),
-                      MetricCard(
-                        label: 'Skin type',
-                        value: profileSummary?.skinType ??
-                            _friendlyText(appState.profile?.skinType),
-                        icon: Icons.spa_outlined,
-                      ),
-                      MetricCard(
-                        label: 'Main concern',
-                        value: _concernSummary(
-                          profileSummary?.concerns ??
-                              appState.profile?.concerns ??
-                              const [],
-                        ),
-                        icon: Icons.psychology_alt_outlined,
-                      ),
-                      MetricCard(
-                        label: 'Last generated',
-                        value: recommendation?.generatedAt == null
-                            ? 'Not yet'
-                            : _formatGeneratedAt(recommendation!.generatedAt!),
-                        icon: Icons.history_rounded,
-                      ),
-                    ];
-                    return Wrap(
-                      spacing: AppSpacing.sm,
-                      runSpacing: AppSpacing.sm,
-                      children: cards
-                          .map(
-                            (card) => SizedBox(
-                              width: constraints.maxWidth < 360
-                                  ? constraints.maxWidth
-                                  : (constraints.maxWidth - AppSpacing.sm) / 2,
-                              child: card,
-                            ),
-                          )
-                          .toList(),
-                    );
-                  },
-                ),
-                if (_isGenerating) ...[
-                  const SizedBox(height: AppSpacing.md),
-                  const _InlineNotice(
-                    message: 'Ranking real products from your database...',
+                    ),
                   ),
                 ],
-                if (widget.args.showGeneratePrompt &&
-                    recommendation?.hasRecommendation != true &&
-                    !_isGenerating) ...[
-                  const SizedBox(height: AppSpacing.md),
-                  const _InlineNotice(message: 'Ready to generate recommendations.'),
-                ],
-                if (recommendation?.summary?.trim().isNotEmpty == true) ...[
-                  const SizedBox(height: AppSpacing.md),
-                  _InlineNotice(message: recommendation!.summary!),
-                ],
-              ],
+              ),
             ),
           ),
-          const SizedBox(height: AppSpacing.sectionGap),
-          if (_loading && recommendation == null)
-            const _ProductsLoadingState()
-          else if (_errorMessage != null && recommendation == null)
-            ErrorStateCard(
-              title: 'Recommendations could not load',
-              description: _errorMessage!,
-              ctaLabel: 'Try again',
-              onCta: _fetchLatestRecommendations,
-            )
-          else if (recommendation == null || recommendation.hasRecommendation == false)
-            EmptyStateCard(
-              icon: Icons.shopping_bag_outlined,
-              title: 'No saved recommendations yet',
-                description:
-                    recommendation?.message ?? 'Ready to generate recommendations.',
-              ctaLabel: 'Generate Recommendations',
-              onCta: () {
-                if (appState.latestAnalysis?.canGenerateProducts == true) {
-                  _generateRecommendations();
-                  return;
-                }
-                Navigator.pushNamed(context, AppRoutes.upload);
-              },
-              secondaryLabel: 'Analyze Skin',
-              onSecondary: () => Navigator.pushNamed(context, AppRoutes.upload),
-            )
-          else ...[
-            SectionHeader(
-              icon: Icons.tune_rounded,
-              title: 'Browse by category',
-            ),
-            const SizedBox(height: AppSpacing.md),
-            CategoryChipBar<_CategoryTab>(
-              items: _tabs,
-              selected: _tabs.firstWhere((tab) => tab.key == _selectedCategory),
-              labelBuilder: (tab) => tab.label,
-              iconBuilder: (tab) => tab.icon,
-              onSelected: (tab) => setState(() => _selectedCategory = tab.key),
-            ),
-            const SizedBox(height: AppSpacing.sectionGap),
-            if (category.reason.trim().isNotEmpty)
-              AppCard(
-                variant: AppCardVariant.accent,
-                child: Text(
-                  category.reason,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppColors.primaryDark,
-                      ),
-                ),
-              ),
-            if (category.reason.trim().isNotEmpty)
-              const SizedBox(height: AppSpacing.md),
-            if (category.items.isEmpty)
-              EmptyStateCard(
-                icon: Icons.inventory_2_outlined,
-                title: 'No ${category.label.toLowerCase()} matches yet',
-                description: 'Try another category.',
-                ctaLabel: 'Refresh Recommendations',
-                onCta: _generateRecommendations,
-              )
-            else
-              ...category.items.map(
-                (item) => Padding(
-                  padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                  child: ProductRecommendationCard(
-                    item: item,
-                    onViewDetails: () => _viewDetails(item),
-                    onAddToRoutine: () => _openAddToRoutine(item),
-                    onCheckIngredients: () => _checkIngredients(item),
-                  ),
-                ),
-              ),
-            if (!hasAnyItems && recommendation.message?.trim().isNotEmpty == true) ...[
-              const SizedBox(height: AppSpacing.md),
-              EmptyStateCard(
-                icon: Icons.inventory_2_outlined,
-                title: 'No recommendations yet',
-                description: recommendation.message!,
-                ctaLabel: 'Generate Recommendations',
-                onCta: _generateRecommendations,
-              ),
-            ],
-          ],
-        ],
+        ),
       ),
     );
   }
@@ -718,7 +716,10 @@ class _ProductsPageState extends State<ProductsPage> {
   }
 
   String _concernSummary(List<String> concerns) {
-    final cleaned = concerns.where((item) => item.trim().isNotEmpty).take(2).toList();
+    final cleaned = concerns
+        .where((item) => item.trim().isNotEmpty)
+        .take(2)
+        .toList();
     return cleaned.isEmpty ? 'Not provided yet' : cleaned.join(', ');
   }
 }
@@ -729,6 +730,30 @@ class _CategoryTab {
   final String key;
   final String label;
   final IconData icon;
+}
+
+class _HorizontalChipStrip extends StatelessWidget {
+  const _HorizontalChipStrip({required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      clipBehavior: Clip.none,
+      physics: const BouncingScrollPhysics(),
+      child: Row(
+        children: [
+          for (var index = 0; index < children.length; index++) ...[
+            children[index],
+            if (index != children.length - 1)
+              const SizedBox(width: AppSpacing.xs),
+          ],
+        ],
+      ),
+    );
+  }
 }
 
 class _ProductsLoadingState extends StatelessWidget {
@@ -754,10 +779,7 @@ class _ProductsLoadingState extends StatelessWidget {
 }
 
 class _RoutineTargetSelector extends StatelessWidget {
-  const _RoutineTargetSelector({
-    required this.value,
-    required this.onChanged,
-  });
+  const _RoutineTargetSelector({required this.value, required this.onChanged});
 
   final String value;
   final ValueChanged<String> onChanged;
@@ -778,8 +800,7 @@ class _RoutineTargetSelector extends StatelessWidget {
                 onTap: () => onChanged(options[i]),
               ),
             ),
-            if (i != options.length - 1)
-              const SizedBox(width: AppSpacing.xs),
+            if (i != options.length - 1) const SizedBox(width: AppSpacing.xs),
           ],
         ],
       ),
@@ -845,19 +866,16 @@ class _InlineNotice extends StatelessWidget {
       child: Text(
         message,
         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: AppColors.primaryDark,
-              height: 1.5,
-            ),
+          color: AppColors.primaryDark,
+          height: 1.5,
+        ),
       ),
     );
   }
 }
 
 class _DetailBlock extends StatelessWidget {
-  const _DetailBlock({
-    required this.title,
-    required this.body,
-  });
+  const _DetailBlock({required this.title, required this.body});
 
   final String title;
   final String body;
@@ -869,9 +887,9 @@ class _DetailBlock extends StatelessWidget {
       children: [
         Text(
           title,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w700,
-          ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: AppSpacing.xs),
         Text(body, style: Theme.of(context).textTheme.bodyMedium),
@@ -881,10 +899,7 @@ class _DetailBlock extends StatelessWidget {
 }
 
 class _SheetFrame extends StatelessWidget {
-  const _SheetFrame({
-    required this.title,
-    required this.child,
-  });
+  const _SheetFrame({required this.title, required this.child});
 
   final String title;
   final Widget child;
@@ -946,7 +961,7 @@ class _ConflictWarningSheet extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '${warning.productAName} × ${warning.productBName}',
+                      '${warning.productAName} x ${warning.productBName}',
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
