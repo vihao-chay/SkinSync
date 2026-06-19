@@ -111,6 +111,15 @@ public class ProductRepository : IProductRepository
         return _dbContext.Products.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
     }
 
+    public Task<Product?> GetDetailByIdAsync(Guid id, CancellationToken cancellationToken)
+    {
+        return _dbContext.Products
+            .AsNoTracking()
+            .Include(x => x.ProductIngredients)
+            .ThenInclude(x => x.Ingredient)
+            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+    }
+
     public async Task AddAsync(Product product, CancellationToken cancellationToken)
     {
         _dbContext.Products.Add(product);

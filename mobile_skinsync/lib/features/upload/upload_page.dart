@@ -8,9 +8,8 @@ import '../../core/models/app_models.dart';
 import '../../core/routes/app_routes.dart';
 import '../../core/state/app_state.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
-import '../../core/widgets/app_button.dart';
-import '../../core/widgets/app_card.dart';
 import '../../core/widgets/app_scaffold.dart';
 
 class UploadPage extends StatefulWidget {
@@ -38,6 +37,7 @@ class _UploadPageState extends State<UploadPage> {
           ? 'Analyze a fresh photo and save it straight into your skin progress timeline.'
           : 'Use a clear portrait in natural light for the best AI read.',
       compactHeader: true,
+      showBackButton: true,
       body: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(
@@ -47,149 +47,85 @@ class _UploadPageState extends State<UploadPage> {
           AppSpacing.pageBottomPaddingWithActions,
         ),
         children: [
-          AppCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  isProgressFlow
-                      ? 'Today\'s scan preview'
-                      : 'Upload your skin photo',
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  'Keep your face centered, avoid heavy filters, and let SkinSync read your skin clearly.',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppColors.mutedText,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                Container(
-                  width: double.infinity,
-                  height: 300,
-                  decoration: BoxDecoration(
-                    color: AppColors.secondary,
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: _selectedImage == null
-                      ? Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(
-                              Icons.add_a_photo_outlined,
-                              size: 52,
-                              color: AppColors.primaryDark,
-                            ),
-                            const SizedBox(height: 12),
-                            Text(
-                              'Take a photo or choose from gallery',
-                              style: Theme.of(context).textTheme.bodyMedium,
-                            ),
-                          ],
-                        )
-                      : ClipRRect(
-                          borderRadius: BorderRadius.circular(24),
-                          child: Image.file(
-                            _selectedImage!,
-                            fit: BoxFit.cover,
-                          ),
-                        ),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                const _TipRow(
-                  icon: Icons.light_mode_outlined,
-                  text: 'Good lighting',
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                const _TipRow(
-                  icon: Icons.face_rounded,
-                  text: 'Face forward',
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                const _TipRow(
-                  icon: Icons.filter_alt_off_outlined,
-                  text: 'No heavy filter',
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    if (constraints.maxWidth < 360) {
-                      return Column(
-                        children: [
-                          AppButton(
-                            label: 'Take photo',
-                            variant: AppButtonVariant.secondary,
-                            icon: const Icon(Icons.camera_alt_outlined),
-                            onPressed: appState.isBusy
-                                ? null
-                                : () => _pickImage(ImageSource.camera),
-                          ),
-                          const SizedBox(height: AppSpacing.sm),
-                          AppButton(
-                            label: 'Choose gallery',
-                            variant: AppButtonVariant.secondary,
-                            icon: const Icon(Icons.photo_library_outlined),
-                            onPressed: appState.isBusy
-                                ? null
-                                : () => _pickImage(ImageSource.gallery),
-                          ),
-                        ],
-                      );
-                    }
-
-                    return Row(
-                      children: [
-                        Expanded(
-                          child: AppButton(
-                            label: 'Take photo',
-                            variant: AppButtonVariant.secondary,
-                            icon: const Icon(Icons.camera_alt_outlined),
-                            onPressed: appState.isBusy
-                                ? null
-                                : () => _pickImage(ImageSource.camera),
-                          ),
-                        ),
-                        const SizedBox(width: AppSpacing.sm),
-                        Expanded(
-                          child: AppButton(
-                            label: 'Choose gallery',
-                            variant: AppButtonVariant.secondary,
-                            icon: const Icon(Icons.photo_library_outlined),
-                            onPressed: appState.isBusy
-                                ? null
-                                : () => _pickImage(ImageSource.gallery),
-                          ),
-                        ),
-                      ],
-                    );
-                  },
-                ),
-                if (noticeMessage != null) ...[
-                  const SizedBox(height: AppSpacing.md),
-                  _NoticeBanner(message: noticeMessage),
-                ] else if (appState.errorMessage != null) ...[
-                  const SizedBox(height: AppSpacing.md),
-                  Text(
-                    appState.errorMessage!,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppColors.error,
-                    ),
-                  ),
-                ],
-                const SizedBox(height: AppSpacing.lg),
-                AppButton(
-                  label: 'Analyze skin',
-                  isLoading: appState.isBusy,
-                  onPressed: _selectedImage == null || appState.isBusy
-                      ? null
-                      : _analyzeSkin,
-                ),
-              ],
+          Text(
+            isProgressFlow ? 'Today\'s scan preview' : 'High-quality photos',
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: AppColors.heading,
+              fontWeight: FontWeight.w700,
             ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          _UploadPickerCard(
+            selectedImage: _selectedImage,
+            onTap: appState.isBusy
+                ? null
+                : () => _pickImage(ImageSource.gallery),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Text(
+            'Tips for best results'.toUpperCase(),
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: AppColors.heading,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          const _TipRow(
+            icon: Icons.light_mode_outlined,
+            text: 'Good lighting, preferably natural daylight',
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          const _TipRow(
+            icon: Icons.face_rounded,
+            text: 'Face forward directly at the camera',
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          const _TipRow(
+            icon: Icons.filter_alt_off_outlined,
+            text: 'No heavy makeup or filters applied',
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            children: [
+              Expanded(
+                child: _CompactOutlineAction(
+                  label: 'Take photo',
+                  icon: Icons.camera_alt_outlined,
+                  onPressed: appState.isBusy
+                      ? null
+                      : () => _pickImage(ImageSource.camera),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.xs),
+              Expanded(
+                child: _CompactOutlineAction(
+                  label: 'Choose gallery',
+                  icon: Icons.photo_library_outlined,
+                  onPressed: appState.isBusy
+                      ? null
+                      : () => _pickImage(ImageSource.gallery),
+                ),
+              ),
+            ],
+          ),
+          if (noticeMessage != null) ...[
+            const SizedBox(height: AppSpacing.md),
+            _NoticeBanner(message: noticeMessage),
+          ] else if (appState.errorMessage != null) ...[
+            const SizedBox(height: AppSpacing.md),
+            Text(
+              appState.errorMessage!,
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: AppColors.error),
+            ),
+          ],
+          const SizedBox(height: AppSpacing.xl),
+          _AnalyzeButton(
+            isLoading: appState.isBusy,
+            onPressed: _selectedImage == null || appState.isBusy
+                ? null
+                : _analyzeSkin,
           ),
         ],
       ),
@@ -234,6 +170,187 @@ class _UploadPageState extends State<UploadPage> {
       }
       setState(() {});
     }
+  }
+}
+
+class _UploadPickerCard extends StatelessWidget {
+  const _UploadPickerCard({required this.selectedImage, required this.onTap});
+
+  final File? selectedImage;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.surfaceMuted.withValues(alpha: 0.46),
+      borderRadius: BorderRadius.circular(AppRadius.small),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: CustomPaint(
+          painter: _DashedBorderPainter(
+            color: AppColors.border,
+            radius: AppRadius.small,
+          ),
+          child: SizedBox(
+            width: double.infinity,
+            height: 166,
+            child: selectedImage == null
+                ? Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        width: 44,
+                        height: 44,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.foreground.withValues(
+                                alpha: 0.04,
+                              ),
+                              blurRadius: 14,
+                              offset: const Offset(0, 5),
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.camera_alt_outlined,
+                          size: 19,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      Text(
+                        'Tap to upload or take a photo',
+                        style: Theme.of(context).textTheme.labelMedium
+                            ?.copyWith(
+                              color: AppColors.heading,
+                              fontWeight: FontWeight.w600,
+                            ),
+                      ),
+                    ],
+                  )
+                : ClipRRect(
+                    borderRadius: BorderRadius.circular(AppRadius.small),
+                    child: Image.file(
+                      selectedImage!,
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                      height: double.infinity,
+                    ),
+                  ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DashedBorderPainter extends CustomPainter {
+  const _DashedBorderPainter({required this.color, required this.radius});
+
+  final Color color;
+  final double radius;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 1
+      ..style = PaintingStyle.stroke;
+    final rect = RRect.fromRectAndRadius(
+      Offset.zero & size,
+      Radius.circular(radius),
+    );
+    final path = Path()..addRRect(rect);
+    for (final metric in path.computeMetrics()) {
+      var distance = 0.0;
+      while (distance < metric.length) {
+        final next = distance + 5;
+        canvas.drawPath(metric.extractPath(distance, next), paint);
+        distance += 9;
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _DashedBorderPainter oldDelegate) {
+    return oldDelegate.color != color || oldDelegate.radius != radius;
+  }
+}
+
+class _CompactOutlineAction extends StatelessWidget {
+  const _CompactOutlineAction({
+    required this.label,
+    required this.icon,
+    required this.onPressed,
+  });
+
+  final String label;
+  final IconData icon;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return OutlinedButton.icon(
+      onPressed: onPressed,
+      icon: Icon(icon, size: 13),
+      label: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+      style: OutlinedButton.styleFrom(
+        minimumSize: const Size(0, 34),
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        textStyle: const TextStyle(
+          fontFamily: 'PlusJakartaSans',
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+        ),
+        side: BorderSide(color: AppColors.primary.withValues(alpha: 0.72)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.pill),
+        ),
+      ),
+    );
+  }
+}
+
+class _AnalyzeButton extends StatelessWidget {
+  const _AnalyzeButton({required this.isLoading, required this.onPressed});
+
+  final bool isLoading;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final isEnabled = onPressed != null && !isLoading;
+    return FilledButton(
+      onPressed: isLoading ? null : onPressed,
+      style: FilledButton.styleFrom(
+        minimumSize: const Size.fromHeight(38),
+        backgroundColor: isEnabled
+            ? AppColors.primary
+            : AppColors.primary.withValues(alpha: 0.34),
+        foregroundColor: AppColors.onPrimary,
+        disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.34),
+        disabledForegroundColor: AppColors.onPrimary.withValues(alpha: 0.9),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.pill),
+        ),
+        textStyle: const TextStyle(
+          fontFamily: 'PlusJakartaSans',
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+      child: isLoading
+          ? const SizedBox.square(
+              dimension: 16,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : const Text('Analyze skin'),
+    );
   }
 }
 
@@ -289,16 +406,35 @@ class _TipRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadius.small),
       ),
       child: Row(
         children: [
-          Icon(icon, color: AppColors.primaryDark, size: 20),
+          Container(
+            width: 24,
+            height: 24,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: AppColors.secondary,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: AppColors.primary, size: 14),
+          ),
           const SizedBox(width: 10),
-          Text(text, style: Theme.of(context).textTheme.bodyMedium),
+          Expanded(
+            child: Text(
+              text,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: AppColors.heading,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
         ],
       ),
     );

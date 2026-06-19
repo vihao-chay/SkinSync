@@ -33,7 +33,7 @@ class AppButton extends StatelessWidget {
         FilledButton.styleFrom(
           backgroundColor: backgroundColor,
           foregroundColor: foregroundColor,
-          minimumSize: const Size(0, 54),
+          minimumSize: const Size(0, 52),
           padding: const EdgeInsets.symmetric(
             horizontal: AppSpacing.pagePadding,
             vertical: 14,
@@ -41,7 +41,9 @@ class AppButton extends StatelessWidget {
           shape: baseShape,
         );
     final outlinedStyle = OutlinedButton.styleFrom(
-      minimumSize: const Size(0, 54),
+      foregroundColor: AppColors.primary,
+      side: BorderSide(color: AppColors.primary.withValues(alpha: 0.56)),
+      minimumSize: const Size(0, 52),
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.pagePadding,
         vertical: 14,

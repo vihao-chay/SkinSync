@@ -443,6 +443,12 @@ class AppState extends ChangeNotifier {
     return AiProductRecommendResponse.fromJson(data);
   }
 
+  Future<ProductDetail> getProductDetail(String productId) async {
+    final response = await _apiClient.get('/api/products/$productId');
+    final data = _readAiData(response);
+    return ProductDetail.fromJson(data);
+  }
+
   Future<AiIngredientCheckResponse> checkIngredients({
     required String productName,
     required String ingredientsText,
@@ -476,11 +482,18 @@ class AppState extends ChangeNotifier {
     required String productId,
     required String routineType,
     bool allowConflicts = false,
+    String? frequency,
+    String? notes,
   }) async {
     debugPrint('[SkinSync] routine add');
     final response = await _apiClient.post(
       '/api/ai/products/$productId/add-to-routine',
-      body: {'routineType': routineType, 'allowConflicts': allowConflicts},
+      body: {
+        'routineType': routineType,
+        'allowConflicts': allowConflicts,
+        if (frequency != null && frequency.trim().isNotEmpty) 'frequency': frequency,
+        if (notes != null && notes.trim().isNotEmpty) 'notes': notes,
+      },
     );
     final data = _readAiData(response);
     final parsed = AiAddProductToRoutineResponse.fromJson(data);
@@ -759,13 +772,15 @@ class AppState extends ChangeNotifier {
   Future<void> _loadLatestAnalysis() async {
     analysisLoadErrorMessage = null;
     String? pendingErrorMessage;
+    final existingAnalysis = latestAnalysis;
     try {
       final history = await _apiClient.get('/api/skin-analysis/history');
       final items = (history['items'] as List?) ?? const [];
       if (items.isNotEmpty && items.first is Map<String, dynamic>) {
-        latestAnalysis = _analysisResultFromAiResponse(
+        final candidate = _analysisResultFromAiResponse(
           items.first as Map<String, dynamic>,
         );
+        latestAnalysis = _mergeLatestAnalysis(existingAnalysis, candidate);
         return;
       }
     } on ApiException catch (error) {
@@ -781,9 +796,10 @@ class AppState extends ChangeNotifier {
     }
 
     try {
-      latestAnalysis = AnalysisResult.fromJson(
+      final candidate = AnalysisResult.fromJson(
         await _apiClient.get('/api/analysis/latest'),
       );
+      latestAnalysis = _mergeLatestAnalysis(existingAnalysis, candidate);
       analysisLoadErrorMessage = null;
     } on ApiException catch (error) {
       if (_isExpectedEmptyError(error)) {
@@ -1217,39 +1233,72 @@ class AppState extends ChangeNotifier {
         )
         .toList();
 
-    final confidenceValue = data['confidenceScore'];
-    final confidenceScore =
+    final confidenceValue = data['confidence'] ?? data['confidenceScore'];
+    final poorImageQuality = warnings.any(
+      (item) => item.trim().toLowerCase() == 'poor_image_quality',
+    );
+    final confidencePercent =
         (confidenceValue is num
                 ? (confidenceValue <= 1
                           ? confidenceValue * 100
                           : confidenceValue)
                       .round()
                 : concerns.isEmpty
-                ? 80
+                ? (poorImageQuality ? 40 : 82)
                 : (concerns
                               .map(
                                 (item) =>
-                                    (((item['confidence'] as num?) ?? 0.8) *
-                                            100)
-                                        .round(),
+                                    (((item['confidence'] as num?) ?? 0.8) > 1
+                                                ? ((item['confidence'] as num?) ?? 80)
+                                                : (((item['confidence'] as num?) ?? 0.8) * 100))
+                                            .round(),
                               )
                               .reduce((a, b) => a + b) ~/
                           concerns.length)
                       .clamp(0, 100))
             .toInt();
-    final overallScoreValue =
-        (data['skinScore'] ?? data['overallScore']) as num?;
-    final overallScore =
-        ((overallScoreValue?.round()) ??
-                (issues.isEmpty
-                    ? 88
-                    : (100 -
-                              (issues
-                                      .map((item) => item.severityScore)
-                                      .reduce((a, b) => a + b) ~/
-                                  issues.length))
-                          .clamp(0, 100)))
-            .toInt();
+    final legacySeverity =
+        (data['overallConcernSeverity'] ??
+                data['overallScore'] ??
+                data['skinScore']) as num?;
+    final skinHealthValue = data['skinHealthScore'] as num?;
+    final rawMetrics = data['metrics'] is Map<String, dynamic>
+        ? data['metrics'] as Map<String, dynamic>
+        : <String, dynamic>{};
+    final hasMeaningfulMetricSignal = _hasMeaningfulMetricSignal(rawMetrics, data);
+    final hasMeaningfulConcernSignal = concerns.any(
+      (item) =>
+          ((item['score'] as num?)?.round() ?? 0) > 0 ||
+          (item['evidence']?.toString().trim().isNotEmpty ?? false) ||
+          (item['description']?.toString().trim().isNotEmpty ?? false),
+    );
+    final hasMeaningfulScoreSignal =
+        legacySeverity != null || skinHealthValue != null;
+    final shouldHideFallbackScores =
+        !hasMeaningfulScoreSignal &&
+        !hasMeaningfulConcernSignal &&
+        !hasMeaningfulMetricSignal;
+    final resolvedMetrics = hasMeaningfulMetricSignal
+        ? (data['metrics'] is Map<String, dynamic>
+            ? AnalysisMetrics.fromJson(data['metrics'] as Map<String, dynamic>)
+            : AnalysisMetrics(
+                acne: (data['acneLevel'] as num?)?.round(),
+                redness: (data['rednessLevel'] as num?)?.round(),
+                oiliness: (data['oilinessLevel'] as num?)?.round(),
+                dryness: (data['drynessLevel'] as num?)?.round(),
+                moisture: (data['hydrationLevel'] as num?)?.round(),
+                texture: (data['textureLevel'] as num?)?.round(),
+              ))
+        : const AnalysisMetrics();
+    final overallConcernSeverity = shouldHideFallbackScores
+        ? null
+        : legacySeverity?.round();
+    final skinHealthScore = shouldHideFallbackScores
+        ? null
+        : skinHealthValue?.round() ??
+            (overallConcernSeverity == null
+                ? null
+                : (100 - overallConcernSeverity).clamp(0, 100));
 
     return AnalysisResult(
       id:
@@ -1267,9 +1316,13 @@ class AppState extends ChangeNotifier {
           data['skinTypeEstimate']?.toString() ??
           profile?.skinType ??
           'Unknown',
-      overallScore: overallScore,
-      confidenceScore: confidenceScore,
-      overview: (data['skinSummary'] ?? data['overview'])?.toString(),
+      overallScore: overallConcernSeverity,
+      skinHealthScore: skinHealthScore,
+      overallConcernSeverity: overallConcernSeverity,
+      confidenceScore: confidencePercent,
+      metrics: resolvedMetrics,
+      overview: (data['summary'] ?? data['skinSummary'] ?? data['overview'])
+          ?.toString(),
       disclaimer: data['disclaimer']?.toString(),
       warnings: warnings,
       issues: issues,
@@ -1287,6 +1340,74 @@ class AppState extends ChangeNotifier {
     );
   }
 
+  AnalysisResult _mergeLatestAnalysis(
+    AnalysisResult? existing,
+    AnalysisResult incoming,
+  ) {
+    if (existing == null) {
+      return incoming;
+    }
+
+    final sameAnalysis =
+        existing.id == incoming.id ||
+        (existing.analysisSessionId?.isNotEmpty == true &&
+            existing.analysisSessionId == incoming.analysisSessionId) ||
+        (existing.progressEntryId?.isNotEmpty == true &&
+            existing.progressEntryId == incoming.progressEntryId) ||
+        (existing.photoId?.isNotEmpty == true &&
+            existing.photoId == incoming.photoId);
+    if (!sameAnalysis) {
+      return incoming;
+    }
+
+    final incomingHasMetricDetail = _hasMetricDetail(incoming);
+    final existingHasMetricDetail = _hasMetricDetail(existing);
+    return AnalysisResult(
+      id: incoming.id,
+      analysisSessionId: incoming.analysisSessionId ?? existing.analysisSessionId,
+      progressEntryId: incoming.progressEntryId ?? existing.progressEntryId,
+      photoId: incoming.photoId ?? existing.photoId,
+      source: incoming.source ?? existing.source,
+      imageUrl: incoming.imageUrl.isNotEmpty ? incoming.imageUrl : existing.imageUrl,
+      skinType: incoming.skinType.trim().isNotEmpty ? incoming.skinType : existing.skinType,
+      overallScore: incoming.overallScore ?? existing.overallScore,
+      skinHealthScore: incoming.skinHealthScore ?? existing.skinHealthScore,
+      overallConcernSeverity:
+          incoming.overallConcernSeverity ?? existing.overallConcernSeverity,
+      confidenceScore: incoming.confidenceScore > 0
+          ? incoming.confidenceScore
+          : existing.confidenceScore,
+      metrics: incomingHasMetricDetail || !existingHasMetricDetail
+          ? incoming.metrics
+          : existing.metrics,
+      overview: (incoming.overview?.trim().isNotEmpty ?? false)
+          ? incoming.overview
+          : existing.overview,
+      disclaimer: (incoming.disclaimer?.trim().isNotEmpty ?? false)
+          ? incoming.disclaimer
+          : existing.disclaimer,
+      warnings: incoming.warnings.isNotEmpty ? incoming.warnings : existing.warnings,
+      issues: incoming.issues.isNotEmpty ? incoming.issues : existing.issues,
+      recommendations: incoming.recommendations.isNotEmpty
+          ? incoming.recommendations
+          : existing.recommendations,
+      canGenerateProducts: incoming.canGenerateProducts || existing.canGenerateProducts,
+    );
+  }
+
+  static bool _hasMetricDetail(AnalysisResult value) {
+    final metrics = value.metrics;
+    return <int?>[
+          metrics.acne,
+          metrics.redness,
+          metrics.oiliness,
+          metrics.dryness,
+          metrics.moisture,
+          metrics.texture,
+        ].any((item) => item != null && item > 0) ||
+        value.issues.isNotEmpty;
+  }
+
   int _severityToScore(String severity) {
     switch (severity.trim().toLowerCase()) {
       case 'high':
@@ -1296,6 +1417,29 @@ class AppState extends ChangeNotifier {
       default:
         return 35;
     }
+  }
+
+  static bool _hasMeaningfulMetricSignal(
+    Map<String, dynamic> metrics,
+    Map<String, dynamic> data,
+  ) {
+    final metricValues = <num?>[
+      metrics['acne'] as num?,
+      metrics['redness'] as num?,
+      metrics['oiliness'] as num?,
+      metrics['dryness'] as num?,
+      metrics['moisture'] as num?,
+      metrics['texture'] as num?,
+      data['acneLevel'] as num?,
+      data['rednessLevel'] as num?,
+      data['oilinessLevel'] as num?,
+      data['drynessLevel'] as num?,
+      data['hydrationLevel'] as num?,
+      data['textureLevel'] as num?,
+      data['darkSpotLevel'] as num?,
+    ];
+
+    return metricValues.any((value) => (value?.round() ?? 0) > 0);
   }
 
   String _mapRoutinePreference(String? value) {

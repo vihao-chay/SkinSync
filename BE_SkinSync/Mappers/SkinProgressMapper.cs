@@ -51,15 +51,21 @@ public static class SkinProgressMapper
             SkinTypeEstimate = analysis.SkinTypeEstimate,
             HydrationLevel = analysis.HydrationLevel,
             OilinessLevel = analysis.OilinessLevel,
+            SkinHealthScore = ResolveSkinHealthScore(analysis),
+            OverallConcernSeverity = ResolveOverallConcernSeverity(analysis),
+            Confidence = ResolveConfidence(analysis.ConfidenceScore),
+            Metrics = BuildMetrics(analysis),
             Scores = ParseScoreSet(analysis),
             DetectedConcerns = ParseConcernArray(analysis.DetectedConcerns),
             AiSummary = analysis.AiSummary,
+            Summary = analysis.AiSummary,
             Recommendations = ParseRecommendationArray(analysis.Recommendations),
             RoutineSuggestions = ParseRoutineSuggestions(analysis.RoutineSuggestions),
             ProductSuggestions = ParseProductSuggestionArray(analysis.ProductSuggestions),
             SafetyNotes = ParseStringArray(analysis.SafetyNotes),
             RiskFlags = ParseStringArray(analysis.RiskFlags),
             Disclaimer = "AI analysis is for skincare tracking only and is not a medical diagnosis.",
+            SafetyNote = ResolveSafetyNote(analysis),
             ConfidenceScore = analysis.ConfidenceScore,
             ErrorMessage = analysis.ErrorMessage,
             CreatedAt = analysis.CreatedAt,
@@ -79,7 +85,7 @@ public static class SkinProgressMapper
             Status = analysis?.Status ?? "pending",
             ImageUrl = photo.ImageUrl,
             ThumbnailUrl = photo.ThumbnailUrl,
-            SkinScore = analysis?.OverallScore,
+            SkinScore = analysis is null ? null : ResolveOverallConcernSeverity(analysis),
             AcneLevel = analysis?.AcneScore,
             RednessLevel = analysis?.RednessScore,
             DarkSpotLevel = analysis?.DarkSpotScore,
@@ -199,8 +205,53 @@ public static class SkinProgressMapper
             DrynessScore = analysis.DrynessScore,
             TextureScore = analysis.TextureScore,
             SensitivityScore = analysis.SensitivityScore,
-            OverallScore = analysis.OverallScore
+            OverallScore = ResolveOverallConcernSeverity(analysis)
         };
+    }
+
+    private static SkinProgressMetricsDto BuildMetrics(SkinProgressAnalysis analysis)
+    {
+        return new SkinProgressMetricsDto
+        {
+            Acne = analysis.AcneScore,
+            Redness = analysis.RednessScore,
+            Oiliness = analysis.OilinessScore,
+            Dryness = analysis.DrynessScore,
+            Moisture = ResolveMoistureScore(analysis),
+            Texture = analysis.TextureScore
+        };
+    }
+
+    private static int ResolveSkinHealthScore(SkinProgressAnalysis analysis)
+    {
+        var severity = ResolveOverallConcernSeverity(analysis);
+        return analysis.SkinHealthScore ?? Math.Clamp(100 - severity, 0, 100);
+    }
+
+    private static int ResolveOverallConcernSeverity(SkinProgressAnalysis analysis) =>
+        analysis.OverallConcernSeverity ?? analysis.OverallScore;
+
+    private static int ResolveConfidence(decimal? confidenceScore)
+    {
+        if (!confidenceScore.HasValue)
+        {
+            return 82;
+        }
+
+        var raw = confidenceScore.Value <= 1m ? confidenceScore.Value * 100m : confidenceScore.Value;
+        return Math.Clamp((int)Math.Round(raw), 0, 100);
+    }
+
+    private static int ResolveMoistureScore(SkinProgressAnalysis analysis)
+    {
+        var parsed = ParseHydrationScore(analysis.HydrationLevel);
+        return parsed ?? Math.Clamp(100 - analysis.DrynessScore, 0, 100);
+    }
+
+    private static string ResolveSafetyNote(SkinProgressAnalysis analysis)
+    {
+        return ParseStringArray(analysis.SafetyNotes).FirstOrDefault()
+            ?? "This is not a medical diagnosis. Consider a dermatologist if irritation, pain, or persistent symptoms occur.";
     }
 
     public static SkinProgressScoreChangesDto ParseScoreChanges(string raw)
@@ -249,6 +300,7 @@ public static class SkinProgressMapper
             var items = JsonSerializer.Deserialize<List<SkinProgressConcernDto>>(raw) ?? [];
             foreach (var item in items)
             {
+                item.Key = string.IsNullOrWhiteSpace(item.Key) ? item.Concern : item.Key;
                 item.Label = string.IsNullOrWhiteSpace(item.Label) ? Humanize(item.Concern) : item.Label;
             }
 
@@ -279,6 +331,7 @@ public static class SkinProgressMapper
                     Type = "routine",
                     Title = $"Recommendation {index + 1}",
                     Description = item,
+                    Reason = item,
                     Priority = "medium"
                 })
                 .ToList();

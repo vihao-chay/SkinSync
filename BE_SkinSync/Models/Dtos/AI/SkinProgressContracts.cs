@@ -46,14 +46,27 @@ public class SkinProgressScoreSetDto
     public int OverallScore { get; set; }
 }
 
+public class SkinProgressMetricsDto
+{
+    public int Acne { get; set; }
+    public int Redness { get; set; }
+    public int Oiliness { get; set; }
+    public int Dryness { get; set; }
+    public int Moisture { get; set; }
+    public int Texture { get; set; }
+}
+
 public class SkinProgressConcernDto
 {
+    public string Key { get; set; } = "unknown";
     public string Concern { get; set; } = "unknown";
     public string Label { get; set; } = string.Empty;
     public string Severity { get; set; } = "low";
     public int Score { get; set; }
     public double Confidence { get; set; }
     public string Description { get; set; } = string.Empty;
+    public string Evidence { get; set; } = string.Empty;
+    public string RecommendationPriority { get; set; } = "medium";
 }
 
 public class SkinProgressRecommendationDto
@@ -61,6 +74,7 @@ public class SkinProgressRecommendationDto
     public string Type { get; set; } = "routine";
     public string Title { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
+    public string Reason { get; set; } = string.Empty;
     public string Priority { get; set; } = "medium";
 }
 
@@ -89,17 +103,29 @@ public class SkinProgressAnalysisResponseDto
     public string? ThumbnailUrl { get; set; }
     public string? AiModel { get; set; }
     public string SkinTypeEstimate { get; set; } = "unknown";
+    /// <summary>Normalized text label from the AI response, not the public numeric moisture score.</summary>
     public string HydrationLevel { get; set; } = "unknown";
     public string OilinessLevel { get; set; } = "unknown";
+    /// <summary>Canonical health score. Higher is better.</summary>
+    public int SkinHealthScore { get; set; }
+    /// <summary>Canonical visible concern severity. Higher means worse visible concerns.</summary>
+    public int OverallConcernSeverity { get; set; }
+    /// <summary>Canonical confidence percent in the 0..100 range.</summary>
+    public int Confidence { get; set; }
+    public SkinProgressMetricsDto Metrics { get; set; } = new();
+    /// <summary>Legacy compatibility scores. OverallScore is always severity, not health.</summary>
     public SkinProgressScoreSetDto Scores { get; set; } = new();
     public IReadOnlyCollection<SkinProgressConcernDto> DetectedConcerns { get; set; } = Array.Empty<SkinProgressConcernDto>();
     public string AiSummary { get; set; } = string.Empty;
+    public string Summary { get; set; } = string.Empty;
     public IReadOnlyCollection<SkinProgressRecommendationDto> Recommendations { get; set; } = Array.Empty<SkinProgressRecommendationDto>();
     public SkinProgressRoutineSuggestionsDto RoutineSuggestions { get; set; } = new();
     public IReadOnlyCollection<SkinProgressProductSuggestionDto> ProductSuggestions { get; set; } = Array.Empty<SkinProgressProductSuggestionDto>();
     public IReadOnlyCollection<string> SafetyNotes { get; set; } = Array.Empty<string>();
     public IReadOnlyCollection<string> RiskFlags { get; set; } = Array.Empty<string>();
     public string Disclaimer { get; set; } = string.Empty;
+    public string SafetyNote { get; set; } = string.Empty;
+    /// <summary>Legacy compatibility ratio in the 0..1 range. Prefer <see cref="Confidence"/> for new UI.</summary>
     public decimal? ConfidenceScore { get; set; }
     public string? ErrorMessage { get; set; }
     public DateTime CreatedAt { get; set; }

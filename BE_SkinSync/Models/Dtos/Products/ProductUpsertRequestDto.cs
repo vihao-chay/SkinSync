@@ -19,11 +19,14 @@ public class ProductUpsertRequestDto
     public string? Description { get; set; }
     public string? Ingredient { get; set; }
     public string? UsageGuide { get; set; }
+    public string Currency { get; set; } = "VND";
 
     [Range(0, 999999)]
     public decimal Price { get; set; }
 
-    public string? SuitableSkinTypes { get; set; }
+    public IReadOnlyCollection<string> SuitableSkinTypes { get; set; } = Array.Empty<string>();
+    public IReadOnlyCollection<string> SkinConcerns { get; set; } = Array.Empty<string>();
+    public IReadOnlyCollection<string> KeyIngredients { get; set; } = Array.Empty<string>();
     public string? ImageUrl { get; set; }
 
     [Range(0, 5)]

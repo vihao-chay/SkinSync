@@ -74,6 +74,11 @@ flutter:
         - asset: assets/fonts/PlayfairDisplay.ttf
         - asset: assets/fonts/PlayfairDisplay-Italic.ttf
           style: italic
+    - family: PlusJakartaSans
+      fonts:
+        - asset: assets/fonts/PlusJakartaSans.ttf
+        - asset: assets/fonts/PlusJakartaSans-Italic.ttf
+          style: italic
     - family: Inter
       fonts:
         - asset: assets/fonts/Inter.ttf

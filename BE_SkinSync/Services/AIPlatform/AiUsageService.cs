@@ -32,6 +32,12 @@ public class AiUsageService : IAiUsageService
             throw new AiFeatureException("USER_NOT_FOUND", "User not found.", 404);
         }
 
+        // Temporary bypass for skin analysis quota while the team finalizes plan limits.
+        if (string.Equals(featureName, "skin_analysis", StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
         var access = await _subscriptionPlanService.GetFeatureAccessAsync(userId, featureName, cancellationToken);
         if (!access.IsEnabled || (!access.IsUnlimited && access.MonthlyLimit == 0))
         {

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../config/app_config.dart';
 import '../models/app_models.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_radius.dart';
 import '../theme/app_spacing.dart';
 import 'app_button.dart';
 import 'app_card.dart';
@@ -28,123 +29,146 @@ class ProductRecommendationCard extends StatelessWidget {
         ? item.whyRecommended!
         : item.aiReason;
     return AppCard(
+      padding: const EdgeInsets.all(10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          Stack(
             children: [
               _ProductThumb(item: item),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                item.name,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .titleMedium
-                                    ?.copyWith(fontWeight: FontWeight.w700),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                '${_friendly(item.brand)} • ${_friendly(item.category)}',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: Theme.of(context).textTheme.bodySmall,
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        _MatchBadge(value: item.matchPercent ?? item.matchScore),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      reason,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppColors.mutedText,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Wrap(
-                      spacing: AppSpacing.xs,
-                      runSpacing: AppSpacing.xs,
-                      children: [
-                        if (item.alreadyInRoutine)
-                          const StatusChip(
-                            label: 'Already in routine',
-                            icon: Icons.check_circle_outline_rounded,
-                            tone: StatusChipTone.success,
-                          ),
-                        ...((item.cautions.isNotEmpty
-                                ? item.cautions
-                                : item.warnings)
-                            .take(1)
-                            .map(
-                              (warning) => StatusChip(
-                                label: warning,
-                                icon: Icons.warning_amber_rounded,
-                                tone: StatusChipTone.warning,
-                              ),
-                            )),
-                      ],
-                    ),
-                  ],
+              Positioned(
+                left: 10,
+                top: 10,
+                child: _ConfidenceBadge(
+                  value: item.matchPercent ?? item.matchScore,
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  '${item.price.toStringAsFixed(0)} ${item.currency}',
-                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    color: AppColors.primaryDark,
-                    fontWeight: FontWeight.w800,
-                    fontFeatures: const [FontFeature.tabularFigures()],
+              if (item.alreadyInRoutine)
+                const Positioned(
+                  right: 10,
+                  top: 10,
+                  child: StatusChip(
+                    label: 'In routine',
+                    icon: Icons.check_circle_outline_rounded,
+                    tone: StatusChipTone.success,
                   ),
                 ),
-              ),
-              TextButton(
-                onPressed: onViewDetails,
-                child: const Text('Details'),
-              ),
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                child: AppButton(
-                  label: 'Check ingredients',
-                  variant: AppButtonVariant.secondary,
-                  onPressed: onCheckIngredients,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _friendly(item.brand).toUpperCase(),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: AppColors.heading,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    Text(
+                      item.name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Text(
+                _priceLabel(item),
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  color: AppColors.primaryDark,
+                  fontFamily: 'PlusJakartaSans',
+                  fontWeight: FontWeight.w900,
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceMuted,
+              borderRadius: BorderRadius.circular(AppRadius.medium),
+              border: Border.all(
+                color: AppColors.border.withValues(alpha: 0.7),
+              ),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(
+                  Icons.psychology_alt_outlined,
+                  size: 18,
+                  color: AppColors.primaryDark,
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Text(
+                    reason,
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: AppColors.heading,
+                      height: 1.45,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (item.cautions.isNotEmpty || item.warnings.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Wrap(
+              spacing: AppSpacing.xs,
+              runSpacing: AppSpacing.xs,
+              children:
+                  (item.cautions.isNotEmpty ? item.cautions : item.warnings)
+                      .take(2)
+                      .map(
+                        (warning) => StatusChip(
+                          label: warning,
+                          icon: Icons.warning_amber_rounded,
+                          tone: StatusChipTone.warning,
+                        ),
+                      )
+                      .toList(),
+            ),
+          ],
+          const SizedBox(height: AppSpacing.sm),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: onViewDetails,
+                  child: const Text('Details'),
                 ),
               ),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
-                child: AppButton(
-                  label: 'Add',
-                  onPressed: onAddToRoutine,
+                child: OutlinedButton(
+                  onPressed: onCheckIngredients,
+                  child: const Text('Ingredients'),
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          AppButton(
+            label: item.alreadyInRoutine ? 'View in Routine' : 'Add to Routine',
+            onPressed: onAddToRoutine,
           ),
         ],
       ),
@@ -153,6 +177,14 @@ class ProductRecommendationCard extends StatelessWidget {
 
   String _friendly(String value) {
     return value.trim().isEmpty ? 'Not provided yet' : value;
+  }
+
+  String _priceLabel(AiRecommendedProduct item) {
+    final value = item.price <= 0 ? '0' : item.price.toStringAsFixed(0);
+    if (item.currency.toUpperCase() == 'VND') {
+      return '$value VND';
+    }
+    return '${item.currency} $value';
   }
 }
 
@@ -169,22 +201,24 @@ class _ProductThumb extends StatelessWidget {
         : (raw.startsWith('http') ? raw : '${AppConfig.apiBaseUrl}$raw');
 
     return ClipRRect(
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(AppRadius.medium),
       child: Container(
-        width: 76,
-        height: 76,
+        width: double.infinity,
+        height: 190,
         color: AppColors.surfaceStrong,
         child: url.isEmpty
             ? const Icon(
                 Icons.shopping_bag_outlined,
                 color: AppColors.primaryDark,
+                size: 34,
               )
             : Image.network(
                 url,
                 fit: BoxFit.cover,
-                errorBuilder: (_, error, stackTrace) => const Icon(
+                errorBuilder: (_, _, _) => const Icon(
                   Icons.image_not_supported_outlined,
                   color: AppColors.primaryDark,
+                  size: 34,
                 ),
               ),
       ),
@@ -192,34 +226,35 @@ class _ProductThumb extends StatelessWidget {
   }
 }
 
-class _MatchBadge extends StatelessWidget {
-  const _MatchBadge({required this.value});
+class _ConfidenceBadge extends StatelessWidget {
+  const _ConfidenceBadge({required this.value});
 
   final int value;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: AppColors.primaryDark,
-        borderRadius: BorderRadius.circular(18),
+        color: AppColors.secondary.withValues(alpha: 0.94),
+        borderRadius: BorderRadius.circular(AppRadius.pill),
+        border: Border.all(color: AppColors.border),
       ),
-      child: Column(
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            '$value%',
-            style: Theme.of(context).textTheme.labelLarge?.copyWith(
-              color: Colors.white,
-              fontFamily: 'Inter',
-              fontWeight: FontWeight.w800,
-              fontFeatures: const [FontFeature.tabularFigures()],
-            ),
+          const Icon(
+            Icons.auto_awesome_rounded,
+            size: 13,
+            color: AppColors.primaryDark,
           ),
+          const SizedBox(width: 4),
           Text(
-            'match',
+            '$value% match',
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: Colors.white.withValues(alpha: 0.84),
+              color: AppColors.primaryDark,
+              fontWeight: FontWeight.w900,
+              fontFeatures: const [FontFeature.tabularFigures()],
             ),
           ),
         ],

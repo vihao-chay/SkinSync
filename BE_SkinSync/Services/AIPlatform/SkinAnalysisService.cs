@@ -67,7 +67,7 @@ public class SkinAnalysisService : ISkinAnalysisService
     {
         var data = await _dbContext.SkinProgressAnalyses
             .AsNoTracking()
-            .Where(x => x.UserId == userId && x.Id == analysisId && x.DiscardedAt == null && x.Status != "discarded")
+            .Where(x => x.UserId == userId && x.Id == analysisId && x.DiscardedAt == null && x.Status == "completed")
             .Join(
                 _dbContext.SkinProgressPhotos.AsNoTracking(),
                 analysis => analysis.PhotoId,
@@ -83,7 +83,7 @@ public class SkinAnalysisService : ISkinAnalysisService
     {
         var items = await _dbContext.SkinProgressAnalyses
             .AsNoTracking()
-            .Where(x => x.UserId == userId && x.DiscardedAt == null && x.Status != "discarded")
+            .Where(x => x.UserId == userId && x.DiscardedAt == null && x.Status == "completed")
             .Join(
                 _dbContext.SkinProgressPhotos.AsNoTracking(),
                 analysis => analysis.PhotoId,
@@ -112,7 +112,7 @@ public class SkinAnalysisService : ISkinAnalysisService
     {
         var latest = await _dbContext.SkinProgressAnalyses
             .AsNoTracking()
-            .Where(x => x.UserId == userId && x.DiscardedAt == null && x.Status != "discarded")
+            .Where(x => x.UserId == userId && x.DiscardedAt == null && x.Status == "completed")
             .Join(
                 _dbContext.SkinProgressPhotos.AsNoTracking(),
                 analysis => analysis.PhotoId,
@@ -128,7 +128,7 @@ public class SkinAnalysisService : ISkinAnalysisService
     {
         var items = await _dbContext.SkinProgressAnalyses
             .AsNoTracking()
-            .Where(x => x.UserId == userId && x.DiscardedAt == null && x.Status != "discarded")
+            .Where(x => x.UserId == userId && x.DiscardedAt == null && x.Status == "completed")
             .OrderByDescending(x => x.CompletedAt ?? x.CreatedAt)
             .Select(x => new AnalysisHistoryItemDto
             {
@@ -150,7 +150,7 @@ public class SkinAnalysisService : ISkinAnalysisService
     {
         var data = await _dbContext.SkinProgressAnalyses
             .AsNoTracking()
-            .Where(x => x.UserId == userId && x.Id == analysisId && x.DiscardedAt == null && x.Status != "discarded")
+            .Where(x => x.UserId == userId && x.Id == analysisId && x.DiscardedAt == null && x.Status == "completed")
             .Join(
                 _dbContext.SkinProgressPhotos.AsNoTracking(),
                 analysis => analysis.PhotoId,
@@ -174,7 +174,19 @@ public class SkinAnalysisService : ISkinAnalysisService
             ImageUrl = analysis.ImageUrl,
             ThumbnailUrl = analysis.ThumbnailUrl,
             AiModel = analysis.AiModel,
-            SkinScore = analysis.Scores.OverallScore,
+            SkinHealthScore = analysis.SkinHealthScore,
+            OverallConcernSeverity = analysis.OverallConcernSeverity,
+            Confidence = analysis.Confidence,
+            Metrics = new AiSkinAnalysisMetricsDto
+            {
+                Acne = analysis.Metrics.Acne,
+                Redness = analysis.Metrics.Redness,
+                Oiliness = analysis.Metrics.Oiliness,
+                Dryness = analysis.Metrics.Dryness,
+                Moisture = analysis.Metrics.Moisture,
+                Texture = analysis.Metrics.Texture
+            },
+            SkinScore = analysis.OverallConcernSeverity,
             SkinType = analysis.SkinTypeEstimate,
             OilinessLevel = analysis.Scores.OilinessScore,
             DrynessLevel = analysis.Scores.DrynessScore,
@@ -185,14 +197,20 @@ public class SkinAnalysisService : ISkinAnalysisService
             PoreLevel = analysis.Scores.OilinessScore,
             WrinkleLevel = analysis.Scores.TextureScore,
             SensitivityLevel = analysis.Scores.SensitivityScore,
-            HydrationLevel = analysis.Scores.DrynessScore,
+            HydrationLevel = analysis.Metrics.Moisture,
             SkinSummary = analysis.AiSummary,
+            Summary = analysis.Summary,
             DetectedConcerns = analysis.DetectedConcerns.Select(concern => new AiDetectedConcernDto
             {
+                Key = concern.Key,
+                Label = concern.Label,
                 Concern = concern.Concern,
                 Severity = concern.Severity,
+                SeverityScore = concern.Score,
                 Confidence = concern.Confidence,
-                Description = concern.Description
+                Description = concern.Description,
+                Evidence = concern.Evidence,
+                RecommendationPriority = concern.RecommendationPriority
             }).ToList(),
             Recommendations = analysis.Recommendations,
             RoutineSuggestions = analysis.RoutineSuggestions,
@@ -200,6 +218,7 @@ public class SkinAnalysisService : ISkinAnalysisService
             SafetyNotes = analysis.SafetyNotes,
             RiskFlags = analysis.RiskFlags,
             Disclaimer = analysis.Disclaimer,
+            SafetyNote = analysis.SafetyNote,
             ConfidenceScore = analysis.ConfidenceScore,
             CanGenerateProducts = true,
             ErrorMessage = analysis.ErrorMessage,
@@ -219,7 +238,7 @@ public class SkinAnalysisService : ISkinAnalysisService
             UserId = analysis.UserId,
             ImageUrl = photo.ImageUrl,
             SkinType = analysis.SkinTypeEstimate,
-            OverallScore = analysis.OverallScore,
+            OverallScore = analysis.OverallConcernSeverity ?? analysis.OverallScore,
             ConfidenceScore = analysis.ConfidenceScore.HasValue
                 ? (int)Math.Round(analysis.ConfidenceScore.Value * 100m)
                 : 0,
@@ -230,7 +249,7 @@ public class SkinAnalysisService : ISkinAnalysisService
             IssuesDetected = analysis.DetectedConcerns,
             RootCauses = analysis.ParsedAiResponse,
             Overview = string.IsNullOrWhiteSpace(analysis.AiSummary)
-                ? $"Skin score {analysis.OverallScore}/100."
+                ? $"Visible concern level {(analysis.OverallConcernSeverity ?? analysis.OverallScore)}/100. Estimated skin health {ResolveSkinHealthScore(analysis)}/100."
                 : analysis.AiSummary,
             AiModel = analysis.AiModel,
             Status = analysis.Status,
@@ -279,6 +298,12 @@ public class SkinAnalysisService : ISkinAnalysisService
         };
 
         return ToLegacyDetailDto(analysis, photo);
+    }
+
+    private static int ResolveSkinHealthScore(SkinProgressAnalysis analysis)
+    {
+        var severity = analysis.OverallConcernSeverity ?? analysis.OverallScore;
+        return analysis.SkinHealthScore ?? Math.Clamp(100 - severity, 0, 100);
     }
 
     private static string ResolveTimeOfDay(DateTime value)
