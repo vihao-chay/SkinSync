@@ -469,13 +469,7 @@ class _InfoCard extends StatelessWidget {
             ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 8),
-          Text(
-            body,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: AppColors.mutedText,
-                  height: 1.5,
-                ),
-          ),
+          Text(body),
         ],
       ),
     );

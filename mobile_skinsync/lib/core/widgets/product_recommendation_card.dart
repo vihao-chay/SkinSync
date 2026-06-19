@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 
+import '../config/app_config.dart';
 import '../models/app_models.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_radius.dart';
 import '../theme/app_spacing.dart';
 import 'app_button.dart';
 import 'app_card.dart';
-import 'product_image.dart';
 import 'status_chip.dart';
 
 class ProductRecommendationCard extends StatelessWidget {
@@ -195,14 +195,33 @@ class _ProductThumb extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ProductImage(
-      imageUrl: item.imageUrl,
-      width: 76,
-      height: 76,
-      radius: 20,
-      iconSize: 26,
-      placeholderTitle: item.brand.trim().isEmpty ? item.name : item.brand,
-      placeholderSubtitle: item.category,
+    final raw = item.imageUrl?.trim() ?? '';
+    final url = raw.isEmpty
+        ? ''
+        : (raw.startsWith('http') ? raw : '${AppConfig.apiBaseUrl}$raw');
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(AppRadius.medium),
+      child: Container(
+        width: double.infinity,
+        height: 190,
+        color: AppColors.surfaceStrong,
+        child: url.isEmpty
+            ? const Icon(
+                Icons.shopping_bag_outlined,
+                color: AppColors.primaryDark,
+                size: 34,
+              )
+            : Image.network(
+                url,
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) => const Icon(
+                  Icons.image_not_supported_outlined,
+                  color: AppColors.primaryDark,
+                  size: 34,
+                ),
+              ),
+      ),
     );
   }
 }

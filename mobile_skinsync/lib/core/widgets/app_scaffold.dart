@@ -9,7 +9,6 @@ class AppScaffold extends StatelessWidget {
     required this.title,
     required this.body,
     this.subtitle,
-    this.leading,
     this.headerTrailing,
     this.onRefresh,
     this.contentMaxWidth = AppSpacing.maxContentWidth,
@@ -22,7 +21,6 @@ class AppScaffold extends StatelessWidget {
   final String title;
   final Widget body;
   final String? subtitle;
-  final Widget? leading;
   final Widget? headerTrailing;
   final Future<void> Function()? onRefresh;
   final double contentMaxWidth;
@@ -66,12 +64,7 @@ class AppScaffold extends StatelessWidget {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (leading != null) ...[
-                        Padding(
-                          padding: const EdgeInsets.only(right: AppSpacing.sm),
-                          child: leading!,
-                        ),
-                      ] else if (showBackButton) ...[
+                      if (showBackButton) ...[
                         SizedBox.square(
                           dimension: 34,
                           child: IconButton(
