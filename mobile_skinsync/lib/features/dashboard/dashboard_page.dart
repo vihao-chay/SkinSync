@@ -12,6 +12,7 @@ import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/circular_score.dart';
 import '../../core/widgets/main_shell.dart';
+import '../../core/widgets/responsive_layout.dart';
 import '../../core/widgets/stitch_top_bar.dart';
 import '../../core/widgets/status_chip.dart';
 
@@ -85,6 +86,13 @@ class _DashboardPageState extends State<DashboardPage> {
             .where((item) => item.name.trim().isNotEmpty)
             .take(2)
             .toList();
+    final contentMaxWidth = ResponsiveLayout.contentMaxWidth(
+      context,
+      compact: 460,
+      medium: 760,
+      large: 1040,
+    );
+    final horizontalPadding = ResponsiveLayout.horizontalPadding(context);
 
     return ColoredBox(
       color: AppColors.pageBackground,
@@ -92,7 +100,7 @@ class _DashboardPageState extends State<DashboardPage> {
         bottom: false,
         child: Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 460),
+            constraints: BoxConstraints(maxWidth: contentMaxWidth),
             child: RefreshIndicator(
               color: AppColors.primaryDark,
               onRefresh: _refreshAll,
@@ -110,10 +118,10 @@ class _DashboardPageState extends State<DashboardPage> {
                         MainShell.navigateToTab(context, AppRoutes.progress),
                   ),
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                      AppSpacing.pagePadding,
+                    padding: EdgeInsets.fromLTRB(
+                      horizontalPadding,
                       4,
-                      AppSpacing.pagePadding,
+                      horizontalPadding,
                       0,
                     ),
                     child: Column(
@@ -384,35 +392,81 @@ class _MetricGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Row(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth >= 820) {
+          final itemWidth = (constraints.maxWidth - (AppSpacing.sm * 3)) / 4;
+          return Wrap(
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.sm,
+            children: [
+              SizedBox(
+                width: itemWidth,
+                child: _MetricMiniCard(
+                  label: 'Acne',
+                  value: _scoreLabel(acne),
+                  tone: _scoreTone(acne),
+                ),
+              ),
+              SizedBox(
+                width: itemWidth,
+                child: _MetricMiniCard(
+                  label: 'Redness',
+                  value: _scoreLabel(redness),
+                  tone: _scoreTone(redness),
+                ),
+              ),
+              SizedBox(
+                width: itemWidth,
+                child: _MetricMiniCard(
+                  label: 'Hydration',
+                  value: hydration,
+                  tone: StatusChipTone.success,
+                ),
+              ),
+              SizedBox(
+                width: itemWidth,
+                child: _MetricMiniCard(
+                  label: 'Routine',
+                  value: '${(routinePercent * 100).round()}%',
+                  tone: StatusChipTone.accent,
+                ),
+              ),
+            ],
+          );
+        }
+
+        return Column(
           children: [
-            Expanded(
-              child: _MetricMiniCard(
-                label: 'Acne',
-                value: _scoreLabel(acne),
-                tone: _scoreTone(acne),
-              ),
+            Row(
+              children: [
+                Expanded(
+                  child: _MetricMiniCard(
+                    label: 'Acne',
+                    value: _scoreLabel(acne),
+                    tone: _scoreTone(acne),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: _MetricMiniCard(
+                    label: 'Redness',
+                    value: _scoreLabel(redness),
+                    tone: _scoreTone(redness),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: _MetricMiniCard(
-                label: 'Redness',
-                value: _scoreLabel(redness),
-                tone: _scoreTone(redness),
-              ),
+            const SizedBox(height: AppSpacing.sm),
+            _MetricMiniCard(
+              label: 'Hydration',
+              value: hydration,
+              trailing: '${(routinePercent * 100).round()}%',
+              tone: StatusChipTone.success,
             ),
           ],
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        _MetricMiniCard(
-          label: 'Hydration',
-          value: hydration,
-          trailing: '${(routinePercent * 100).round()}%',
-          tone: StatusChipTone.success,
-        ),
-      ],
+        );
+      },
     );
   }
 
@@ -857,24 +911,35 @@ class _QuickActionGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: _SecondaryActionCard(
-            onPressed: onChat,
-            icon: Icons.chat_bubble_outline_rounded,
-            label: 'AI Chat',
-          ),
-        ),
-        const SizedBox(width: AppSpacing.sm),
-        Expanded(
-          child: _SecondaryActionCard(
-            onPressed: onProgress,
-            icon: Icons.trending_up_rounded,
-            label: 'View Progress',
-          ),
-        ),
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final twoColumns = constraints.maxWidth >= 700;
+        final itemWidth = twoColumns
+            ? (constraints.maxWidth - AppSpacing.sm) / 2
+            : constraints.maxWidth;
+        return Wrap(
+          spacing: AppSpacing.sm,
+          runSpacing: AppSpacing.sm,
+          children: [
+            SizedBox(
+              width: itemWidth,
+              child: _SecondaryActionCard(
+                onPressed: onChat,
+                icon: Icons.chat_bubble_outline_rounded,
+                label: 'AI Chat',
+              ),
+            ),
+            SizedBox(
+              width: itemWidth,
+              child: _SecondaryActionCard(
+                onPressed: onProgress,
+                icon: Icons.trending_up_rounded,
+                label: 'View Progress',
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

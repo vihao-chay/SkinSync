@@ -12,6 +12,7 @@ import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/app_scaffold.dart';
 import '../../core/widgets/circular_score.dart';
+import '../../core/widgets/responsive_layout.dart';
 import '../../core/widgets/status_chip.dart';
 
 class ProgressPage extends StatefulWidget {
@@ -56,6 +57,7 @@ class _ProgressPageState extends State<ProgressPage> {
     final completedSteps = tracking?.completedSteps ?? 0;
     final routineProgress = totalSteps == 0 ? 0.0 : completedSteps / totalSteps;
     final currentScore = progress?.currentScore ?? latestAnalysis?.overallScore;
+    final horizontalPadding = ResponsiveLayout.horizontalPadding(context);
     final showCheckupSavedState =
         widget.args.entryPoint == ProgressEntryPoint.checkupSaved;
     final showAnalysisState =
@@ -68,10 +70,10 @@ class _ProgressPageState extends State<ProgressPage> {
       onRefresh: appState.refreshHome,
       body: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.pagePadding,
+        padding: EdgeInsets.fromLTRB(
+          horizontalPadding,
           0,
-          AppSpacing.pagePadding,
+          horizontalPadding,
           AppSpacing.pageBottomPaddingWithActions,
         ),
         children: [
@@ -166,57 +168,69 @@ class _ProgressHero extends StatelessWidget {
     final hasImprovement = improvementPercent != null;
     return AppCard(
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-      child: Row(
-        children: [
-          CircularScore(
-            score: score ?? 0,
-            size: 104,
-            label: 'score',
-            progressColor: AppColors.primary,
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  insight?.trim().isNotEmpty == true
-                      ? insight!
-                      : 'Progress updates after analysis, routine tracking, and daily logs are saved.',
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: AppColors.heading,
-                    height: 1.35,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.secondary,
-                      borderRadius: BorderRadius.circular(AppRadius.pill),
-                    ),
-                    child: Text(
-                      hasImprovement
-                          ? '${improvementPercent!.toStringAsFixed(1)}% improve'
-                          : 'Not enough data',
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final stack = constraints.maxWidth < 420;
+          return Flex(
+            direction: stack ? Axis.vertical : Axis.horizontal,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              CircularScore(
+                score: score ?? 0,
+                size: 104,
+                label: 'score',
+                progressColor: AppColors.primary,
+              ),
+              SizedBox(
+                width: stack ? 0 : AppSpacing.sm,
+                height: stack ? AppSpacing.sm : 0,
+              ),
+              Flexible(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      insight?.trim().isNotEmpty == true
+                          ? insight!
+                          : 'Progress updates after analysis, routine tracking, and daily logs are saved.',
+                      maxLines: stack ? 4 : 3,
+                      overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.w800,
+                        color: AppColors.heading,
+                        height: 1.35,
                       ),
                     ),
-                  ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.secondary,
+                          borderRadius: BorderRadius.circular(AppRadius.pill),
+                        ),
+                        child: Text(
+                          hasImprovement
+                              ? '${improvementPercent!.toStringAsFixed(1)}% improve'
+                              : 'Not enough data',
+                          style: Theme.of(
+                            context,
+                          ).textTheme.labelSmall?.copyWith(
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          ),
-        ],
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -265,7 +279,15 @@ class _MetricsGrid extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final tileWidth = (constraints.maxWidth - AppSpacing.sm) / 2;
+        final columns = constraints.maxWidth >= 900
+            ? 4
+            : constraints.maxWidth >= 560
+            ? 2
+            : 1;
+        final tileWidth = columns == 1
+            ? constraints.maxWidth
+            : (constraints.maxWidth - (AppSpacing.sm * (columns - 1))) /
+                columns;
         return Wrap(
           spacing: AppSpacing.sm,
           runSpacing: AppSpacing.sm,

@@ -14,6 +14,7 @@ import '../../core/widgets/error_state_card.dart';
 import '../../core/widgets/loading_skeleton.dart';
 import '../../core/widgets/main_shell.dart';
 import '../../core/widgets/product_recommendation_card.dart';
+import '../../core/widgets/responsive_layout.dart';
 import '../../core/widgets/stitch_top_bar.dart';
 import '../../core/widgets/status_chip.dart';
 
@@ -480,6 +481,13 @@ class _ProductsPageState extends State<ProductsPage> {
         );
     final hasAnyItems =
         recommendation?.categories.any((c) => c.items.isNotEmpty) ?? false;
+    final contentMaxWidth = ResponsiveLayout.contentMaxWidth(
+      context,
+      compact: 460,
+      medium: 760,
+      large: 1100,
+    );
+    final horizontalPadding = ResponsiveLayout.horizontalPadding(context);
 
     return ColoredBox(
       color: AppColors.pageBackground,
@@ -487,7 +495,7 @@ class _ProductsPageState extends State<ProductsPage> {
         bottom: false,
         child: Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 460),
+            constraints: BoxConstraints(maxWidth: contentMaxWidth),
             child: RefreshIndicator(
               color: AppColors.primaryDark,
               onRefresh: _fetchLatestRecommendations,
@@ -506,12 +514,12 @@ class _ProductsPageState extends State<ProductsPage> {
                         : _generateRecommendations,
                   ),
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                      AppSpacing.pagePadding,
-                      4,
-                      AppSpacing.pagePadding,
-                      0,
-                    ),
+                    padding: EdgeInsets.fromLTRB(
+                        horizontalPadding,
+                        4,
+                        horizontalPadding,
+                        0,
+                      ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -659,19 +667,39 @@ class _ProductsPageState extends State<ProductsPage> {
                             ),
                             const SizedBox(height: AppSpacing.md),
                           ],
-                          ...category.items.map(
-                            (item) => Padding(
-                              padding: const EdgeInsets.only(
-                                bottom: AppSpacing.md,
-                              ),
-                              child: ProductRecommendationCard(
-                                item: item,
-                                onViewDetails: () => _viewDetails(item),
-                                onAddToRoutine: () => _openAddToRoutine(item),
-                                onCheckIngredients: () =>
-                                    _checkIngredients(item),
-                              ),
-                            ),
+                          LayoutBuilder(
+                            builder: (context, constraints) {
+                              final columns = constraints.maxWidth >= 980
+                                  ? 3
+                                  : constraints.maxWidth >= 640
+                                  ? 2
+                                  : 1;
+                              final itemWidth = columns == 1
+                                  ? constraints.maxWidth
+                                  : (constraints.maxWidth -
+                                          (AppSpacing.md * (columns - 1))) /
+                                      columns;
+                              return Wrap(
+                                spacing: AppSpacing.md,
+                                runSpacing: AppSpacing.md,
+                                children: category.items
+                                    .map(
+                                      (item) => SizedBox(
+                                        width: itemWidth,
+                                        child: ProductRecommendationCard(
+                                          item: item,
+                                          onViewDetails: () =>
+                                              _viewDetails(item),
+                                          onAddToRoutine: () =>
+                                              _openAddToRoutine(item),
+                                          onCheckIngredients: () =>
+                                              _checkIngredients(item),
+                                        ),
+                                      ),
+                                    )
+                                    .toList(),
+                              );
+                            },
                           ),
                           if (!hasAnyItems &&
                               recommendation.message?.trim().isNotEmpty == true)
