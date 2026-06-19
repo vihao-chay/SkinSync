@@ -1,6 +1,9 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
+import '../theme/app_radius.dart';
 
 class GlassHeader extends StatelessWidget implements PreferredSizeWidget {
   const GlassHeader({
@@ -19,21 +22,35 @@ class GlassHeader extends StatelessWidget implements PreferredSizeWidget {
   final List<Widget>? actions;
 
   @override
-  Size get preferredSize => const Size.fromHeight(60);
+  Size get preferredSize => const Size.fromHeight(64);
 
   @override
   Widget build(BuildContext context) {
     final canPop = Navigator.of(context).canPop();
 
     return AppBar(
-      backgroundColor: AppColors.pageBackground,
+      backgroundColor: AppColors.glass,
       foregroundColor: AppColors.foreground,
       elevation: 0,
       scrolledUnderElevation: 0,
       centerTitle: false,
       titleSpacing: 8,
-      leadingWidth: leading != null || (showBack && canPop) ? 52 : 16,
+      toolbarHeight: 64,
+      leadingWidth: leading != null || (showBack && canPop) ? 56 : 16,
       automaticallyImplyLeading: false,
+      flexibleSpace: ClipRect(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: AppColors.glass,
+              border: Border(
+                bottom: BorderSide(color: Colors.white.withValues(alpha: 0.48)),
+              ),
+            ),
+          ),
+        ),
+      ),
       leading: leading != null
           ? Padding(padding: const EdgeInsets.only(left: 8), child: leading)
           : showBack && canPop
@@ -50,6 +67,7 @@ class GlassHeader extends StatelessWidget implements PreferredSizeWidget {
         style: Theme.of(context).textTheme.titleLarge?.copyWith(
           fontSize: 20,
           fontWeight: FontWeight.w700,
+          color: AppColors.heading,
         ),
       ),
       actions: [...?actions, const SizedBox(width: 8)],
@@ -91,10 +109,14 @@ class _HeaderIconButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.white.withValues(alpha: 0.92),
-      borderRadius: BorderRadius.circular(16),
+      color: AppColors.surface.withValues(alpha: 0.78),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadius.pill),
+        side: BorderSide(color: Colors.white.withValues(alpha: 0.58)),
+      ),
+      clipBehavior: Clip.antiAlias,
       child: InkWell(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppRadius.pill),
         onTap: onPressed,
         child: SizedBox(
           width: 42,

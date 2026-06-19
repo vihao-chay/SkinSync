@@ -58,7 +58,7 @@ class MembershipUsageCard extends StatelessWidget {
                 child: Text(
                   priceLabel,
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontFamily: 'Inter',
+                    fontFamily: 'PlusJakartaSans',
                     fontWeight: FontWeight.w800,
                     fontFeatures: const [FontFeature.tabularFigures()],
                   ),
@@ -85,7 +85,9 @@ class MembershipUsageCard extends StatelessWidget {
                     children: children
                         .map(
                           (child) => Padding(
-                            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                            padding: const EdgeInsets.only(
+                              bottom: AppSpacing.sm,
+                            ),
                             child: child,
                           ),
                         )
@@ -170,7 +172,7 @@ class _UsageTile extends StatelessWidget {
           Text(
             value,
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontFamily: 'Inter',
+              fontFamily: 'PlusJakartaSans',
               fontWeight: FontWeight.w800,
               fontFeatures: const [FontFeature.tabularFigures()],
             ),
@@ -178,12 +180,16 @@ class _UsageTile extends StatelessWidget {
           const SizedBox(height: 10),
           LinearProgressStat(
             label: usage.isUnlimited ? 'Flexible usage' : 'Monthly usage',
-            value: usage.isUnlimited ? 'Unlimited' : '${(progress * 100).round()}%',
+            value: usage.isUnlimited
+                ? 'Unlimited'
+                : '${(progress * 100).round()}%',
             progress: usage.isUnlimited ? 0.35 : progress,
             caption: usage.remaining == null
                 ? null
                 : '${usage.remaining} remaining this cycle',
-            color: usage.isEnabled ? AppColors.primaryDark : AppColors.subtleText,
+            color: usage.isEnabled
+                ? AppColors.primaryDark
+                : AppColors.subtleText,
           ),
         ],
       ),

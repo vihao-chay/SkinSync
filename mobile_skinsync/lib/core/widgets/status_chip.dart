@@ -52,29 +52,29 @@ class StatusChip extends StatelessWidget {
   _ChipColors _colorsForTone(StatusChipTone tone) {
     return switch (tone) {
       StatusChipTone.neutral => _ChipColors(
-        AppColors.surfaceMuted,
-        AppColors.border,
-        AppColors.primaryDark,
+        AppColors.surfaceContainerLow,
+        AppColors.outlineVariant,
+        AppColors.onSurfaceVariant,
       ),
       StatusChipTone.success => _ChipColors(
-        const Color(0xFFE4F1E4),
-        const Color(0xFFBFD8BF),
-        AppColors.success,
+        AppColors.primaryFixed.withValues(alpha: 0.64),
+        AppColors.primaryContainer.withValues(alpha: 0.42),
+        AppColors.primary,
       ),
       StatusChipTone.warning => _ChipColors(
-        const Color(0xFFF9ECDA),
-        const Color(0xFFE7CDA8),
-        AppColors.warning,
+        AppColors.tertiaryFixed.withValues(alpha: 0.72),
+        AppColors.tertiaryFixedDim.withValues(alpha: 0.58),
+        AppColors.tertiary,
       ),
       StatusChipTone.danger => _ChipColors(
-        const Color(0xFFF7E6E0),
-        const Color(0xFFE7C1B6),
+        AppColors.errorContainer,
+        AppColors.error.withValues(alpha: 0.18),
         AppColors.error,
       ),
       StatusChipTone.accent => _ChipColors(
-        AppColors.secondary,
-        AppColors.border,
-        AppColors.primaryDark,
+        AppColors.secondaryFixed,
+        AppColors.secondaryFixedDim.withValues(alpha: 0.58),
+        AppColors.secondaryAction,
       ),
     };
   }

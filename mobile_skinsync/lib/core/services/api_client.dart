@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -11,6 +12,8 @@ typedef SessionChangedHandler = Future<void> Function(AuthSession? session);
 
 class ApiClient {
   ApiClient({required this.baseUrl});
+
+  static const _requestTimeout = Duration(seconds: 20);
 
   final String baseUrl;
   AuthSession? _session;
@@ -139,7 +142,7 @@ class ApiClient {
   Future<http.Response> _sendWithRefresh(
     Future<http.Response> Function() send,
   ) async {
-    var response = await send();
+    var response = await _sendNetworkRequest(send);
     if (response.statusCode != 401 ||
         _session == null ||
         _refreshSessionHandler == null) {
@@ -151,8 +154,33 @@ class ApiClient {
       return response;
     }
 
-    response = await send();
+    response = await _sendNetworkRequest(send);
     return response;
+  }
+
+  Future<http.Response> _sendNetworkRequest(
+    Future<http.Response> Function() send,
+  ) async {
+    try {
+      return await send().timeout(_requestTimeout);
+    } on TimeoutException {
+      throw ApiException(
+        'Cannot connect to backend at $baseUrl. Check that the backend is running and this phone is on the same Wi-Fi.',
+        0,
+      );
+    } on SocketException {
+      throw ApiException(
+        'Cannot connect to backend at $baseUrl. Use your computer LAN IP, not localhost or 10.0.2.2, on a real Android phone.',
+        0,
+      );
+    } on HandshakeException {
+      throw ApiException(
+        'Could not establish a secure connection to $baseUrl.',
+        0,
+      );
+    } on http.ClientException catch (error) {
+      throw ApiException(error.message, 0);
+    }
   }
 
   Future<AuthSession?> _refresh() async {

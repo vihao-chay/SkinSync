@@ -12,9 +12,11 @@ class AppScaffold extends StatelessWidget {
     this.leading,
     this.headerTrailing,
     this.onRefresh,
-    this.contentMaxWidth = 460,
+    this.contentMaxWidth = AppSpacing.maxContentWidth,
     this.headerBottomSpacing = AppSpacing.sectionGap,
     this.compactHeader = false,
+    this.showBackButton = false,
+    this.onBack,
   });
 
   final String title;
@@ -26,6 +28,8 @@ class AppScaffold extends StatelessWidget {
   final double contentMaxWidth;
   final double headerBottomSpacing;
   final bool compactHeader;
+  final bool showBackButton;
+  final VoidCallback? onBack;
 
   @override
   Widget build(BuildContext context) {
@@ -37,7 +41,7 @@ class AppScaffold extends StatelessWidget {
     final content = onRefresh == null
         ? body
         : RefreshIndicator(
-            color: AppColors.primaryDark,
+            color: AppColors.primary,
             onRefresh: onRefresh!,
             child: body,
           );
@@ -67,6 +71,23 @@ class AppScaffold extends StatelessWidget {
                           padding: const EdgeInsets.only(right: AppSpacing.sm),
                           child: leading!,
                         ),
+                      ] else if (showBackButton) ...[
+                        SizedBox.square(
+                          dimension: 34,
+                          child: IconButton(
+                            tooltip: 'Back',
+                            padding: EdgeInsets.zero,
+                            icon: const Icon(
+                              Icons.arrow_back_rounded,
+                              size: 22,
+                            ),
+                            color: AppColors.heading,
+                            onPressed:
+                                onBack ??
+                                () => Navigator.of(context).maybePop(),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
                       ],
                       Expanded(
                         child: Column(
@@ -79,13 +100,15 @@ class AppScaffold extends StatelessWidget {
                               style: theme.textTheme.displaySmall?.copyWith(
                                 fontWeight: FontWeight.w700,
                                 color: AppColors.heading,
-                                fontSize: compactHeader ? 26 : null,
+                                fontSize: compactHeader ? 22 : null,
                                 height: compactHeader ? 1.08 : null,
                               ),
                             ),
                             if (subtitle != null &&
                                 subtitle!.trim().isNotEmpty) ...[
-                              SizedBox(height: compactHeader ? 6 : AppSpacing.sm),
+                              SizedBox(
+                                height: compactHeader ? 6 : AppSpacing.sm,
+                              ),
                               Text(
                                 subtitle!,
                                 maxLines: compactHeader ? 2 : 3,

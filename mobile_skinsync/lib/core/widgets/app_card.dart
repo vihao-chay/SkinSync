@@ -29,29 +29,33 @@ class AppCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final resolvedBackground = backgroundColor ?? _backgroundForVariant(variant);
+    final resolvedBackground =
+        backgroundColor ?? _backgroundForVariant(variant);
     final resolvedRadius = radius ?? _radiusForVariant(variant);
     final shape = RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(resolvedRadius),
-      side: BorderSide(
-        color: borderColor ?? _borderForVariant(variant),
-      ),
+      side: BorderSide(color: borderColor ?? _borderForVariant(variant)),
     );
-    final card = Material(
-      color: resolvedBackground,
-      shape: shape,
-      shadowColor: AppShadows.soft.first.color,
-      elevation: variant == AppCardVariant.metric ? 1 : 0,
-      child: Container(
-        width: double.infinity,
-        padding: padding,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(resolvedRadius),
-          boxShadow: variant == AppCardVariant.metric
-              ? AppShadows.soft.sublist(0, 1)
-              : AppShadows.soft,
+    final card = Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: resolvedBackground,
+        borderRadius: BorderRadius.circular(resolvedRadius),
+        border: Border.all(
+          color: borderColor ?? _borderForVariant(variant),
+          width: 1,
         ),
-        child: child,
+        boxShadow: variant == AppCardVariant.muted
+            ? const []
+            : variant == AppCardVariant.metric
+            ? AppShadows.soft.sublist(0, 1)
+            : AppShadows.soft,
+      ),
+      child: Material(
+        color: Colors.transparent,
+        shape: shape,
+        clipBehavior: Clip.antiAlias,
+        child: Padding(padding: padding, child: child),
       ),
     );
 
@@ -73,19 +77,21 @@ class AppCard extends StatelessWidget {
     return switch (variant) {
       AppCardVariant.standard => AppColors.surface,
       AppCardVariant.hero => AppColors.surface,
-      AppCardVariant.accent => AppColors.surfaceStrong,
+      AppCardVariant.accent => AppColors.primaryFixed.withValues(alpha: 0.34),
       AppCardVariant.muted => AppColors.surfaceMuted,
-      AppCardVariant.metric => Colors.white.withValues(alpha: 0.92),
+      AppCardVariant.metric => AppColors.surface.withValues(alpha: 0.94),
     };
   }
 
   Color _borderForVariant(AppCardVariant variant) {
     return switch (variant) {
-      AppCardVariant.standard => AppColors.border.withValues(alpha: 0.8),
-      AppCardVariant.hero => AppColors.border.withValues(alpha: 0.78),
-      AppCardVariant.accent => AppColors.sand.withValues(alpha: 0.85),
-      AppCardVariant.muted => AppColors.border.withValues(alpha: 0.72),
-      AppCardVariant.metric => AppColors.border.withValues(alpha: 0.68),
+      AppCardVariant.standard => AppColors.border.withValues(alpha: 0.62),
+      AppCardVariant.hero => Colors.white.withValues(alpha: 0.7),
+      AppCardVariant.accent => AppColors.primaryContainer.withValues(
+        alpha: 0.38,
+      ),
+      AppCardVariant.muted => AppColors.border.withValues(alpha: 0.56),
+      AppCardVariant.metric => Colors.white.withValues(alpha: 0.76),
     };
   }
 

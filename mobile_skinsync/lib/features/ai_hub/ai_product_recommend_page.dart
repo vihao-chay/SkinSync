@@ -71,7 +71,8 @@ class _AiProductRecommendPageState extends State<AiProductRecommendPage>
         return;
       }
       setState(() {
-        _errorMessage = context.read<AppState>().errorMessage ??
+        _errorMessage =
+            context.read<AppState>().errorMessage ??
             'Could not load the latest saved product recommendations right now.';
       });
     } finally {
@@ -102,7 +103,8 @@ class _AiProductRecommendPageState extends State<AiProductRecommendPage>
         return;
       }
       setState(() {
-        _errorMessage = context.read<AppState>().errorMessage ??
+        _errorMessage =
+            context.read<AppState>().errorMessage ??
             'Could not generate product recommendations right now.';
       });
     } finally {
@@ -182,7 +184,9 @@ class _AiProductRecommendPageState extends State<AiProductRecommendPage>
                                   : 'Generate',
                               isLoading: _isGenerating,
                               icon: const Icon(Icons.auto_awesome_rounded),
-                              onPressed: _isGenerating ? null : _generateRecommendations,
+                              onPressed: _isGenerating
+                                  ? null
+                                  : _generateRecommendations,
                             ),
                           ],
                         ),
@@ -193,23 +197,31 @@ class _AiProductRecommendPageState extends State<AiProductRecommendPage>
                           children: [
                             _MiniPill(
                               label: 'Skin type',
-                              value: result?.profileSummary.skinType ??
+                              value:
+                                  result?.profileSummary.skinType ??
                                   _friendlyText(
                                     context.read<AppState>().profile?.skinType,
                                   ),
                             ),
                             _MiniPill(
                               label: 'Budget',
-                              value: result?.profileSummary.budget ??
+                              value:
+                                  result?.profileSummary.budget ??
                                   _friendlyText(
-                                    context.read<AppState>().profile?.budgetLabel,
+                                    context
+                                        .read<AppState>()
+                                        .profile
+                                        ?.budgetLabel,
                                   ),
                             ),
                             _MiniPill(
                               label: 'Concerns',
                               value: _concernSummary(
                                 result?.profileSummary.concerns ??
-                                    context.read<AppState>().profile?.concerns ??
+                                    context
+                                        .read<AppState>()
+                                        .profile
+                                        ?.concerns ??
                                     const [],
                               ),
                             ),
@@ -219,7 +231,8 @@ class _AiProductRecommendPageState extends State<AiProductRecommendPage>
                           const SizedBox(height: AppSpacing.md),
                           Text(
                             'Generating product recommendations from your latest skin analysis...',
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(
                                   color: AppColors.primaryDark,
                                   height: 1.5,
                                 ),
@@ -229,7 +242,8 @@ class _AiProductRecommendPageState extends State<AiProductRecommendPage>
                           const SizedBox(height: AppSpacing.md),
                           Text(
                             result!.note!,
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(
                                   color: AppColors.primaryDark,
                                   height: 1.5,
                                 ),
@@ -285,8 +299,7 @@ class _AiProductRecommendPageState extends State<AiProductRecommendPage>
                         children: tabs
                             .map(
                               (category) => ListView.separated(
-                                physics:
-                                    const AlwaysScrollableScrollPhysics(),
+                                physics: const AlwaysScrollableScrollPhysics(),
                                 padding: const EdgeInsets.only(bottom: 8),
                                 itemCount: category.items.length + 1,
                                 separatorBuilder: (_, index) =>
@@ -379,8 +392,8 @@ class _RecommendationCard extends StatelessWidget {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w800,
-                          ),
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                     const SizedBox(height: AppSpacing.xs),
                     Text(
@@ -394,7 +407,10 @@ class _RecommendationCard extends StatelessWidget {
               ),
               const SizedBox(width: AppSpacing.sm),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.secondary,
                   borderRadius: BorderRadius.circular(999),
@@ -402,11 +418,11 @@ class _RecommendationCard extends StatelessWidget {
                 child: Text(
                   '${item.matchPercent ?? item.matchScore}% match',
                   style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                        color: AppColors.primaryDark,
-                        fontFamily: 'Inter',
-                        fontWeight: FontWeight.w700,
-                        fontFeatures: const [FontFeature.tabularFigures()],
-                      ),
+                    color: AppColors.primaryDark,
+                    fontFamily: 'PlusJakartaSans',
+                    fontWeight: FontWeight.w700,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
                 ),
               ),
             ],
@@ -424,10 +440,10 @@ class _RecommendationCard extends StatelessWidget {
           Text(
             '${item.price.toStringAsFixed(0)} ${item.currency}',
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontFamily: 'Inter',
-                  fontWeight: FontWeight.w800,
-                  fontFeatures: const [FontFeature.tabularFigures()],
-                ),
+              fontFamily: 'PlusJakartaSans',
+              fontWeight: FontWeight.w800,
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
           ),
           if (item.cautions.isNotEmpty || item.warnings.isNotEmpty) ...[
             const SizedBox(height: AppSpacing.sm),
@@ -440,9 +456,9 @@ class _RecommendationCard extends StatelessWidget {
                       warning,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: AppColors.warning,
-                          ),
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodySmall?.copyWith(color: AppColors.warning),
                     ),
                   ),
                 )),
@@ -464,10 +480,7 @@ class _RecommendationCard extends StatelessWidget {
 }
 
 class _MiniPill extends StatelessWidget {
-  const _MiniPill({
-    required this.label,
-    required this.value,
-  });
+  const _MiniPill({required this.label, required this.value});
 
   final String label;
   final String value;
@@ -487,16 +500,16 @@ class _MiniPill extends StatelessWidget {
         children: [
           Text(
             label,
-            style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  color: AppColors.primaryDark,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.labelMedium?.copyWith(color: AppColors.primaryDark),
           ),
           const SizedBox(height: 2),
           Text(
             value,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
           ),
         ],
       ),
@@ -551,6 +564,7 @@ String _labelForCategory(String key) {
     'sunscreen' => 'Sunscreen',
     'treatment' => 'Treatment',
     'mask' => 'Mask',
-    _ => key.isEmpty ? 'Products' : '${key[0].toUpperCase()}${key.substring(1)}',
+    _ =>
+      key.isEmpty ? 'Products' : '${key[0].toUpperCase()}${key.substring(1)}',
   };
 }
