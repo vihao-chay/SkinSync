@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/models/app_models.dart';
@@ -8,13 +7,10 @@ import '../../core/state/app_state.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
-import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/error_state_card.dart';
 import '../../core/widgets/stitch_top_bar.dart';
 import '../../core/widgets/status_chip.dart';
-
-const _paymentQrAsset = 'bank.jpg';
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
@@ -41,11 +37,7 @@ class ProfilePage extends StatelessWidget {
                   bottom: AppSpacing.pageBottomPaddingWithActions,
                 ),
                 children: [
-                  StitchTopBar(
-                    avatarUrl: user?.avatarUrl,
-                    onTrailingTap: () =>
-                        Navigator.pushNamed(context, AppRoutes.editProfile),
-                  ),
+                  StitchTopBar(avatarUrl: user?.avatarUrl),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(
                       AppSpacing.pagePadding,
@@ -71,9 +63,12 @@ class ProfilePage extends StatelessWidget {
                           plans: appState.subscriptionPlans,
                           current: appState.subscription,
                           fallbackPlanCode: user?.planType ?? 'free',
-                          isBusy: appState.isBusy,
                           errorMessage: appState.membershipLoadErrorMessage,
                           onRetry: appState.refreshSubscription,
+                          onManage: () => Navigator.pushNamed(
+                            context,
+                            AppRoutes.membershipPlans,
+                          ),
                         ),
                         const SizedBox(height: AppSpacing.md),
                         _SectionLabel('Skin Profile'),
@@ -237,28 +232,25 @@ class _SubscriptionSection extends StatelessWidget {
     required this.plans,
     required this.current,
     required this.fallbackPlanCode,
-    required this.isBusy,
     required this.errorMessage,
     required this.onRetry,
+    required this.onManage,
   });
 
   final List<SubscriptionPlan> plans;
   final CurrentSubscription? current;
   final String fallbackPlanCode;
-  final bool isBusy;
   final String? errorMessage;
   final Future<void> Function() onRetry;
+  final VoidCallback onManage;
 
   @override
   Widget build(BuildContext context) {
     final currentCode = (current?.plan.code ?? fallbackPlanCode).toLowerCase();
-    final visiblePlans = plans
-        .where((plan) => plan.code == 'plus' || plan.code == 'premium')
-        .toList();
     final currentPlan =
         current?.plan ??
         plans.cast<SubscriptionPlan?>().firstWhere(
-          (plan) => plan?.code == currentCode,
+          (plan) => plan?.code.toLowerCase() == currentCode,
           orElse: () => null,
         );
     final usage = (current?.usage ?? const [])
@@ -279,10 +271,13 @@ class _SubscriptionSection extends StatelessWidget {
           const SizedBox(height: AppSpacing.md),
         ],
         AppCard(
+          backgroundColor: AppColors.primaryFixed.withValues(alpha: 0.18),
+          borderColor: AppColors.primaryContainer.withValues(alpha: 0.34),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
                     child: Column(
@@ -298,29 +293,43 @@ class _SubscriptionSection extends StatelessWidget {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          _planName(currentPlan, currentCode),
+                          _brandedPlanName(currentPlan, currentCode),
                           style: Theme.of(context).textTheme.titleMedium
                               ?.copyWith(fontWeight: FontWeight.w800),
                         ),
                       ],
                     ),
                   ),
-                  AppButton(
-                    label: currentCode == 'free' ? 'Add' : 'Active',
-                    expand: false,
-                    variant: currentCode == 'free'
-                        ? AppButtonVariant.primary
-                        : AppButtonVariant.secondary,
-                    onPressed: currentCode == 'free' && visiblePlans.isNotEmpty
-                        ? () => _subscribe(context, visiblePlans.first)
-                        : null,
+                  if (currentCode != 'free')
+                    const StatusChip(
+                      label: 'Active',
+                      tone: StatusChipTone.success,
+                    ),
+                  const SizedBox(width: 4),
+                  TextButton.icon(
+                    onPressed: onManage,
+                    iconAlignment: IconAlignment.end,
+                    icon: const Icon(Icons.open_in_new_rounded, size: 13),
+                    label: Text(currentCode == 'free' ? 'Upgrade' : 'Manage'),
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      minimumSize: const Size(0, 32),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      textStyle: const TextStyle(
+                        fontFamily: 'PlusJakartaSans',
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
                   ),
                 ],
               ),
               const SizedBox(height: AppSpacing.md),
               if (usage.isEmpty)
                 Text(
-                  _planPrice(currentPlan),
+                  currentCode == 'free'
+                      ? 'Upgrade for higher monthly limits and premium reports.'
+                      : 'Your current membership benefits are active.',
                   style: Theme.of(context).textTheme.bodySmall,
                 )
               else
@@ -339,159 +348,8 @@ class _SubscriptionSection extends StatelessWidget {
             ],
           ),
         ),
-        if (visiblePlans.isNotEmpty) ...[
-          const SizedBox(height: AppSpacing.sm),
-          ...visiblePlans.map(
-            (plan) => Padding(
-              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-              child: _PlanOption(
-                plan: plan,
-                isCurrent: currentCode == plan.code,
-                isBusy: isBusy,
-                onSubscribe: () => _subscribe(context, plan),
-              ),
-            ),
-          ),
-        ],
-        if (currentCode != 'free') ...[
-          AppButton(
-            label: 'Cancel to Free',
-            variant: AppButtonVariant.secondary,
-            icon: const Icon(Icons.close_rounded),
-            isLoading: isBusy,
-            onPressed: isBusy ? null : () => _cancel(context),
-          ),
-        ],
       ],
     );
-  }
-
-  Future<void> _subscribe(BuildContext context, SubscriptionPlan plan) async {
-    final shouldActivate = await _showPaymentDialog(context, plan);
-    if (!shouldActivate || !context.mounted) {
-      return;
-    }
-
-    try {
-      await context.read<AppState>().subscribeToPlan(plan.code);
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${_capitalize(plan.code)} activated.')),
-        );
-      }
-    } catch (_) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              context.read<AppState>().errorMessage ??
-                  'Could not update subscription.',
-            ),
-          ),
-        );
-      }
-    }
-  }
-
-  Future<void> _cancel(BuildContext context) async {
-    try {
-      await context.read<AppState>().cancelSubscription();
-      if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Plan changed to Free.')));
-      }
-    } catch (_) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              context.read<AppState>().errorMessage ??
-                  'Could not cancel subscription.',
-            ),
-          ),
-        );
-      }
-    }
-  }
-
-  Future<bool> _showPaymentDialog(
-    BuildContext context,
-    SubscriptionPlan plan,
-  ) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) {
-        final textTheme = Theme.of(dialogContext).textTheme;
-        return AlertDialog(
-          title: Text('Pay for ${plan.name}'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _planPrice(plan),
-                  style: textTheme.titleMedium?.copyWith(
-                    color: AppColors.primaryDark,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                Center(
-                  child: Container(
-                    constraints: const BoxConstraints(maxWidth: 260),
-                    padding: const EdgeInsets.all(AppSpacing.sm),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(AppRadius.medium),
-                      border: Border.all(color: AppColors.border),
-                    ),
-                    child: AspectRatio(
-                      aspectRatio: 397 / 500,
-                      child: Image.asset(
-                        _paymentQrAsset,
-                        fit: BoxFit.contain,
-                        errorBuilder: (context, error, stackTrace) => Center(
-                          child: Text(
-                            'Payment image unavailable',
-                            textAlign: TextAlign.center,
-                            style: textTheme.bodySmall?.copyWith(
-                              color: AppColors.mutedText,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                Text(
-                  'Scan this QR and complete the transfer, then confirm below to activate your plan.',
-                  style: textTheme.bodySmall?.copyWith(
-                    color: AppColors.mutedText,
-                    height: 1.35,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Later'),
-            ),
-            FilledButton.icon(
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              icon: const Icon(Icons.check_circle_rounded),
-              label: const Text('I paid'),
-            ),
-          ],
-        );
-      },
-    );
-
-    return confirmed ?? false;
   }
 }
 
@@ -541,58 +399,6 @@ class _UsageMiniTile extends StatelessWidget {
       'conflict_check' => Icons.warning_amber_outlined,
       _ => Icons.workspace_premium_outlined,
     };
-  }
-}
-
-class _PlanOption extends StatelessWidget {
-  const _PlanOption({
-    required this.plan,
-    required this.isCurrent,
-    required this.isBusy,
-    required this.onSubscribe,
-  });
-
-  final SubscriptionPlan plan;
-  final bool isCurrent;
-  final bool isBusy;
-  final VoidCallback onSubscribe;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppCard(
-      variant: isCurrent ? AppCardVariant.accent : AppCardVariant.metric,
-      padding: const EdgeInsets.all(12),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  plan.name,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w800),
-                ),
-                Text(
-                  _planPrice(plan),
-                  style: Theme.of(context).textTheme.labelSmall,
-                ),
-              ],
-            ),
-          ),
-          AppButton(
-            label: isCurrent ? 'Active' : 'Choose',
-            expand: false,
-            variant: isCurrent
-                ? AppButtonVariant.secondary
-                : AppButtonVariant.primary,
-            isLoading: isBusy && !isCurrent,
-            onPressed: isCurrent || isBusy ? null : onSubscribe,
-          ),
-        ],
-      ),
-    );
   }
 }
 
@@ -865,20 +671,13 @@ String _primaryGoal(SkinProfile? profile) {
   return 'Not provided yet';
 }
 
-String _planName(SubscriptionPlan? plan, String fallbackCode) {
-  if (plan != null && plan.name.trim().isNotEmpty) {
-    return plan.name;
-  }
-  return _capitalize(fallbackCode);
-}
-
-String _planPrice(SubscriptionPlan? plan) {
-  if (plan == null || plan.priceVnd <= 0) {
-    return 'Free';
-  }
-
-  final formatter = NumberFormat.decimalPattern('vi_VN');
-  return '${formatter.format(plan.priceVnd.round())} VND/mo';
+String _brandedPlanName(SubscriptionPlan? plan, String fallbackCode) {
+  final resolved = plan != null && plan.name.trim().isNotEmpty
+      ? plan.name.trim()
+      : _capitalize(fallbackCode);
+  return resolved.toLowerCase().startsWith('skinsync')
+      ? resolved
+      : 'SkinSync $resolved';
 }
 
 String _capitalize(String value) {

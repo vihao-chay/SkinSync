@@ -1825,3 +1825,35 @@ class AiReportGenerateResponse {
             .toList(),
       );
 }
+
+class PaymentLinkResponse {
+  const PaymentLinkResponse({
+    required this.checkoutUrl,
+    required this.orderCode,
+  });
+
+  final String checkoutUrl;
+  final int orderCode;
+
+  factory PaymentLinkResponse.fromJson(Map<String, dynamic> json) =>
+      PaymentLinkResponse(
+        checkoutUrl: (json['checkoutUrl'] ?? '').toString(),
+        orderCode: (json['orderCode'] as num?)?.toInt() ?? 0,
+      );
+}
+
+class VerifyPaymentResponse {
+  const VerifyPaymentResponse({
+    required this.status,
+    required this.planCode,
+  });
+
+  final String status;
+  final String planCode;
+
+  factory VerifyPaymentResponse.fromJson(Map<String, dynamic> json) =>
+      VerifyPaymentResponse(
+        status: (json['status'] ?? 'pending').toString(),
+        planCode: (json['planCode'] ?? '').toString(),
+      );
+}

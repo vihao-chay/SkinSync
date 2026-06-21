@@ -12,12 +12,14 @@ class CircularScore extends StatelessWidget {
     required this.score,
     this.size = 96,
     this.label = 'Skin score',
+    this.suffix = '',
     this.progressColor,
   });
 
   final int score;
   final double size;
   final String label;
+  final String suffix;
   final Color? progressColor;
 
   @override
@@ -39,7 +41,7 @@ class CircularScore extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    '$clamped',
+                    '$clamped$suffix',
                     style: Theme.of(context).textTheme.headlineLarge?.copyWith(
                       fontFamily: 'PlayfairDisplay',
                       color: AppColors.heading,

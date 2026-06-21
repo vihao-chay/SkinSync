@@ -18,6 +18,7 @@ import '../../features/onboarding/onboarding_page.dart';
 import '../../features/products/product_detail_page.dart';
 import '../../features/products/products_page.dart';
 import '../../features/profile/edit_skin_profile_page.dart';
+import '../../features/subscription/plan_selection_page.dart';
 import '../../features/quiz/quiz_page.dart';
 import '../../features/splash/splash_page.dart';
 import '../../features/upload/upload_page.dart';
@@ -84,6 +85,9 @@ class AppRouter {
         break;
       case AppRoutes.editProfile:
         page = const EditSkinProfilePage();
+        break;
+      case AppRoutes.membershipPlans:
+        page = const PlanSelectionPage();
         break;
       case AppRoutes.dashboard:
       case AppRoutes.routine:

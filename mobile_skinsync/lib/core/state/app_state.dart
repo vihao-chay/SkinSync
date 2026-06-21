@@ -570,6 +570,39 @@ class AppState extends ChangeNotifier {
     });
   }
 
+  Future<PaymentLinkResponse> createPaymentLink(String planCode) async {
+    final normalized = planCode.trim().toLowerCase();
+    if (normalized != 'plus' && normalized != 'premium') {
+      throw ApiException('Vui lòng chọn gói Plus hoặc Premium.', 400);
+    }
+
+    late PaymentLinkResponse paymentRes;
+    await _runBusy(() async {
+      final response = await _apiClient.post(
+        '/api/payment/create-payment-link',
+        body: {'planCode': normalized},
+      );
+      final data = _readAiData(response);
+      paymentRes = PaymentLinkResponse.fromJson(data);
+    });
+    return paymentRes;
+  }
+
+  Future<VerifyPaymentResponse> verifyPayment(int orderCode) async {
+    late VerifyPaymentResponse verifyRes;
+    await _runBusy(() async {
+      final response = await _apiClient.get(
+        '/api/payment/verify/$orderCode',
+      );
+      final data = _readAiData(response);
+      verifyRes = VerifyPaymentResponse.fromJson(data);
+      if (verifyRes.status == 'paid') {
+        await _loadSubscription();
+      }
+    }, showBusy: false);
+    return verifyRes;
+  }
+
   Future<void> cancelSubscription() async {
     await _runBusy(() async {
       final data = await _apiClient.post('/api/subscriptions/cancel');
