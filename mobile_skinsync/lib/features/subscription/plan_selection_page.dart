@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -10,6 +12,7 @@ import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/error_state_card.dart';
+import 'subscription_success_page.dart';
 
 class PlanSelectionPage extends StatefulWidget {
   const PlanSelectionPage({super.key});
@@ -194,10 +197,13 @@ class _PlanSelectionPageState extends State<PlanSelectionPage> {
             _PaymentStatusDialog(plan: plan, orderCode: payment.orderCode),
       );
       if (paid == true && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              '${_brandedPlanName(plan.name, plan.code)} is active.',
+        final currentSubscription = appState.subscription;
+        await Navigator.of(context).pushReplacement(
+          MaterialPageRoute<void>(
+            builder: (_) => SubscriptionSuccessPage(
+              plan: currentSubscription?.plan ?? plan,
+              orderCode: payment.orderCode,
+              renewalDate: currentSubscription?.subscription.currentPeriodEnd,
             ),
           ),
         );
@@ -276,23 +282,25 @@ class _PlanTopBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
+      width: double.infinity,
       height: 54,
       child: Stack(
         alignment: Alignment.center,
         children: [
-          Positioned(
-            right: 8,
-            child: IconButton(
-              tooltip: 'Close',
-              onPressed: onClose,
-              icon: const Icon(Icons.close_rounded),
-            ),
-          ),
           Text(
             'SkinSync',
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
               color: AppColors.primary,
               fontWeight: FontWeight.w800,
+            ),
+          ),
+          Positioned(
+            right: 8,
+            child: IconButton(
+              tooltip: 'Close',
+              onPressed: onClose,
+              color: AppColors.heading,
+              icon: const Icon(Icons.close_rounded),
             ),
           ),
         ],
@@ -600,14 +608,42 @@ class _PaymentStatusDialog extends StatefulWidget {
   State<_PaymentStatusDialog> createState() => _PaymentStatusDialogState();
 }
 
-class _PaymentStatusDialogState extends State<_PaymentStatusDialog> {
+class _PaymentStatusDialogState extends State<_PaymentStatusDialog>
+    with WidgetsBindingObserver {
+  Timer? _pollTimer;
   bool _verifying = false;
   String? _statusMessage;
 
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _pollTimer = Timer.periodic(
+      const Duration(seconds: 3),
+      (_) => _checkStatus(),
+    );
+  }
+
+  @override
+  void dispose() {
+    _pollTimer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _checkStatus();
+    }
+  }
+
   Future<void> _checkStatus() async {
+    if (_verifying || !mounted) {
+      return;
+    }
     setState(() {
       _verifying = true;
-      _statusMessage = null;
     });
 
     try {
@@ -629,16 +665,13 @@ class _PaymentStatusDialogState extends State<_PaymentStatusDialog> {
           break;
         default:
           setState(() {
-            _statusMessage =
-                'Payment is still pending. Complete checkout, then check again.';
+            _statusMessage = 'Waiting for PayOS to confirm your payment...';
           });
       }
     } catch (_) {
       if (mounted) {
         setState(() {
-          _statusMessage =
-              context.read<AppState>().errorMessage ??
-              'Could not verify payment right now.';
+          _statusMessage = 'Still waiting for payment confirmation...';
         });
       }
     } finally {
@@ -664,9 +697,17 @@ class _PaymentStatusDialogState extends State<_PaymentStatusDialog> {
           ),
           const SizedBox(height: AppSpacing.sm),
           Text(
-            'Finish payment in the browser, then verify your order here.',
+            'Finish payment in the browser. This screen will update automatically when payment succeeds.',
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const SizedBox(height: AppSpacing.md),
+          const SizedBox.square(
+            dimension: 24,
+            child: CircularProgressIndicator(
+              strokeWidth: 2.5,
+              color: AppColors.primary,
+            ),
           ),
           if (_statusMessage != null) ...[
             const SizedBox(height: AppSpacing.sm),
@@ -683,21 +724,8 @@ class _PaymentStatusDialogState extends State<_PaymentStatusDialog> {
       ),
       actions: [
         TextButton(
-          onPressed: _verifying ? null : () => Navigator.pop(context, false),
+          onPressed: () => Navigator.pop(context, false),
           child: const Text('Later'),
-        ),
-        FilledButton.icon(
-          onPressed: _verifying ? null : _checkStatus,
-          icon: _verifying
-              ? const SizedBox.square(
-                  dimension: 14,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: AppColors.onPrimary,
-                  ),
-                )
-              : const Icon(Icons.verified_rounded, size: 18),
-          label: const Text('Verify payment'),
         ),
       ],
     );
