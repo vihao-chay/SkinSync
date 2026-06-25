@@ -74,6 +74,10 @@ class _DashboardPageState extends State<DashboardPage> {
     final regimen = appState.regimen;
     final tracking = appState.trackingToday;
     final progress = appState.progress;
+    final scanUsage = _findUsage(
+      appState.subscription?.usage ?? const <SubscriptionUsage>[],
+      'skin_analysis',
+    );
     final totalSteps = tracking?.totalSteps ?? 0;
     final completedSteps = tracking?.completedSteps ?? 0;
     final routineProgress = totalSteps == 0 ? 0.0 : completedSteps / totalSteps;
@@ -134,10 +138,15 @@ class _DashboardPageState extends State<DashboardPage> {
                         ),
                         const SizedBox(height: AppSpacing.md),
                         _SkinHealthCard(
-                          score: latestAnalysis?.overallScore,
+                          score:
+                              latestAnalysis?.displaySkinHealthScore ??
+                              latestAnalysis?.overallScore,
                           insight: progress?.progressInsight,
-                          onScan: () =>
-                              Navigator.pushNamed(context, AppRoutes.upload),
+                          scanUsage: scanUsage,
+                          onUpgrade: () => Navigator.pushNamed(
+                            context,
+                            AppRoutes.membershipPlans,
+                          ),
                         ),
                         const SizedBox(height: AppSpacing.md),
                         _SectionTitle(
@@ -293,16 +302,35 @@ class _SkinHealthCard extends StatelessWidget {
   const _SkinHealthCard({
     required this.score,
     required this.insight,
-    required this.onScan,
+    required this.scanUsage,
+    required this.onUpgrade,
   });
 
   final int? score;
   final String? insight;
-  final VoidCallback onScan;
+  final SubscriptionUsage? scanUsage;
+  final VoidCallback onUpgrade;
 
   @override
   Widget build(BuildContext context) {
     final resolvedScore = score ?? 0;
+    final limit = scanUsage?.monthlyLimit;
+    final used = scanUsage?.used ?? 0;
+    final unlimited = scanUsage?.isUnlimited ?? false;
+    final exhausted = !unlimited && limit != null && limit > 0 && used >= limit;
+    final usageProgress = unlimited
+        ? 1.0
+        : limit == null || limit <= 0
+        ? 0.0
+        : (used / limit).clamp(0.0, 1.0);
+    final usageLabel = scanUsage == null
+        ? null
+        : unlimited
+        ? 'Unlimited Scans'
+        : limit == null
+        ? '$used Scans'
+        : '$used/$limit Scans';
+
     return AppCard(
       padding: const EdgeInsets.fromLTRB(18, 16, 18, 14),
       child: Column(
@@ -318,33 +346,77 @@ class _SkinHealthCard extends StatelessWidget {
             score: resolvedScore,
             size: 136,
             label: score == null ? 'No scan' : 'Balanced',
+            suffix: score == null ? '' : '%',
             progressColor: AppColors.primary,
           ),
           const SizedBox(height: 10),
-          Text(
-            score == null
-                ? 'Scan your skin to unlock today\'s baseline.'
-                : insight?.trim().isNotEmpty == true
-                ? insight!
-                : 'Baseline saved from your latest analysis.',
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            height: 34,
-            child: OutlinedButton.icon(
-              onPressed: onScan,
-              icon: const Icon(Icons.camera_alt_outlined, size: 15),
-              label: const Text('Skin scan today'),
-              style: OutlinedButton.styleFrom(
-                minimumSize: const Size(0, 34),
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-              ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceMuted,
+              borderRadius: BorderRadius.circular(AppRadius.pill),
+            ),
+            child: Text(
+              score == null
+                  ? 'Scan your skin to unlock today\'s baseline.'
+                  : insight?.trim().isNotEmpty == true
+                  ? insight!
+                  : 'Baseline saved from your latest analysis.',
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.labelSmall,
             ),
           ),
+          if (usageLabel != null) ...[
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'USAGE',
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: AppColors.heading,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+                Text(
+                  usageLabel,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: exhausted ? AppColors.error : AppColors.heading,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 7),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(AppRadius.pill),
+              child: LinearProgressIndicator(
+                value: usageProgress,
+                minHeight: 5,
+                backgroundColor: AppColors.surfaceContainerHigh,
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  exhausted ? AppColors.error : AppColors.primary,
+                ),
+              ),
+            ),
+            if (exhausted) ...[
+              const SizedBox(height: 5),
+              TextButton.icon(
+                onPressed: onUpgrade,
+                iconAlignment: IconAlignment.end,
+                icon: const Icon(Icons.arrow_forward_rounded, size: 15),
+                label: const Text('Upgrade for unlimited scans'),
+                style: TextButton.styleFrom(
+                  minimumSize: const Size.fromHeight(32),
+                  padding: EdgeInsets.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+              ),
+            ],
+          ],
         ],
       ),
     );
@@ -1035,4 +1107,17 @@ class _SecondaryActionCard extends StatelessWidget {
       ),
     );
   }
+}
+
+SubscriptionUsage? _findUsage(
+  List<SubscriptionUsage> usage,
+  String featureKey,
+) {
+  final normalizedKey = featureKey.trim().toLowerCase();
+  for (final item in usage) {
+    if (item.featureKey.trim().toLowerCase() == normalizedKey) {
+      return item;
+    }
+  }
+  return null;
 }

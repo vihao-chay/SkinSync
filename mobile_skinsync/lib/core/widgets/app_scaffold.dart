@@ -10,6 +10,7 @@ class AppScaffold extends StatelessWidget {
     required this.title,
     required this.body,
     this.subtitle,
+    this.leading,
     this.headerTrailing,
     this.onRefresh,
     this.contentMaxWidth = AppSpacing.maxContentWidth,
@@ -22,6 +23,7 @@ class AppScaffold extends StatelessWidget {
   final String title;
   final Widget body;
   final String? subtitle;
+  final Widget? leading;
   final Widget? headerTrailing;
   final Future<void> Function()? onRefresh;
   final double contentMaxWidth;

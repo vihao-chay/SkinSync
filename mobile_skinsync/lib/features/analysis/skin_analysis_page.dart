@@ -330,16 +330,17 @@ class _ScoreHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final score = result.overallScore ?? result.displaySkinHealthScore ?? 0;
     return AppCard(
       variant: AppCardVariant.metric,
       radius: AppRadius.small,
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
       child: Column(
         children: [
-          _AnalysisScoreDial(score: result.overallScore ?? 0),
+          _AnalysisScoreDial(score: score),
           const SizedBox(height: 6),
           Text(
-            _balanceTitle(result.overallScore ?? 0),
+            _balanceTitle(score),
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.labelLarge?.copyWith(
               color: AppColors.heading,
@@ -375,7 +376,7 @@ class _AnalysisScoreDial extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final clamped = score.clamp(0, 100);
+    final clamped = score.clamp(0, 100).toInt();
     return SizedBox.square(
       dimension: 104,
       child: TweenAnimationBuilder<double>(

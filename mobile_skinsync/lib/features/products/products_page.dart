@@ -44,6 +44,7 @@ class _ProductsPageState extends State<ProductsPage> {
     _CategoryTab('sunscreen', 'Sunscreen', Icons.wb_sunny_outlined),
     _CategoryTab('treatment', 'Treatment', Icons.healing_outlined),
     _CategoryTab('mask', 'Mask', Icons.masks_outlined),
+    _CategoryTab('exfoliant', 'Exfoliant', Icons.blur_circular_outlined),
   ];
 
   @override
@@ -169,7 +170,11 @@ class _ProductsPageState extends State<ProductsPage> {
   }
 
   Future<void> _openAddToRoutine(AiRecommendedProduct item) async {
-    String selection = item.alreadyInRoutine ? 'Evening' : 'Morning';
+    if (item.alreadyInRoutine) {
+      return;
+    }
+
+    String selection = 'Morning';
     final appState = context.read<AppState>();
 
     final didAdd = await showModalBottomSheet<bool>(
@@ -286,34 +291,28 @@ class _ProductsPageState extends State<ProductsPage> {
     required String selection,
     required bool allowConflicts,
   }) async {
-    final targets = selection == 'Both'
-        ? const ['Morning', 'Evening']
-        : [selection];
+    final result = await appState.addProductToRoutine(
+      productId: item.productId,
+      routineType: selection,
+      allowConflicts: allowConflicts,
+    );
 
-    for (final target in targets) {
-      final result = await appState.addProductToRoutine(
-        productId: item.productId,
-        routineType: target,
-        allowConflicts: allowConflicts,
+    if (result.requiresConfirmation &&
+        result.warnings.isNotEmpty &&
+        !allowConflicts &&
+        mounted) {
+      final confirmed = await showModalBottomSheet<bool>(
+        context: context,
+        builder: (context) => _ConflictWarningSheet(warnings: result.warnings),
       );
 
-      if (result.requiresConfirmation &&
-          result.warnings.isNotEmpty &&
-          !allowConflicts &&
-          mounted) {
-        final confirmed = await showModalBottomSheet<bool>(
-          context: context,
-          builder: (context) =>
-              _ConflictWarningSheet(warnings: result.warnings),
+      if (confirmed == true && mounted) {
+        await _submitAddToRoutine(
+          appState: appState,
+          item: item,
+          selection: selection,
+          allowConflicts: true,
         );
-        if (confirmed == true && mounted) {
-          await _submitAddToRoutine(
-            appState: appState,
-            item: item,
-            selection: target,
-            allowConflicts: true,
-          );
-        }
       }
     }
   }
@@ -990,7 +989,7 @@ class _ConflictWarningSheet extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '${warning.productAName} × ${warning.productBName}',
+                      '${warning.productAName} x ${warning.productBName}',
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
