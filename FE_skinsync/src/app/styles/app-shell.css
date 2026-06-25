@@ -1,0 +1,97 @@
+@layer components {
+  .app-shell {
+    min-height: 100vh;
+    width: 100%;
+    background: var(--background);
+    color: var(--foreground);
+  }
+
+  .app-shell-grid {
+    display: grid;
+    min-height: 100vh;
+    width: 100%;
+  }
+
+  .app-sidebar {
+    display: none;
+    min-height: 100vh;
+    border-right: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+    background: color-mix(in srgb, var(--card) 95%, transparent);
+  }
+
+  .app-main {
+    min-width: 0;
+  }
+
+  .app-content {
+    margin: 0 auto;
+    width: 100%;
+    max-width: 1240px;
+  }
+
+  .app-surface {
+    border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+    background: color-mix(in srgb, var(--card) 95%, transparent);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
+  }
+
+  .app-surface-muted {
+    border: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+    background: var(--muted);
+  }
+
+  .app-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    border-radius: 9999px;
+    border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+    background: var(--background);
+    padding: 0.25rem 0.75rem;
+    font-size: 0.75rem;
+    color: var(--muted-foreground);
+  }
+
+  .app-input {
+    width: 100%;
+    border-radius: 1rem;
+    border: 1px solid var(--border);
+    background: var(--card);
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+    color: var(--foreground);
+    outline: none;
+    transition: border-color 160ms ease, box-shadow 160ms ease;
+  }
+
+  .app-input::placeholder {
+    color: var(--muted-foreground);
+  }
+
+  .app-input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 18%, transparent);
+  }
+
+  .app-textarea {
+    min-height: 7rem;
+    resize: vertical;
+  }
+
+  .app-ghost-panel {
+    border: 1px dashed var(--border);
+    border-radius: 28px;
+    background: color-mix(in srgb, var(--muted) 70%, transparent);
+  }
+
+  @media (min-width: 768px) {
+    .app-shell-grid {
+      grid-template-columns: 280px minmax(0, 1fr);
+    }
+
+    .app-sidebar {
+      display: flex;
+      flex-direction: column;
+    }
+  }
+}

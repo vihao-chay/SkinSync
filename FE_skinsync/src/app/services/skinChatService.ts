@@ -15,6 +15,6 @@ export async function sendSkinChatMessage(message: string): Promise<ApiResponse<
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ message }),
     },
-    { requiresAuth: false, retryOnUnauthorized: false }
+    { requiresAuth: true }
   );
 }

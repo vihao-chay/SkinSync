@@ -6,7 +6,9 @@ using SkinSync.Base;
 using SkinSync.Data;
 using SkinSync.Helpers;
 using SkinSync.Mappers;
+using SkinSync.Models.Dtos;
 using SkinSync.Models.Dtos.Admin;
+using SkinSync.Models.Dtos.Progress;
 using SkinSync.Models.Dtos.Products;
 using SkinSync.Models.Entities;
 using SkinSync.Models.Dtos.Subscriptions;
@@ -28,6 +30,8 @@ public class AdminController : ControllerBase
     private readonly ISubscriptionPlanService _subscriptionPlanService;
     private readonly IProductImportService _productImportService;
     private readonly ProductImportOptions _productImportOptions;
+    private readonly IImpersonationService _impersonationService;
+    private readonly ILogger<AdminController> _logger;
 
     public AdminController(
         AppDbContext dbContext,
@@ -35,7 +39,9 @@ public class AdminController : ControllerBase
         IProductRepository productRepository,
         ISubscriptionPlanService subscriptionPlanService,
         IProductImportService productImportService,
-        IOptions<ProductImportOptions> productImportOptions)
+        IOptions<ProductImportOptions> productImportOptions,
+        IImpersonationService impersonationService,
+        ILogger<AdminController> logger)
     {
         _dbContext = dbContext;
         _userRepository = userRepository;
@@ -43,6 +49,8 @@ public class AdminController : ControllerBase
         _subscriptionPlanService = subscriptionPlanService;
         _productImportService = productImportService;
         _productImportOptions = productImportOptions.Value;
+        _impersonationService = impersonationService;
+        _logger = logger;
     }
 
     [HttpGet("dashboard")]
@@ -84,6 +92,131 @@ public class AdminController : ControllerBase
         };
 
         return ResponseEntity<PagingResult<AdminUserItemDto>>.Ok(response, "Fetched users successfully.");
+    }
+
+    [HttpGet("users/{id:guid}")]
+    public async Task<ResponseEntity<AdminUserDetailResponseDto>> GetUserDetail(Guid id, CancellationToken cancellationToken)
+    {
+        var user = await _dbContext.Users
+            .AsNoTracking()
+            .Include(x => x.Profile)
+            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+
+        if (user is null)
+        {
+            return ResponseEntity<AdminUserDetailResponseDto>.Fail("User not found.", 404);
+        }
+
+        var latestAnalysis = await _dbContext.SkinProgressAnalyses
+            .AsNoTracking()
+            .Where(x => x.UserId == id && x.Status == "completed")
+            .OrderByDescending(x => x.CreatedAt)
+            .Select(x => new Models.Dtos.Analysis.AnalysisDetailResponseDto
+            {
+                Id = x.Id,
+                UserId = x.UserId,
+                ImageUrl = x.Photo.ImageUrl,
+                SkinType = x.SkinTypeEstimate,
+                OverallScore = x.OverallScore,
+                ConfidenceScore = x.ConfidenceScore.HasValue ? (int)Math.Round(x.ConfidenceScore.Value * 100) : 0,
+                Overview = x.AiSummary,
+                RootCauses = x.AiSummary,
+                AiModel = x.AiModel,
+                Status = x.Status,
+                GeneratedAt = x.CompletedAt ?? x.CreatedAt,
+                CreatedAt = x.CreatedAt,
+                Recommendations = Array.Empty<Models.Dtos.Analysis.AnalysisRecommendationItemDto>(),
+                Issues = Array.Empty<Models.Dtos.Analysis.AnalysisIssueItemDto>(),
+                Warnings = Array.Empty<string>()
+            })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        var regimen = await _dbContext.UserRegimens
+            .AsNoTracking()
+            .Where(x => x.UserId == id && x.IsActive)
+            .OrderByDescending(x => x.CreatedAt)
+            .Select(x => new CurrentRegimenResponseDto
+            {
+                RegimenId = x.Id,
+                Name = x.Name,
+                StartDate = DateOnly.FromDateTime(x.CreatedAt),
+                EndDate = null,
+                IsCustom = x.IsCustom,
+                TotalEstimatedCost = 0,
+                Morning = x.Items.Where(item => item.RoutineTime == "morning").OrderBy(item => item.StepOrder).Select(item => new RegimenProductDto
+                {
+                    StepId = item.Id,
+                    ProductId = item.ProductId,
+                    Name = item.Product.Name,
+                    Brand = item.Product.Brand,
+                    Category = item.Product.Category,
+                    Description = item.Product.Description,
+                    Ingredient = item.Product.Ingredient,
+                    UsageGuide = item.Product.UsageGuide,
+                    Instruction = item.Instruction,
+                    Purpose = item.Product.Description,
+                    Frequency = item.Frequency,
+                    Caution = null,
+                    Price = item.Product.Price,
+                    ImageUrl = item.Product.ImageUrl,
+                    StepOrder = item.StepOrder
+                }).ToList(),
+                Evening = x.Items.Where(item => item.RoutineTime == "evening").OrderBy(item => item.StepOrder).Select(item => new RegimenProductDto
+                {
+                    StepId = item.Id,
+                    ProductId = item.ProductId,
+                    Name = item.Product.Name,
+                    Brand = item.Product.Brand,
+                    Category = item.Product.Category,
+                    Description = item.Product.Description,
+                    Ingredient = item.Product.Ingredient,
+                    UsageGuide = item.Product.UsageGuide,
+                    Instruction = item.Instruction,
+                    Purpose = item.Product.Description,
+                    Frequency = item.Frequency,
+                    Caution = null,
+                    Price = item.Product.Price,
+                    ImageUrl = item.Product.ImageUrl,
+                    StepOrder = item.StepOrder
+                }).ToList()
+            })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        var progressOverview = await BuildProgressOverviewAsync(id, cancellationToken);
+        var subscription = await _subscriptionPlanService.GetCurrentAsync(id, cancellationToken);
+        var activities = await BuildRecentActivitiesAsync(id, cancellationToken);
+
+        return ResponseEntity<AdminUserDetailResponseDto>.Ok(new AdminUserDetailResponseDto
+        {
+            Id = user.Id,
+            FullName = user.FullName,
+            Email = user.Email,
+            Phone = user.Phone,
+            Role = user.Role,
+            Status = user.Status,
+            PlanType = user.PlanType,
+            AvatarUrl = user.AvatarUrl,
+            CreatedAt = user.CreatedAt,
+            Profile = user.Profile is null ? null : new AdminUserProfileSnapshotDto
+            {
+                SkinType = user.Profile.SkinType,
+                SkinConcerns = JsonListHelper.ParseStringList(user.Profile.SkinConcerns),
+                MonthlyBudget = user.Profile.MonthlyBudget,
+                Age = user.Profile.Age,
+                BirthYear = user.Profile.BirthYear,
+                Gender = user.Profile.Gender,
+                Allergies = JsonListHelper.ParseStringList(user.Profile.Allergies),
+                SensitiveIngredients = JsonListHelper.ParseStringList(user.Profile.SensitiveIngredients),
+                SkinGoals = JsonListHelper.ParseStringList(user.Profile.SkinGoals),
+                RoutinePreference = user.Profile.RoutinePreference,
+                UpdatedAt = user.Profile.UpdatedAt
+            },
+            Subscription = subscription,
+            ProgressOverview = progressOverview,
+            CurrentRegimen = regimen,
+            LatestAnalysis = latestAnalysis,
+            RecentActivities = activities
+        }, "Fetched user detail successfully.");
     }
 
     [HttpGet("products")]
@@ -285,6 +418,115 @@ public class AdminController : ControllerBase
         }
     }
 
+    [HttpGet("ai-logs")]
+    public async Task<ResponseEntity<AdminAiLogsResponseDto>> GetAiLogs([FromQuery] int take = 50, CancellationToken cancellationToken = default)
+    {
+        take = Math.Clamp(take, 1, 200);
+        var logs = await _dbContext.AiUsageLogs
+            .AsNoTracking()
+            .Include(x => x.User)
+            .OrderByDescending(x => x.UsedAt)
+            .Take(take)
+            .ToListAsync(cancellationToken);
+
+        return ResponseEntity<AdminAiLogsResponseDto>.Ok(new AdminAiLogsResponseDto
+        {
+            TotalLogs = await _dbContext.AiUsageLogs.CountAsync(cancellationToken),
+            DistinctUsers = await _dbContext.AiUsageLogs.Select(x => x.UserId).Distinct().CountAsync(cancellationToken),
+            Items = logs.Select(x => new AdminAiUsageLogItemDto
+            {
+                Id = x.Id,
+                UserId = x.UserId,
+                UserEmail = x.User.Email,
+                UserName = x.User.FullName,
+                FeatureName = x.FeatureName,
+                Model = x.Model,
+                InputTokens = x.InputTokens,
+                OutputTokens = x.OutputTokens,
+                CostEstimate = x.CostEstimate,
+                UsedAt = x.UsedAt
+            }).ToList()
+        }, "Fetched AI logs successfully.");
+    }
+
+    [HttpGet("subscriptions")]
+    public async Task<ResponseEntity<AdminSubscriptionsResponseDto>> GetSubscriptions([FromQuery] int take = 100, CancellationToken cancellationToken = default)
+    {
+        take = Math.Clamp(take, 1, 250);
+        var subscriptions = await _dbContext.UserSubscriptions
+            .AsNoTracking()
+            .Include(x => x.User)
+            .Include(x => x.Plan)
+            .OrderByDescending(x => x.CreatedAt)
+            .Take(take)
+            .ToListAsync(cancellationToken);
+
+        return ResponseEntity<AdminSubscriptionsResponseDto>.Ok(new AdminSubscriptionsResponseDto
+        {
+            TotalSubscriptions = await _dbContext.UserSubscriptions.CountAsync(cancellationToken),
+            ActiveSubscriptions = await _dbContext.UserSubscriptions.CountAsync(x => x.Status == "active", cancellationToken),
+            Items = subscriptions.Select(x => new AdminSubscriptionItemDto
+            {
+                SubscriptionId = x.Id,
+                UserId = x.UserId,
+                UserEmail = x.User.Email,
+                UserName = x.User.FullName,
+                PlanCode = x.Plan.Code,
+                PlanName = x.Plan.Name,
+                Status = x.Status,
+                PricePaid = x.PricePaid,
+                Currency = x.Currency,
+                BillingPeriod = x.BillingPeriod,
+                StartedAt = x.StartedAt,
+                EndsAt = x.EndsAt,
+                CancelledAt = x.CancelledAt
+            }).ToList()
+        }, "Fetched subscriptions successfully.");
+    }
+
+    [HttpPost("impersonation/start")]
+    public async Task<ResponseEntity<ImpersonationSessionResponseDto>> StartImpersonation([FromBody] StartImpersonationRequestDto request, CancellationToken cancellationToken)
+    {
+        if (!HttpContext.TryGetActorUserId(out var adminId))
+        {
+            return ResponseEntity<ImpersonationSessionResponseDto>.Fail("Missing authenticated admin.", 401);
+        }
+
+        var adminUser = await _dbContext.Users.FirstOrDefaultAsync(x => x.Id == adminId, cancellationToken);
+        if (adminUser is null || !string.Equals(adminUser.Role, "admin", StringComparison.OrdinalIgnoreCase))
+        {
+            return ResponseEntity<ImpersonationSessionResponseDto>.Fail("Admin access is required.", 403);
+        }
+
+        var targetUser = await _dbContext.Users.FirstOrDefaultAsync(x => x.Id == request.UserId, cancellationToken);
+        if (targetUser is null)
+        {
+            return ResponseEntity<ImpersonationSessionResponseDto>.Fail("Target user not found.", 404);
+        }
+
+        if (string.Equals(targetUser.Role, "admin", StringComparison.OrdinalIgnoreCase))
+        {
+            return ResponseEntity<ImpersonationSessionResponseDto>.Fail("Cannot impersonate another admin.", 400);
+        }
+
+        var session = _impersonationService.CreateSession(adminUser, targetUser);
+        _logger.LogInformation("Impersonation started by admin {AdminId} for user {UserId}", adminId, targetUser.Id);
+        return ResponseEntity<ImpersonationSessionResponseDto>.Ok(session, "Impersonation session started successfully.");
+    }
+
+    [HttpPost("impersonation/end")]
+    public ResponseEntity<object> EndImpersonation()
+    {
+        if (HttpContext.TryGetActorUserId(out var adminId) &&
+            HttpContext.TryGetImpersonationContext(out var context) &&
+            context is not null)
+        {
+            _logger.LogInformation("Impersonation ended by admin {AdminId} for user {UserId}", adminId, context.ImpersonatedUserId);
+        }
+
+        return ResponseEntity<object>.Ok(null, "Impersonation session ended successfully.");
+    }
+
     private static string? ValidateProductRequest(ProductUpsertRequestDto request)
     {
         if (string.IsNullOrWhiteSpace(request.Name) ||
@@ -321,5 +563,82 @@ public class AdminController : ControllerBase
         }
 
         return null;
+    }
+
+    private async Task<ProgressOverviewResponseDto?> BuildProgressOverviewAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        var latestAnalyses = await _dbContext.SkinProgressAnalyses
+            .AsNoTracking()
+            .Where(x => x.UserId == userId && x.Status == "completed")
+            .OrderByDescending(x => x.CreatedAt)
+            .Take(2)
+            .ToListAsync(cancellationToken);
+
+        var currentScore = latestAnalyses.FirstOrDefault()?.OverallScore;
+        var startScore = latestAnalyses.Count > 1 ? latestAnalyses.Last().OverallScore : currentScore;
+        var completedDays = await _dbContext.DailyLogs.CountAsync(x => x.UserId == userId && (x.MorningCompleted || x.EveningCompleted), cancellationToken);
+
+        return new ProgressOverviewResponseDto
+        {
+            StartScore = startScore,
+            CurrentScore = currentScore,
+            ImprovementPercent = startScore.HasValue && currentScore.HasValue && startScore.Value > 0
+                ? Math.Round(((decimal)(currentScore.Value - startScore.Value) / startScore.Value) * 100, 2)
+                : 0,
+            CompletedDaysLast28 = completedDays,
+            CompletionRateLast28 = completedDays > 0 ? Math.Round((decimal)completedDays / 28 * 100, 2) : 0,
+            CurrentStreak = 0,
+            DailyTip = null,
+            ProgressInsight = latestAnalyses.FirstOrDefault()?.AiSummary
+        };
+    }
+
+    private async Task<IReadOnlyCollection<AdminUserActivityItemDto>> BuildRecentActivitiesAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        var items = new List<AdminUserActivityItemDto>();
+
+        var analysis = await _dbContext.SkinProgressAnalyses
+            .AsNoTracking()
+            .Where(x => x.UserId == userId)
+            .OrderByDescending(x => x.CreatedAt)
+            .Select(x => new AdminUserActivityItemDto
+            {
+                Type = "analysis",
+                Title = "Completed skin analysis",
+                Description = x.AiSummary,
+                OccurredAt = x.CreatedAt
+            })
+            .FirstOrDefaultAsync(cancellationToken);
+        if (analysis is not null) items.Add(analysis);
+
+        var diary = await _dbContext.DailyLogs
+            .AsNoTracking()
+            .Where(x => x.UserId == userId)
+            .OrderByDescending(x => x.CreatedAt)
+            .Select(x => new AdminUserActivityItemDto
+            {
+                Type = "checkup",
+                Title = "Submitted daily check-up",
+                Description = x.SkinFeeling,
+                OccurredAt = x.CreatedAt
+            })
+            .FirstOrDefaultAsync(cancellationToken);
+        if (diary is not null) items.Add(diary);
+
+        var chat = await _dbContext.AiChatMessages
+            .AsNoTracking()
+            .Where(x => x.Conversation.UserId == userId)
+            .OrderByDescending(x => x.CreatedAt)
+            .Select(x => new AdminUserActivityItemDto
+            {
+                Type = "chat",
+                Title = "AI chat activity",
+                Description = x.Content.Length > 120 ? x.Content.Substring(0, 120) : x.Content,
+                OccurredAt = x.CreatedAt
+            })
+            .FirstOrDefaultAsync(cancellationToken);
+        if (chat is not null) items.Add(chat);
+
+        return items.OrderByDescending(x => x.OccurredAt).Take(10).ToList();
     }
 }

@@ -83,6 +83,7 @@ builder.Services.AddScoped<IDiaryRepository, DiaryRepository>();
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.Configure<ProductImportOptions>(builder.Configuration.GetSection("SeedData"));
 builder.Services.AddScoped<IProductImportService, ProductImportService>();
+builder.Services.AddScoped<IImpersonationService, ImpersonationService>();
 
 builder.Services.AddScoped<IRegimenBuilderService, RegimenBuilderService>();
 builder.Services.AddScoped<IIngredientConflictService, IngredientConflictService>();
@@ -247,6 +248,7 @@ if (shouldUseHttpsRedirection)
 app.UseStaticFiles();
 
 app.UseAuthentication();
+app.UseMiddleware<ImpersonationMiddleware>();
 app.UseAuthorization();
 
 app.MapControllers();

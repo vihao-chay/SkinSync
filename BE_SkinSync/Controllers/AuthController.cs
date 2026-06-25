@@ -309,6 +309,11 @@ public class AuthController : ControllerBase
     [HttpPost("change-password")]
     public async Task<ResponseEntity<object>> ChangePassword([FromBody] ChangePasswordRequestDto request, CancellationToken cancellationToken)
     {
+        if (HttpContext.TryGetImpersonationContext(out var impersonationContext) && impersonationContext is not null)
+        {
+            return ResponseEntity<object>.Fail("This action is disabled while viewing as user.", 403);
+        }
+
         if (!HttpContext.TryGetUserId(out var id))
         {
             return ResponseEntity<object>.Fail("Thiáº¿u thÃ´ng tin Ä‘á»‹nh danh ngÆ°á»i dÃ¹ng.", 401);

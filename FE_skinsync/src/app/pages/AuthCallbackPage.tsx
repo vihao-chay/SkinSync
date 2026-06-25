@@ -43,9 +43,9 @@ export function AuthCallbackPage() {
           setCurrentUser(result.content.user);
           // Navigate based on user role
           if (result.content.user.role === "admin") {
-            navigate("/admin", { replace: true });
+            navigate("/admin/dashboard", { replace: true });
           } else {
-            navigate("/", { replace: true });
+            navigate("/app/dashboard", { replace: true });
           }
         } else {
           setError(result.message || `Đăng nhập ${provider === "google" ? "Google" : "Facebook"} thất bại. Vui lòng thử lại.`);
