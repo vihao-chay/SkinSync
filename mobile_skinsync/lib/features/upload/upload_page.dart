@@ -24,6 +24,17 @@ class _UploadPageState extends State<UploadPage> {
   File? _selectedImage;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      context.read<AppState>().clearError();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final appState = context.watch<AppState>();
     final flowArgs =

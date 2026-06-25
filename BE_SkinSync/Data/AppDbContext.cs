@@ -32,6 +32,7 @@ public class AppDbContext : DbContext
     public DbSet<SubscriptionPlan> SubscriptionPlans => Set<SubscriptionPlan>();
     public DbSet<SubscriptionPlanFeature> SubscriptionPlanFeatures => Set<SubscriptionPlanFeature>();
     public DbSet<UserSubscription> UserSubscriptions => Set<UserSubscription>();
+    public DbSet<PaymentOrder> PaymentOrders => Set<PaymentOrder>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -630,6 +631,33 @@ public class AppDbContext : DbContext
                 .WithMany(x => x.Messages)
                 .HasForeignKey(x => x.ConversationId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<PaymentOrder>(entity =>
+        {
+            entity.ToTable("payment_orders", table =>
+            {
+                table.HasCheckConstraint("ck_payment_orders_status", "\"Status\" IN ('pending', 'paid', 'cancelled')");
+            });
+            entity.HasKey(x => x.Id);
+            entity.HasIndex(x => x.OrderCode).IsUnique();
+            entity.HasIndex(x => new { x.UserId, x.Status });
+            entity.Property(x => x.UserId).IsRequired();
+            entity.Property(x => x.PlanId).IsRequired();
+            entity.Property(x => x.Amount).HasPrecision(12, 2).IsRequired();
+            entity.Property(x => x.Status).HasMaxLength(20).HasDefaultValue("pending").IsRequired();
+            entity.Property(x => x.PayOsPaymentLinkId).HasMaxLength(255);
+            entity.Property(x => x.CheckoutUrl).HasMaxLength(1000);
+            entity.Property(x => x.CreatedAt).HasColumnType("timestamp with time zone").HasDefaultValueSql("timezone('utc', now())");
+            entity.Property(x => x.PaidAt).HasColumnType("timestamp with time zone");
+            entity.HasOne(x => x.User)
+                .WithMany(x => x.PaymentOrders)
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(x => x.Plan)
+                .WithMany()
+                .HasForeignKey(x => x.PlanId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
     }
 }

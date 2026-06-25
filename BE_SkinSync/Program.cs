@@ -79,6 +79,13 @@ builder.Services.AddScoped<ISubscriptionPlanService, SubscriptionPlanService>();
 builder.Services.AddScoped<IReportPdfService, ReportPdfService>();
 builder.Services.AddHttpClient<ISupabaseAuthService, SupabaseAuthService>();
 
+// PayOS registrations
+var payOsClientId = builder.Configuration["PayOS:ClientId"] ?? "YOUR_CLIENT_ID";
+var payOsApiKey = builder.Configuration["PayOS:ApiKey"] ?? "YOUR_API_KEY";
+var payOsChecksumKey = builder.Configuration["PayOS:ChecksumKey"] ?? "YOUR_CHECKSUM_KEY";
+builder.Services.AddSingleton(new Net.payOS.PayOS(payOsClientId, payOsApiKey, payOsChecksumKey));
+builder.Services.AddScoped<IPayOsPaymentService, PayOsPaymentService>();
+
 // AI Integration Registrations
 builder.Services.Configure<SkinSync.Services.AI.AiSettings>(builder.Configuration.GetSection("AiSettings"));
 builder.Services.AddScoped<SkinSync.Services.AI.IAiService, SkinSync.Services.AI.AiService>();
