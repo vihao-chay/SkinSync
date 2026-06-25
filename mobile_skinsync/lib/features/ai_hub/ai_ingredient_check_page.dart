@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/models/app_models.dart';
+import '../../core/responsive/responsive.dart';
 import '../../core/routes/app_routes.dart';
 import '../../core/state/app_state.dart';
 import '../../core/theme/app_colors.dart';
@@ -129,9 +130,17 @@ class _AiIngredientCheckPageState extends State<AiIngredientCheckPage> {
         currentRoute: '/ai/ingredient-check',
         title: 'Ingredient Check',
       ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-        children: [
+      body: SafeArea(
+        top: false,
+        child: ListView(
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          padding: EdgeInsets.fromLTRB(
+            Responsive.responsiveHorizontalPadding(context),
+            12,
+            Responsive.responsiveHorizontalPadding(context),
+            Responsive.contentBottomSpacing(context, extra: 12),
+          ),
+          children: [
           TextField(
             controller: _nameController,
             decoration: const InputDecoration(
@@ -155,26 +164,40 @@ class _AiIngredientCheckPageState extends State<AiIngredientCheckPage> {
             ),
           ),
           const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () {
-                    _ingredientsController.text =
-                        'Water, Glycerin, Niacinamide, Panthenol';
-                  },
-                  icon: const Icon(Icons.document_scanner_outlined),
-                  label: const Text('Scan / OCR'),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: FilledButton(
-                  onPressed: _loading ? null : _submit,
-                  child: Text(_loading ? 'Checking...' : 'Check ingredients'),
-                ),
-              ),
-            ],
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final stack = constraints.maxWidth < 420;
+              final scanButton = OutlinedButton.icon(
+                onPressed: () {
+                  _ingredientsController.text =
+                      'Water, Glycerin, Niacinamide, Panthenol';
+                },
+                icon: const Icon(Icons.document_scanner_outlined),
+                label: const Text('Scan / OCR'),
+              );
+              final checkButton = FilledButton(
+                onPressed: _loading ? null : _submit,
+                child: Text(_loading ? 'Checking...' : 'Check ingredients'),
+              );
+
+              if (stack) {
+                return Column(
+                  children: [
+                    SizedBox(width: double.infinity, child: scanButton),
+                    const SizedBox(height: 12),
+                    SizedBox(width: double.infinity, child: checkButton),
+                  ],
+                );
+              }
+
+              return Row(
+                children: [
+                  Expanded(child: scanButton),
+                  const SizedBox(width: 12),
+                  Expanded(child: checkButton),
+                ],
+              );
+            },
           ),
           const SizedBox(height: 18),
           if (_result != null) ...[
@@ -212,30 +235,44 @@ class _AiIngredientCheckPageState extends State<AiIngredientCheckPage> {
               ),
             ],
             const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: _saving ? null : _saveProduct,
-                    child: Text(
-                      _saving
-                          ? 'Saving...'
-                          : _savedProduct == null
-                          ? 'Save as My Product'
-                          : 'Saved',
-                    ),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final stack = constraints.maxWidth < 420;
+                final saveButton = OutlinedButton(
+                  onPressed: _saving ? null : _saveProduct,
+                  child: Text(
+                    _saving
+                        ? 'Saving...'
+                        : _savedProduct == null
+                        ? 'Save as My Product'
+                        : 'Saved',
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: FilledButton(
-                    onPressed: _savedProduct == null
-                        ? null
-                        : _addSavedProductToRoutine,
-                    child: const Text('Add to Routine'),
-                  ),
-                ),
-              ],
+                );
+                final addButton = FilledButton(
+                  onPressed: _savedProduct == null
+                      ? null
+                      : _addSavedProductToRoutine,
+                  child: const Text('Add to Routine'),
+                );
+
+                if (stack) {
+                  return Column(
+                    children: [
+                      SizedBox(width: double.infinity, child: saveButton),
+                      const SizedBox(height: 12),
+                      SizedBox(width: double.infinity, child: addButton),
+                    ],
+                  );
+                }
+
+                return Row(
+                  children: [
+                    Expanded(child: saveButton),
+                    const SizedBox(width: 12),
+                    Expanded(child: addButton),
+                  ],
+                );
+              },
             ),
             const SizedBox(height: 8),
             OutlinedButton(
@@ -253,6 +290,7 @@ class _AiIngredientCheckPageState extends State<AiIngredientCheckPage> {
             ),
           ],
         ],
+        ),
       ),
     );
   }

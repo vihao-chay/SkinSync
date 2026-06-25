@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../core/config/app_config.dart';
 import '../../core/models/app_models.dart';
 import '../../core/routes/app_routes.dart';
+import '../../core/responsive/responsive.dart';
 import '../../core/state/app_state.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_radius.dart';
@@ -12,7 +13,6 @@ import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/circular_score.dart';
 import '../../core/widgets/main_shell.dart';
-import '../../core/widgets/responsive_layout.dart';
 import '../../core/widgets/stitch_top_bar.dart';
 import '../../core/widgets/status_chip.dart';
 
@@ -86,13 +86,13 @@ class _DashboardPageState extends State<DashboardPage> {
             .where((item) => item.name.trim().isNotEmpty)
             .take(2)
             .toList();
-    final contentMaxWidth = ResponsiveLayout.contentMaxWidth(
+    final contentMaxWidth = Responsive.maxContentWidth(
       context,
-      compact: 460,
-      medium: 760,
-      large: 1040,
+      mobile: double.infinity,
+      tablet: 760,
+      desktop: 1040,
     );
-    final horizontalPadding = ResponsiveLayout.horizontalPadding(context);
+    final horizontalPadding = Responsive.responsiveHorizontalPadding(context);
 
     return ColoredBox(
       color: AppColors.pageBackground,
@@ -107,7 +107,7 @@ class _DashboardPageState extends State<DashboardPage> {
               child: ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.only(
-                  bottom: AppSpacing.pageBottomPaddingWithActions,
+                  bottom: 0,
                 ),
                 children: [
                   StitchTopBar(

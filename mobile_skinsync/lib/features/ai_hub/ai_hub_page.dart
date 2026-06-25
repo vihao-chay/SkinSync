@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/responsive/responsive.dart';
 import '../../core/routes/app_routes.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/widgets/app_card.dart';
@@ -14,11 +15,11 @@ class AiHubPage extends StatelessWidget {
       title: 'AI Hub',
       subtitle: 'Open SkinSync AI tools from one place.',
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.pagePadding,
+        padding: EdgeInsets.fromLTRB(
+          Responsive.responsiveHorizontalPadding(context),
           0,
-          AppSpacing.pagePadding,
-          AppSpacing.pageBottomPaddingWithActions,
+          Responsive.responsiveHorizontalPadding(context),
+          Responsive.contentBottomSpacing(context, extra: 20),
         ),
         children: [
           _AiHubTile(

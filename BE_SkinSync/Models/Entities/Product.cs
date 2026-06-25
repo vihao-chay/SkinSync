@@ -12,12 +12,17 @@ public class Product
     public string? TargetConcerns { get; set; }
     public string? AvoidForConcerns { get; set; }
     public string? UsageGuide { get; set; }
-    public decimal Price { get; set; }
-    public string Currency { get; set; } = "VND";
+    public string? UsageTime { get; set; }
+    public decimal? Price { get; set; }
+    public string Currency { get; set; } = string.Empty;
     public string? SuitableSkinTypes { get; set; }
     public string? ImageUrl { get; set; }
     public decimal? Rating { get; set; }
     public string Status { get; set; } = "active";
+    public bool IsVerified { get; set; }
+    public bool IsActive { get; set; } = true;
+    public string Source { get; set; } = string.Empty;
+    public string? SourceUrl { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
 

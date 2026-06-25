@@ -209,11 +209,14 @@ public class ProductRoutineService : IProductRoutineService
             Brand = "My Product",
             Category = string.IsNullOrWhiteSpace(request.Category) ? "Custom" : request.Category.Trim(),
             Description = "Saved from ingredient checker",
-            Ingredient = request.IngredientsText.Trim(),
+            Ingredient = ProductMapper.SerializeIngredients(request.IngredientsText),
             UsageGuide = "Patch test first and add slowly into your routine.",
-            Price = 0,
-            Currency = "VND",
+            Price = null,
+            Currency = string.Empty,
             Status = "inactive",
+            IsActive = false,
+            IsVerified = false,
+            Source = "IngredientChecker",
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };

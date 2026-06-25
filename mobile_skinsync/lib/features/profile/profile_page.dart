@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/models/app_models.dart';
+import '../../core/responsive/responsive.dart';
 import '../../core/routes/app_routes.dart';
 import '../../core/state/app_state.dart';
 import '../../core/theme/app_colors.dart';
@@ -31,14 +32,21 @@ class ProfilePage extends StatelessWidget {
         bottom: false,
         child: Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 460),
+            constraints: BoxConstraints(
+              maxWidth: Responsive.maxContentWidth(
+                context,
+                mobile: double.infinity,
+                tablet: 760,
+                desktop: 960,
+              ),
+            ),
             child: RefreshIndicator(
               color: AppColors.primaryDark,
               onRefresh: appState.refreshProfileState,
               child: ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.only(
-                  bottom: AppSpacing.pageBottomPaddingWithActions,
+                  bottom: 0,
                 ),
                 children: [
                   StitchTopBar(
@@ -47,10 +55,10 @@ class ProfilePage extends StatelessWidget {
                         Navigator.pushNamed(context, AppRoutes.editProfile),
                   ),
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                      AppSpacing.pagePadding,
+                    padding: EdgeInsets.fromLTRB(
+                      Responsive.responsiveHorizontalPadding(context),
                       4,
-                      AppSpacing.pagePadding,
+                      Responsive.responsiveHorizontalPadding(context),
                       0,
                     ),
                     child: Column(

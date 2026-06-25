@@ -162,11 +162,18 @@ public class AppDbContext : DbContext
         {
             entity.ToTable("products", table =>
             {
-                table.HasCheckConstraint("ck_products_price", "price >= 0");
+                table.HasCheckConstraint("ck_products_price", "\"Price\" IS NULL OR \"Price\" >= 0");
                 table.HasCheckConstraint("ck_products_rating", "rating IS NULL OR rating BETWEEN 0 AND 5");
                 table.HasCheckConstraint("ck_products_status", "status IN ('active', 'out_of_stock', 'inactive')");
+                table.HasCheckConstraint("ck_products_usage_time", "\"UsageTime\" IS NULL OR \"UsageTime\" IN ('Morning', 'Night', 'Both')");
             });
             entity.HasKey(x => x.Id);
+            entity.HasIndex(x => x.Name);
+            entity.HasIndex(x => x.Brand);
+            entity.HasIndex(x => x.Category);
+            entity.HasIndex(x => x.IsActive);
+            entity.HasIndex(x => x.IsVerified);
+            entity.HasIndex(x => x.Source);
             entity.HasIndex(x => new { x.Status, x.Category });
             entity.HasIndex(x => x.Brand);
             entity.HasIndex(x => x.Price);
@@ -179,12 +186,17 @@ public class AppDbContext : DbContext
             entity.Property(x => x.TargetConcerns).HasColumnType("jsonb");
             entity.Property(x => x.AvoidForConcerns).HasColumnType("jsonb");
             entity.Property(x => x.UsageGuide).HasColumnType("text");
-            entity.Property(x => x.Price).HasPrecision(12, 2).IsRequired();
-            entity.Property(x => x.Currency).HasMaxLength(10).HasDefaultValue("VND").IsRequired();
+            entity.Property(x => x.UsageTime).HasMaxLength(20);
+            entity.Property(x => x.Price).HasPrecision(12, 2);
+            entity.Property(x => x.Currency).HasMaxLength(10).HasDefaultValue(string.Empty).IsRequired();
             entity.Property(x => x.SuitableSkinTypes).HasColumnType("jsonb");
             entity.Property(x => x.ImageUrl).HasMaxLength(500);
             entity.Property(x => x.Rating).HasPrecision(3, 2);
             entity.Property(x => x.Status).HasMaxLength(20).HasDefaultValue("active").IsRequired();
+            entity.Property(x => x.IsVerified).HasDefaultValue(false).IsRequired();
+            entity.Property(x => x.IsActive).HasDefaultValue(true).IsRequired();
+            entity.Property(x => x.Source).HasMaxLength(50).HasDefaultValue(string.Empty).IsRequired();
+            entity.Property(x => x.SourceUrl).HasMaxLength(500);
             entity.Property(x => x.CreatedAt).HasColumnType("timestamp with time zone").HasDefaultValueSql("timezone('utc', now())");
             entity.Property(x => x.UpdatedAt).HasColumnType("timestamp with time zone");
         });

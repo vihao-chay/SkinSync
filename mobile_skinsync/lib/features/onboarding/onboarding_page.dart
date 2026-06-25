@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/routes/app_routes.dart';
+import '../../core/responsive/responsive.dart';
 import '../../core/state/app_state.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/brand_logo.dart';
@@ -63,40 +64,54 @@ class _OnboardingBodyState extends State<_OnboardingBody> {
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 460),
-            child: Column(
-              children: [
-                _OnboardingHeader(
-                  currentStep: state.currentStep,
-                  onBack: () => _back(state),
-                  onLogout: () => _logout(context),
-                ),
-                Expanded(
-                  child: PageView(
-                    controller: _pageController,
-                    physics: const NeverScrollableScrollPhysics(),
-                    children: [
-                      _BasicInfoStep(
-                        state: state,
-                        nameController: _nameController,
-                        onPickDate: () => _pickDate(context, state),
-                      ),
-                      _SkinProfileStep(state: state),
-                      _RoutineStep(state: state),
-                      _BudgetGoalsStep(state: state),
-                      _PhotoStep(
-                        state: state,
-                        onPickPhoto: () => _pickPhoto(state),
-                      ),
-                    ],
+            constraints: BoxConstraints(
+              maxWidth: Responsive.maxContentWidth(
+                context,
+                mobile: 520,
+                tablet: 720,
+                desktop: 860,
+              ),
+            ),
+            child: AnimatedPadding(
+              duration: const Duration(milliseconds: 180),
+              curve: Curves.easeOut,
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.viewInsetsOf(context).bottom,
+              ),
+              child: Column(
+                children: [
+                  _OnboardingHeader(
+                    currentStep: state.currentStep,
+                    onBack: () => _back(state),
+                    onLogout: () => _logout(context),
                   ),
-                ),
-                _BottomActionBar(
-                  state: state,
-                  errorMessage: appState.errorMessage,
-                  onPressed: () => _next(context, state),
-                ),
-              ],
+                  Expanded(
+                    child: PageView(
+                      controller: _pageController,
+                      physics: const NeverScrollableScrollPhysics(),
+                      children: [
+                        _BasicInfoStep(
+                          state: state,
+                          nameController: _nameController,
+                          onPickDate: () => _pickDate(context, state),
+                        ),
+                        _SkinProfileStep(state: state),
+                        _RoutineStep(state: state),
+                        _BudgetGoalsStep(state: state),
+                        _PhotoStep(
+                          state: state,
+                          onPickPhoto: () => _pickPhoto(state),
+                        ),
+                      ],
+                    ),
+                  ),
+                  _BottomActionBar(
+                    state: state,
+                    errorMessage: appState.errorMessage,
+                    onPressed: () => _next(context, state),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -241,10 +256,15 @@ class _OnboardingHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final canGoBack = currentStep > 0;
+    final horizontalPadding = Responsive.responsiveHorizontalPadding(context);
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-      child: Row(
+      padding: EdgeInsets.fromLTRB(horizontalPadding, 12, horizontalPadding, 8),
+      child: Wrap(
+        alignment: WrapAlignment.spaceBetween,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 12,
+        runSpacing: 8,
         children: [
           if (canGoBack)
             IconButton(
@@ -260,7 +280,6 @@ class _OnboardingHeader extends StatelessWidget {
               onPressed: onLogout,
               child: const Text('Sign out'),
             ),
-          const Spacer(),
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -275,11 +294,10 @@ class _OnboardingHeader extends StatelessWidget {
               ),
             ],
           ),
-          const Spacer(),
           SizedBox(
-            width: 72,
+            width: 56,
             child: Align(
-              alignment: Alignment.centerRight,
+              alignment: Alignment.center,
               child: Text(
                 '${currentStep + 1}/${OnboardingState.totalSteps}',
                 style: Theme.of(context).textTheme.labelMedium?.copyWith(
@@ -536,22 +554,24 @@ class _PhotoStep extends StatelessWidget {
               children: [
                 GestureDetector(
                   onTap: onPickPhoto,
-                  child: Container(
-                    height: 240,
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(26),
-                      border: Border.all(
-                        color: AppColors.border,
-                        style: BorderStyle.solid,
+                  child: AspectRatio(
+                    aspectRatio: Responsive.isTablet(context) ? 1.8 : 1.15,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(26),
+                        border: Border.all(
+                          color: AppColors.border,
+                          style: BorderStyle.solid,
+                        ),
                       ),
+                      child: photo == null
+                          ? const _PhotoPlaceholder()
+                          : ClipRRect(
+                              borderRadius: BorderRadius.circular(26),
+                              child: Image.file(photo, fit: BoxFit.cover),
+                            ),
                     ),
-                    child: photo == null
-                        ? const _PhotoPlaceholder()
-                        : ClipRRect(
-                            borderRadius: BorderRadius.circular(26),
-                            child: Image.file(photo, fit: BoxFit.cover),
-                          ),
                   ),
                 ),
                 const SizedBox(height: 18),
@@ -604,7 +624,7 @@ class _BottomActionBar extends StatelessWidget {
         ),
       ),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 14, 20, 16),
+        padding: Responsive.responsivePadding(context, top: 14, bottom: 16),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -669,7 +689,7 @@ class _StepScrollView extends StatelessWidget {
   Widget build(BuildContext context) {
     return SingleChildScrollView(
       keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-      padding: const EdgeInsets.fromLTRB(18, 8, 18, 24),
+      padding: Responsive.responsivePadding(context, top: 8, bottom: 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -723,7 +743,15 @@ class _GlassPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(
+        Responsive.responsiveValue<double>(
+          context,
+          mobileSmall: 16,
+          mobile: 18,
+          tablet: 22,
+          desktop: 24,
+        ),
+      ),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.96),
         borderRadius: BorderRadius.circular(28),

@@ -1,13 +1,15 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using SkinSync.Base;
 using SkinSync.Data;
+using SkinSync.Helpers;
 using SkinSync.Mappers;
 using SkinSync.Models.Dtos.Admin;
 using SkinSync.Models.Dtos.Products;
-using SkinSync.Models.Dtos.Subscriptions;
 using SkinSync.Models.Entities;
+using SkinSync.Models.Dtos.Subscriptions;
 using SkinSync.Models.Enums;
 using SkinSync.Repositories;
 using SkinSync.Services;
@@ -24,17 +26,23 @@ public class AdminController : ControllerBase
     private readonly IUserRepository _userRepository;
     private readonly IProductRepository _productRepository;
     private readonly ISubscriptionPlanService _subscriptionPlanService;
+    private readonly IProductImportService _productImportService;
+    private readonly ProductImportOptions _productImportOptions;
 
     public AdminController(
         AppDbContext dbContext,
         IUserRepository userRepository,
         IProductRepository productRepository,
-        ISubscriptionPlanService subscriptionPlanService)
+        ISubscriptionPlanService subscriptionPlanService,
+        IProductImportService productImportService,
+        IOptions<ProductImportOptions> productImportOptions)
     {
         _dbContext = dbContext;
         _userRepository = userRepository;
         _productRepository = productRepository;
         _subscriptionPlanService = subscriptionPlanService;
+        _productImportService = productImportService;
+        _productImportOptions = productImportOptions.Value;
     }
 
     [HttpGet("dashboard")]
@@ -79,99 +87,146 @@ public class AdminController : ControllerBase
     }
 
     [HttpGet("products")]
-    public async Task<ResponseEntity<PagingResult<ProductResponseDto>>> GetProducts([FromQuery] AdminProductsQueryDto query, CancellationToken cancellationToken)
+    public async Task<ResponseEntity<PagedItemsDto<ProductResponseDto>>> GetProducts([FromQuery] AdminProductsQueryDto query, CancellationToken cancellationToken)
     {
         var products = await _productRepository.GetPagedAsync(query, cancellationToken);
-        var response = new PagingResult<ProductResponseDto>
+        var response = new PagedItemsDto<ProductResponseDto>
         {
             Items = products.Items.Select(x => x.ToDto()).ToList(),
-            Search = products.Search,
-            SortBy = products.SortBy,
-            SortDirection = products.SortDirection,
-            Filters = products.Filters,
-            PageIndex = products.PageIndex,
+            Page = products.PageIndex,
             PageSize = products.PageSize,
-            TotalRow = products.TotalRow
+            TotalItems = products.TotalRow,
+            TotalPages = products.TotalPages
         };
 
-        return ResponseEntity<PagingResult<ProductResponseDto>>.Ok(response, "Fetched products successfully.");
+        return ResponseEntity<PagedItemsDto<ProductResponseDto>>.Ok(response, "Fetched products successfully.");
+    }
+
+    [HttpGet("products/summary")]
+    public async Task<ResponseEntity<AdminProductsSummaryDto>> GetProductSummary(CancellationToken cancellationToken)
+    {
+        var summary = await _productRepository.GetSummaryAsync(cancellationToken);
+        return ResponseEntity<AdminProductsSummaryDto>.Ok(summary, "Fetched product summary successfully.");
     }
 
     [HttpGet("products/{id:guid}")]
-    public async Task<IActionResult> GetProductById(Guid id, CancellationToken cancellationToken)
+    public async Task<ResponseEntity<ProductResponseDto>> GetProductById(Guid id, CancellationToken cancellationToken)
     {
         var product = await _productRepository.GetDetailByIdAsync(id, cancellationToken);
-        return product is null ? NotFound("Product not found.") : Ok(product.ToDto());
+        return product is null
+            ? ResponseEntity<ProductResponseDto>.Fail("Product not found.", 404)
+            : ResponseEntity<ProductResponseDto>.Ok(product.ToDto(), "Fetched product successfully.");
     }
 
     [HttpPost("products")]
-    public async Task<IActionResult> CreateProduct([FromBody] ProductUpsertRequestDto request, CancellationToken cancellationToken)
+    public async Task<ResponseEntity<ProductResponseDto>> CreateProduct([FromBody] ProductUpsertRequestDto request, CancellationToken cancellationToken)
     {
+        var validationMessage = ValidateProductRequest(request);
+        if (validationMessage is not null)
+        {
+            return ResponseEntity<ProductResponseDto>.Fail(validationMessage, 400);
+        }
+
+        var now = DateTime.UtcNow;
         var product = new Product
         {
             Id = Guid.NewGuid(),
             Name = request.Name.Trim(),
             Brand = request.Brand.Trim(),
-            Category = request.Category.Trim(),
+            Category = ProductCatalogConstants.NormalizeCategory(request.Category),
             Description = request.Description?.Trim(),
-            Ingredient = request.Ingredient?.Trim(),
-            KeyIngredients = ProductMapper.SerializeStringList(request.KeyIngredients),
+            Ingredient = ProductMapper.SerializeIngredients(request.Ingredients),
+            KeyIngredients = ProductMapper.SerializeKeyIngredients(request.Ingredients),
             TargetConcerns = ProductMapper.SerializeStringList(request.SkinConcerns),
-            UsageGuide = request.UsageGuide?.Trim(),
+            UsageGuide = request.HowToUse?.Trim(),
+            UsageTime = string.IsNullOrWhiteSpace(request.UsageTime) ? null : ProductCatalogConstants.NormalizeUsageTime(request.UsageTime),
             Price = request.Price,
-            Currency = string.IsNullOrWhiteSpace(request.Currency) ? "VND" : request.Currency.Trim().ToUpperInvariant(),
-            SuitableSkinTypes = ProductMapper.SerializeStringList(request.SuitableSkinTypes),
-            ImageUrl = request.ImageUrl,
-            Rating = request.Rating,
-            Status = request.Status,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
+            Currency = string.IsNullOrWhiteSpace(request.Currency) ? string.Empty : request.Currency.Trim().ToUpperInvariant(),
+            SuitableSkinTypes = ProductMapper.SerializeStringList(request.SkinTypes),
+            ImageUrl = request.ImageUrl?.Trim(),
+            Status = ProductCatalogConstants.NormalizeStatusForActiveFlag("active", request.IsActive),
+            IsVerified = request.IsVerified,
+            IsActive = request.IsActive,
+            Source = string.IsNullOrWhiteSpace(request.Source) ? string.Empty : request.Source.Trim(),
+            SourceUrl = string.IsNullOrWhiteSpace(request.SourceUrl) ? null : request.SourceUrl.Trim(),
+            CreatedAt = now,
+            UpdatedAt = now
         };
 
         await _productRepository.AddAsync(product, cancellationToken);
-        return Ok(product.ToDto());
+        return ResponseEntity<ProductResponseDto>.Ok(product.ToDto(), "Created product successfully.");
     }
 
     [HttpPut("products/{id:guid}")]
-    public async Task<IActionResult> UpdateProduct(Guid id, [FromBody] ProductUpsertRequestDto request, CancellationToken cancellationToken)
+    public async Task<ResponseEntity<ProductResponseDto>> UpdateProduct(Guid id, [FromBody] ProductUpsertRequestDto request, CancellationToken cancellationToken)
     {
+        var validationMessage = ValidateProductRequest(request);
+        if (validationMessage is not null)
+        {
+            return ResponseEntity<ProductResponseDto>.Fail(validationMessage, 400);
+        }
+
         var product = await _productRepository.GetByIdAsync(id, cancellationToken);
         if (product is null)
         {
-            return NotFound("Product not found.");
+            return ResponseEntity<ProductResponseDto>.Fail("Product not found.", 404);
         }
 
         product.Name = request.Name.Trim();
         product.Brand = request.Brand.Trim();
-        product.Category = request.Category.Trim();
+        product.Category = ProductCatalogConstants.NormalizeCategory(request.Category);
         product.Description = request.Description?.Trim();
-        product.Ingredient = request.Ingredient?.Trim();
-        product.KeyIngredients = ProductMapper.SerializeStringList(request.KeyIngredients);
+        product.Ingredient = ProductMapper.SerializeIngredients(request.Ingredients);
+        product.KeyIngredients = ProductMapper.SerializeKeyIngredients(request.Ingredients);
         product.TargetConcerns = ProductMapper.SerializeStringList(request.SkinConcerns);
-        product.UsageGuide = request.UsageGuide?.Trim();
+        product.UsageGuide = request.HowToUse?.Trim();
+        product.UsageTime = string.IsNullOrWhiteSpace(request.UsageTime) ? null : ProductCatalogConstants.NormalizeUsageTime(request.UsageTime);
         product.Price = request.Price;
-        product.Currency = string.IsNullOrWhiteSpace(request.Currency) ? "VND" : request.Currency.Trim().ToUpperInvariant();
-        product.SuitableSkinTypes = ProductMapper.SerializeStringList(request.SuitableSkinTypes);
-        product.ImageUrl = request.ImageUrl;
-        product.Rating = request.Rating;
-        product.Status = request.Status;
+        product.Currency = string.IsNullOrWhiteSpace(request.Currency) ? string.Empty : request.Currency.Trim().ToUpperInvariant();
+        product.SuitableSkinTypes = ProductMapper.SerializeStringList(request.SkinTypes);
+        product.ImageUrl = request.ImageUrl?.Trim();
+        product.IsVerified = request.IsVerified;
+        product.IsActive = request.IsActive;
+        product.Source = string.IsNullOrWhiteSpace(request.Source) ? string.Empty : request.Source.Trim();
+        product.SourceUrl = string.IsNullOrWhiteSpace(request.SourceUrl) ? null : request.SourceUrl.Trim();
+        product.Status = ProductCatalogConstants.NormalizeStatusForActiveFlag(product.Status, request.IsActive);
         product.UpdatedAt = DateTime.UtcNow;
 
         await _productRepository.UpdateAsync(product, cancellationToken);
-        return Ok(product.ToDto());
+        return ResponseEntity<ProductResponseDto>.Ok(product.ToDto(), "Updated product successfully.");
     }
 
-    [HttpDelete("products/{id:guid}")]
-    public async Task<IActionResult> DeleteProduct(Guid id, CancellationToken cancellationToken)
+    [HttpPatch("products/{id:guid}/toggle-active")]
+    public async Task<ResponseEntity<ProductResponseDto>> ToggleProductActive(Guid id, CancellationToken cancellationToken)
     {
         var product = await _productRepository.GetByIdAsync(id, cancellationToken);
         if (product is null)
         {
-            return NotFound("Product not found.");
+            return ResponseEntity<ProductResponseDto>.Fail("Product not found.", 404);
         }
 
-        await _productRepository.DeleteAsync(product, cancellationToken);
-        return NoContent();
+        await _productRepository.SetActiveAsync(product, !product.IsActive, cancellationToken);
+        return ResponseEntity<ProductResponseDto>.Ok(product.ToDto(), "Toggled product active state successfully.");
+    }
+
+    [HttpDelete("products/{id:guid}")]
+    public async Task<ResponseEntity<object>> DeleteProduct(Guid id, CancellationToken cancellationToken)
+    {
+        var product = await _productRepository.GetByIdAsync(id, cancellationToken);
+        if (product is null)
+        {
+            return ResponseEntity<object>.Fail("Product not found.", 404);
+        }
+
+        await _productRepository.SetActiveAsync(product, false, cancellationToken);
+        return ResponseEntity<object>.Ok(null, "Archived product successfully.");
+    }
+
+    [HttpPost("products/import-csv")]
+    public async Task<ResponseEntity<ProductImportResult>> ImportProductsFromCsv(CancellationToken cancellationToken)
+    {
+        var result = await _productImportService.ImportFromCsvAsync(_productImportOptions.ProductCsvPath, cancellationToken);
+        return ResponseEntity<ProductImportResult>.Ok(result, $"Imported products from '{_productImportOptions.ProductCsvPath}'.");
     }
 
     [HttpPatch("users/{id:guid}/status")]
@@ -190,7 +245,7 @@ public class AdminController : ControllerBase
 
         user.Status = nextStatus.ToDbValue();
         await _userRepository.UpdateAsync(user, cancellationToken);
-        return ResponseEntity<AdminUserItemDto>.Ok(user.ToAdminUserDto(), "Cáº­p nháº­t tráº¡ng thÃ¡i ngÆ°á»i dÃ¹ng thÃ nh cÃ´ng.");
+        return ResponseEntity<AdminUserItemDto>.Ok(user.ToAdminUserDto(), "Updated user status successfully.");
     }
 
     [HttpPatch("users/{id:guid}/role")]
@@ -228,5 +283,43 @@ public class AdminController : ControllerBase
         {
             return ResponseEntity<AdminUserItemDto>.Fail(ex.Message, ex.StatusCode);
         }
+    }
+
+    private static string? ValidateProductRequest(ProductUpsertRequestDto request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Name) ||
+            string.IsNullOrWhiteSpace(request.Brand) ||
+            string.IsNullOrWhiteSpace(request.Category) ||
+            string.IsNullOrWhiteSpace(request.Ingredients))
+        {
+            return "Name, brand, category, and ingredients are required.";
+        }
+
+        if (!ProductCatalogConstants.IsAllowedCategory(request.Category))
+        {
+            return "Category must be one of the supported catalog categories.";
+        }
+
+        if (!ProductCatalogConstants.IsAllowedUsageTime(request.UsageTime))
+        {
+            return "UsageTime must be Morning, Night, or Both.";
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.ImageUrl) && !ProductCatalogConstants.IsValidHttpUrl(request.ImageUrl))
+        {
+            return "ImageUrl must be a valid http or https URL.";
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.SourceUrl) && !ProductCatalogConstants.IsValidHttpUrl(request.SourceUrl))
+        {
+            return "SourceUrl must be a valid http or https URL.";
+        }
+
+        if (request.Price.HasValue && request.Price.Value < 0)
+        {
+            return "Price must be greater than or equal to 0.";
+        }
+
+        return null;
     }
 }

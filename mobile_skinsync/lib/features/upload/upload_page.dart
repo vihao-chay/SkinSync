@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/models/app_models.dart';
+import '../../core/responsive/responsive.dart';
 import '../../core/routes/app_routes.dart';
 import '../../core/state/app_state.dart';
 import '../../core/theme/app_colors.dart';
@@ -40,11 +41,11 @@ class _UploadPageState extends State<UploadPage> {
       showBackButton: true,
       body: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.pagePadding,
+        padding: EdgeInsets.fromLTRB(
+          Responsive.responsiveHorizontalPadding(context),
           0,
-          AppSpacing.pagePadding,
-          AppSpacing.pageBottomPaddingWithActions,
+          Responsive.responsiveHorizontalPadding(context),
+          Responsive.contentBottomSpacing(context, extra: 20),
         ),
         children: [
           Text(
@@ -85,28 +86,42 @@ class _UploadPageState extends State<UploadPage> {
             text: 'No heavy makeup or filters applied',
           ),
           const SizedBox(height: AppSpacing.md),
-          Row(
-            children: [
-              Expanded(
-                child: _CompactOutlineAction(
-                  label: 'Take photo',
-                  icon: Icons.camera_alt_outlined,
-                  onPressed: appState.isBusy
-                      ? null
-                      : () => _pickImage(ImageSource.camera),
-                ),
-              ),
-              const SizedBox(width: AppSpacing.xs),
-              Expanded(
-                child: _CompactOutlineAction(
-                  label: 'Choose gallery',
-                  icon: Icons.photo_library_outlined,
-                  onPressed: appState.isBusy
-                      ? null
-                      : () => _pickImage(ImageSource.gallery),
-                ),
-              ),
-            ],
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final stack = constraints.maxWidth < 420;
+              final takePhoto = _CompactOutlineAction(
+                label: 'Take photo',
+                icon: Icons.camera_alt_outlined,
+                onPressed: appState.isBusy
+                    ? null
+                    : () => _pickImage(ImageSource.camera),
+              );
+              final chooseGallery = _CompactOutlineAction(
+                label: 'Choose gallery',
+                icon: Icons.photo_library_outlined,
+                onPressed: appState.isBusy
+                    ? null
+                    : () => _pickImage(ImageSource.gallery),
+              );
+
+              if (stack) {
+                return Column(
+                  children: [
+                    SizedBox(width: double.infinity, child: takePhoto),
+                    const SizedBox(height: AppSpacing.xs),
+                    SizedBox(width: double.infinity, child: chooseGallery),
+                  ],
+                );
+              }
+
+              return Row(
+                children: [
+                  Expanded(child: takePhoto),
+                  const SizedBox(width: AppSpacing.xs),
+                  Expanded(child: chooseGallery),
+                ],
+              );
+            },
           ),
           if (noticeMessage != null) ...[
             const SizedBox(height: AppSpacing.md),

@@ -2,10 +2,10 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
+import '../responsive/responsive.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_radius.dart';
 import '../theme/app_shadows.dart';
-import '../theme/app_spacing.dart';
 
 class AppBottomNavigation extends StatelessWidget {
   const AppBottomNavigation({
@@ -22,14 +22,26 @@ class AppBottomNavigation extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final maxWidth = Responsive.maxContentWidth(
+      context,
+      mobile: double.infinity,
+      tablet: 720,
+      desktop: 960,
+    );
+    final horizontalPadding = Responsive.responsiveHorizontalPadding(context);
+    final navHeight = Responsive.responsiveValue<double>(
+      context,
+      mobileSmall: 58,
+      mobile: 62,
+      tablet: 64,
+      desktop: 66,
+    );
     return SafeArea(
       top: false,
       minimum: const EdgeInsets.fromLTRB(0, 0, 0, 0),
       child: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(
-            maxWidth: AppSpacing.maxContentWidth,
-          ),
+          constraints: BoxConstraints(maxWidth: maxWidth),
           child: ClipRRect(
             borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
             child: BackdropFilter(
@@ -45,7 +57,12 @@ class AppBottomNavigation extends StatelessWidget {
                   boxShadow: AppShadows.soft,
                 ),
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(8, 8, 8, 7),
+                  padding: EdgeInsets.fromLTRB(
+                    horizontalPadding.clamp(8, 16),
+                    8,
+                    horizontalPadding.clamp(8, 16),
+                    7,
+                  ),
                   child: Row(
                     children: List.generate(destinations.length, (index) {
                       final destination = destinations[index];
@@ -57,7 +74,7 @@ class AppBottomNavigation extends StatelessWidget {
                             borderRadius: BorderRadius.circular(AppRadius.pill),
                             onTap: () => onTap(index),
                             child: SizedBox(
-                              height: 62,
+                              height: navHeight,
                               child: Stack(
                                 alignment: Alignment.center,
                                 children: [
@@ -99,7 +116,12 @@ class AppBottomNavigation extends StatelessWidget {
                                               color: selected
                                                   ? AppColors.primary
                                                   : AppColors.onSurfaceVariant,
-                                              fontSize: 12,
+                                              fontSize:
+                                                  Responsive.isSmallMobile(
+                                                    context,
+                                                  )
+                                                  ? 11
+                                                  : 12,
                                               fontWeight: selected
                                                   ? FontWeight.w700
                                                   : FontWeight.w600,

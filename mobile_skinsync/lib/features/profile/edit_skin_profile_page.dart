@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/responsive/responsive.dart';
 import '../../core/routes/app_routes.dart';
 import '../../core/state/app_state.dart';
 import '../../core/theme/app_colors.dart';
@@ -81,11 +82,11 @@ class _EditSkinProfilePageState extends State<EditSkinProfilePage> {
       showBackButton: true,
       body: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.pagePadding,
+        padding: EdgeInsets.fromLTRB(
+          Responsive.responsiveHorizontalPadding(context),
           0,
-          AppSpacing.pagePadding,
-          AppSpacing.pageBottomPaddingWithActions,
+          Responsive.responsiveHorizontalPadding(context),
+          Responsive.contentBottomSpacing(context, extra: 20),
         ),
         children: [
           AppCard(

@@ -17,7 +17,16 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(
+        builder.Configuration.GetConnectionString("DefaultConnection"),
+        npgsqlOptions =>
+        {
+            npgsqlOptions.EnableRetryOnFailure(
+                maxRetryCount: 5,
+                maxRetryDelay: TimeSpan.FromSeconds(10),
+                errorCodesToAdd: null);
+            npgsqlOptions.CommandTimeout(30);
+        }));
 
 var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "SkinSync";
 var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "SkinSync.Client";
@@ -72,6 +81,8 @@ builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IRegimenRepository, RegimenRepository>();
 builder.Services.AddScoped<IDiaryRepository, DiaryRepository>();
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
+builder.Services.Configure<ProductImportOptions>(builder.Configuration.GetSection("SeedData"));
+builder.Services.AddScoped<IProductImportService, ProductImportService>();
 
 builder.Services.AddScoped<IRegimenBuilderService, RegimenBuilderService>();
 builder.Services.AddScoped<IIngredientConflictService, IngredientConflictService>();
@@ -122,6 +133,25 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
+        if (builder.Environment.IsDevelopment())
+        {
+            policy.SetIsOriginAllowed(origin =>
+                  {
+                      if (!Uri.TryCreate(origin, UriKind.Absolute, out var uri))
+                      {
+                          return false;
+                      }
+
+                      return uri.Scheme is "http" or "https"
+                          && (string.Equals(uri.Host, "localhost", StringComparison.OrdinalIgnoreCase)
+                              || string.Equals(uri.Host, "127.0.0.1", StringComparison.OrdinalIgnoreCase));
+                  })
+                  .AllowAnyHeader()
+                  .AllowAnyMethod()
+                  .AllowCredentials();
+            return;
+        }
+
         policy.WithOrigins(allowedOrigins)
               .AllowAnyHeader()
               .AllowAnyMethod()
@@ -171,6 +201,7 @@ var app = builder.Build();
 var shouldSeedOnStartup = builder.Configuration.GetValue<bool>("Startup:SeedOnStartup");
 var shouldSeedDemoData = builder.Configuration.GetValue<bool>("Startup:SeedDemoData");
 var shouldEnableSwagger = builder.Configuration.GetValue<bool>("Swagger:Enabled");
+var shouldImportProductsOnStartup = builder.Configuration.GetValue<bool>("SeedData:ImportProductsOnStartup");
 var aspNetCoreUrls = builder.Configuration["ASPNETCORE_URLS"] ?? Environment.GetEnvironmentVariable("ASPNETCORE_URLS") ?? string.Empty;
 var shouldUseHttpsRedirection = aspNetCoreUrls
     .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
@@ -183,6 +214,13 @@ if (app.Environment.IsDevelopment() || shouldSeedOnStartup)
     if (shouldSeedDemoData)
     {
         await DbSeeder.SeedDemoDataAsync(dbContext);
+    }
+
+    if (shouldImportProductsOnStartup)
+    {
+        var productImportOptions = scope.ServiceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<ProductImportOptions>>().Value;
+        var productImportService = scope.ServiceProvider.GetRequiredService<IProductImportService>();
+        await productImportService.ImportFromCsvAsync(productImportOptions.ProductCsvPath, CancellationToken.None);
     }
 }
 

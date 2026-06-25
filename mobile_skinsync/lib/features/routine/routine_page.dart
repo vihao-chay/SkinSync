@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../core/config/app_config.dart';
 import '../../core/models/app_models.dart';
 import '../../core/routes/app_routes.dart';
+import '../../core/responsive/responsive.dart';
 import '../../core/state/app_state.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_radius.dart';
@@ -171,14 +172,21 @@ class _RoutinePageState extends State<RoutinePage> {
         bottom: false,
         child: Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 460),
+            constraints: BoxConstraints(
+              maxWidth: Responsive.maxContentWidth(
+                context,
+                mobile: double.infinity,
+                tablet: 760,
+                desktop: 960,
+              ),
+            ),
             child: RefreshIndicator(
               color: AppColors.primaryDark,
               onRefresh: appState.refreshHome,
               child: ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.only(
-                  bottom: AppSpacing.pageBottomPaddingWithActions,
+                  bottom: 0,
                 ),
                 children: [
                   StitchTopBar(
@@ -189,10 +197,10 @@ class _RoutinePageState extends State<RoutinePage> {
                         MainShell.navigateToTab(context, AppRoutes.progress),
                   ),
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                      AppSpacing.pagePadding,
+                    padding: EdgeInsets.fromLTRB(
+                      Responsive.responsiveHorizontalPadding(context),
                       4,
-                      AppSpacing.pagePadding,
+                      Responsive.responsiveHorizontalPadding(context),
                       0,
                     ),
                     child: Column(
@@ -441,24 +449,46 @@ class _ReminderRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: _ReminderCard(
-            label: 'Morning',
-            time: morning?.time ?? '07:00',
-            onTap: onMorning,
-          ),
-        ),
-        const SizedBox(width: AppSpacing.sm),
-        Expanded(
-          child: _ReminderCard(
-            label: 'Evening',
-            time: evening?.time ?? '21:00',
-            onTap: onEvening,
-          ),
-        ),
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 420) {
+          return Column(
+            children: [
+              _ReminderCard(
+                label: 'Morning',
+                time: morning?.time ?? '07:00',
+                onTap: onMorning,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              _ReminderCard(
+                label: 'Evening',
+                time: evening?.time ?? '21:00',
+                onTap: onEvening,
+              ),
+            ],
+          );
+        }
+
+        return Row(
+          children: [
+            Expanded(
+              child: _ReminderCard(
+                label: 'Morning',
+                time: morning?.time ?? '07:00',
+                onTap: onMorning,
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: _ReminderCard(
+                label: 'Evening',
+                time: evening?.time ?? '21:00',
+                onTap: onEvening,
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

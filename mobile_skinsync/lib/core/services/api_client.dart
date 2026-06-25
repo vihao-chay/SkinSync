@@ -70,10 +70,12 @@ class ApiClient {
     String path, {
     Object? body,
   }) async {
-    final response = await http.post(
-      _uri(path),
-      headers: _headers(),
-      body: jsonEncode(body ?? const {}),
+    final response = await _sendNetworkRequest(
+      () => http.post(
+        _uri(path),
+        headers: _headers(),
+        body: jsonEncode(body ?? const {}),
+      ),
     );
     return _decodeResponse(response);
   }
@@ -210,9 +212,18 @@ class ApiClient {
 
   Map<String, dynamic> _decodeResponse(http.Response response) {
     final body = response.body.isEmpty ? '{}' : response.body;
-    final decoded = jsonDecode(body);
     if (response.statusCode >= 400) {
       throw ApiException(_extractMessage(body), response.statusCode);
+    }
+
+    dynamic decoded;
+    try {
+      decoded = jsonDecode(body);
+    } on FormatException {
+      throw ApiException(
+        'Backend returned an invalid response. Please check server logs.',
+        response.statusCode,
+      );
     }
 
     if (decoded is Map<String, dynamic> && decoded.containsKey('content')) {
@@ -241,7 +252,18 @@ class ApiClient {
             .toString();
       }
     } catch (_) {}
-    return body;
+
+    final normalized = body.trim();
+    if (normalized.isEmpty) {
+      return 'Request failed';
+    }
+
+    if (normalized.startsWith('<!DOCTYPE html') ||
+        normalized.startsWith('<html')) {
+      return 'Backend returned an HTML error page instead of JSON. Please check the backend logs.';
+    }
+
+    return normalized;
   }
 }
 

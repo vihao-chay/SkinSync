@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/models/app_models.dart';
+import '../../core/responsive/responsive.dart';
 import '../../core/routes/app_routes.dart';
 import '../../core/state/app_state.dart';
 import '../../core/theme/app_colors.dart';
@@ -51,7 +52,14 @@ class _SkinAnalysisPageState extends State<SkinAnalysisPage> {
         bottom: false,
         child: Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 460),
+            constraints: BoxConstraints(
+              maxWidth: Responsive.maxContentWidth(
+                context,
+                mobile: double.infinity,
+                tablet: 760,
+                desktop: 960,
+              ),
+            ),
             child: Column(
               children: [
                 _AnalysisTopBar(
@@ -74,7 +82,12 @@ class _SkinAnalysisPageState extends State<SkinAnalysisPage> {
                     onRefresh: appState.refreshHome,
                     child: ListView(
                       physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.fromLTRB(12, 4, 12, 82),
+                      padding: EdgeInsets.fromLTRB(
+                        Responsive.responsiveHorizontalPadding(context),
+                        4,
+                        Responsive.responsiveHorizontalPadding(context),
+                        82,
+                      ),
                       children: [
                         Text(
                           'Analysis Results',
@@ -120,7 +133,11 @@ class _SkinAnalysisPageState extends State<SkinAnalysisPage> {
                 SafeArea(
                   top: false,
                   child: Container(
-                    padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
+                    padding: Responsive.responsivePadding(
+                      context,
+                      top: 8,
+                      bottom: 8,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.surface.withValues(alpha: 0.96),
                       border: Border(
@@ -129,10 +146,11 @@ class _SkinAnalysisPageState extends State<SkinAnalysisPage> {
                         ),
                       ),
                     ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: _CompactActionButton(
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final stack = constraints.maxWidth < 420;
+                        final buttons = [
+                          _CompactActionButton(
                             label: 'Ask AI',
                             icon: Icons.auto_awesome_rounded,
                             onPressed: () => Navigator.pushNamed(
@@ -147,10 +165,7 @@ class _SkinAnalysisPageState extends State<SkinAnalysisPage> {
                               ),
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: _CompactActionButton(
+                          _CompactActionButton(
                             label: 'View Products',
                             secondary: true,
                             onPressed: () => MainShell.navigateToTab(
@@ -166,8 +181,26 @@ class _SkinAnalysisPageState extends State<SkinAnalysisPage> {
                               ),
                             ),
                           ),
-                        ),
-                      ],
+                        ];
+
+                        if (stack) {
+                          return Column(
+                            children: [
+                              SizedBox(width: double.infinity, child: buttons[0]),
+                              const SizedBox(height: 8),
+                              SizedBox(width: double.infinity, child: buttons[1]),
+                            ],
+                          );
+                        }
+
+                        return Row(
+                          children: [
+                            Expanded(child: buttons[0]),
+                            const SizedBox(width: 8),
+                            Expanded(child: buttons[1]),
+                          ],
+                        );
+                      },
                     ),
                   ),
                 ),
@@ -243,11 +276,11 @@ class _EmptyAnalysis extends StatelessWidget {
         bottom: false,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.pagePadding,
+          padding: EdgeInsets.fromLTRB(
+            Responsive.responsiveHorizontalPadding(context),
             8,
-            AppSpacing.pagePadding,
-            AppSpacing.pageBottomPaddingWithActions,
+            Responsive.responsiveHorizontalPadding(context),
+            Responsive.contentBottomSpacing(context, extra: 20),
           ),
           children: [
             _AnalysisTopBar(onBack: () => Navigator.maybePop(context)),
@@ -303,10 +336,10 @@ class _ScoreHero extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
       child: Column(
         children: [
-          _AnalysisScoreDial(score: result.overallScore),
+          _AnalysisScoreDial(score: result.overallScore ?? 0),
           const SizedBox(height: 6),
           Text(
-            _balanceTitle(result.overallScore),
+            _balanceTitle(result.overallScore ?? 0),
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.labelLarge?.copyWith(
               color: AppColors.heading,

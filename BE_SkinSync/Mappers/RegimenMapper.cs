@@ -61,7 +61,7 @@ public static class RegimenMapper
             StartDate = regimen.StartDate,
             EndDate = regimen.EndDate,
             IsCustom = regimen.IsCustom,
-            TotalEstimatedCost = morning.Sum(x => x.Price) + evening.Sum(x => x.Price),
+            TotalEstimatedCost = (morning.Sum(x => x.Price) ?? 0m) + (evening.Sum(x => x.Price) ?? 0m),
             Morning = morning,
             Evening = evening
         };

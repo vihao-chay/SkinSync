@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/responsive/responsive.dart';
 import '../../core/routes/app_routes.dart';
 import '../../core/state/app_state.dart';
 import '../../core/theme/app_colors.dart';
@@ -23,13 +24,10 @@ class LandingPage extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.pageBackground,
       body: ResponsiveContainer(
+        topPadding: 28,
+        bottomPadding: 32,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.pagePadding,
-            28,
-            AppSpacing.pagePadding,
-            32,
-          ),
+          padding: EdgeInsets.zero,
           children: [
             const _TopBrand(),
             const SizedBox(height: 28),
@@ -63,87 +61,89 @@ class LandingPage extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Container(
-                        height: 220,
                         decoration: BoxDecoration(
                           color: AppColors.surfaceStrong,
                           borderRadius: BorderRadius.circular(22),
                         ),
-                        child: Stack(
-                          fit: StackFit.expand,
-                          children: [
-                            Positioned(
-                              top: 28,
-                              right: 24,
-                              child: Container(
-                                width: 86,
-                                height: 86,
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.72),
-                                  shape: BoxShape.circle,
+                        child: AspectRatio(
+                          aspectRatio: Responsive.isTablet(context) ? 1.9 : 1.35,
+                          child: Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              Positioned(
+                                top: 28,
+                                right: 24,
+                                child: Container(
+                                  width: 86,
+                                  height: 86,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withValues(alpha: 0.72),
+                                    shape: BoxShape.circle,
+                                  ),
                                 ),
                               ),
-                            ),
-                            Positioned(
-                              left: 24,
-                              bottom: 24,
-                              child: Container(
-                                width: 120,
-                                height: 120,
-                                decoration: BoxDecoration(
-                                  color: AppColors.secondary,
-                                  borderRadius: BorderRadius.circular(28),
+                              Positioned(
+                                left: 24,
+                                bottom: 24,
+                                child: Container(
+                                  width: 120,
+                                  height: 120,
+                                  decoration: BoxDecoration(
+                                    color: AppColors.secondary,
+                                    borderRadius: BorderRadius.circular(28),
+                                  ),
                                 ),
                               ),
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.all(22),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 8,
+                              Padding(
+                                padding: const EdgeInsets.all(22),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 8,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withValues(alpha: 0.88),
+                                        borderRadius: BorderRadius.circular(999),
+                                      ),
+                                      child: Text(
+                                        'Live data only',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .labelLarge
+                                            ?.copyWith(
+                                              color: AppColors.primaryDark,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                      ),
                                     ),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white.withValues(alpha: 0.88),
-                                      borderRadius: BorderRadius.circular(999),
-                                    ),
-                                    child: Text(
-                                      'Live data only',
+                                    const Spacer(),
+                                    Text(
+                                      'No fake scores.\nNo sample routine.\nJust your own journey.',
                                       style: Theme.of(context)
                                           .textTheme
-                                          .labelLarge
+                                          .headlineSmall
                                           ?.copyWith(
-                                            color: AppColors.primaryDark,
-                                            fontWeight: FontWeight.w700,
+                                            color: AppColors.heading,
+                                            fontWeight: FontWeight.w800,
+                                            height: 1.05,
                                           ),
                                     ),
-                                  ),
-                                  const Spacer(),
-                                  Text(
-                                    'No fake scores.\nNo sample routine.\nJust your own journey.',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .headlineSmall
-                                        ?.copyWith(
-                                          color: AppColors.heading,
-                                          fontWeight: FontWeight.w800,
-                                          height: 1.05,
-                                        ),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  Text(
-                                    'SkinSync starts showing analysis, routine, and progress after you actually sign in and add data.',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .bodyMedium
-                                        ?.copyWith(color: AppColors.mutedText),
-                                  ),
-                                ],
+                                    const SizedBox(height: 12),
+                                    Text(
+                                      'SkinSync starts showing analysis, routine, and progress after you actually sign in and add data.',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodyMedium
+                                          ?.copyWith(color: AppColors.mutedText),
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                       const SizedBox(height: 16),

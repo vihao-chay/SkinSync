@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 
 import '../../core/config/app_config.dart';
 import '../../core/models/app_models.dart';
+import '../../core/responsive/responsive.dart';
 import '../../core/routes/app_routes.dart';
 import '../../core/state/app_state.dart';
 import '../../core/theme/app_colors.dart';
@@ -151,11 +152,11 @@ class _TodayCheckupPageState extends State<TodayCheckupPage> {
       ),
       body: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.pagePadding,
+        padding: EdgeInsets.fromLTRB(
+          Responsive.responsiveHorizontalPadding(context),
           0,
-          AppSpacing.pagePadding,
-          AppSpacing.pageBottomPaddingWithActions,
+          Responsive.responsiveHorizontalPadding(context),
+          Responsive.contentBottomSpacing(context, extra: 20),
         ),
         children: [
           if (appState.todayCheckupDataErrorMessage != null) ...[
@@ -330,36 +331,68 @@ class _TodayCheckupPageState extends State<TodayCheckupPage> {
                   subtitle: 'Use a real upload where available, with soft placeholders for the rest.',
                 ),
                 const SizedBox(height: AppSpacing.md),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _PhotoSlot(
-                        label: 'Front',
-                        imageFile: _selectedImage,
-                        imageUrl: todayLog?.dailyImageUrl,
-                        onTap: _pickImage,
-                        enabled: true,
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-                    const Expanded(
-                      child: _PhotoSlot(
-                        label: 'Left',
-                        imageFile: null,
-                        imageUrl: null,
-                        enabled: false,
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-                    const Expanded(
-                      child: _PhotoSlot(
-                        label: 'Right',
-                        imageFile: null,
-                        imageUrl: null,
-                        enabled: false,
-                      ),
-                    ),
-                  ],
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    if (constraints.maxWidth < 460) {
+                      return Column(
+                        children: [
+                          _PhotoSlot(
+                            label: 'Front',
+                            imageFile: _selectedImage,
+                            imageUrl: todayLog?.dailyImageUrl,
+                            onTap: _pickImage,
+                            enabled: true,
+                          ),
+                          const SizedBox(height: AppSpacing.sm),
+                          const _PhotoSlot(
+                            label: 'Left',
+                            imageFile: null,
+                            imageUrl: null,
+                            enabled: false,
+                          ),
+                          const SizedBox(height: AppSpacing.sm),
+                          const _PhotoSlot(
+                            label: 'Right',
+                            imageFile: null,
+                            imageUrl: null,
+                            enabled: false,
+                          ),
+                        ],
+                      );
+                    }
+
+                    return Row(
+                      children: [
+                        Expanded(
+                          child: _PhotoSlot(
+                            label: 'Front',
+                            imageFile: _selectedImage,
+                            imageUrl: todayLog?.dailyImageUrl,
+                            onTap: _pickImage,
+                            enabled: true,
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.sm),
+                        const Expanded(
+                          child: _PhotoSlot(
+                            label: 'Left',
+                            imageFile: null,
+                            imageUrl: null,
+                            enabled: false,
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.sm),
+                        const Expanded(
+                          child: _PhotoSlot(
+                            label: 'Right',
+                            imageFile: null,
+                            imageUrl: null,
+                            enabled: false,
+                          ),
+                        ),
+                      ],
+                    );
+                  },
                 ),
               ],
             ),

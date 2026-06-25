@@ -1,5 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Npgsql;
+using System.IO;
+using System.Net.Sockets;
 using SkinSync.Base;
 using SkinSync.Helpers;
 using SkinSync.Mappers;
@@ -50,7 +54,18 @@ public class AuthController : ControllerBase
             return ResponseEntity<AuthUserResponseDto>.Fail(supabaseResult.ErrorMessage ?? "ÄÄƒng kÃ½ khÃ´ng thÃ nh cÃ´ng.", supabaseResult.StatusCode);
         }
 
-        var user = await _userRepository.GetByEmailAsync(email, cancellationToken);
+        User? user;
+        try
+        {
+            user = await _userRepository.GetByEmailAsync(email, cancellationToken);
+        }
+        catch (Exception ex) when (IsTransientDatabaseException(ex))
+        {
+            return ResponseEntity<AuthUserResponseDto>.Fail(
+                "Database connection is temporarily unavailable. Please try again in a moment.",
+                503);
+        }
+
         if (user is null)
         {
             user = new User
@@ -65,7 +80,16 @@ public class AuthController : ControllerBase
                 CreatedAt = DateTime.UtcNow
             };
 
-            await _userRepository.AddAsync(user, cancellationToken);
+            try
+            {
+                await _userRepository.AddAsync(user, cancellationToken);
+            }
+            catch (Exception ex) when (IsTransientDatabaseException(ex))
+            {
+                return ResponseEntity<AuthUserResponseDto>.Fail(
+                    "Database connection is temporarily unavailable. Please try again in a moment.",
+                    503);
+            }
         }
 
         return ResponseEntity<AuthUserResponseDto>.Ok(user.ToAuthUserDto(), "ÄÄƒng kÃ½ thÃ nh cÃ´ng.");
@@ -83,7 +107,18 @@ public class AuthController : ControllerBase
             return ResponseEntity<LoginResponseDto>.Fail(supabaseResult.ErrorMessage ?? "Email hoáº·c máº­t kháº©u khÃ´ng chÃ­nh xÃ¡c.", statusCode);
         }
 
-        var user = await EnsureLocalUserFromSupabaseAsync(supabaseResult.User, cancellationToken);
+        User user;
+        try
+        {
+            user = await EnsureLocalUserFromSupabaseAsync(supabaseResult.User, cancellationToken);
+        }
+        catch (Exception ex) when (IsTransientDatabaseException(ex))
+        {
+            return ResponseEntity<LoginResponseDto>.Fail(
+                "Database connection is temporarily unavailable. Please try again in a moment.",
+                503);
+        }
+
         if (!TryEnsureLoginAllowed(user.Status, out var blockedMessage))
         {
             return ResponseEntity<LoginResponseDto>.Fail(blockedMessage, 403);
@@ -132,7 +167,18 @@ public class AuthController : ControllerBase
             return ResponseEntity<LoginResponseDto>.Fail("MÃ£ xÃ¡c thá»±c Google khÃ´ng há»£p lá»‡.", 401);
         }
 
-        var user = await EnsureLocalUserFromSupabaseAsync(supabaseUser, cancellationToken);
+        User user;
+        try
+        {
+            user = await EnsureLocalUserFromSupabaseAsync(supabaseUser, cancellationToken);
+        }
+        catch (Exception ex) when (IsTransientDatabaseException(ex))
+        {
+            return ResponseEntity<LoginResponseDto>.Fail(
+                "Database connection is temporarily unavailable. Please try again in a moment.",
+                503);
+        }
+
         if (!TryEnsureLoginAllowed(user.Status, out var blockedMessage))
         {
             return ResponseEntity<LoginResponseDto>.Fail(blockedMessage, 403);
@@ -212,7 +258,18 @@ public class AuthController : ControllerBase
     public async Task<ResponseEntity<object>> ForgotPassword([FromBody] ForgotPasswordRequestDto request, CancellationToken cancellationToken)
     {
         var email = request.Email.Trim().ToLowerInvariant();
-        var user = await _userRepository.GetByEmailAsync(email, cancellationToken);
+        User? user;
+        try
+        {
+            user = await _userRepository.GetByEmailAsync(email, cancellationToken);
+        }
+        catch (Exception ex) when (IsTransientDatabaseException(ex))
+        {
+            return ResponseEntity<object>.Fail(
+                "Database connection is temporarily unavailable. Please try again in a moment.",
+                503);
+        }
+
         if (user is null)
         {
             // For security, do not expose whether an email exists or not
@@ -429,5 +486,22 @@ public class AuthController : ControllerBase
 
         message = string.Empty;
         return true;
+    }
+
+    private static bool IsTransientDatabaseException(Exception exception)
+    {
+        for (Exception? current = exception; current is not null; current = current.InnerException)
+        {
+            if (current is NpgsqlException ||
+                current is TimeoutException ||
+                current is DbUpdateException ||
+                current is IOException ||
+                current is SocketException)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

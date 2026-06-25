@@ -23,15 +23,15 @@ public class ProductsController : ControllerBase
     public async Task<ResponseEntity<IEnumerable<ProductResponseDto>>> GetProducts(
         [FromQuery] string? search,
         [FromQuery] string? category,
-        [FromQuery] string? brand,
-        [FromQuery] string? skinType,
-        [FromQuery] decimal? minPrice,
-        [FromQuery] decimal? maxPrice,
-        CancellationToken cancellationToken)
+        [FromQuery] string? skinConcern,
+        [FromQuery] string? usageTime,
+        CancellationToken cancellationToken,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20)
     {
         var products = await _productRepository.GetAllAsync(cancellationToken);
         var source = products
-            .Where(x => x.Status.Equals("active", StringComparison.OrdinalIgnoreCase))
+            .Where(x => x.IsActive)
             .AsEnumerable();
 
         if (!string.IsNullOrWhiteSpace(search))
@@ -40,7 +40,8 @@ public class ProductsController : ControllerBase
             source = source.Where(x =>
                 x.Name.Contains(keyword, StringComparison.OrdinalIgnoreCase) ||
                 x.Brand.Contains(keyword, StringComparison.OrdinalIgnoreCase) ||
-                x.Category.Contains(keyword, StringComparison.OrdinalIgnoreCase));
+                x.Category.Contains(keyword, StringComparison.OrdinalIgnoreCase) ||
+                (x.Ingredient?.Contains(keyword, StringComparison.OrdinalIgnoreCase) ?? false));
         }
 
         if (!string.IsNullOrWhiteSpace(category))
@@ -48,29 +49,21 @@ public class ProductsController : ControllerBase
             source = source.Where(x => x.Category.Equals(category.Trim(), StringComparison.OrdinalIgnoreCase));
         }
 
-        if (!string.IsNullOrWhiteSpace(brand))
+        if (!string.IsNullOrWhiteSpace(skinConcern))
         {
-            source = source.Where(x => x.Brand.Equals(brand.Trim(), StringComparison.OrdinalIgnoreCase));
+            source = source.Where(x => ProductMapper.ParseJsonArray(x.TargetConcerns)
+                .Contains(skinConcern.Trim(), StringComparer.OrdinalIgnoreCase));
         }
 
-        if (!string.IsNullOrWhiteSpace(skinType))
+        if (!string.IsNullOrWhiteSpace(usageTime))
         {
-            source = source.Where(x => ProductMapper.ParseJsonArray(x.SuitableSkinTypes)
-                .Contains(skinType.Trim(), StringComparer.OrdinalIgnoreCase));
+            source = source.Where(x => string.Equals(x.UsageTime, usageTime.Trim(), StringComparison.OrdinalIgnoreCase));
         }
 
-        if (minPrice.HasValue)
-        {
-            source = source.Where(x => x.Price >= minPrice.Value);
-        }
-
-        if (maxPrice.HasValue)
-        {
-            source = source.Where(x => x.Price <= maxPrice.Value);
-        }
-
+        page = page < 1 ? 1 : page;
+        pageSize = pageSize <= 0 ? 20 : Math.Min(pageSize, 100);
         return ResponseEntity<IEnumerable<ProductResponseDto>>.Ok(
-            source.Select(x => x.ToDto()).ToList(),
+            source.Skip((page - 1) * pageSize).Take(pageSize).Select(x => x.ToDto()).ToList(),
             "Fetched products successfully.");
     }
 
@@ -78,7 +71,7 @@ public class ProductsController : ControllerBase
     public async Task<ResponseEntity<ProductResponseDto>> GetProduct(Guid id, CancellationToken cancellationToken)
     {
         var product = await _productRepository.GetDetailByIdAsync(id, cancellationToken);
-        if (product is null || !product.Status.Equals("active", StringComparison.OrdinalIgnoreCase))
+        if (product is null || !product.IsActive)
         {
             return ResponseEntity<ProductResponseDto>.Fail("Product not found.", 404);
         }

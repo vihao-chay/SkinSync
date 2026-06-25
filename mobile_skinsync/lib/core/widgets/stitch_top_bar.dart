@@ -2,9 +2,9 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
+import '../responsive/responsive.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_radius.dart';
-import '../theme/app_spacing.dart';
 import 'brand_logo.dart';
 
 class StitchTopBar extends StatelessWidget {
@@ -27,10 +27,10 @@ class StitchTopBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final imageUrl = avatarUrl?.trim() ?? '';
     return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.pagePadding,
+      padding: EdgeInsets.fromLTRB(
+        Responsive.responsiveHorizontalPadding(context),
         8,
-        AppSpacing.pagePadding,
+        Responsive.responsiveHorizontalPadding(context),
         8,
       ),
       child: ClipRRect(

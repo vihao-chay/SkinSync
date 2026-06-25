@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../responsive/responsive.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
 import 'app_button.dart';
@@ -22,6 +23,7 @@ class ErrorStateCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final stackButtons = Responsive.isSmallMobile(context);
     return AppCard(
       variant: AppCardVariant.hero,
       child: Column(
@@ -59,10 +61,13 @@ class ErrorStateCard extends StatelessWidget {
           ),
           if (ctaLabel != null && onCta != null) ...[
             const SizedBox(height: AppSpacing.lg),
-            AppButton(
-              label: ctaLabel!,
-              variant: AppButtonVariant.secondary,
-              onPressed: onCta,
+            SizedBox(
+              width: stackButtons ? double.infinity : null,
+              child: AppButton(
+                label: ctaLabel!,
+                variant: AppButtonVariant.secondary,
+                onPressed: onCta,
+              ),
             ),
           ],
         ],

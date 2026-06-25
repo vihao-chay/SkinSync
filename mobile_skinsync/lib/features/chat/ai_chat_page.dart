@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/models/app_models.dart';
+import '../../core/responsive/responsive.dart';
 import '../../core/routes/app_routes.dart';
 import '../../core/state/app_state.dart';
 import '../../core/theme/app_colors.dart';
-import '../../core/theme/app_spacing.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/glass_header.dart';
 
@@ -66,12 +66,22 @@ class _AiChatPageState extends State<AiChatPage> {
       ),
       body: SafeArea(
         top: false,
-        child: RefreshIndicator(
-          color: AppColors.primaryDark,
-          onRefresh: _refresh,
-          child: FutureBuilder<List<AiChatConversationSummary>>(
-            future: _future,
-            builder: (context, snapshot) {
+        child: Center(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: Responsive.maxContentWidth(
+                context,
+                mobile: double.infinity,
+                tablet: 760,
+                desktop: 960,
+              ),
+            ),
+            child: RefreshIndicator(
+              color: AppColors.primaryDark,
+              onRefresh: _refresh,
+              child: FutureBuilder<List<AiChatConversationSummary>>(
+                future: _future,
+                builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator());
               }
@@ -96,11 +106,11 @@ class _AiChatPageState extends State<AiChatPage> {
 
               return ListView.separated(
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.pagePadding,
+                padding: EdgeInsets.fromLTRB(
+                  Responsive.responsiveHorizontalPadding(context),
                   14,
-                  AppSpacing.pagePadding,
-                  AppSpacing.pageBottomPadding,
+                  Responsive.responsiveHorizontalPadding(context),
+                  Responsive.contentBottomSpacing(context, extra: 16),
                 ),
                 itemBuilder: (context, index) {
                   final item = conversations[index];
@@ -123,7 +133,9 @@ class _AiChatPageState extends State<AiChatPage> {
                 separatorBuilder: (_, _) => const SizedBox(height: 12),
                 itemCount: conversations.length,
               );
-            },
+                },
+              ),
+            ),
           ),
         ),
       ),
@@ -199,7 +211,12 @@ class _StateMessage extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(24, 80, 24, 24),
+      padding: EdgeInsets.fromLTRB(
+        Responsive.responsiveHorizontalPadding(context),
+        80,
+        Responsive.responsiveHorizontalPadding(context),
+        24,
+      ),
       children: [
         Container(
           padding: const EdgeInsets.all(22),

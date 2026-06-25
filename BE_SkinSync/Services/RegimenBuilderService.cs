@@ -17,7 +17,7 @@ public class RegimenBuilderService : IRegimenBuilderService
     public UserRegimen BuildRegimen(Guid userId, Guid analysisId, string skinType, IReadOnlyCollection<Product> products)
     {
         var filtered = products
-            .Where(p => string.Equals(p.Status, "active", StringComparison.OrdinalIgnoreCase))
+            .Where(p => p.IsActive)
             .Where(p => MatchesSkinType(p.SuitableSkinTypes, skinType))
             .ToList();
 

@@ -53,7 +53,7 @@ public class RoutineGenerationService : IRoutineGenerationService
 
         var candidates = await _dbContext.Products
             .AsNoTracking()
-            .Where(x => x.Status == "active")
+            .Where(x => x.IsActive)
             .ToListAsync(cancellationToken);
 
         var preference = NormalizeRoutinePreference(request.RoutinePreference, user.Profile?.RoutinePreference);
@@ -161,7 +161,7 @@ public class RoutineGenerationService : IRoutineGenerationService
                     score += 3;
                 }
 
-                if (budget?.Max is decimal maxBudget && product.Price <= maxBudget)
+                if (budget?.Max is decimal maxBudget && product.Price.HasValue && product.Price.Value <= maxBudget)
                 {
                     score += 2;
                 }
@@ -195,7 +195,7 @@ public class RoutineGenerationService : IRoutineGenerationService
             })
             .Where(x => x.Score > -3)
             .OrderByDescending(x => x.Score)
-            .ThenBy(x => x.Product.Price)
+            .ThenBy(x => x.Product.Price ?? decimal.MaxValue)
             .ToList();
     }
 

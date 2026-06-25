@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/responsive/responsive.dart';
 import '../../core/routes/app_routes.dart';
 import '../../core/state/app_state.dart';
 import '../../core/theme/app_colors.dart';
@@ -59,9 +60,27 @@ class _LoginPageState extends State<LoginPage> {
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 390),
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(10, 10, 10, 24),
+            constraints: BoxConstraints(
+              maxWidth: Responsive.maxContentWidth(
+                context,
+                mobile: 520,
+                tablet: 520,
+                desktop: 520,
+              ),
+            ),
+            child: AnimatedPadding(
+              duration: const Duration(milliseconds: 180),
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.viewInsetsOf(context).bottom,
+              ),
+              child: ListView(
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
+                padding: Responsive.responsivePadding(
+                  context,
+                  top: 10,
+                  bottom: 24,
+                ),
               children: [
                 const _BrandHeader(),
                 const SizedBox(height: 16),
@@ -94,6 +113,7 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                 ),
               ],
+              ),
             ),
           ),
         ),
@@ -232,10 +252,11 @@ class _BrandHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return Wrap(
+      spacing: 8,
+      crossAxisAlignment: WrapCrossAlignment.center,
       children: [
         const BrandLogo(size: 26, radius: 13, showShadow: false),
-        const SizedBox(width: 8),
         Text(
           'SkinSync',
           style: Theme.of(context).textTheme.titleSmall?.copyWith(

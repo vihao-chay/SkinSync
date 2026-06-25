@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/models/app_models.dart';
+import '../../core/responsive/responsive.dart';
 import '../../core/state/app_state.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/glass_header.dart';
@@ -73,7 +74,12 @@ class _AiReportsPageState extends State<AiReportsPage> {
           color: AppColors.primaryDark,
           onRefresh: _refresh,
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+            padding: EdgeInsets.fromLTRB(
+              Responsive.responsiveHorizontalPadding(context),
+              12,
+              Responsive.responsiveHorizontalPadding(context),
+              Responsive.contentBottomSpacing(context, extra: 12),
+            ),
             children: [
               Wrap(
                 spacing: 8,

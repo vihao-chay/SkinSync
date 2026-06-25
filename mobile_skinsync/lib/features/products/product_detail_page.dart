@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../core/config/app_config.dart';
 import '../../core/models/app_models.dart';
+import '../../core/responsive/responsive.dart';
 import '../../core/state/app_state.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
@@ -26,10 +27,25 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
   bool _isAddingEvening = false;
   bool _isAddingBoth = false;
   bool _isCheckingIngredients = false;
+  late Future<ProductDetail> _detailFuture;
 
-  AiRecommendedProduct get _product => widget.args.product;
+  @override
+  void initState() {
+    super.initState();
+    _detailFuture = _loadDetail();
+  }
 
-  Future<void> _addToRoutine(String selection) async {
+  Future<ProductDetail> _loadDetail() async {
+    final detail = await context.read<AppState>().getProductDetail(
+      widget.args.productId,
+    );
+    return detail.mergeRecommendation(
+      widget.args.recommendationItem,
+      alreadyInRoutineOverride: widget.args.alreadyInRoutine,
+    );
+  }
+
+  Future<void> _addToRoutine(ProductDetail product, String selection) async {
     if (!mounted) {
       return;
     }
@@ -45,6 +61,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
     try {
       await _submitAddToRoutine(
         appState: appState,
+        product: product,
         selection: selection,
         allowConflicts: false,
       );
@@ -80,6 +97,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
 
   Future<void> _submitAddToRoutine({
     required AppState appState,
+    required ProductDetail product,
     required String selection,
     required bool allowConflicts,
   }) async {
@@ -89,7 +107,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
 
     for (final target in targets) {
       final result = await appState.addProductToRoutine(
-        productId: _product.productId,
+        productId: product.id,
         routineType: target,
         allowConflicts: allowConflicts,
       );
@@ -106,6 +124,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
         if (confirmed == true && mounted) {
           await _submitAddToRoutine(
             appState: appState,
+            product: product,
             selection: target,
             allowConflicts: true,
           );
@@ -114,8 +133,8 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
     }
   }
 
-  Future<void> _checkIngredients() async {
-    final ingredientsText = _product.ingredientsText?.trim() ?? '';
+  Future<void> _checkIngredients(ProductDetail product) async {
+    final ingredientsText = product.ingredients.join(', ').trim();
     if (ingredientsText.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -130,7 +149,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
 
     try {
       final result = await appState.checkIngredients(
-        productName: _product.name,
+        productName: product.name,
         ingredientsText: ingredientsText,
       );
       if (!mounted) {
@@ -197,235 +216,276 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    final product = _product;
     return AppScaffold(
-      title: product.name,
+      title: widget.args.recommendationItem?.name ?? 'Product Details',
       subtitle: 'Why this product fits your skin and how to use it.',
       compactHeader: true,
-      body: ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.pagePadding,
-          0,
-          AppSpacing.pagePadding,
-          AppSpacing.pageBottomPaddingWithActions,
-        ),
-        children: [
-          AppCard(
-            variant: AppCardVariant.hero,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+      body: FutureBuilder<ProductDetail>(
+        future: _detailFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState != ConnectionState.done) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (snapshot.hasError || !snapshot.hasData) {
+            return ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: EdgeInsets.fromLTRB(
+                Responsive.responsiveHorizontalPadding(context),
+                0,
+                Responsive.responsiveHorizontalPadding(context),
+                Responsive.contentBottomSpacing(context, extra: 20),
+              ),
+              children: const [
+                AppCard(
+                  child: _EmptyCopy(
+                    'Product details could not be loaded right now. Please go back and try again.',
+                  ),
+                ),
+              ],
+            );
+          }
+
+          final product = snapshot.data!;
+          return ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: EdgeInsets.fromLTRB(
+              Responsive.responsiveHorizontalPadding(context),
+              0,
+              Responsive.responsiveHorizontalPadding(context),
+              Responsive.contentBottomSpacing(context, extra: 20),
+            ),
+            children: [
+              AppCard(
+                variant: AppCardVariant.hero,
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _ProductImage(product: product),
-                    const SizedBox(width: AppSpacing.md),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Wrap(
-                            spacing: AppSpacing.xs,
-                            runSpacing: AppSpacing.xs,
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _ProductImage(product: product),
+                        const SizedBox(width: AppSpacing.md),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              StatusChip(
-                                label: product.category,
-                                icon: Icons.inventory_2_outlined,
+                              Wrap(
+                                spacing: AppSpacing.xs,
+                                runSpacing: AppSpacing.xs,
+                                children: [
+                                  StatusChip(
+                                    label: product.category,
+                                    icon: Icons.inventory_2_outlined,
+                                  ),
+                                  if (product.matchPercent != null)
+                                    StatusChip(
+                                      label: '${product.matchPercent}% match',
+                                      icon: Icons.auto_awesome_rounded,
+                                      tone: StatusChipTone.accent,
+                                    ),
+                                  if (product.alreadyInRoutine)
+                                    const StatusChip(
+                                      label: 'Already in routine',
+                                      icon: Icons.check_circle_outline_rounded,
+                                      tone: StatusChipTone.success,
+                                    ),
+                                ],
                               ),
-                              StatusChip(
-                                label:
-                                    '${product.matchPercent ?? product.matchScore}% match',
-                                icon: Icons.auto_awesome_rounded,
-                                tone: StatusChipTone.accent,
+                              const SizedBox(height: AppSpacing.sm),
+                              Text(
+                                product.brand.trim().isEmpty
+                                    ? 'Brand not provided'
+                                    : product.brand,
+                                style: Theme.of(context).textTheme.titleMedium
+                                    ?.copyWith(fontWeight: FontWeight.w700),
                               ),
-                              if (product.alreadyInRoutine)
-                                const StatusChip(
-                                  label: 'Already in routine',
-                                  icon: Icons.check_circle_outline_rounded,
-                                  tone: StatusChipTone.success,
-                                ),
+                              const SizedBox(height: AppSpacing.xs),
+                              Text(
+                                '${product.price.toStringAsFixed(0)} ${product.currency}',
+                                style: Theme.of(context).textTheme.titleLarge
+                                    ?.copyWith(
+                                      fontFamily: 'PlusJakartaSans',
+                                      fontWeight: FontWeight.w800,
+                                      fontFeatures: const [
+                                        FontFeature.tabularFigures(),
+                                      ],
+                                    ),
+                              ),
                             ],
                           ),
-                          const SizedBox(height: AppSpacing.sm),
-                          Text(
-                            product.brand.trim().isEmpty
-                                ? 'Brand not provided'
-                                : product.brand,
-                            style: Theme.of(context).textTheme.titleMedium
-                                ?.copyWith(fontWeight: FontWeight.w700),
-                          ),
-                          const SizedBox(height: AppSpacing.xs),
-                          Text(
-                            '${product.price.toStringAsFixed(0)} ${product.currency}',
-                            style: Theme.of(context).textTheme.titleLarge
-                                ?.copyWith(
-                                  fontFamily: 'PlusJakartaSans',
-                                  fontWeight: FontWeight.w800,
-                                  fontFeatures: const [
-                                    FontFeature.tabularFigures(),
-                                  ],
-                                ),
-                          ),
-                        ],
+                        ),
+                      ],
+                    ),
+                    if (product.description?.trim().isNotEmpty == true) ...[
+                      const SizedBox(height: AppSpacing.md),
+                      Text(
+                        product.description!,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: AppColors.mutedText,
+                        ),
                       ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sectionGap),
+              AppCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SectionHeader(
+                      icon: Icons.psychology_alt_outlined,
+                      title: 'AI explanation',
+                      subtitle:
+                          'Real recommendation context from the saved session.',
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    _DetailText(
+                      product.whyRecommended?.trim().isNotEmpty == true
+                          ? product.whyRecommended!
+                          : 'AI explanation is not available for this product yet.',
+                      muted: product.whyRecommended?.trim().isNotEmpty != true,
                     ),
                   ],
                 ),
-                if (product.description?.trim().isNotEmpty == true) ...[
-                  const SizedBox(height: AppSpacing.md),
-                  Text(
-                    product.description!,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: AppColors.mutedText,
+              ),
+              const SizedBox(height: AppSpacing.sectionGap),
+              AppCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SectionHeader(
+                      icon: Icons.warning_amber_rounded,
+                      title: 'Cautions',
+                      subtitle:
+                          'Only show warnings and conflict notes that exist for this product.',
                     ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          const SizedBox(height: AppSpacing.sectionGap),
-          AppCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SectionHeader(
-                  icon: Icons.psychology_alt_outlined,
-                  title: 'AI explanation',
-                  subtitle:
-                      'Real recommendation context from the saved session.',
+                    const SizedBox(height: AppSpacing.md),
+                    if (product.cautions.isEmpty && product.conflicts.isEmpty)
+                      const _EmptyCopy(
+                        'No caution or conflict notes were provided yet.',
+                      )
+                    else
+                      Wrap(
+                        spacing: AppSpacing.xs,
+                        runSpacing: AppSpacing.xs,
+                        children: [
+                          ...product.cautions.map(
+                            (warning) => StatusChip(
+                              label: warning,
+                              icon: Icons.warning_amber_rounded,
+                              tone: StatusChipTone.warning,
+                            ),
+                          ),
+                          ...product.conflicts.map(
+                            (warning) => StatusChip(
+                              label: warning,
+                              icon: Icons.block_outlined,
+                              tone: StatusChipTone.warning,
+                            ),
+                          ),
+                        ],
+                      ),
+                  ],
                 ),
-                const SizedBox(height: AppSpacing.md),
-                _DetailText(
-                  product.whyRecommended?.trim().isNotEmpty == true
-                      ? product.whyRecommended!
-                      : product.aiReason,
+              ),
+              const SizedBox(height: AppSpacing.sectionGap),
+              AppCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SectionHeader(
+                      icon: Icons.science_outlined,
+                      title: 'Ingredients',
+                      subtitle:
+                          'Use the real product ingredient list when available.',
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    if (!product.hasIngredientData)
+                      const _EmptyCopy(
+                        'Ingredient details are not available for this product yet.',
+                      )
+                    else ...[
+                      _DetailText(product.ingredients.join(', ')),
+                      const SizedBox(height: AppSpacing.md),
+                      AppButton(
+                        label: 'Check ingredients',
+                        variant: AppButtonVariant.secondary,
+                        isLoading: _isCheckingIngredients,
+                        onPressed: _isCheckingIngredients
+                            ? null
+                            : () => _checkIngredients(product),
+                      ),
+                    ],
+                  ],
                 ),
-              ],
-            ),
-          ),
-          const SizedBox(height: AppSpacing.sectionGap),
-          AppCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SectionHeader(
-                  icon: Icons.warning_amber_rounded,
-                  title: 'Cautions',
-                  subtitle: 'Only show warnings that exist for this product.',
+              ),
+              const SizedBox(height: AppSpacing.sectionGap),
+              AppCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SectionHeader(
+                      icon: Icons.schedule_outlined,
+                      title: 'How to use',
+                      subtitle:
+                          'Backend-provided guidance for cadence and routine placement.',
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    _DetailText(
+                      product.howToUse?.trim().isNotEmpty == true
+                          ? product.howToUse!
+                          : 'Usage guidance has not been provided yet.',
+                      muted: product.howToUse?.trim().isNotEmpty != true,
+                    ),
+                  ],
                 ),
-                const SizedBox(height: AppSpacing.md),
-                if (product.cautions.isEmpty && product.warnings.isEmpty)
-                  const _EmptyCopy(
-                    'No caution or conflict notes were provided yet.',
-                  )
-                else
-                  Wrap(
-                    spacing: AppSpacing.xs,
-                    runSpacing: AppSpacing.xs,
-                    children:
-                        (product.cautions.isNotEmpty
-                                ? product.cautions
-                                : product.warnings)
-                            .map(
-                              (warning) => StatusChip(
-                                label: warning,
-                                icon: Icons.warning_amber_rounded,
-                                tone: StatusChipTone.warning,
-                              ),
-                            )
-                            .toList(),
-                  ),
-              ],
-            ),
-          ),
-          const SizedBox(height: AppSpacing.sectionGap),
-          AppCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SectionHeader(
-                  icon: Icons.science_outlined,
-                  title: 'Ingredients',
-                  subtitle:
-                      'Use the real product ingredient list when available.',
+              ),
+              const SizedBox(height: AppSpacing.sectionGap),
+              AppCard(
+                variant: AppCardVariant.accent,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SectionHeader(
+                      icon: Icons.playlist_add_check_circle_outlined,
+                      title: 'Add to routine',
+                      subtitle:
+                          'Choose exactly where this product should appear.',
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    AppButton(
+                      label: 'Add to Morning',
+                      isLoading: _isAddingMorning,
+                      onPressed: _isBusy
+                          ? null
+                          : () => _addToRoutine(product, 'Morning'),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    AppButton(
+                      label: 'Add to Evening',
+                      variant: AppButtonVariant.secondary,
+                      isLoading: _isAddingEvening,
+                      onPressed: _isBusy
+                          ? null
+                          : () => _addToRoutine(product, 'Evening'),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    AppButton(
+                      label: 'Add to Both',
+                      variant: AppButtonVariant.secondary,
+                      isLoading: _isAddingBoth,
+                      onPressed: _isBusy
+                          ? null
+                          : () => _addToRoutine(product, 'Both'),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: AppSpacing.md),
-                if (product.ingredientsText?.trim().isNotEmpty != true)
-                  const _EmptyCopy(
-                    'Ingredient details are not available for this product yet.',
-                  )
-                else ...[
-                  _DetailText(product.ingredientsText!),
-                  const SizedBox(height: AppSpacing.md),
-                  AppButton(
-                    label: 'Check ingredients',
-                    variant: AppButtonVariant.secondary,
-                    isLoading: _isCheckingIngredients,
-                    onPressed: _isCheckingIngredients
-                        ? null
-                        : _checkIngredients,
-                  ),
-                ],
-              ],
-            ),
-          ),
-          const SizedBox(height: AppSpacing.sectionGap),
-          AppCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SectionHeader(
-                  icon: Icons.schedule_outlined,
-                  title: 'How to use',
-                  subtitle:
-                      'Backend-provided guidance for cadence and routine placement.',
-                ),
-                const SizedBox(height: AppSpacing.md),
-                _DetailText(
-                  product.usageGuide?.trim().isNotEmpty == true
-                      ? product.usageGuide!
-                      : 'Usage guidance has not been provided yet.',
-                  muted: product.usageGuide?.trim().isNotEmpty != true,
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: AppSpacing.sectionGap),
-          AppCard(
-            variant: AppCardVariant.accent,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SectionHeader(
-                  icon: Icons.playlist_add_check_circle_outlined,
-                  title: 'Add to routine',
-                  subtitle: 'Choose exactly where this product should appear.',
-                ),
-                const SizedBox(height: AppSpacing.md),
-                AppButton(
-                  label: 'Add to Morning',
-                  isLoading: _isAddingMorning,
-                  onPressed: _isBusy ? null : () => _addToRoutine('Morning'),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                AppButton(
-                  label: 'Add to Evening',
-                  variant: AppButtonVariant.secondary,
-                  isLoading: _isAddingEvening,
-                  onPressed: _isBusy ? null : () => _addToRoutine('Evening'),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                AppButton(
-                  label: 'Add to Both',
-                  variant: AppButtonVariant.secondary,
-                  isLoading: _isAddingBoth,
-                  onPressed: _isBusy ? null : () => _addToRoutine('Both'),
-                ),
-              ],
-            ),
-          ),
-        ],
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -440,7 +500,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
 class _ProductImage extends StatelessWidget {
   const _ProductImage({required this.product});
 
-  final AiRecommendedProduct product;
+  final ProductDetail product;
 
   @override
   Widget build(BuildContext context) {

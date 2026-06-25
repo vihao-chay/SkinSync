@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../responsive/responsive.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
 import 'app_button.dart';
@@ -28,6 +29,7 @@ class EmptyStateCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final stackButtons = Responsive.isSmallMobile(context);
     return AppCard(
       variant: AppCardVariant.hero,
       child: Column(
@@ -69,10 +71,13 @@ class EmptyStateCard extends StatelessWidget {
           ],
           if (secondaryLabel != null && onSecondary != null) ...[
             const SizedBox(height: AppSpacing.sm),
-            AppButton(
-              label: secondaryLabel!,
-              variant: AppButtonVariant.secondary,
-              onPressed: onSecondary,
+            SizedBox(
+              width: stackButtons ? double.infinity : null,
+              child: AppButton(
+                label: secondaryLabel!,
+                variant: AppButtonVariant.secondary,
+                onPressed: onSecondary,
+              ),
             ),
           ],
         ],

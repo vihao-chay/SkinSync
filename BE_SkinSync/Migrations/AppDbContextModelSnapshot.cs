@@ -355,7 +355,7 @@ namespace SkinSync.Migrations
                         .ValueGeneratedOnAdd()
                         .HasMaxLength(10)
                         .HasColumnType("character varying(10)")
-                        .HasDefaultValue("VND");
+                        .HasDefaultValue("");
 
                     b.Property<string>("Description")
                         .HasColumnType("text");
@@ -367,6 +367,16 @@ namespace SkinSync.Migrations
                     b.Property<string>("Ingredient")
                         .HasColumnType("jsonb");
 
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
+                    b.Property<bool>("IsVerified")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
                     b.Property<string>("KeyIngredients")
                         .HasColumnType("jsonb");
 
@@ -375,13 +385,24 @@ namespace SkinSync.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)");
 
-                    b.Property<decimal>("Price")
+                    b.Property<decimal?>("Price")
                         .HasPrecision(12, 2)
                         .HasColumnType("numeric(12,2)");
 
                     b.Property<decimal?>("Rating")
                         .HasPrecision(3, 2)
                         .HasColumnType("numeric(3,2)");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasDefaultValue("");
+
+                    b.Property<string>("SourceUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -402,21 +423,37 @@ namespace SkinSync.Migrations
                     b.Property<string>("UsageGuide")
                         .HasColumnType("text");
 
+                    b.Property<string>("UsageTime")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
                     b.HasKey("Id");
 
                     b.HasIndex("Brand");
 
+                    b.HasIndex("Category");
+
+                    b.HasIndex("IsActive");
+
+                    b.HasIndex("IsVerified");
+
+                    b.HasIndex("Name");
+
                     b.HasIndex("Price");
+
+                    b.HasIndex("Source");
 
                     b.HasIndex("Status", "Category");
 
                     b.ToTable("products", null, t =>
                         {
-                            t.HasCheckConstraint("ck_products_price", "price >= 0");
+                            t.HasCheckConstraint("ck_products_price", "price IS NULL OR price >= 0");
 
                             t.HasCheckConstraint("ck_products_rating", "rating IS NULL OR rating BETWEEN 0 AND 5");
 
                             t.HasCheckConstraint("ck_products_status", "status IN ('active', 'out_of_stock', 'inactive')");
+
+                            t.HasCheckConstraint("ck_products_usage_time", "\"UsageTime\" IS NULL OR \"UsageTime\" IN ('Morning', 'Night', 'Both')");
                         });
                 });
 
@@ -892,6 +929,9 @@ namespace SkinSync.Migrations
                     b.Property<int>("OilinessScore")
                         .HasColumnType("integer");
 
+                    b.Property<int?>("OverallConcernSeverity")
+                        .HasColumnType("integer");
+
                     b.Property<int>("OverallScore")
                         .HasColumnType("integer");
 
@@ -938,6 +978,9 @@ namespace SkinSync.Migrations
                         .HasDefaultValueSql("'[]'::jsonb");
 
                     b.Property<int>("SensitivityScore")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("SkinHealthScore")
                         .HasColumnType("integer");
 
                     b.Property<string>("SkinTypeEstimate")

@@ -9,7 +9,6 @@ public static class ProductMapper
     public static ProductResponseDto ToDto(this Product product)
     {
         var suitableSkinTypes = ParseJsonArray(product.SuitableSkinTypes);
-        var keyIngredients = ParseJsonArray(product.KeyIngredients);
         var targetConcerns = ParseJsonArray(product.TargetConcerns);
         var ingredients = ExtractIngredients(product);
         var cautions = BuildCautions(product, ingredients);
@@ -22,22 +21,23 @@ public static class ProductMapper
             Brand = product.Brand,
             Category = product.Category,
             Description = product.Description,
-            Ingredient = product.Ingredient,
+            IngredientsText = ingredients.Count > 0
+                ? string.Join(", ", ingredients)
+                : product.Ingredient ?? string.Empty,
             Ingredients = ingredients,
-            UsageGuide = product.UsageGuide,
-            HowToUse = product.UsageGuide,
-            UsageTime = BuildUsageTime(product),
+            HowToUse = string.IsNullOrWhiteSpace(product.UsageGuide) ? null : product.UsageGuide,
+            UsageTime = string.IsNullOrWhiteSpace(product.UsageTime) ? BuildUsageTime(product) : product.UsageTime,
             Price = product.Price,
-            Currency = string.IsNullOrWhiteSpace(product.Currency) ? "VND" : product.Currency,
-            SuitableSkinTypes = suitableSkinTypes,
-            SuitableFor = suitableSkinTypes,
+            Currency = product.Currency ?? string.Empty,
+            SkinTypes = suitableSkinTypes,
             SkinConcerns = targetConcerns,
-            KeyIngredients = keyIngredients,
             Cautions = cautions,
             Conflicts = conflicts,
             ImageUrl = product.ImageUrl,
-            Rating = product.Rating,
-            Status = product.Status,
+            IsVerified = product.IsVerified,
+            IsActive = product.IsActive,
+            Source = product.Source ?? string.Empty,
+            SourceUrl = product.SourceUrl,
             CreatedAt = product.CreatedAt,
             UpdatedAt = product.UpdatedAt
         };
@@ -77,6 +77,57 @@ public static class ProductMapper
         }
     }
 
+    public static string SerializeDelimitedList(string? value, char separator = ',')
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return "[]";
+        }
+
+        var normalized = value
+            .Split(separator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(item => !string.IsNullOrWhiteSpace(item))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        return JsonSerializer.Serialize(normalized);
+    }
+
+    public static string SerializeKeyIngredients(string? ingredientText, int maxItems = 8)
+    {
+        if (string.IsNullOrWhiteSpace(ingredientText))
+        {
+            return "[]";
+        }
+
+        var normalized = ingredientText
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(item => item.Trim())
+            .Where(item => !string.IsNullOrWhiteSpace(item))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Take(maxItems)
+            .ToArray();
+
+        return JsonSerializer.Serialize(normalized);
+    }
+
+    public static string SerializeIngredients(string? ingredientText)
+    {
+        if (string.IsNullOrWhiteSpace(ingredientText))
+        {
+            return "[]";
+        }
+
+        var normalized = ingredientText
+            .Split([',', ';', '\n', '\r'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(item => item.Trim())
+            .Where(item => !string.IsNullOrWhiteSpace(item))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        return JsonSerializer.Serialize(normalized);
+    }
+
     private static IReadOnlyCollection<string> ExtractIngredients(Product product)
     {
         if (product.ProductIngredients.Count > 0)
@@ -89,7 +140,17 @@ public static class ProductMapper
                 .ToArray();
         }
 
-        return ParseJsonArray(product.Ingredient);
+        var parsed = ParseJsonArray(product.Ingredient);
+        if (parsed.Count > 0)
+        {
+            return parsed;
+        }
+
+        return (product.Ingredient ?? string.Empty)
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(item => !string.IsNullOrWhiteSpace(item))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
     }
 
     private static IReadOnlyCollection<string> BuildCautions(Product product, IReadOnlyCollection<string> ingredients)
@@ -173,9 +234,9 @@ public static class ProductMapper
 
         if (ingredientText.Contains("retinol") || ingredientText.Contains("retinal"))
         {
-            return "Evening";
+            return "Night";
         }
 
-        return "Morning or Evening";
+        return "Both";
     }
 }

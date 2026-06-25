@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../core/models/app_models.dart';
 import '../../core/routes/app_routes.dart';
+import '../../core/responsive/responsive.dart';
 import '../../core/state/app_state.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
@@ -14,7 +15,6 @@ import '../../core/widgets/error_state_card.dart';
 import '../../core/widgets/loading_skeleton.dart';
 import '../../core/widgets/main_shell.dart';
 import '../../core/widgets/product_recommendation_card.dart';
-import '../../core/widgets/responsive_layout.dart';
 import '../../core/widgets/stitch_top_bar.dart';
 import '../../core/widgets/status_chip.dart';
 
@@ -323,8 +323,10 @@ class _ProductsPageState extends State<ProductsPage> {
       context,
       AppRoutes.productDetail,
       arguments: ProductDetailPageArgs(
-        product: item,
-        productsEntryPoint: widget.args.entryPoint,
+        productId: item.productId,
+        recommendationItem: item,
+        sourceProductsEntryPoint: widget.args.entryPoint,
+        alreadyInRoutine: item.alreadyInRoutine,
       ),
     );
 
@@ -481,13 +483,13 @@ class _ProductsPageState extends State<ProductsPage> {
         );
     final hasAnyItems =
         recommendation?.categories.any((c) => c.items.isNotEmpty) ?? false;
-    final contentMaxWidth = ResponsiveLayout.contentMaxWidth(
+    final contentMaxWidth = Responsive.maxContentWidth(
       context,
-      compact: 460,
-      medium: 760,
-      large: 1100,
+      mobile: double.infinity,
+      tablet: 760,
+      desktop: 1100,
     );
-    final horizontalPadding = ResponsiveLayout.horizontalPadding(context);
+    final horizontalPadding = Responsive.responsiveHorizontalPadding(context);
 
     return ColoredBox(
       color: AppColors.pageBackground,
@@ -502,7 +504,7 @@ class _ProductsPageState extends State<ProductsPage> {
               child: ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.only(
-                  bottom: AppSpacing.pageBottomPaddingWithActions,
+                  bottom: 0,
                 ),
                 children: [
                   StitchTopBar(

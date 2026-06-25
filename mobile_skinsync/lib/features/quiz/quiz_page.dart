@@ -4,10 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/responsive/responsive.dart';
 import '../../core/routes/app_routes.dart';
 import '../../core/state/app_state.dart';
 import '../../core/theme/app_colors.dart';
-import '../../core/theme/app_spacing.dart';
 import '../../core/widgets/glass_header.dart';
 import '../../core/widgets/gradient_pill_button.dart';
 import '../../core/widgets/responsive_container.dart';
@@ -61,14 +61,23 @@ class _QuizPageState extends State<QuizPage> {
             children: [
               Expanded(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(AppSpacing.pagePadding),
+                  padding: Responsive.responsivePadding(
+                    context,
+                    top: 0,
+                    bottom: 16,
+                  ),
                   child: _buildStep(context),
                 ),
               ),
               SafeArea(
                 top: false,
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                  padding: EdgeInsets.fromLTRB(
+                    Responsive.responsiveHorizontalPadding(context),
+                    12,
+                    Responsive.responsiveHorizontalPadding(context),
+                    8,
+                  ),
                   child: Column(
                     children: [
                       if (appState.errorMessage != null) ...[
@@ -187,31 +196,33 @@ class _QuizPageState extends State<QuizPage> {
               style: Theme.of(context).textTheme.bodySmall,
             ),
             const SizedBox(height: 16),
-            Container(
-              width: double.infinity,
-              height: 280,
-              decoration: BoxDecoration(
-                color: AppColors.secondary,
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: AppColors.border),
+            AspectRatio(
+              aspectRatio: Responsive.isTablet(context) ? 1.5 : 1.0,
+              child: Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: AppColors.secondary,
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: selectedImage == null
+                    ? const Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.camera_alt_outlined,
+                            size: 48,
+                            color: AppColors.primaryDark,
+                          ),
+                          SizedBox(height: 12),
+                          Text('Select a clear selfie to continue'),
+                        ],
+                      )
+                    : ClipRRect(
+                        borderRadius: BorderRadius.circular(24),
+                        child: Image.file(selectedImage!, fit: BoxFit.cover),
+                      ),
               ),
-              child: selectedImage == null
-                  ? const Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.camera_alt_outlined,
-                          size: 48,
-                          color: AppColors.primaryDark,
-                        ),
-                        SizedBox(height: 12),
-                        Text('Select a clear selfie to continue'),
-                      ],
-                    )
-                  : ClipRRect(
-                      borderRadius: BorderRadius.circular(24),
-                      child: Image.file(selectedImage!, fit: BoxFit.cover),
-                    ),
             ),
             const SizedBox(height: 16),
             Row(
