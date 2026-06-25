@@ -206,6 +206,7 @@ builder.Services.AddSwaggerGen(options =>
 
 var app = builder.Build();
 
+var shouldApplyMigrationsOnStartup = builder.Configuration.GetValue<bool>("Startup:ApplyMigrationsOnStartup");
 var shouldSeedOnStartup = builder.Configuration.GetValue<bool>("Startup:SeedOnStartup");
 var shouldSeedDemoData = builder.Configuration.GetValue<bool>("Startup:SeedDemoData");
 var shouldEnableSwagger = builder.Configuration.GetValue<bool>("Swagger:Enabled");
@@ -218,7 +219,11 @@ if (app.Environment.IsDevelopment() || shouldSeedOnStartup)
 {
     using var scope = app.Services.CreateScope();
     var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    await DbSeeder.EnsureDatabaseAsync(dbContext);
+    if (shouldApplyMigrationsOnStartup || shouldSeedOnStartup || shouldSeedDemoData || shouldImportProductsOnStartup)
+    {
+        await DbSeeder.EnsureDatabaseAsync(dbContext);
+    }
+
     if (shouldSeedDemoData)
     {
         await DbSeeder.SeedDemoDataAsync(dbContext);
