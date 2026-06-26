@@ -7,6 +7,7 @@ export interface RegimenProduct {
   name: string;
   brand: string;
   category: string;
+  frequency?: string | null;
   description: string;
   ingredient: string;
   usageGuide: string;

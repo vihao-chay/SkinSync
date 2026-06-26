@@ -2,7 +2,10 @@
   .app-shell {
     min-height: 100vh;
     width: 100%;
-    background: var(--background);
+    background:
+      radial-gradient(circle at top left, rgba(201, 162, 77, 0.1), transparent 24%),
+      radial-gradient(circle at top right, rgba(111, 138, 97, 0.08), transparent 20%),
+      var(--ss-cream-gradient);
     color: var(--foreground);
   }
 
@@ -16,7 +19,10 @@
     display: none;
     min-height: 100vh;
     border-right: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
-    background: color-mix(in srgb, var(--card) 95%, transparent);
+    background:
+      linear-gradient(180deg, rgba(255, 253, 248, 0.94), rgba(248, 241, 232, 0.9)),
+      color-mix(in srgb, var(--card) 95%, transparent);
+    backdrop-filter: blur(18px);
   }
 
   .app-main {
@@ -26,13 +32,15 @@
   .app-content {
     margin: 0 auto;
     width: 100%;
-    max-width: 1240px;
+    max-width: 1360px;
   }
 
   .app-surface {
     border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
-    background: color-mix(in srgb, var(--card) 95%, transparent);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
+    background:
+      linear-gradient(180deg, rgba(255, 253, 248, 0.95), rgba(250, 244, 234, 0.9)),
+      color-mix(in srgb, var(--card) 95%, transparent);
+    box-shadow: var(--ss-shadow-card);
   }
 
   .app-surface-muted {
@@ -46,18 +54,18 @@
     gap: 0.25rem;
     border-radius: 9999px;
     border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
-    background: var(--background);
-    padding: 0.25rem 0.75rem;
+    background: color-mix(in srgb, var(--card) 78%, white);
+    padding: 0.35rem 0.8rem;
     font-size: 0.75rem;
-    color: var(--muted-foreground);
+    color: var(--ss-text-secondary);
   }
 
   .app-input {
     width: 100%;
     border-radius: 1rem;
     border: 1px solid var(--border);
-    background: var(--card);
-    padding: 0.75rem 1rem;
+    background: color-mix(in srgb, var(--card) 88%, white);
+    padding: 0.875rem 1rem;
     font-size: 0.875rem;
     color: var(--foreground);
     outline: none;
@@ -82,6 +90,43 @@
     border: 1px dashed var(--border);
     border-radius: 28px;
     background: color-mix(in srgb, var(--muted) 70%, transparent);
+  }
+
+  .app-admin-shell {
+    min-height: 100vh;
+    background:
+      radial-gradient(circle at top left, rgba(201, 162, 77, 0.1), transparent 22%),
+      linear-gradient(180deg, #f8f1e8 0%, #fbf7f0 100%);
+  }
+
+  .app-admin-grid {
+    display: grid;
+    min-height: 100vh;
+    grid-template-columns: 300px minmax(0, 1fr);
+  }
+
+  .app-admin-sidebar {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    border-right: 1px solid color-mix(in srgb, var(--border) 90%, white);
+    background:
+      linear-gradient(180deg, rgba(255, 252, 247, 0.98), rgba(245, 237, 226, 0.96)),
+      var(--card);
+    backdrop-filter: blur(20px);
+  }
+
+  .app-admin-main {
+    min-width: 0;
+  }
+
+  .app-admin-topbar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    border-bottom: 1px solid color-mix(in srgb, var(--border) 88%, white);
+    background: rgba(255, 251, 246, 0.84);
+    backdrop-filter: blur(18px);
   }
 
   @media (min-width: 768px) {

@@ -18,7 +18,7 @@ export function AppRoutineStepCard({
   );
 
   return (
-    <div className="rounded-[24px] border border-border/60 bg-muted/70 p-4">
+    <div className="rounded-[26px] border border-border/60 bg-muted/70 p-5">
       <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
         <div className="space-y-2">
           <div className="flex flex-wrap gap-2">
@@ -27,7 +27,7 @@ export function AppRoutineStepCard({
             {step.category ? <span className="app-pill">{step.category}</span> : null}
           </div>
           <div>
-            <p className="text-base font-medium text-foreground">{step.name}</p>
+            <p className="text-base font-semibold text-foreground">{step.name}</p>
             <p className="text-sm text-muted-foreground">{step.brand || "Brand unavailable"}</p>
           </div>
           <p className="text-sm leading-6 text-muted-foreground">

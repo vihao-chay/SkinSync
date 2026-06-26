@@ -63,7 +63,7 @@ export function AppLayout() {
             </div>
           ) : null}
 
-          <main className="min-w-0 px-4 py-6 sm:px-6 lg:px-10">
+          <main className="min-w-0 px-4 py-6 sm:px-6 lg:px-8 xl:px-10">
             <div className="app-content">
               <Outlet />
             </div>

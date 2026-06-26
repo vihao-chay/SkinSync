@@ -15,15 +15,15 @@ export function AppSection({
   contentClassName?: string;
 }) {
   return (
-    <Card className="app-surface rounded-[28px]">
-      <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+    <Card className="app-surface rounded-[30px] overflow-hidden">
+      <CardHeader className="flex flex-col gap-4 border-b border-border/60 pb-5 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1">
-          <CardTitle className="text-xl text-foreground">{title}</CardTitle>
-          {description ? <p className="text-sm text-muted-foreground">{description}</p> : null}
+          <CardTitle className="text-[1.35rem] text-foreground">{title}</CardTitle>
+          {description ? <p className="max-w-2xl text-sm leading-6 text-muted-foreground">{description}</p> : null}
         </div>
         {action}
       </CardHeader>
-      <CardContent className={contentClassName}>{children}</CardContent>
+      <CardContent className={`pt-6 ${contentClassName}`}>{children}</CardContent>
     </Card>
   );
 }
