@@ -452,6 +452,26 @@ class AppState extends ChangeNotifier {
     return ProductDetail.fromJson(data);
   }
 
+  Future<List<ProductDetail>> getProductCatalog({
+    String? category,
+    int page = 1,
+    int pageSize = 20,
+  }) async {
+    final response = await _apiClient.get(
+      '/api/products',
+      query: {
+        'page': page,
+        'pageSize': pageSize,
+        if (category != null && category.trim().isNotEmpty)
+          'category': category.trim(),
+      },
+    );
+    return _readAiCollection(response)
+        .whereType<Map<String, dynamic>>()
+        .map(ProductDetail.fromJson)
+        .toList();
+  }
+
   Future<AiIngredientCheckResponse> checkIngredients({
     required String productName,
     required String ingredientsText,

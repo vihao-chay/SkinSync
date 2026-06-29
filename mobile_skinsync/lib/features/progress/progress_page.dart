@@ -27,22 +27,29 @@ class ProgressPage extends StatefulWidget {
 }
 
 class _ProgressPageState extends State<ProgressPage> {
-  bool _didHandleEntryPoint = false;
+  bool _isRefreshing = false;
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (_didHandleEntryPoint) {
-      return;
-    }
-    _didHandleEntryPoint = true;
-    if (widget.args.entryPoint == ProgressEntryPoint.checkupSaved ||
-        widget.args.entryPoint == ProgressEntryPoint.analysisResult) {
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      final appState = context.read<AppState>();
+      _refreshProgressData(showLoading: _hasNoProgressData(appState));
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant ProgressPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.args.cacheKey != widget.args.cacheKey) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) {
           return;
         }
-        context.read<AppState>().refreshHome();
+        _refreshProgressData(showLoading: true);
       });
     }
   }
@@ -57,8 +64,21 @@ class _ProgressPageState extends State<ProgressPage> {
     final todayLog = appState.todayLog;
     final totalSteps = tracking?.totalSteps ?? 0;
     final completedSteps = tracking?.completedSteps ?? 0;
-    final routineProgress = totalSteps == 0 ? 0.0 : completedSteps / totalSteps;
-    final currentScore = progress?.currentScore ?? latestAnalysis?.overallScore;
+    final routineProgress = _clampedProgress(completedSteps, totalSteps);
+    final currentScore =
+        progress?.currentScore ??
+        latestAnalysis?.displaySkinHealthScore ??
+        latestAnalysis?.overallScore;
+    final insight =
+        progress?.progressInsight ??
+        progress?.dailyTip ??
+        latestAnalysis?.overview;
+    final hasProgressContent = !_hasNoProgressData(appState);
+    final progressError =
+        appState.progressLoadErrorMessage ??
+        appState.analysisLoadErrorMessage ??
+        appState.trackingLoadErrorMessage ??
+        appState.todayLogLoadErrorMessage;
     final horizontalPadding = Responsive.responsiveHorizontalPadding(context);
     final showCheckupSavedState =
         widget.args.entryPoint == ProgressEntryPoint.checkupSaved;
@@ -69,12 +89,12 @@ class _ProgressPageState extends State<ProgressPage> {
       title: locale.tr('progress_title'),
       subtitle: locale.tr('progress_history_at_glance'),
       compactHeader: true,
-      onRefresh: appState.refreshHome,
+      onRefresh: _refreshProgressData,
       body: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: EdgeInsets.fromLTRB(
           horizontalPadding,
-          0,
+          AppSpacing.xs,
           horizontalPadding,
           Responsive.contentBottomSpacing(context, extra: 20),
         ),
@@ -94,12 +114,23 @@ class _ProgressPageState extends State<ProgressPage> {
             ),
             const SizedBox(height: AppSpacing.sm),
           ],
-          if (progress == null && latestAnalysis == null)
+          if (_isRefreshing && !hasProgressContent)
+            const _ProgressLoadingCard()
+          else if (!hasProgressContent && progressError != null)
+            _ProgressErrorCard(
+              message: progressError,
+              onRetry: () => _refreshProgressData(showLoading: true),
+            )
+          else if (!hasProgressContent)
             _NoProgressCard(onStart: _openUpload)
           else ...[
+            if (progressError != null) ...[
+              _ProgressNoticeCard(message: progressError),
+              const SizedBox(height: AppSpacing.sm),
+            ],
             _ProgressHero(
               score: currentScore,
-              insight: progress?.progressInsight,
+              insight: insight,
               improvementPercent: progress?.improvementPercent,
             ),
             const SizedBox(height: AppSpacing.md),
@@ -141,6 +172,44 @@ class _ProgressPageState extends State<ProgressPage> {
     );
   }
 
+  Future<void> _refreshProgressData({bool showLoading = false}) async {
+    if (_isRefreshing) {
+      return;
+    }
+
+    if (showLoading && mounted) {
+      setState(() => _isRefreshing = true);
+    }
+
+    try {
+      await context.read<AppState>().refreshHome();
+    } catch (_) {
+      // AppState stores user-facing load errors; keep this page renderable.
+    } finally {
+      if (mounted && _isRefreshing) {
+        setState(() => _isRefreshing = false);
+      }
+    }
+  }
+
+  bool _hasNoProgressData(AppState appState) {
+    final todayLog = appState.todayLog;
+    return appState.progress == null &&
+        appState.latestAnalysis == null &&
+        appState.trackingToday == null &&
+        (todayLog == null ||
+            (!todayLog.hasDiaryDetails &&
+                !todayLog.morningCompleted &&
+                !todayLog.eveningCompleted));
+  }
+
+  double _clampedProgress(int completed, int total) {
+    if (total <= 0) {
+      return 0.0;
+    }
+    return (completed / total).clamp(0.0, 1.0);
+  }
+
   void _openUpload() {
     Navigator.pushNamed(context, AppRoutes.upload);
   }
@@ -173,6 +242,45 @@ class _ProgressHero extends StatelessWidget {
       child: LayoutBuilder(
         builder: (context, constraints) {
           final stack = constraints.maxWidth < 420;
+          final details = Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                insight?.trim().isNotEmpty == true
+                    ? insight!
+                    : 'Progress updates after analysis, routine tracking, and daily logs are saved.',
+                maxLines: stack ? 4 : 3,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: AppColors.heading,
+                  height: 1.35,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.secondary,
+                    borderRadius: BorderRadius.circular(AppRadius.pill),
+                  ),
+                  child: Text(
+                    hasImprovement
+                        ? '${improvementPercent!.toStringAsFixed(1)}% improve'
+                        : 'Not enough data',
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          );
           return Flex(
             direction: stack ? Axis.vertical : Axis.horizontal,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -187,49 +295,7 @@ class _ProgressHero extends StatelessWidget {
                 width: stack ? 0 : AppSpacing.sm,
                 height: stack ? AppSpacing.sm : 0,
               ),
-              Flexible(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      insight?.trim().isNotEmpty == true
-                          ? insight!
-                          : 'Progress updates after analysis, routine tracking, and daily logs are saved.',
-                      maxLines: stack ? 4 : 3,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: AppColors.heading,
-                        height: 1.35,
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.secondary,
-                          borderRadius: BorderRadius.circular(AppRadius.pill),
-                        ),
-                        child: Text(
-                          hasImprovement
-                              ? '${improvementPercent!.toStringAsFixed(1)}% improve'
-                              : 'Not enough data',
-                          style: Theme.of(
-                            context,
-                          ).textTheme.labelSmall?.copyWith(
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              if (stack) details else Flexible(child: details),
             ],
           );
         },
@@ -289,7 +355,7 @@ class _MetricsGrid extends StatelessWidget {
         final tileWidth = columns == 1
             ? constraints.maxWidth
             : (constraints.maxWidth - (AppSpacing.sm * (columns - 1))) /
-                columns;
+                  columns;
         return Wrap(
           spacing: AppSpacing.sm,
           runSpacing: AppSpacing.sm,
@@ -380,7 +446,8 @@ class _RoutineCompletionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final percent = (progress * 100).round();
+    final clampedProgress = progress.clamp(0.0, 1.0);
+    final percent = (clampedProgress * 100).round();
     return AppCard(
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
       child: Column(
@@ -388,19 +455,28 @@ class _RoutineCompletionCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Text(
-                'Routine Completion',
-                style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                  color: AppColors.heading,
-                  fontWeight: FontWeight.w800,
+              Expanded(
+                child: Text(
+                  'Routine Completion',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    color: AppColors.heading,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
-              const Spacer(),
-              Text(
-                totalSteps == 0
-                    ? 'No steps'
-                    : '$completedSteps/$totalSteps steps',
-                style: Theme.of(context).textTheme.labelSmall,
+              const SizedBox(width: AppSpacing.sm),
+              Flexible(
+                child: Text(
+                  totalSteps == 0
+                      ? 'No steps'
+                      : '$completedSteps/$totalSteps steps',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.right,
+                  style: Theme.of(context).textTheme.labelSmall,
+                ),
               ),
             ],
           ),
@@ -408,7 +484,7 @@ class _RoutineCompletionCard extends StatelessWidget {
           ClipRRect(
             borderRadius: BorderRadius.circular(AppRadius.pill),
             child: LinearProgressIndicator(
-              value: progress,
+              value: clampedProgress,
               minHeight: 8,
               backgroundColor: AppColors.surfaceContainerHigh,
               valueColor: const AlwaysStoppedAnimation<Color>(
@@ -459,6 +535,125 @@ class _ScoreTrendCard extends StatelessWidget {
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
               color: AppColors.mutedText,
               fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProgressLoadingCard extends StatelessWidget {
+  const _ProgressLoadingCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
+    return AppCard(
+      padding: const EdgeInsets.fromLTRB(16, 24, 16, 22),
+      child: Column(
+        children: [
+          const SizedBox(
+            width: 28,
+            height: 28,
+            child: CircularProgressIndicator(strokeWidth: 2.4),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            locale.tr('progress_loading'),
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: AppColors.mutedText,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProgressErrorCard extends StatelessWidget {
+  const _ProgressErrorCard({required this.message, required this.onRetry});
+
+  final String message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
+    return AppCard(
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 18),
+      child: Column(
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: AppColors.errorContainer,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.wifi_off_rounded,
+              color: AppColors.error,
+              size: 20,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            locale.tr('progress_load_failed'),
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+              color: AppColors.heading,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: Theme.of(
+              context,
+            ).textTheme.labelSmall?.copyWith(color: AppColors.mutedText),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          AppButton(
+            label: locale.tr('common_try_again'),
+            expand: false,
+            onPressed: onRetry,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProgressNoticeCard extends StatelessWidget {
+  const _ProgressNoticeCard({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      variant: AppCardVariant.muted,
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.info_outline_rounded,
+            color: AppColors.primaryDark,
+            size: 16,
+          ),
+          const SizedBox(width: AppSpacing.xs),
+          Expanded(
+            child: Text(
+              message,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(
+                context,
+              ).textTheme.labelSmall?.copyWith(color: AppColors.mutedText),
             ),
           ),
         ],
@@ -648,7 +843,15 @@ class _ActivityRow extends StatelessWidget {
           ),
         ),
         const SizedBox(width: AppSpacing.sm),
-        Text(value, style: Theme.of(context).textTheme.labelSmall),
+        Flexible(
+          child: Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.right,
+            style: Theme.of(context).textTheme.labelSmall,
+          ),
+        ),
       ],
     );
   }
@@ -661,6 +864,7 @@ class _NoProgressCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
     return AppCard(
       padding: const EdgeInsets.fromLTRB(16, 20, 16, 18),
       child: Column(
@@ -672,7 +876,7 @@ class _NoProgressCard extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.sm),
           Text(
-            'No progress data yet',
+            locale.tr('progress_no_data'),
             style: Theme.of(context).textTheme.titleSmall?.copyWith(
               color: AppColors.heading,
               fontWeight: FontWeight.w800,
@@ -680,12 +884,16 @@ class _NoProgressCard extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.xs),
           Text(
-            'Analyze your skin to unlock progress tracking.',
+            locale.tr('progress_no_data_desc'),
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.labelSmall,
           ),
           const SizedBox(height: AppSpacing.md),
-          AppButton(label: 'Analyze skin', expand: false, onPressed: onStart),
+          AppButton(
+            label: locale.tr('progress_analyze_skin_cta'),
+            expand: false,
+            onPressed: onStart,
+          ),
         ],
       ),
     );

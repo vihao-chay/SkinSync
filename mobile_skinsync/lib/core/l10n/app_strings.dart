@@ -5,13 +5,9 @@
 class AppStrings {
   AppStrings._();
 
-  static const Map<String, Map<String, String>> _data = {
-    'vi': _vi,
-    'en': _en,
-  };
+  static const Map<String, Map<String, String>> _data = {'vi': _vi, 'en': _en};
 
-  static Map<String, String> forLocale(String locale) =>
-      _data[locale] ?? _en;
+  static Map<String, String> forLocale(String locale) => _data[locale] ?? _en;
 
   // ──────────────────────────  VIETNAMESE  ──────────────────────────
   static const Map<String, String> _vi = {
@@ -45,7 +41,8 @@ class AppStrings {
     'hero_badge_register': 'Phân tích da bằng AI',
     'hero_badge_login': 'Tương lai · Khoa học · AI',
     'hero_title': 'Làn da hoàn hảo\nbắt đầu từ đây',
-    'hero_subtitle': 'Hành trình chăm sóc da cá nhân hóa\nđược thiết kế riêng cho bạn.',
+    'hero_subtitle':
+        'Hành trình chăm sóc da cá nhân hóa\nđược thiết kế riêng cho bạn.',
 
     // ── Login validation ──
     'validate_name_empty': 'Vui lòng nhập họ và tên.',
@@ -113,9 +110,11 @@ class AppStrings {
     'metric_severity_mild': 'Nhẹ',
     'metric_severity_low': 'Thấp',
     'routine_not_set': 'Chưa thiết lập',
-    'routine_empty_prompt': 'Xây dựng lộ trình đầu tiên từ các sản phẩm đề xuất bởi AI.',
+    'routine_empty_prompt':
+        'Xây dựng lộ trình đầu tiên từ các sản phẩm đề xuất bởi AI.',
     'recommendation_empty_title': 'Chưa có đề xuất',
-    'recommendation_empty_prompt': 'Quét da bằng AI, sau đó tạo đề xuất sản phẩm.',
+    'recommendation_empty_prompt':
+        'Quét da bằng AI, sau đó tạo đề xuất sản phẩm.',
     'recommendation_open_shop': 'Mở cửa hàng',
     'recommendation_for_you': 'Dành cho bạn',
     'recommendation_shop': 'Mua sắm',
@@ -143,14 +142,17 @@ class AppStrings {
     'routine_error_optimize': 'Không thể tối ưu hóa nhắc nhở lúc này.',
     'routine_error_data_attention': 'Dữ liệu lộ trình cần chú ý',
     'routine_empty_title': 'Chọn sản phẩm trước',
-    'routine_empty_desc': 'Các bước lộ trình chỉ xuất hiện từ chế độ hoạt động của bạn. Hãy mở Cửa hàng và thêm các sản phẩm bạn muốn sử dụng.',
+    'routine_empty_desc':
+        'Các bước lộ trình chỉ xuất hiện từ chế độ hoạt động của bạn. Hãy mở Cửa hàng và thêm các sản phẩm bạn muốn sử dụng.',
     'routine_no_steps_title': 'Chưa có bước nào ở đây',
-    'routine_no_steps_desc': 'Lộ trình hiện tại không có sản phẩm nào cho thời gian này trong ngày.',
+    'routine_no_steps_desc':
+        'Lộ trình hiện tại không có sản phẩm nào cho thời gian này trong ngày.',
     'routine_add_product': '+ Thêm sản phẩm',
     'routine_optimize': 'Tối ưu lộ trình',
     'routine_today_progress': 'Tiến trình hôm nay',
     'routine_no_steps_today': 'Chưa có bước lộ trình nào',
-    'routine_progress_desc_format': 'Đã hoàn thành {completed} trên {total} bước hôm nay',
+    'routine_progress_desc_format':
+        'Đã hoàn thành {completed} trên {total} bước hôm nay',
     'routine_step_apply_default': 'Áp dụng trong lộ trình.',
     'routine_ai_plan_title': 'Kế hoạch nhắc nhở từ SkinSync AI',
     'routine_ai_no_summary': 'SkinSync chưa tạo bản tóm tắt.',
@@ -175,19 +177,26 @@ class AppStrings {
     'products_suitable_for': 'Phù hợp cho',
     'products_detail_brand_not_provided': 'Chưa cung cấp thương hiệu',
     'products_detail_why_recommended': 'Tại sao sản phẩm phù hợp',
-    'products_detail_why_recommended_subtitle': 'Lý do hệ thống đề xuất sản phẩm này.',
-    'products_detail_why_recommended_no_ai': 'Chưa có phân tích AI cho sản phẩm này.',
+    'products_detail_why_recommended_subtitle':
+        'Lý do hệ thống đề xuất sản phẩm này.',
+    'products_detail_why_recommended_no_ai':
+        'Chưa có phân tích AI cho sản phẩm này.',
     'products_detail_cautions_conflicts': 'Lưu ý & Xung đột',
-    'products_detail_cautions_conflicts_subtitle': 'Các cảnh báo từ thành phần sản phẩm.',
-    'products_detail_cautions_conflicts_none': 'Không phát hiện lưu ý hay xung đột nào.',
-    'products_detail_ingredients_subtitle': 'Thông tin thành phần từ danh mục sản phẩm.',
+    'products_detail_cautions_conflicts_subtitle':
+        'Các cảnh báo từ thành phần sản phẩm.',
+    'products_detail_cautions_conflicts_none':
+        'Không phát hiện lưu ý hay xung đột nào.',
+    'products_detail_ingredients_subtitle':
+        'Thông tin thành phần từ danh mục sản phẩm.',
     'products_detail_ingredient_list': 'Danh sách thành phần',
     'products_detail_key_ingredients': 'Thành phần chính',
-    'products_detail_how_to_use_subtitle': 'Hướng dẫn sử dụng từ danh mục sản phẩm.',
+    'products_detail_how_to_use_subtitle':
+        'Hướng dẫn sử dụng từ danh mục sản phẩm.',
     'products_detail_how_to_use_none': 'Chưa có hướng dẫn sử dụng.',
     'products_detail_skin_types': 'Loại da phù hợp',
     'products_detail_skin_concerns': 'Vấn đề da phù hợp',
-    'products_detail_add_to_routine_subtitle': 'Lựa chọn thời gian thêm sản phẩm vào lộ trình.',
+    'products_detail_add_to_routine_subtitle':
+        'Lựa chọn thời gian thêm sản phẩm vào lộ trình.',
     'products_detail_added_label': 'Đã thêm',
     'products_detail_add_morning': 'Thêm vào buổi sáng',
     'products_detail_add_evening': 'Thêm vào buổi tối',
@@ -197,30 +206,37 @@ class AppStrings {
     'products_detail_recommendation_note': 'Ghi chú đề xuất',
     'products_detail_brand_default': 'Thương hiệu mặc định',
     'products_detail_already_in_routine': 'Đã có trong lộ trình',
-    'products_detail_by_ai_desc': 'Tại sao sản phẩm phù hợp với làn da của bạn và cách sử dụng.',
+    'products_detail_by_ai_desc':
+        'Tại sao sản phẩm phù hợp với làn da của bạn và cách sử dụng.',
     'products_recommended_for_you': 'Gợi ý dành cho bạn',
     'products_based_on_ai': 'Dựa trên phân tích AI và hồ sơ da của bạn.',
     'products_based_on_ai_format': 'Dựa trên phân tích AI từ ngày {date}',
     'products_refresh': 'Làm mới',
     'products_generate': 'Tạo gợi ý',
     'products_ranking_notice': 'Đang sắp xếp sản phẩm từ danh mục lưu trữ...',
-    'products_analysis_ready_notice': 'Phân tích da mới nhất của bạn đã sẵn sàng. Hãy bấm Tạo gợi ý để cập nhật sản phẩm.',
+    'products_analysis_ready_notice':
+        'Phân tích da mới nhất của bạn đã sẵn sàng. Hãy bấm Tạo gợi ý để cập nhật sản phẩm.',
     'products_load_error': 'Không thể tải đề xuất sản phẩm',
     'products_no_saved_yet': 'Chưa có đề xuất nào được lưu',
-    'products_only_saved_session_desc': 'Sản phẩm chỉ hiển thị từ phiên đề xuất đã lưu gần đây nhất.',
+    'products_only_saved_session_desc':
+        'Sản phẩm chỉ hiển thị từ phiên đề xuất đã lưu gần đây nhất.',
     'products_analyze_skin_action': 'Phân tích da',
     'products_no_matches_yet': 'Chưa có sản phẩm {category} phù hợp',
-    'products_refresh_context_desc': 'Làm mới các đề xuất khi thông tin da của bạn thay đổi.',
+    'products_refresh_context_desc':
+        'Làm mới các đề xuất khi thông tin da của bạn thay đổi.',
     'products_refresh_all_action': 'Làm mới tất cả đề xuất',
-    'products_choose_regimen_prompt': 'Chọn thời gian sản phẩm này sẽ xuất hiện trong quy trình của bạn.',
-    'products_error_add_routine': 'Không thể thêm sản phẩm vào lộ trình lúc này.',
+    'products_choose_regimen_prompt':
+        'Chọn thời gian sản phẩm này sẽ xuất hiện trong quy trình của bạn.',
+    'products_error_add_routine':
+        'Không thể thêm sản phẩm vào lộ trình lúc này.',
     'products_added_success': 'Đã thêm {name} vào lộ trình của bạn.',
     'products_view_routine_action': 'Xem lộ trình',
     'products_no_ingredient_data': 'Sản phẩm này chưa có dữ liệu thành phần.',
     'products_ingredient_check_title': 'Kiểm tra thành phần',
     'products_overall_fit': 'Độ phù hợp chung',
     'products_suggested_use': 'Gợi ý sử dụng',
-    'products_error_ingredient_check': 'Chức năng kiểm tra thành phần hiện không hoạt động.',
+    'products_error_ingredient_check':
+        'Chức năng kiểm tra thành phần hiện không hoạt động.',
     'products_conflict_warning_title': 'Kiểm tra xung đột lộ trình',
     'products_add_anyway_action': 'Vẫn thêm sản phẩm',
     'products_both_routines': 'Cả hai',
@@ -231,6 +247,8 @@ class AppStrings {
     'progress_timeline': 'Dòng thời gian',
     'progress_photos': 'Hình ảnh',
     'progress_no_data': 'Chưa có dữ liệu tiến trình',
+    'progress_loading': 'Đang tải tiến trình...',
+    'progress_load_failed': 'Chưa tải được tiến trình',
     'progress_start_tracking': 'Bắt đầu theo dõi',
     'progress_improvement': 'Cải thiện',
     'progress_skin_score_trend': 'Xu hướng điểm da',
@@ -242,7 +260,8 @@ class AppStrings {
     'progress_history_at_glance': 'Lịch sử sức khỏe làn da của bạn.',
     'progress_checkup_saved': 'Đã lưu kiểm tra',
     'progress_analysis_saved': 'Đã lưu phân tích',
-    'progress_hero_placeholder_insight': 'Cập nhật tiến trình sau khi phân tích, theo dõi lộ trình và lưu nhật ký hàng ngày.',
+    'progress_hero_placeholder_insight':
+        'Cập nhật tiến trình sau khi phân tích, theo dõi lộ trình và lưu nhật ký hàng ngày.',
     'progress_improve_format': 'Cải thiện {percent}%',
     'progress_not_enough_data': 'Chưa đủ dữ liệu',
     'progress_metric_current_score': 'Điểm hiện tại',
@@ -252,7 +271,8 @@ class AppStrings {
     'progress_routine_completion': 'Hoàn thành lộ trình',
     'progress_routine_no_steps': 'Chưa có bước',
     'progress_routine_steps_format': '{completed}/{total} bước',
-    'progress_routine_no_steps_tracked_yet': 'Chưa có bước lộ trình nào được theo dõi.',
+    'progress_routine_no_steps_tracked_yet':
+        'Chưa có bước lộ trình nào được theo dõi.',
     'progress_routine_complete_today_format': 'Hoàn thành {percent}% hôm nay.',
     'progress_score_trend': 'Xu hướng điểm số',
     'progress_not_enough_trend_data': 'Chưa đủ dữ liệu xu hướng',
@@ -267,7 +287,8 @@ class AppStrings {
     'progress_activity_no_analysis_yet': 'Chưa có phân tích',
     'progress_activity_photo_saved': 'Đã lưu ảnh',
     'progress_activity_no_photo_yet': 'Chưa có ảnh',
-    'progress_no_data_desc': 'Phân tích da của bạn để mở khóa theo dõi tiến trình.',
+    'progress_no_data_desc':
+        'Phân tích da của bạn để mở khóa theo dõi tiến trình.',
     'progress_analyze_skin_cta': 'Phân tích da ngay',
 
     // ── Profile ──
@@ -295,7 +316,8 @@ class AppStrings {
     'profile_cancel': 'Hủy',
     'profile_saved_success': 'Đã lưu thành công',
     'profile_confirm_logout': 'Bạn có chắc muốn đăng xuất?',
-    'profile_confirm_delete': 'Bạn có chắc muốn xóa tài khoản? Hành động này không thể hoàn tác.',
+    'profile_confirm_delete':
+        'Bạn có chắc muốn xóa tài khoản? Hành động này không thể hoàn tác.',
     'profile_vietnamese': 'Tiếng Việt',
     'profile_english': 'Tiếng Anh',
     'profile_skin_profile_label': 'Hồ sơ da',
@@ -309,8 +331,10 @@ class AppStrings {
     'profile_add_concern': '+ Thêm',
     'profile_security_privacy': 'Bảo mật & Quyền riêng tư',
     'profile_membership_error': 'Không thể tải dữ liệu thành viên',
-    'profile_free_upgrade_prompt': 'Nâng cấp để nhận giới hạn cao hơn và báo cáo cao cấp.',
-    'profile_premium_active_prompt': 'Các đặc quyền thành viên của bạn đang hoạt động.',
+    'profile_free_upgrade_prompt':
+        'Nâng cấp để nhận giới hạn cao hơn và báo cáo cao cấp.',
+    'profile_premium_active_prompt':
+        'Các đặc quyền thành viên của bạn đang hoạt động.',
     'profile_active': 'Hoạt động',
     'profile_manage': 'Quản lý',
     'profile_upgrade_action': 'Nâng cấp',
@@ -367,7 +391,12 @@ class AppStrings {
 
     // ── Subscription / Plan ──
     'plan_title': 'Chọn gói của bạn',
-    'plan_subtitle': 'Mở khóa các phân tích da AI cá nhân hóa và nhiều tính năng hơn.',
+    'plan_subtitle':
+        'Mở khóa các phân tích da AI cá nhân hóa và nhiều tính năng hơn.',
+    'plan_plus_description':
+        'Mở rộng hạn mức hàng tháng với báo cáo tiến trình hằng tuần.',
+    'plan_premium_description':
+        'Hạn mức cao nhất với báo cáo nâng cao và xuất PDF.',
     'plan_current_usage': 'SỬ DỤNG GÓI HIỆN TẠI',
     'plan_scans': 'lượt quét',
     'plan_unlimited_scans': 'Quét không giới hạn',
@@ -379,12 +408,20 @@ class AppStrings {
     'plan_choose': 'Chọn gói',
     'plan_cancel_membership': 'Hủy gói thành viên',
     'plan_cancel_confirm': 'Hủy gói thành viên?',
-    'plan_cancel_description': 'Tài khoản của bạn sẽ trở về gói Miễn phí với giới hạn hàng tháng.',
+    'plan_cancel_description':
+        'Tài khoản của bạn sẽ trở về gói Miễn phí với giới hạn hàng tháng.',
     'plan_keep': 'Giữ gói',
     'plan_cancel': 'Hủy gói',
     'plan_cancelled_success': 'Đã chuyển về gói Miễn phí.',
     'plan_free': 'Miễn phí',
     'plan_per_month': '/tháng',
+    'plan_per_year': '/năm',
+    'plan_feature_month_suffix': '/ tháng',
+    'plan_feature_skin_analysis': 'Phân tích da',
+    'plan_feature_ai_chat': 'Trò chuyện AI',
+    'plan_feature_routine': 'Tạo lộ trình',
+    'plan_feature_ingredient': 'Kiểm tra thành phần',
+    'plan_feature_conflict': 'Kiểm tra xung đột',
     'plan_features_analysis': 'Phân tích da / tháng',
     'plan_features_chat': 'Trò chuyện AI / tháng',
     'plan_features_routine': 'Tạo lộ trình / tháng',
@@ -393,13 +430,17 @@ class AppStrings {
 
     // ── Subscription Success ──
     'sub_success_title': 'Nâng cấp thành công!',
-    'sub_success_message': 'Bạn đã nâng cấp thành công. Tận hưởng các tính năng mới!',
+    'sub_success_message':
+        'Bạn đã nâng cấp thành công. Tận hưởng các tính năng mới!',
     'sub_success_continue': 'Tiếp tục',
 
     // ── Payment ──
     'payment_complete': 'Hoàn tất thanh toán',
-    'payment_browser': 'Hoàn tất thanh toán trong trình duyệt. Màn hình này sẽ tự động cập nhật khi thanh toán thành công.',
+    'payment_browser':
+        'Hoàn tất thanh toán trong trình duyệt. Màn hình này sẽ tự động cập nhật khi thanh toán thành công.',
     'payment_waiting': 'Đang chờ xác nhận thanh toán...',
+    'payment_waiting_payos': 'Đang chờ PayOS xác nhận thanh toán...',
+    'payment_still_waiting': 'Vẫn đang chờ xác nhận thanh toán...',
     'payment_cancelled': 'Thanh toán đã bị hủy hoặc hết hạn.',
     'payment_later': 'Để sau',
     'payment_error': 'Không thể bắt đầu thanh toán. Vui lòng thử lại.',
@@ -419,13 +460,15 @@ class AppStrings {
     'quiz_skip': 'Bỏ qua',
     'quiz_save_analyze': 'Lưu và Phân tích',
     'quiz_step0_title': 'Loại da của bạn là gì?',
-    'quiz_step0_desc': 'Giúp chúng tôi cá nhân hóa phân tích AI và lộ trình của bạn.',
+    'quiz_step0_desc':
+        'Giúp chúng tôi cá nhân hóa phân tích AI và lộ trình của bạn.',
     'quiz_step1_title': 'Vấn đề da nào bạn quan tâm nhất?',
     'quiz_step1_desc': 'Chọn để thêm vào hồ sơ của bạn.',
     'quiz_step2_title': 'Ngân sách chăm sóc da của bạn?',
     'quiz_step2_desc': 'Giúp gợi ý lộ trình phù hợp với mức giá thực tế.',
     'quiz_step3_title': 'Tải ảnh da của bạn lên',
-    'quiz_step3_desc': 'Sử dụng ánh sáng tốt, chụp thẳng mặt và tránh bộ lọc quá mức.',
+    'quiz_step3_desc':
+        'Sử dụng ánh sáng tốt, chụp thẳng mặt và tránh bộ lọc quá mức.',
     'quiz_step3_placeholder': 'Chọn một bức ảnh selfie rõ nét để tiếp tục',
     'quiz_type_normal': 'Bình thường',
     'quiz_type_oily': 'Dầu',
@@ -445,8 +488,10 @@ class AppStrings {
     // ── Upload ──
     'upload_progress_title': 'Thêm ảnh tiến độ',
     'upload_title': 'Tải ảnh lên',
-    'upload_progress_subtitle': 'Phân tích một bức ảnh mới và lưu nó thẳng vào dòng thời gian tiến độ da của bạn.',
-    'upload_subtitle': 'Sử dụng ảnh rõ nét dưới ánh sáng tự nhiên để AI phân tích tốt nhất.',
+    'upload_progress_subtitle':
+        'Phân tích một bức ảnh mới và lưu nó thẳng vào dòng thời gian tiến độ da của bạn.',
+    'upload_subtitle':
+        'Sử dụng ảnh rõ nét dưới ánh sáng tự nhiên để AI phân tích tốt nhất.',
     'upload_scan_preview': 'Xem trước ảnh quét hôm nay',
     'upload_high_quality': 'Ảnh chất lượng cao',
     'upload_tips_title': 'MẸO ĐỂ CÓ KẾT QUẢ TỐT NHẤT',
@@ -465,25 +510,34 @@ class AppStrings {
     'checkup_how_skin_feel': 'Hôm nay da bạn thế nào?',
     'checkup_submit': 'Gửi kiểm tra',
     'checkup_submitted': 'Đã gửi kiểm tra hôm nay',
-    'checkup_subtitle': 'Đánh dấu lộ trình của bạn và ghi lại cảm nhận về làn da hôm nay.',
+    'checkup_subtitle':
+        'Đánh dấu lộ trình của bạn và ghi lại cảm nhận về làn da hôm nay.',
     'checkup_needs_attention': 'Kiểm tra hôm nay cần chú ý',
-    'checkup_routine_completion_desc': '{completed} trên {total} bước lộ trình đã hoàn thành hôm nay.',
-    'checkup_completion_saves_desc': 'Việc hoàn thành sẽ được lưu qua tính năng theo dõi lộ trình và nhật ký hàng ngày của bạn.',
+    'checkup_routine_completion_desc':
+        '{completed} trên {total} bước lộ trình đã hoàn thành hôm nay.',
+    'checkup_completion_saves_desc':
+        'Việc hoàn thành sẽ được lưu qua tính năng theo dõi lộ trình và nhật ký hàng ngày của bạn.',
     'checkup_morning_done': 'Sáng xong',
     'checkup_morning_pending': 'Sáng đang chờ',
     'checkup_evening_done': 'Tối xong',
     'checkup_evening_pending': 'Tối đang chờ',
-    'checkup_no_active_routine_desc': 'Kiểm tra hôm nay chỉ sử dụng sản phẩm từ lộ trình hoạt động của bạn. Hãy xây dựng lộ trình trước, sau đó quay lại để theo dõi.',
+    'checkup_no_active_routine_desc':
+        'Kiểm tra hôm nay chỉ sử dụng sản phẩm từ lộ trình hoạt động của bạn. Hãy xây dựng lộ trình trước, sau đó quay lại để theo dõi.',
     'checkup_open_products': 'Mở Sản phẩm',
     'checkup_checklist_title': 'Danh sách kiểm tra từ lộ trình hoạt động',
-    'checkup_checklist_subtitle': 'Các bước buổi sáng và buổi tối được lấy trực tiếp từ lộ trình đang hoạt động của bạn.',
+    'checkup_checklist_subtitle':
+        'Các bước buổi sáng và buổi tối được lấy trực tiếp từ lộ trình đang hoạt động của bạn.',
     'checkup_no_steps_in_block': 'Không có bước nào trong thời gian này',
-    'checkup_no_steps_in_block_desc': 'Lộ trình hoạt động của bạn chưa có bước nào cho thời gian này trong ngày.',
-    'checkup_skin_feel_subtitle': 'Lưu lại trạng thái nhanh cùng với danh sách kiểm tra hôm nay.',
+    'checkup_no_steps_in_block_desc':
+        'Lộ trình hoạt động của bạn chưa có bước nào cho thời gian này trong ngày.',
+    'checkup_skin_feel_subtitle':
+        'Lưu lại trạng thái nhanh cùng với danh sách kiểm tra hôm nay.',
     'checkup_notes': 'Ghi chú',
-    'checkup_notes_hint': 'Có bất kỳ dấu hiệu khô, mẩn đỏ, cải thiện hoặc phản ứng sản phẩm nào đáng lưu ý hôm nay không?',
+    'checkup_notes_hint':
+        'Có bất kỳ dấu hiệu khô, mẩn đỏ, cải thiện hoặc phản ứng sản phẩm nào đáng lưu ý hôm nay không?',
     'checkup_photo_checkin': 'Hình ảnh check-in',
-    'checkup_photo_checkin_subtitle': 'Sử dụng ảnh chụp thực tế nếu có, và giữ nguyên cho các phần còn lại.',
+    'checkup_photo_checkin_subtitle':
+        'Sử dụng ảnh chụp thực tế nếu có, và giữ nguyên cho các phần còn lại.',
     'checkup_front': 'Trước',
     'checkup_left': 'Trái',
     'checkup_right': 'Phải',
@@ -550,7 +604,8 @@ class AppStrings {
 
     // ── Edit Profile ──
     'edit_profile_title': 'Chỉnh sửa hồ sơ',
-    'edit_profile_subtitle': 'Cập nhật các thông tin định hình lộ trình và đề xuất cho bạn.',
+    'edit_profile_subtitle':
+        'Cập nhật các thông tin định hình lộ trình và đề xuất cho bạn.',
     'edit_profile_skin_basics': 'Cơ bản về da',
     'edit_profile_gender_male': 'Nam',
     'edit_profile_gender_female': 'Nữ',
@@ -562,13 +617,17 @@ class AppStrings {
     'edit_profile_sensitivity_level': 'Mức độ nhạy cảm',
     'edit_profile_sensitivity_off': 'Tắt',
     'edit_profile_concerns': 'Vấn đề da',
-    'edit_profile_concerns_subtitle': 'Chọn các vấn đề bạn muốn SkinSync ưu tiên cải thiện lúc này.',
+    'edit_profile_concerns_subtitle':
+        'Chọn các vấn đề bạn muốn SkinSync ưu tiên cải thiện lúc này.',
     'edit_profile_goals': 'Mục tiêu',
-    'edit_profile_goals_subtitle': 'Những mục tiêu này định hướng những gì SkinSync tối ưu cho lộ trình và sản phẩm gợi ý.',
+    'edit_profile_goals_subtitle':
+        'Những mục tiêu này định hướng những gì SkinSync tối ưu cho lộ trình và sản phẩm gợi ý.',
     'edit_profile_save_changes': 'Lưu thay đổi',
-    'edit_profile_save_subtitle': 'Thay đổi hồ sơ làm mới thông tin tổng quan ngay. Nếu bạn muốn lộ trình thích ứng theo, hãy dùng tính năng làm mới bằng AI.',
+    'edit_profile_save_subtitle':
+        'Thay đổi hồ sơ làm mới thông tin tổng quan ngay. Nếu bạn muốn lộ trình thích ứng theo, hãy dùng tính năng làm mới bằng AI.',
     'edit_profile_save_refresh_ai': 'Lưu & làm mới lộ trình AI',
-    'edit_profile_complete_onboarding': 'Thay vào đó hãy hoàn thành bước khởi đầu',
+    'edit_profile_complete_onboarding':
+        'Thay vào đó hãy hoàn thành bước khởi đầu',
     'edit_profile_saved_refreshed': 'Đã lưu hồ sơ và làm mới lộ trình AI.',
     'edit_profile_error_save': 'Không thể lưu hồ sơ của bạn lúc này.',
 
@@ -614,7 +673,8 @@ class AppStrings {
     'hero_badge_register': 'AI Skin Analyze',
     'hero_badge_login': 'Future · Science · AI Fusion',
     'hero_title': 'Perfect skin\nstarts here',
-    'hero_subtitle': 'Your personalized skincare journey\ncalibrated just for you.',
+    'hero_subtitle':
+        'Your personalized skincare journey\ncalibrated just for you.',
 
     // ── Login validation ──
     'validate_name_empty': 'Please enter your full name.',
@@ -682,9 +742,11 @@ class AppStrings {
     'metric_severity_mild': 'Mild',
     'metric_severity_low': 'Low',
     'routine_not_set': 'Not set',
-    'routine_empty_prompt': 'Build your first routine from AI product recommendations.',
+    'routine_empty_prompt':
+        'Build your first routine from AI product recommendations.',
     'recommendation_empty_title': 'No recommendations yet',
-    'recommendation_empty_prompt': 'Scan with AI, then generate product recommendations.',
+    'recommendation_empty_prompt':
+        'Scan with AI, then generate product recommendations.',
     'recommendation_open_shop': 'Open Shop',
     'recommendation_for_you': 'For You',
     'recommendation_shop': 'Shop',
@@ -712,14 +774,17 @@ class AppStrings {
     'routine_error_optimize': 'Could not optimize reminders right now.',
     'routine_error_data_attention': 'Routine data needs attention',
     'routine_empty_title': 'Choose products first',
-    'routine_empty_desc': 'Routine steps only appear from your active regimen. Open Shop and add products you want to use.',
+    'routine_empty_desc':
+        'Routine steps only appear from your active regimen. Open Shop and add products you want to use.',
     'routine_no_steps_title': 'No steps here yet',
-    'routine_no_steps_desc': 'Your active routine does not have products for this time of day.',
+    'routine_no_steps_desc':
+        'Your active routine does not have products for this time of day.',
     'routine_add_product': '+ Add Product',
     'routine_optimize': 'Optimize Routine',
     'routine_today_progress': 'Today\'s Progress',
     'routine_no_steps_today': 'No routine steps yet',
-    'routine_progress_desc_format': '{completed} of {total} steps completed today',
+    'routine_progress_desc_format':
+        '{completed} of {total} steps completed today',
     'routine_step_apply_default': 'Apply in your routine.',
     'routine_ai_plan_title': 'SkinSync AI reminder plan',
     'routine_ai_no_summary': 'SkinSync did not return a summary yet.',
@@ -744,19 +809,26 @@ class AppStrings {
     'products_suitable_for': 'Suitable for',
     'products_detail_brand_not_provided': 'Brand not provided',
     'products_detail_why_recommended': 'Why it fits your skin',
-    'products_detail_why_recommended_subtitle': 'Saved recommendation context for this product.',
-    'products_detail_why_recommended_no_ai': 'AI explanation is not available for this product yet.',
+    'products_detail_why_recommended_subtitle':
+        'Saved recommendation context for this product.',
+    'products_detail_why_recommended_no_ai':
+        'AI explanation is not available for this product yet.',
     'products_detail_cautions_conflicts': 'Cautions and conflicts',
-    'products_detail_cautions_conflicts_subtitle': 'Only real warnings from current product data.',
-    'products_detail_cautions_conflicts_none': 'No caution or conflict notes are available yet.',
-    'products_detail_ingredients_subtitle': 'Real ingredient data from the product catalog.',
+    'products_detail_cautions_conflicts_subtitle':
+        'Only real warnings from current product data.',
+    'products_detail_cautions_conflicts_none':
+        'No caution or conflict notes are available yet.',
+    'products_detail_ingredients_subtitle':
+        'Real ingredient data from the product catalog.',
     'products_detail_ingredient_list': 'Ingredient list',
     'products_detail_key_ingredients': 'Key ingredients',
-    'products_detail_how_to_use_subtitle': 'Use-time guidance from the backend product catalog.',
+    'products_detail_how_to_use_subtitle':
+        'Use-time guidance from the backend product catalog.',
     'products_detail_how_to_use_none': 'Usage guidance is not available yet.',
     'products_detail_skin_types': 'Skin types',
     'products_detail_skin_concerns': 'Skin concerns',
-    'products_detail_add_to_routine_subtitle': 'Choose exactly where this product should appear.',
+    'products_detail_add_to_routine_subtitle':
+        'Choose exactly where this product should appear.',
     'products_detail_added_label': 'Added',
     'products_detail_add_morning': 'Add to Morning',
     'products_detail_add_evening': 'Add to Evening',
@@ -766,30 +838,37 @@ class AppStrings {
     'products_detail_recommendation_note': 'Recommendation note',
     'products_detail_brand_default': 'Brand',
     'products_detail_already_in_routine': 'Already in routine',
-    'products_detail_by_ai_desc': 'Why this product fits your skin and how to use it.',
+    'products_detail_by_ai_desc':
+        'Why this product fits your skin and how to use it.',
     'products_recommended_for_you': 'Recommended for You',
     'products_based_on_ai': 'Based on AI analysis and your skin profile.',
     'products_based_on_ai_format': 'Based on AI analysis from {date}',
     'products_refresh': 'Refresh',
     'products_generate': 'Generate',
     'products_ranking_notice': 'Ranking products from your saved catalog...',
-    'products_analysis_ready_notice': 'Your latest skin analysis is ready. Tap Generate to create a saved recommendation session.',
+    'products_analysis_ready_notice':
+        'Your latest skin analysis is ready. Tap Generate to create a saved recommendation session.',
     'products_load_error': 'Recommendations could not load',
     'products_no_saved_yet': 'No saved recommendations yet',
-    'products_only_saved_session_desc': 'Products only show your latest saved recommendation session here.',
+    'products_only_saved_session_desc':
+        'Products only show your latest saved recommendation session here.',
     'products_analyze_skin_action': 'Analyze skin',
     'products_no_matches_yet': 'No {category} matches yet',
-    'products_refresh_context_desc': 'Refresh suggestions when your skin context changes.',
+    'products_refresh_context_desc':
+        'Refresh suggestions when your skin context changes.',
     'products_refresh_all_action': 'Refresh All Suggestions',
-    'products_choose_regimen_prompt': 'Choose where this product should appear in your regimen.',
+    'products_choose_regimen_prompt':
+        'Choose where this product should appear in your regimen.',
     'products_error_add_routine': 'Could not add this product right now.',
     'products_added_success': '{name} was added to your routine.',
     'products_view_routine_action': 'View routine',
-    'products_no_ingredient_data': 'This product does not have ingredient data yet.',
+    'products_no_ingredient_data':
+        'This product does not have ingredient data yet.',
     'products_ingredient_check_title': 'Ingredient check',
     'products_overall_fit': 'Overall fit',
     'products_suggested_use': 'Suggested use',
-    'products_error_ingredient_check': 'Ingredient check is not available right now.',
+    'products_error_ingredient_check':
+        'Ingredient check is not available right now.',
     'products_conflict_warning_title': 'Check routine conflicts',
     'products_add_anyway_action': 'Add anyway',
     'products_both_routines': 'Both',
@@ -800,6 +879,8 @@ class AppStrings {
     'progress_timeline': 'Timeline',
     'progress_photos': 'Photos',
     'progress_no_data': 'No progress data yet',
+    'progress_loading': 'Loading progress...',
+    'progress_load_failed': 'Progress could not load',
     'progress_start_tracking': 'Start Tracking',
     'progress_improvement': 'Improvement',
     'progress_skin_score_trend': 'Skin Score Trend',
@@ -811,7 +892,8 @@ class AppStrings {
     'progress_history_at_glance': 'Your skin health history at a glance.',
     'progress_checkup_saved': 'Check-up saved',
     'progress_analysis_saved': 'Analysis saved',
-    'progress_hero_placeholder_insight': 'Progress updates after analysis, routine tracking, and daily logs are saved.',
+    'progress_hero_placeholder_insight':
+        'Progress updates after analysis, routine tracking, and daily logs are saved.',
     'progress_improve_format': '{percent}% improve',
     'progress_not_enough_data': 'Not enough data',
     'progress_metric_current_score': 'Current Score',
@@ -864,7 +946,8 @@ class AppStrings {
     'profile_cancel': 'Cancel',
     'profile_saved_success': 'Saved successfully',
     'profile_confirm_logout': 'Are you sure you want to logout?',
-    'profile_confirm_delete': 'Are you sure you want to delete your account? This action cannot be undone.',
+    'profile_confirm_delete':
+        'Are you sure you want to delete your account? This action cannot be undone.',
     'profile_vietnamese': 'Vietnamese',
     'profile_english': 'English',
     'profile_skin_profile_label': 'Skin Profile',
@@ -878,8 +961,10 @@ class AppStrings {
     'profile_add_concern': '+ Add',
     'profile_security_privacy': 'Security & Privacy',
     'profile_membership_error': 'Membership data could not load',
-    'profile_free_upgrade_prompt': 'Upgrade for higher monthly limits and premium reports.',
-    'profile_premium_active_prompt': 'Your current membership benefits are active.',
+    'profile_free_upgrade_prompt':
+        'Upgrade for higher monthly limits and premium reports.',
+    'profile_premium_active_prompt':
+        'Your current membership benefits are active.',
     'profile_active': 'Active',
     'profile_manage': 'Manage',
     'profile_upgrade_action': 'Upgrade',
@@ -908,7 +993,8 @@ class AppStrings {
     'ai_chat_no_conversations': 'No conversations yet',
     'ai_chat_start': 'Start a conversation',
     'ai_chat_delete': 'Delete conversation',
-    'ai_chat_delete_confirm': 'Are you sure you want to delete this conversation?',
+    'ai_chat_delete_confirm':
+        'Are you sure you want to delete this conversation?',
 
     // ── Analysis ──
     'analysis_title': 'Skin Analysis',
@@ -936,7 +1022,12 @@ class AppStrings {
 
     // ── Subscription / Plan ──
     'plan_title': 'Choose Your Plan',
-    'plan_subtitle': 'Unlock personalized AI skincare insights and more room to build your wellness routine.',
+    'plan_subtitle':
+        'Unlock personalized AI skincare insights and more room to build your wellness routine.',
+    'plan_plus_description':
+        'Expanded monthly quota with weekly progress reporting.',
+    'plan_premium_description':
+        'Highest monthly quota with advanced reports and PDF export.',
     'plan_current_usage': 'CURRENT PLAN USAGE',
     'plan_scans': 'scans',
     'plan_unlimited_scans': 'Unlimited scans',
@@ -948,12 +1039,20 @@ class AppStrings {
     'plan_choose': 'Choose a plan',
     'plan_cancel_membership': 'Cancel membership',
     'plan_cancel_confirm': 'Cancel membership?',
-    'plan_cancel_description': 'Your account will return to the Free plan and its monthly limits.',
+    'plan_cancel_description':
+        'Your account will return to the Free plan and its monthly limits.',
     'plan_keep': 'Keep plan',
     'plan_cancel': 'Cancel plan',
     'plan_cancelled_success': 'Membership changed to Free.',
     'plan_free': 'Free',
     'plan_per_month': '/mo',
+    'plan_per_year': '/yr',
+    'plan_feature_month_suffix': '/ month',
+    'plan_feature_skin_analysis': 'Skin Analysis',
+    'plan_feature_ai_chat': 'AI Chat',
+    'plan_feature_routine': 'Routine Generator',
+    'plan_feature_ingredient': 'Ingredient Check',
+    'plan_feature_conflict': 'Conflict Check',
     'plan_features_analysis': 'Skin Analysis / month',
     'plan_features_chat': 'AI Chat / month',
     'plan_features_routine': 'Routine Generator / month',
@@ -962,13 +1061,17 @@ class AppStrings {
 
     // ── Subscription Success ──
     'sub_success_title': 'Upgrade Successful!',
-    'sub_success_message': 'You have successfully upgraded. Enjoy the new features!',
+    'sub_success_message':
+        'You have successfully upgraded. Enjoy the new features!',
     'sub_success_continue': 'Continue',
 
     // ── Payment ──
     'payment_complete': 'Complete Payment',
-    'payment_browser': 'Finish payment in the browser. This screen will update automatically when payment succeeds.',
+    'payment_browser':
+        'Finish payment in the browser. This screen will update automatically when payment succeeds.',
     'payment_waiting': 'Waiting for payment confirmation...',
+    'payment_waiting_payos': 'Waiting for PayOS to confirm your payment...',
+    'payment_still_waiting': 'Still waiting for payment confirmation...',
     'payment_cancelled': 'This payment was cancelled or expired.',
     'payment_later': 'Later',
     'payment_error': 'Could not start payment. Please try again.',
@@ -992,9 +1095,11 @@ class AppStrings {
     'quiz_step1_title': 'Which concerns matter most?',
     'quiz_step1_desc': 'Tap to include this in your profile.',
     'quiz_step2_title': 'What is your skincare budget?',
-    'quiz_step2_desc': 'This helps match routine recommendations to realistic product tiers.',
+    'quiz_step2_desc':
+        'This helps match routine recommendations to realistic product tiers.',
     'quiz_step3_title': 'Upload your skin photo',
-    'quiz_step3_desc': 'Use bright lighting, face forward, and avoid heavy filters.',
+    'quiz_step3_desc':
+        'Use bright lighting, face forward, and avoid heavy filters.',
     'quiz_step3_placeholder': 'Select a clear selfie to continue',
     'quiz_type_normal': 'Normal',
     'quiz_type_oily': 'Oily',
@@ -1014,8 +1119,10 @@ class AppStrings {
     // ── Upload ──
     'upload_progress_title': 'Add a progress photo',
     'upload_title': 'Upload Photo',
-    'upload_progress_subtitle': 'Analyze a fresh photo and save it straight into your skin progress timeline.',
-    'upload_subtitle': 'Use a clear portrait in natural light for the best AI read.',
+    'upload_progress_subtitle':
+        'Analyze a fresh photo and save it straight into your skin progress timeline.',
+    'upload_subtitle':
+        'Use a clear portrait in natural light for the best AI read.',
     'upload_scan_preview': 'Today\'s scan preview',
     'upload_high_quality': 'High-quality photos',
     'upload_tips_title': 'TIPS FOR BEST RESULTS',
@@ -1083,25 +1190,34 @@ class AppStrings {
     'checkup_how_skin_feel': 'How does your skin feel?',
     'checkup_submit': 'Submit Check-up',
     'checkup_submitted': 'Today Check-up saved successfully.',
-    'checkup_subtitle': 'Check off your active routine and log how your skin feels today.',
+    'checkup_subtitle':
+        'Check off your active routine and log how your skin feels today.',
     'checkup_needs_attention': 'Today check-up needs attention',
-    'checkup_routine_completion_desc': '{completed} of {total} routine steps completed today.',
-    'checkup_completion_saves_desc': 'Completion saves through routine tracking and your daily log.',
+    'checkup_routine_completion_desc':
+        '{completed} of {total} routine steps completed today.',
+    'checkup_completion_saves_desc':
+        'Completion saves through routine tracking and your daily log.',
     'checkup_morning_done': 'Morning done',
     'checkup_morning_pending': 'Morning pending',
     'checkup_evening_done': 'Evening done',
     'checkup_evening_pending': 'Evening pending',
-    'checkup_no_active_routine_desc': 'Today Check-up only uses products from your active routine. Build your routine first, then come back to track it here.',
+    'checkup_no_active_routine_desc':
+        'Today Check-up only uses products from your active routine. Build your routine first, then come back to track it here.',
     'checkup_open_products': 'Open Products',
     'checkup_checklist_title': 'Checklist from active routine',
-    'checkup_checklist_subtitle': 'Morning and evening steps are pulled directly from your active regimen.',
+    'checkup_checklist_subtitle':
+        'Morning and evening steps are pulled directly from your active regimen.',
     'checkup_no_steps_in_block': 'No steps in this routine block',
-    'checkup_no_steps_in_block_desc': 'Your active routine does not have steps for this time of day yet.',
-    'checkup_skin_feel_subtitle': 'Save a quick signal alongside today’s checklist.',
+    'checkup_no_steps_in_block_desc':
+        'Your active routine does not have steps for this time of day yet.',
+    'checkup_skin_feel_subtitle':
+        'Save a quick signal alongside today’s checklist.',
     'checkup_notes': 'Notes',
-    'checkup_notes_hint': 'Any dryness, redness, wins, or product reactions worth tracking today?',
+    'checkup_notes_hint':
+        'Any dryness, redness, wins, or product reactions worth tracking today?',
     'checkup_photo_checkin': 'Photo check-in',
-    'checkup_photo_checkin_subtitle': 'Use a real upload where available, with soft placeholders for the rest.',
+    'checkup_photo_checkin_subtitle':
+        'Use a real upload where available, with soft placeholders for the rest.',
     'checkup_front': 'Front',
     'checkup_left': 'Left',
     'checkup_right': 'Right',
@@ -1119,7 +1235,8 @@ class AppStrings {
 
     // ── Edit Profile ──
     'edit_profile_title': 'Edit profile',
-    'edit_profile_subtitle': 'Update the details that shape your routine and recommendations.',
+    'edit_profile_subtitle':
+        'Update the details that shape your routine and recommendations.',
     'edit_profile_skin_basics': 'Skin basics',
     'edit_profile_gender_male': 'Male',
     'edit_profile_gender_female': 'Female',
@@ -1131,16 +1248,19 @@ class AppStrings {
     'edit_profile_sensitivity_level': 'Sensitivity level',
     'edit_profile_sensitivity_off': 'Off',
     'edit_profile_concerns': 'Concerns',
-    'edit_profile_concerns_subtitle': 'Pick the concerns you want SkinSync to prioritize right now.',
+    'edit_profile_concerns_subtitle':
+        'Pick the concerns you want SkinSync to prioritize right now.',
     'edit_profile_goals': 'Goals',
-    'edit_profile_goals_subtitle': 'These guide what SkinSync optimizes for in routine and product suggestions.',
+    'edit_profile_goals_subtitle':
+        'These guide what SkinSync optimizes for in routine and product suggestions.',
     'edit_profile_save_changes': 'Save changes',
-    'edit_profile_save_subtitle': 'Profile changes refresh your summary immediately. If your routine should adapt too, use the AI refresh action.',
+    'edit_profile_save_subtitle':
+        'Profile changes refresh your summary immediately. If your routine should adapt too, use the AI refresh action.',
     'edit_profile_save_refresh_ai': 'Save & refresh AI routine',
     'edit_profile_complete_onboarding': 'Complete onboarding instead',
     'edit_profile_saved_refreshed': 'Profile saved and AI routine refreshed.',
     'edit_profile_error_save': 'Could not save your profile right now.',
-    
+
     // ── Floating AI Button ──
     'floating_ai_ask': 'Ask AI',
 

@@ -1163,10 +1163,13 @@ class ProductDetail {
         .map((e) => e.toString())
         .where((e) => e.trim().isNotEmpty)
         .toList(),
-    skinTypes: ((json['suitableSkinTypes'] as List?) ?? const [])
-        .map((e) => e.toString())
-        .where((e) => e.trim().isNotEmpty)
-        .toList(),
+    skinTypes:
+        ((json['suitableSkinTypes'] as List?) ??
+                (json['skinTypes'] as List?) ??
+                const [])
+            .map((e) => e.toString())
+            .where((e) => e.trim().isNotEmpty)
+            .toList(),
     skinConcerns: ((json['skinConcerns'] as List?) ?? const [])
         .map((e) => e.toString())
         .where((e) => e.trim().isNotEmpty)

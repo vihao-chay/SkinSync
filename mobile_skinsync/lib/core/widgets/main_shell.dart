@@ -14,11 +14,7 @@ import '../theme/app_colors.dart';
 import 'app_bottom_navigation.dart';
 
 class MainShell extends StatefulWidget {
-  const MainShell({
-    super.key,
-    required this.initialRoute,
-    this.initialArgs,
-  });
+  const MainShell({super.key, required this.initialRoute, this.initialArgs});
 
   final String initialRoute;
   final Object? initialArgs;
@@ -139,10 +135,24 @@ class _MainShellState extends State<MainShell> {
   }
 
   void _onTap(int index) {
+    final route = _navRoutes[index];
     if (index == _selectedIndex) {
+      _refreshProgressTabIfNeeded(route);
       return;
     }
-    selectRoute(_navRoutes[index]);
+    selectRoute(route);
+    _refreshProgressTabIfNeeded(route);
+  }
+
+  void _refreshProgressTabIfNeeded(String route) {
+    if (route != AppRoutes.progress) {
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        context.read<AppState>().refreshHome();
+      }
+    });
   }
 
   @override
