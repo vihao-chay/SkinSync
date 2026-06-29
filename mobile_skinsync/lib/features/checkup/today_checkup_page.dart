@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/config/app_config.dart';
+import '../../core/l10n/app_locale.dart';
 import '../../core/models/app_models.dart';
 import '../../core/responsive/responsive.dart';
 import '../../core/routes/app_routes.dart';
@@ -91,8 +92,9 @@ class _TodayCheckupPageState extends State<TodayCheckupPage> {
       if (!mounted) {
         return;
       }
+      final locale = AppLocale.of(context, listen: false);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Today Check-up saved successfully.')),
+        SnackBar(content: Text(locale.tr('checkup_submitted'))),
       );
       Navigator.pushNamedAndRemoveUntil(
         context,
@@ -106,10 +108,11 @@ class _TodayCheckupPageState extends State<TodayCheckupPage> {
       if (!mounted) {
         return;
       }
+      final locale = AppLocale.of(context, listen: false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            appState.errorMessage ?? 'Could not save today check-up right now.',
+            appState.errorMessage ?? locale.tr('checkup_error_save'),
           ),
         ),
       );
@@ -122,6 +125,7 @@ class _TodayCheckupPageState extends State<TodayCheckupPage> {
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
     final appState = context.watch<AppState>();
     final regimen = appState.regimen;
     final tracking = appState.trackingToday;
@@ -140,8 +144,8 @@ class _TodayCheckupPageState extends State<TodayCheckupPage> {
         eveningSteps.every((step) => completedIds.contains(step.stepId));
 
     return AppScaffold(
-      title: 'Today Check-up',
-      subtitle: 'Check off your active routine and log how your skin feels today.',
+      title: locale.tr('checkup_title'),
+      subtitle: locale.tr('checkup_subtitle'),
       onRefresh: appState.refreshHome,
       headerTrailing: _HeaderHomeButton(
         onTap: () => Navigator.pushNamedAndRemoveUntil(
@@ -161,9 +165,9 @@ class _TodayCheckupPageState extends State<TodayCheckupPage> {
         children: [
           if (appState.todayCheckupDataErrorMessage != null) ...[
             ErrorStateCard(
-              title: 'Today check-up needs attention',
+              title: locale.tr('checkup_needs_attention'),
               description: appState.todayCheckupDataErrorMessage!,
-              ctaLabel: 'Try again',
+              ctaLabel: locale.tr('common_try_again'),
               onCta: appState.refreshHome,
             ),
             const SizedBox(height: AppSpacing.sectionGap),
@@ -173,24 +177,26 @@ class _TodayCheckupPageState extends State<TodayCheckupPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const StatusChip(
-                  label: 'Routine completion',
+                StatusChip(
+                  label: locale.tr('progress_routine_completion'),
                   icon: Icons.favorite_border_rounded,
                   tone: StatusChipTone.accent,
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 Text(
-                  '$completedSteps of $totalSteps routine steps completed today.',
+                  locale.tr('checkup_routine_completion_desc')
+                      .replaceAll('{completed}', '$completedSteps')
+                      .replaceAll('{total}', '$totalSteps'),
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: AppColors.mutedText,
                   ),
                 ),
                 const SizedBox(height: AppSpacing.md),
                 LinearProgressStat(
-                  label: 'Today progress',
+                  label: locale.tr('routine_today_progress'),
                   value: '$completedSteps/$totalSteps',
                   progress: progress,
-                  caption: 'Completion saves through routine tracking and your daily log.',
+                  caption: locale.tr('checkup_completion_saves_desc'),
                 ),
                 const SizedBox(height: AppSpacing.md),
                 Wrap(
@@ -198,21 +204,21 @@ class _TodayCheckupPageState extends State<TodayCheckupPage> {
                   runSpacing: AppSpacing.sm,
                   children: [
                     StatusChip(
-                      label: morningCompleted ? 'Morning done' : 'Morning pending',
+                      label: morningCompleted ? locale.tr('checkup_morning_done') : locale.tr('checkup_morning_pending'),
                       icon: Icons.wb_sunny_outlined,
                       tone: morningCompleted
                           ? StatusChipTone.success
                           : StatusChipTone.warning,
                     ),
                     StatusChip(
-                      label: eveningCompleted ? 'Evening done' : 'Evening pending',
+                      label: eveningCompleted ? locale.tr('checkup_evening_done') : locale.tr('checkup_evening_pending'),
                       icon: Icons.nightlight_round,
                       tone: eveningCompleted
                           ? StatusChipTone.success
                           : StatusChipTone.warning,
                     ),
                     StatusChip(
-                      label: _skinFeeling.replaceAll('_', ' '),
+                      label: locale.tr('checkup_feeling_${_skinFeeling}'),
                       icon: Icons.mood_outlined,
                     ),
                   ],
@@ -226,9 +232,9 @@ class _TodayCheckupPageState extends State<TodayCheckupPage> {
               tracking == null)
             EmptyStateCard(
               icon: Icons.checklist_rtl_outlined,
-              title: 'No active routine yet',
-              description: 'Today Check-up only uses products from your active routine. Build your routine first, then come back to track it here.',
-              ctaLabel: 'Open Products',
+              title: locale.tr('routine_no_regimen'),
+              description: locale.tr('checkup_no_active_routine_desc'),
+              ctaLabel: locale.tr('checkup_open_products'),
               onCta: () => Navigator.pushNamedAndRemoveUntil(
                 context,
                 AppRoutes.products,
@@ -241,8 +247,8 @@ class _TodayCheckupPageState extends State<TodayCheckupPage> {
           else ...[
             SectionHeader(
               icon: Icons.checklist_rounded,
-              title: 'Checklist from active routine',
-              subtitle: 'Morning and evening steps are pulled directly from your active regimen.',
+              title: locale.tr('checkup_checklist_title'),
+              subtitle: locale.tr('checkup_checklist_subtitle'),
             ),
             const SizedBox(height: AppSpacing.md),
             _RoutineSegmentedControl(
@@ -251,10 +257,10 @@ class _TodayCheckupPageState extends State<TodayCheckupPage> {
             ),
             const SizedBox(height: AppSpacing.md),
             if (activeSteps.isEmpty)
-              const EmptyStateCard(
+              EmptyStateCard(
                 icon: Icons.spa_outlined,
-                title: 'No steps in this routine block',
-                description: 'Your active routine does not have steps for this time of day yet.',
+                title: locale.tr('checkup_no_steps_in_block'),
+                description: locale.tr('checkup_no_steps_in_block_desc'),
               )
             else
               ...activeSteps.map(
@@ -279,10 +285,10 @@ class _TodayCheckupPageState extends State<TodayCheckupPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SectionHeader(
+                SectionHeader(
                   icon: Icons.favorite_outline_rounded,
-                  title: 'How does your skin feel?',
-                  subtitle: 'Save a quick signal alongside today’s checklist.',
+                  title: locale.tr('checkup_how_skin_feel'),
+                  subtitle: locale.tr('checkup_skin_feel_subtitle'),
                 ),
                 const SizedBox(height: AppSpacing.md),
                 Material(
@@ -300,7 +306,7 @@ class _TodayCheckupPageState extends State<TodayCheckupPage> {
                               ? AppColors.primaryDark
                               : AppColors.mutedText,
                         ),
-                        label: Text(option.label),
+                        label: Text(AppLocale.of(context).tr('checkup_feeling_${option.value}')),
                         selected: selected,
                         onSelected: (_) => setState(() => _skinFeeling = option.value),
                       );
@@ -312,9 +318,9 @@ class _TodayCheckupPageState extends State<TodayCheckupPage> {
                   controller: _notesController,
                   minLines: 3,
                   maxLines: 5,
-                  decoration: const InputDecoration(
-                    labelText: 'Notes',
-                    hintText: 'Any dryness, redness, wins, or product reactions worth tracking today?',
+                  decoration: InputDecoration(
+                    labelText: locale.tr('checkup_notes'),
+                    hintText: locale.tr('checkup_notes_hint'),
                   ),
                 ),
               ],
@@ -325,10 +331,10 @@ class _TodayCheckupPageState extends State<TodayCheckupPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SectionHeader(
+                SectionHeader(
                   icon: Icons.camera_alt_outlined,
-                  title: 'Photo check-in',
-                  subtitle: 'Use a real upload where available, with soft placeholders for the rest.',
+                  title: locale.tr('checkup_photo_checkin'),
+                  subtitle: locale.tr('checkup_photo_checkin_subtitle'),
                 ),
                 const SizedBox(height: AppSpacing.md),
                 LayoutBuilder(
@@ -337,22 +343,22 @@ class _TodayCheckupPageState extends State<TodayCheckupPage> {
                       return Column(
                         children: [
                           _PhotoSlot(
-                            label: 'Front',
+                            label: locale.tr('checkup_front'),
                             imageFile: _selectedImage,
                             imageUrl: todayLog?.dailyImageUrl,
                             onTap: _pickImage,
                             enabled: true,
                           ),
                           const SizedBox(height: AppSpacing.sm),
-                          const _PhotoSlot(
-                            label: 'Left',
+                          _PhotoSlot(
+                            label: locale.tr('checkup_left'),
                             imageFile: null,
                             imageUrl: null,
                             enabled: false,
                           ),
                           const SizedBox(height: AppSpacing.sm),
-                          const _PhotoSlot(
-                            label: 'Right',
+                          _PhotoSlot(
+                            label: locale.tr('checkup_right'),
                             imageFile: null,
                             imageUrl: null,
                             enabled: false,
@@ -365,7 +371,7 @@ class _TodayCheckupPageState extends State<TodayCheckupPage> {
                       children: [
                         Expanded(
                           child: _PhotoSlot(
-                            label: 'Front',
+                            label: locale.tr('checkup_front'),
                             imageFile: _selectedImage,
                             imageUrl: todayLog?.dailyImageUrl,
                             onTap: _pickImage,
@@ -373,18 +379,18 @@ class _TodayCheckupPageState extends State<TodayCheckupPage> {
                           ),
                         ),
                         const SizedBox(width: AppSpacing.sm),
-                        const Expanded(
+                        Expanded(
                           child: _PhotoSlot(
-                            label: 'Left',
+                            label: locale.tr('checkup_left'),
                             imageFile: null,
                             imageUrl: null,
                             enabled: false,
                           ),
                         ),
                         const SizedBox(width: AppSpacing.sm),
-                        const Expanded(
+                        Expanded(
                           child: _PhotoSlot(
-                            label: 'Right',
+                            label: locale.tr('checkup_right'),
                             imageFile: null,
                             imageUrl: null,
                             enabled: false,
@@ -399,14 +405,14 @@ class _TodayCheckupPageState extends State<TodayCheckupPage> {
           ),
           const SizedBox(height: AppSpacing.sectionGap),
           AppButton(
-            label: 'Save Today Check-up',
+            label: locale.tr('checkup_save_today'),
             icon: const Icon(Icons.check_circle_outline_rounded),
             isLoading: _saving,
             onPressed: _saving ? null : () => _saveCheckup(appState),
           ),
           const SizedBox(height: AppSpacing.sm),
           AppButton(
-            label: 'Back to Home',
+            label: locale.tr('checkup_back_to_home'),
             variant: AppButtonVariant.secondary,
             icon: const Icon(Icons.home_rounded),
             onPressed: () => Navigator.pushNamedAndRemoveUntil(
@@ -440,13 +446,14 @@ class _RoutineSegmentedControl extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
     return AppCard(
       padding: const EdgeInsets.all(6),
       child: Row(
         children: [
           Expanded(
             child: _SegmentButton(
-              label: 'Morning',
+              label: locale.tr('routine_morning'),
               selected: showMorning,
               onTap: () => onChanged(true),
             ),
@@ -454,7 +461,7 @@ class _RoutineSegmentedControl extends StatelessWidget {
           const SizedBox(width: AppSpacing.xs),
           Expanded(
             child: _SegmentButton(
-              label: 'Evening',
+              label: locale.tr('routine_evening'),
               selected: !showMorning,
               onTap: () => onChanged(false),
             ),
@@ -595,7 +602,7 @@ class _PhotoSlot extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(
-              enabled ? 'Tap to capture' : 'Placeholder',
+              enabled ? AppLocale.of(context).tr('checkup_tap_to_capture') : AppLocale.of(context).tr('checkup_placeholder'),
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: AppColors.mutedText,
               ),
@@ -608,18 +615,19 @@ class _PhotoSlot extends StatelessWidget {
 }
 
 class _SkinFeelingOption {
-  const _SkinFeelingOption(this.label, this.value, this.icon);
+  const _SkinFeelingOption(this.value, this.icon);
 
-  final String label;
   final String value;
   final IconData icon;
+
+  String get label => value; // the UI uses translated label anyway
 }
 
 const _skinFeelingOptions = [
-  _SkinFeelingOption('Good', 'good', Icons.sentiment_satisfied_alt_outlined),
-  _SkinFeelingOption('Dry', 'dry', Icons.water_drop_outlined),
-  _SkinFeelingOption('Oily', 'oily', Icons.opacity_outlined),
-  _SkinFeelingOption('Red', 'irritated', Icons.favorite_border_rounded),
-  _SkinFeelingOption('Irritated', 'irritated', Icons.warning_amber_rounded),
-  _SkinFeelingOption('Breakout', 'acne_flare', Icons.blur_on_outlined),
+  _SkinFeelingOption('good', Icons.sentiment_satisfied_alt_outlined),
+  _SkinFeelingOption('dry', Icons.water_drop_outlined),
+  _SkinFeelingOption('oily', Icons.opacity_outlined),
+  _SkinFeelingOption('red', Icons.favorite_border_rounded),
+  _SkinFeelingOption('irritated', Icons.warning_amber_rounded),
+  _SkinFeelingOption('breakout', Icons.blur_on_outlined),
 ];

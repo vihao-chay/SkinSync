@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/config/app_config.dart';
+import '../../core/l10n/app_locale.dart';
 import '../../core/models/app_models.dart';
 import '../../core/routes/app_routes.dart';
 import '../../core/responsive/responsive.dart';
@@ -48,6 +49,7 @@ class _ProgressPageState extends State<ProgressPage> {
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
     final appState = context.watch<AppState>();
     final progress = appState.progress;
     final latestAnalysis = appState.latestAnalysis;
@@ -64,8 +66,8 @@ class _ProgressPageState extends State<ProgressPage> {
         widget.args.entryPoint == ProgressEntryPoint.analysisResult;
 
     return AppScaffold(
-      title: 'Progress',
-      subtitle: 'Your skin health history at a glance.',
+      title: locale.tr('progress_title'),
+      subtitle: locale.tr('progress_history_at_glance'),
       compactHeader: true,
       onRefresh: appState.refreshHome,
       body: ListView(
@@ -78,15 +80,15 @@ class _ProgressPageState extends State<ProgressPage> {
         ),
         children: [
           if (showCheckupSavedState) ...[
-            const StatusChip(
-              label: 'Check-up saved',
+            StatusChip(
+              label: locale.tr('progress_checkup_saved'),
               icon: Icons.check_circle_outline_rounded,
               tone: StatusChipTone.success,
             ),
             const SizedBox(height: AppSpacing.sm),
           ] else if (showAnalysisState) ...[
-            const StatusChip(
-              label: 'Analysis saved',
+            StatusChip(
+              label: locale.tr('progress_analysis_saved'),
               icon: Icons.analytics_outlined,
               tone: StatusChipTone.accent,
             ),
@@ -114,18 +116,18 @@ class _ProgressPageState extends State<ProgressPage> {
               progress: routineProgress,
             ),
             const SizedBox(height: AppSpacing.md),
-            const _ProgressSectionTitle('Score Trend'),
+            _ProgressSectionTitle(locale.tr('progress_score_trend')),
             const SizedBox(height: AppSpacing.xs),
             const _ScoreTrendCard(),
             const SizedBox(height: AppSpacing.md),
-            const _ProgressSectionTitle('Visual Journey'),
+            _ProgressSectionTitle(locale.tr('progress_visual_journey')),
             const SizedBox(height: AppSpacing.xs),
             _VisualJourneyCard(
               imageUrl: todayLog?.dailyImageUrl,
               onAddPhoto: _openProgressUpload,
             ),
             const SizedBox(height: AppSpacing.md),
-            const _ProgressSectionTitle('Recent Activity'),
+            _ProgressSectionTitle(locale.tr('progress_recent_activity')),
             const SizedBox(height: AppSpacing.xs),
             _RecentActivityCard(
               latestAnalysis: latestAnalysis,

@@ -112,20 +112,23 @@ class AppState extends ChangeNotifier {
     notifyListeners();
 
     try {
-      await _sessionStore.clear();
+      final savedSession = await _sessionStore.read();
+      if (savedSession != null) {
+        session = savedSession;
+        _apiClient.attachSession(savedSession);
+        
+        final currentUserId = savedSession.user.id;
+        if (currentUserId.isNotEmpty) {
+          hasPendingOnboarding =
+              await _sessionStore.isOnboardingPendingFor(currentUserId);
+        }
+        await refreshHome();
+      } else {
+        session = null;
+        _apiClient.attachSession(null);
+      }
+    } catch (_) {
       session = null;
-      profile = null;
-      latestAnalysis = null;
-      regimen = null;
-      trackingToday = null;
-      progress = null;
-      todayLog = null;
-      reminders = const [];
-      subscriptionPlans = const [];
-      subscription = null;
-      hasPendingOnboarding = false;
-      hasResolvedProfileState = false;
-      _resetLoadErrors();
       _apiClient.attachSession(null);
     } finally {
       isBootstrapping = false;

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/config/app_config.dart';
+import '../../core/l10n/app_locale.dart';
 import '../../core/models/app_models.dart';
 import '../../core/routes/app_routes.dart';
 import '../../core/responsive/responsive.dart';
@@ -69,6 +70,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
     final appState = context.watch<AppState>();
     final latestAnalysis = appState.latestAnalysis;
     final regimen = appState.regimen;
@@ -150,8 +152,8 @@ class _DashboardPageState extends State<DashboardPage> {
                         ),
                         const SizedBox(height: AppSpacing.md),
                         _SectionTitle(
-                          title: 'Key Metrics',
-                          actionLabel: 'Details',
+                          title: locale.tr('dashboard_key_metrics'),
+                          actionLabel: locale.tr('dashboard_details'),
                           onAction: () => MainShell.navigateToTab(
                             context,
                             AppRoutes.progress,
@@ -161,7 +163,7 @@ class _DashboardPageState extends State<DashboardPage> {
                         _MetricGrid(
                           acne: _issueScore(latestAnalysis, 'acne'),
                           redness: _issueScore(latestAnalysis, 'redness'),
-                          hydration: _hydrationLabel(appState.todayLog),
+                          hydration: _hydrationLabel(appState.todayLog, locale),
                           routinePercent: routineProgress,
                         ),
                         const SizedBox(height: AppSpacing.md),
@@ -244,18 +246,18 @@ class _DashboardPageState extends State<DashboardPage> {
     return null;
   }
 
-  String _hydrationLabel(DailyLog? log) {
+  String _hydrationLabel(DailyLog? log, AppLocale locale) {
     final hydration = log?.hydrationLevel;
     if (hydration == null) {
-      return 'Optimal';
+      return locale.tr('hydration_optimal');
     }
     if (hydration >= 7) {
-      return 'Optimal';
+      return locale.tr('hydration_optimal');
     }
     if (hydration >= 4) {
-      return 'Balanced';
+      return locale.tr('hydration_balanced');
     }
-    return 'Low';
+    return locale.tr('hydration_low');
   }
 }
 
@@ -272,11 +274,16 @@ class _Greeting extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
+    final helloStr = name.isEmpty
+        ? locale.tr('dashboard_hello')
+        : '${locale.tr('dashboard_hello')}, $name';
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          name.isEmpty ? 'Hello' : 'Hello, $name',
+          helloStr,
           style: Theme.of(context).textTheme.headlineSmall?.copyWith(
             fontWeight: FontWeight.w800,
             color: AppColors.heading,
@@ -285,10 +292,10 @@ class _Greeting extends StatelessWidget {
         const SizedBox(height: 2),
         Text(
           hasRoutine
-              ? 'Your skincare day is ready.'
+              ? locale.tr('dashboard_greeting_ready')
               : hasAnalysis
-              ? 'Your skin insights are ready.'
-              : 'Start with a quick AI skin scan today.',
+              ? locale.tr('dashboard_greeting_insights')
+              : locale.tr('dashboard_greeting_start'),
           style: Theme.of(
             context,
           ).textTheme.labelSmall?.copyWith(color: AppColors.foreground),
@@ -313,6 +320,7 @@ class _SkinHealthCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
     final resolvedScore = score ?? 0;
     final limit = scanUsage?.monthlyLimit;
     final used = scanUsage?.used ?? 0;
@@ -323,20 +331,21 @@ class _SkinHealthCard extends StatelessWidget {
         : limit == null || limit <= 0
         ? 0.0
         : (used / limit).clamp(0.0, 1.0);
+
     final usageLabel = scanUsage == null
         ? null
         : unlimited
-        ? 'Unlimited Scans'
+        ? locale.tr('dashboard_unlimited_scans')
         : limit == null
-        ? '$used Scans'
-        : '$used/$limit Scans';
+        ? '$used ${locale.tr('plan_scans')}'
+        : '$used/$limit ${locale.tr('plan_scans')}';
 
     return AppCard(
       padding: const EdgeInsets.fromLTRB(18, 16, 18, 14),
       child: Column(
         children: [
           Text(
-            'Your Skin Health',
+            locale.tr('dashboard_skin_health_title'),
             style: Theme.of(
               context,
             ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
@@ -345,7 +354,7 @@ class _SkinHealthCard extends StatelessWidget {
           CircularScore(
             score: resolvedScore,
             size: 136,
-            label: score == null ? 'No scan' : 'Balanced',
+            label: score == null ? locale.tr('dashboard_no_scan') : locale.tr('dashboard_skin_balanced'),
             suffix: score == null ? '' : '%',
             progressColor: AppColors.primary,
           ),
@@ -358,10 +367,10 @@ class _SkinHealthCard extends StatelessWidget {
             ),
             child: Text(
               score == null
-                  ? 'Scan your skin to unlock today\'s baseline.'
+                  ? locale.tr('dashboard_scan_prompt')
                   : insight?.trim().isNotEmpty == true
                   ? insight!
-                  : 'Baseline saved from your latest analysis.',
+                  : locale.tr('dashboard_baseline_saved'),
               textAlign: TextAlign.center,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
@@ -374,7 +383,7 @@ class _SkinHealthCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    'USAGE',
+                    locale.tr('dashboard_usage'),
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(
                       color: AppColors.heading,
                       fontWeight: FontWeight.w900,
@@ -408,7 +417,7 @@ class _SkinHealthCard extends StatelessWidget {
                 onPressed: onUpgrade,
                 iconAlignment: IconAlignment.end,
                 icon: const Icon(Icons.arrow_forward_rounded, size: 15),
-                label: const Text('Upgrade for unlimited scans'),
+                label: Text(locale.tr('dashboard_upgrade_unlimited_scans')),
                 style: TextButton.styleFrom(
                   minimumSize: const Size.fromHeight(32),
                   padding: EdgeInsets.zero,
@@ -464,6 +473,7 @@ class _MetricGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
     return LayoutBuilder(
       builder: (context, constraints) {
         if (constraints.maxWidth >= 820) {
@@ -475,23 +485,23 @@ class _MetricGrid extends StatelessWidget {
               SizedBox(
                 width: itemWidth,
                 child: _MetricMiniCard(
-                  label: 'Acne',
-                  value: _scoreLabel(acne),
+                  label: locale.tr('metric_acne'),
+                  value: _scoreLabel(acne, locale),
                   tone: _scoreTone(acne),
                 ),
               ),
               SizedBox(
                 width: itemWidth,
                 child: _MetricMiniCard(
-                  label: 'Redness',
-                  value: _scoreLabel(redness),
+                  label: locale.tr('metric_redness'),
+                  value: _scoreLabel(redness, locale),
                   tone: _scoreTone(redness),
                 ),
               ),
               SizedBox(
                 width: itemWidth,
                 child: _MetricMiniCard(
-                  label: 'Hydration',
+                  label: locale.tr('metric_hydration'),
                   value: hydration,
                   tone: StatusChipTone.success,
                 ),
@@ -499,7 +509,7 @@ class _MetricGrid extends StatelessWidget {
               SizedBox(
                 width: itemWidth,
                 child: _MetricMiniCard(
-                  label: 'Routine',
+                  label: locale.tr('metric_routine'),
                   value: '${(routinePercent * 100).round()}%',
                   tone: StatusChipTone.accent,
                 ),
@@ -514,16 +524,16 @@ class _MetricGrid extends StatelessWidget {
               children: [
                 Expanded(
                   child: _MetricMiniCard(
-                    label: 'Acne',
-                    value: _scoreLabel(acne),
+                    label: locale.tr('metric_acne'),
+                    value: _scoreLabel(acne, locale),
                     tone: _scoreTone(acne),
                   ),
                 ),
                 const SizedBox(width: AppSpacing.sm),
                 Expanded(
                   child: _MetricMiniCard(
-                    label: 'Redness',
-                    value: _scoreLabel(redness),
+                    label: locale.tr('metric_redness'),
+                    value: _scoreLabel(redness, locale),
                     tone: _scoreTone(redness),
                   ),
                 ),
@@ -531,7 +541,7 @@ class _MetricGrid extends StatelessWidget {
             ),
             const SizedBox(height: AppSpacing.sm),
             _MetricMiniCard(
-              label: 'Hydration',
+              label: locale.tr('metric_hydration'),
               value: hydration,
               trailing: '${(routinePercent * 100).round()}%',
               tone: StatusChipTone.success,
@@ -542,17 +552,17 @@ class _MetricGrid extends StatelessWidget {
     );
   }
 
-  String _scoreLabel(int? value) {
+  String _scoreLabel(int? value, AppLocale locale) {
     if (value == null) {
-      return 'Low';
+      return locale.tr('metric_severity_low');
     }
     if (value >= 70) {
-      return 'High';
+      return locale.tr('metric_severity_high');
     }
     if (value >= 40) {
-      return 'Mild';
+      return locale.tr('metric_severity_mild');
     }
-    return 'Low';
+    return locale.tr('metric_severity_low');
   }
 
   StatusChipTone _scoreTone(int? value) {
@@ -673,6 +683,7 @@ class _RoutinePreviewCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
     return AppCard(
       onTap: onOpen,
       child: Column(
@@ -682,7 +693,7 @@ class _RoutinePreviewCard extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  'Today\'s Routine',
+                  locale.tr('dashboard_today_routine'),
                   style: Theme.of(
                     context,
                   ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
@@ -690,8 +701,8 @@ class _RoutinePreviewCard extends StatelessWidget {
               ),
               StatusChip(
                 label: totalSteps == 0
-                    ? 'Not set'
-                    : '$completedSteps/$totalSteps steps',
+                    ? locale.tr('routine_not_set')
+                    : '$completedSteps/$totalSteps ${locale.tr('dashboard_steps')}',
                 tone: StatusChipTone.accent,
               ),
             ],
@@ -711,7 +722,7 @@ class _RoutinePreviewCard extends StatelessWidget {
           const SizedBox(height: AppSpacing.md),
           if (steps.isEmpty)
             Text(
-              'Build your first routine from AI product recommendations.',
+              locale.tr('routine_empty_prompt'),
               style: Theme.of(context).textTheme.bodySmall,
             )
           else
@@ -807,6 +818,7 @@ class _ForYouSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
     if (loading) {
       return const _ForYouLoading();
     }
@@ -815,8 +827,8 @@ class _ForYouSection extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const StatusChip(
-              label: 'No recommendations yet',
+            StatusChip(
+              label: locale.tr('recommendation_empty_title'),
               icon: Icons.auto_awesome_rounded,
               tone: StatusChipTone.accent,
             ),
@@ -824,12 +836,12 @@ class _ForYouSection extends StatelessWidget {
             Text(
               errorMessage?.trim().isNotEmpty == true
                   ? errorMessage!
-                  : 'Scan with AI, then generate product recommendations.',
+                  : locale.tr('recommendation_empty_prompt'),
               style: Theme.of(context).textTheme.bodySmall,
             ),
             const SizedBox(height: AppSpacing.sm),
             AppButton(
-              label: 'Open Shop',
+              label: locale.tr('recommendation_open_shop'),
               variant: AppButtonVariant.secondary,
               onPressed: onOpenProducts,
             ),
@@ -842,8 +854,8 @@ class _ForYouSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _SectionTitle(
-          title: 'For You',
-          actionLabel: 'Shop',
+          title: locale.tr('recommendation_for_you'),
+          actionLabel: locale.tr('recommendation_shop'),
           onAction: onOpenProducts,
         ),
         const SizedBox(height: AppSpacing.sm),
@@ -906,6 +918,7 @@ class _ProductPreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
     return AppCard(
       padding: const EdgeInsets.all(10),
       child: Column(
@@ -914,7 +927,7 @@ class _ProductPreview extends StatelessWidget {
           Expanded(child: _ProductImage(product: product)),
           const SizedBox(height: 8),
           Text(
-            product.brand.trim().isEmpty ? 'Product' : product.brand,
+            product.brand.trim().isEmpty ? locale.tr('product_default_brand') : product.brand,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
@@ -932,7 +945,7 @@ class _ProductPreview extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            '${product.matchPercent ?? product.matchScore}% match',
+            '${product.matchPercent ?? product.matchScore}% ${locale.tr('product_match_percent')}',
             style: Theme.of(context).textTheme.labelSmall,
           ),
         ],
@@ -983,6 +996,7 @@ class _QuickActionGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
     return LayoutBuilder(
       builder: (context, constraints) {
         final twoColumns = constraints.maxWidth >= 700;
@@ -998,7 +1012,7 @@ class _QuickActionGrid extends StatelessWidget {
               child: _SecondaryActionCard(
                 onPressed: onChat,
                 icon: Icons.chat_bubble_outline_rounded,
-                label: 'AI Chat',
+                label: locale.tr('dashboard_ai_chat'),
               ),
             ),
             SizedBox(
@@ -1006,7 +1020,7 @@ class _QuickActionGrid extends StatelessWidget {
               child: _SecondaryActionCard(
                 onPressed: onProgress,
                 icon: Icons.trending_up_rounded,
-                label: 'View Progress',
+                label: locale.tr('dashboard_view_progress'),
               ),
             ),
           ],
@@ -1023,6 +1037,7 @@ class _PrimaryScanAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
     return Material(
       color: AppColors.primary,
       borderRadius: BorderRadius.circular(AppRadius.large),
@@ -1042,7 +1057,7 @@ class _PrimaryScanAction extends StatelessWidget {
               ),
               const SizedBox(height: 7),
               Text(
-                'Scan with AI',
+                locale.tr('dashboard_scan_with_ai'),
                 style: Theme.of(context).textTheme.labelLarge?.copyWith(
                   color: AppColors.onPrimary,
                   fontFamily: 'PlusJakartaSans',

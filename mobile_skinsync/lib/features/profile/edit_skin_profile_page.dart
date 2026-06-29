@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/l10n/app_locale.dart';
 import '../../core/responsive/responsive.dart';
 import '../../core/routes/app_routes.dart';
 import '../../core/state/app_state.dart';
@@ -64,6 +65,7 @@ class _EditSkinProfilePageState extends State<EditSkinProfilePage> {
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
     final appState = context.watch<AppState>();
     final profile = appState.profile;
     final textTheme = Theme.of(context).textTheme;
@@ -74,9 +76,8 @@ class _EditSkinProfilePageState extends State<EditSkinProfilePage> {
     final goalOptions = _mergedOptions(OnboardingState.goalOptions, _goals);
 
     return AppScaffold(
-      title: 'Edit profile',
-      subtitle:
-          'Update the details that shape your routine and recommendations.',
+      title: locale.tr('edit_profile_title'),
+      subtitle: locale.tr('edit_profile_subtitle'),
       onRefresh: appState.refreshProfileState,
       compactHeader: true,
       showBackButton: true,
@@ -94,7 +95,7 @@ class _EditSkinProfilePageState extends State<EditSkinProfilePage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Skin basics',
+                  locale.tr('edit_profile_skin_basics'),
                   style: textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
@@ -103,11 +104,11 @@ class _EditSkinProfilePageState extends State<EditSkinProfilePage> {
                 _TwoColumnWrap(
                   children: [
                     _SelectionField(
-                      label: 'Skin type',
-                      value: _friendlyText(_skinType),
+                      label: locale.tr('profile_skin_type'),
+                      value: _friendlyText(_skinType, locale),
                       onTap: () => _showChoiceSheet(
                         context,
-                        title: 'Skin type',
+                        title: locale.tr('profile_skin_type'),
                         options: _mergedOptions(
                           OnboardingState.skinTypeOptions,
                           _skinType == null ? const <String>[] : [_skinType!],
@@ -118,35 +119,35 @@ class _EditSkinProfilePageState extends State<EditSkinProfilePage> {
                       ),
                     ),
                     _SelectionField(
-                      label: 'Gender',
-                      value: _genderLabel(_gender),
+                      label: locale.tr('profile_gender'),
+                      value: _genderLabel(_gender, locale),
                       onTap: () => _showChoiceSheet(
                         context,
-                        title: 'Gender',
-                        options: const [
-                          'Male',
-                          'Female',
-                          'Other',
-                          'Prefer not to say',
+                        title: locale.tr('profile_gender'),
+                        options: [
+                          locale.tr('edit_profile_gender_male'),
+                          locale.tr('edit_profile_gender_female'),
+                          locale.tr('edit_profile_gender_other'),
+                          locale.tr('edit_profile_gender_prefer_not_to_say'),
                         ],
-                        selected: _genderLabel(_gender),
+                        selected: _genderLabel(_gender, locale),
                         onSelected: (value) =>
-                            setState(() => _gender = _genderFromLabel(value)),
+                            setState(() => _gender = _genderFromLabel(value, locale)),
                       ),
                     ),
                     _SelectionField(
-                      label: 'Date of birth',
+                      label: locale.tr('edit_profile_date_of_birth'),
                       value: _dateOfBirth == null
-                          ? 'Not provided yet'
+                          ? locale.tr('profile_not_provided')
                           : DateFormat('dd/MM/yyyy').format(_dateOfBirth!),
                       onTap: _pickDateOfBirth,
                     ),
                     _SelectionField(
-                      label: 'Budget',
-                      value: _friendlyText(_budgetLabel),
+                      label: locale.tr('profile_budget'),
+                      value: _friendlyText(_budgetLabel, locale),
                       onTap: () => _showChoiceSheet(
                         context,
-                        title: 'Budget',
+                        title: locale.tr('profile_budget'),
                         options: _mergedOptions(
                           OnboardingState.budgetOptions.keys,
                           _budgetLabel == null
@@ -169,7 +170,7 @@ class _EditSkinProfilePageState extends State<EditSkinProfilePage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Preferences',
+                  locale.tr('edit_profile_preferences'),
                   style: textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
@@ -178,11 +179,11 @@ class _EditSkinProfilePageState extends State<EditSkinProfilePage> {
                 _TwoColumnWrap(
                   children: [
                     _SelectionField(
-                      label: 'Routine level',
-                      value: _friendlyText(_routinePreference),
+                      label: locale.tr('edit_profile_routine_level'),
+                      value: _friendlyText(_routinePreference, locale),
                       onTap: () => _showChoiceSheet(
                         context,
-                        title: 'Routine preference',
+                        title: locale.tr('edit_profile_routine_level'),
                         options: _mergedOptions(
                           OnboardingState.routineOptions,
                           _routinePreference == null
@@ -195,10 +196,10 @@ class _EditSkinProfilePageState extends State<EditSkinProfilePage> {
                       ),
                     ),
                     _SelectionField(
-                      label: 'Sensitivity',
+                      label: locale.tr('profile_sensitivity'),
                       value: _hasSensitivity
                           ? '${_sensitivity.round()}/10'
-                          : 'Not provided yet',
+                          : locale.tr('profile_not_provided'),
                       onTap: () => setState(() => _hasSensitivity = true),
                     ),
                   ],
@@ -208,14 +209,14 @@ class _EditSkinProfilePageState extends State<EditSkinProfilePage> {
                   children: [
                     Expanded(
                       child: Text(
-                        'Sensitivity level',
+                        locale.tr('edit_profile_sensitivity_level'),
                         style: textTheme.labelLarge?.copyWith(
                           color: AppColors.primaryDark,
                         ),
                       ),
                     ),
                     Text(
-                      _hasSensitivity ? '${_sensitivity.round()}/10' : 'Off',
+                      _hasSensitivity ? '${_sensitivity.round()}/10' : locale.tr('edit_profile_sensitivity_off'),
                       style: textTheme.labelLarge,
                     ),
                   ],
@@ -248,14 +249,14 @@ class _EditSkinProfilePageState extends State<EditSkinProfilePage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Concerns',
+                  locale.tr('edit_profile_concerns'),
                   style: textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 Text(
-                  'Pick the concerns you want SkinSync to prioritize right now.',
+                  locale.tr('edit_profile_concerns_subtitle'),
                   style: textTheme.bodySmall?.copyWith(
                     color: AppColors.mutedText,
                   ),
@@ -289,14 +290,14 @@ class _EditSkinProfilePageState extends State<EditSkinProfilePage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Goals',
+                  locale.tr('edit_profile_goals'),
                   style: textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 Text(
-                  'These guide what SkinSync optimizes for in routine and product suggestions.',
+                  locale.tr('edit_profile_goals_subtitle'),
                   style: textTheme.bodySmall?.copyWith(
                     color: AppColors.mutedText,
                   ),
@@ -330,28 +331,28 @@ class _EditSkinProfilePageState extends State<EditSkinProfilePage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Save changes',
+                  locale.tr('edit_profile_save_changes'),
                   style: textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 Text(
-                  'Profile changes refresh your summary immediately. If your routine should adapt too, use the AI refresh action.',
+                  locale.tr('edit_profile_save_subtitle'),
                   style: textTheme.bodySmall?.copyWith(
                     color: AppColors.mutedText,
                   ),
                 ),
                 const SizedBox(height: AppSpacing.lg),
                 AppButton(
-                  label: 'Save profile',
+                  label: locale.tr('profile_save'),
                   icon: const Icon(Icons.check_rounded),
                   isLoading: appState.isBusy,
                   onPressed: () => _saveProfile(context, refreshRoutine: false),
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 AppButton(
-                  label: 'Save & refresh AI routine',
+                  label: locale.tr('edit_profile_save_refresh_ai'),
                   variant: AppButtonVariant.secondary,
                   icon: const Icon(Icons.auto_awesome_rounded),
                   isLoading: appState.isBusy,
@@ -365,7 +366,7 @@ class _EditSkinProfilePageState extends State<EditSkinProfilePage> {
             TextButton(
               onPressed: () =>
                   Navigator.pushReplacementNamed(context, AppRoutes.onboarding),
-              child: const Text('Complete onboarding instead'),
+              child: Text(locale.tr('edit_profile_complete_onboarding')),
             ),
           ],
         ],
@@ -422,12 +423,13 @@ class _EditSkinProfilePageState extends State<EditSkinProfilePage> {
       if (!context.mounted) {
         return;
       }
+      final locale = AppLocale.of(context, listen: false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
             refreshRoutine
-                ? 'Profile saved and AI routine refreshed.'
-                : 'Profile saved.',
+                ? locale.tr('edit_profile_saved_refreshed')
+                : locale.tr('profile_saved_success'),
           ),
         ),
       );
@@ -436,10 +438,11 @@ class _EditSkinProfilePageState extends State<EditSkinProfilePage> {
       if (!context.mounted) {
         return;
       }
+      final locale = AppLocale.of(context, listen: false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            appState.errorMessage ?? 'Could not save your profile right now.',
+            appState.errorMessage ?? locale.tr('edit_profile_error_save'),
           ),
         ),
       );
@@ -662,23 +665,23 @@ DateTime? _tryParseDate(String? value) {
   return DateTime.tryParse(value);
 }
 
-String _friendlyText(String? value) {
+String _friendlyText(String? value, AppLocale locale) {
   final trimmed = value?.trim() ?? '';
-  return trimmed.isEmpty ? 'Not provided yet' : trimmed;
+  return trimmed.isEmpty ? locale.tr('profile_not_provided') : trimmed;
 }
 
-String _genderLabel(OnboardingGender? gender) {
+String _genderLabel(OnboardingGender? gender, AppLocale locale) {
   switch (gender) {
     case OnboardingGender.male:
-      return 'Male';
+      return locale.tr('edit_profile_gender_male');
     case OnboardingGender.female:
-      return 'Female';
+      return locale.tr('edit_profile_gender_female');
     case OnboardingGender.other:
-      return 'Other';
+      return locale.tr('edit_profile_gender_other');
     case OnboardingGender.preferNotToSay:
-      return 'Prefer not to say';
+      return locale.tr('edit_profile_gender_prefer_not_to_say');
     case null:
-      return 'Not provided yet';
+      return locale.tr('profile_not_provided');
   }
 }
 
@@ -699,19 +702,21 @@ OnboardingGender? _parseGender(String? value) {
   }
 }
 
-OnboardingGender? _genderFromLabel(String value) {
-  switch (value.trim().toLowerCase()) {
-    case 'male':
-      return OnboardingGender.male;
-    case 'female':
-      return OnboardingGender.female;
-    case 'other':
-      return OnboardingGender.other;
-    case 'prefer not to say':
-      return OnboardingGender.preferNotToSay;
-    default:
-      return null;
+OnboardingGender? _genderFromLabel(String value, AppLocale locale) {
+  final val = value.trim();
+  if (val == locale.tr('edit_profile_gender_male')) {
+    return OnboardingGender.male;
   }
+  if (val == locale.tr('edit_profile_gender_female')) {
+    return OnboardingGender.female;
+  }
+  if (val == locale.tr('edit_profile_gender_other')) {
+    return OnboardingGender.other;
+  }
+  if (val == locale.tr('edit_profile_gender_prefer_not_to_say')) {
+    return OnboardingGender.preferNotToSay;
+  }
+  return null;
 }
 
 String? _enumGenderValue(OnboardingGender? gender) {

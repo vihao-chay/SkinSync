@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../l10n/app_locale.dart';
 import '../models/app_models.dart';
 import '../../features/dashboard/dashboard_page.dart';
 import '../../features/products/products_page.dart';
@@ -48,25 +49,31 @@ class _MainShellState extends State<MainShell> {
     AppRoutes.profile,
   ];
 
-  static const _destinations = [
-    AppBottomNavigationDestination(
-      label: 'Home',
-      icon: Icons.home_rounded,
-    ),
-    AppBottomNavigationDestination(label: 'Routine', icon: Icons.spa_rounded),
-    AppBottomNavigationDestination(
-      label: 'Products',
-      icon: Icons.shopping_bag_rounded,
-    ),
-    AppBottomNavigationDestination(
-      label: 'Progress',
-      icon: Icons.insights_rounded,
-    ),
-    AppBottomNavigationDestination(
-      label: 'Profile',
-      icon: Icons.person_outline_rounded,
-    ),
-  ];
+  List<AppBottomNavigationDestination> _getDestinations(BuildContext context) {
+    final locale = AppLocale.of(context);
+    return [
+      AppBottomNavigationDestination(
+        label: locale.tr('nav_home'),
+        icon: Icons.home_rounded,
+      ),
+      AppBottomNavigationDestination(
+        label: locale.tr('nav_routine'),
+        icon: Icons.spa_rounded,
+      ),
+      AppBottomNavigationDestination(
+        label: locale.tr('nav_products'),
+        icon: Icons.shopping_bag_rounded,
+      ),
+      AppBottomNavigationDestination(
+        label: locale.tr('nav_progress'),
+        icon: Icons.insights_rounded,
+      ),
+      AppBottomNavigationDestination(
+        label: locale.tr('nav_profile'),
+        icon: Icons.person_outline_rounded,
+      ),
+    ];
+  }
 
   late int _selectedIndex = _routeToIndex(widget.initialRoute);
   late ProductsPageArgs _productsArgs;
@@ -180,7 +187,7 @@ class _MainShellState extends State<MainShell> {
         ],
       ),
       bottomNavigationBar: AppBottomNavigation(
-        destinations: _destinations,
+        destinations: _getDestinations(context),
         selectedIndex: _selectedIndex,
         onTap: _onTap,
       ),

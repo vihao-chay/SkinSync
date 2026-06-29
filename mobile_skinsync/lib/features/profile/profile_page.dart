@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/l10n/app_locale.dart';
 import '../../core/models/app_models.dart';
 import '../../core/responsive/responsive.dart';
 import '../../core/routes/app_routes.dart';
@@ -18,6 +19,7 @@ class ProfilePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
     final appState = context.watch<AppState>();
     final user = appState.user;
     final profile = appState.profile;
@@ -58,9 +60,9 @@ class ProfilePage extends StatelessWidget {
                       children: [
                         _ProfileHero(
                           name: appState.profileDisplayName,
-                          email: _friendlyText(user?.email),
+                          email: _friendlyText(user?.email, locale),
                           avatarUrl: user?.avatarUrl,
-                          skinType: _friendlyText(profile?.skinType),
+                          skinType: _friendlyText(profile?.skinType, locale),
                           onEdit: () => Navigator.pushNamed(
                             context,
                             AppRoutes.editProfile,
@@ -79,30 +81,30 @@ class ProfilePage extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: AppSpacing.md),
-                        _SectionLabel('Skin Profile'),
+                        _SectionLabel(locale.tr('profile_skin_profile_label')),
                         const SizedBox(height: AppSpacing.sm),
                         _ProfileInfoGrid(
                           items: [
                             _ProfileInfoItem(
-                              label: 'Age Range',
-                              value: _ageRange(profile?.dateOfBirth),
+                              label: locale.tr('profile_age_range'),
+                              value: _ageRange(profile?.dateOfBirth, locale),
                               icon: Icons.cake_outlined,
                             ),
                             _ProfileInfoItem(
-                              label: 'Budget',
-                              value: _friendlyText(profile?.budgetLabel),
+                              label: locale.tr('profile_budget'),
+                              value: _friendlyText(profile?.budgetLabel, locale),
                               icon: Icons.payments_outlined,
                             ),
                             _ProfileInfoItem(
-                              label: 'Primary Goal',
-                              value: _primaryGoal(profile),
+                              label: locale.tr('profile_primary_goal'),
+                              value: _primaryGoal(profile, locale),
                               icon: Icons.track_changes_outlined,
                               fullWidth: true,
                             ),
                             _ProfileInfoItem(
-                              label: 'Skin Sensitivity',
+                              label: locale.tr('profile_sensitivity'),
                               value: profile?.sensitivityLevel == null
-                                  ? 'Not provided yet'
+                                  ? locale.tr('profile_not_provided')
                                   : '${profile!.sensitivityLevel}/10',
                               icon: Icons.warning_amber_outlined,
                               fullWidth: true,
@@ -114,12 +116,12 @@ class ProfilePage extends StatelessWidget {
                         ),
                         const SizedBox(height: AppSpacing.md),
                         _ChipSection(
-                          label: 'Active Concerns',
+                          label: locale.tr('profile_active_concerns'),
                           values: profile?.concerns ?? const [],
                         ),
                         const SizedBox(height: AppSpacing.md),
                         _ChipSection(
-                          label: 'Care Preferences',
+                          label: locale.tr('profile_care_preferences'),
                           values: [
                             ...?profile?.allergies,
                             ...?profile?.avoidIngredients,
@@ -254,6 +256,7 @@ class _SubscriptionSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
     final currentCode = (current?.plan.code ?? fallbackPlanCode).toLowerCase();
     final currentPlan =
         current?.plan ??
@@ -271,9 +274,9 @@ class _SubscriptionSection extends StatelessWidget {
       children: [
         if (errorMessage != null) ...[
           ErrorStateCard(
-            title: 'Membership data could not load',
+            title: locale.tr('profile_membership_error'),
             description: errorMessage!,
-            ctaLabel: 'Try again',
+            ctaLabel: locale.tr('common_retry'),
             onCta: onRetry,
           ),
           const SizedBox(height: AppSpacing.md),
@@ -292,7 +295,7 @@ class _SubscriptionSection extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Membership',
+                          locale.tr('profile_membership'),
                           style: Theme.of(context).textTheme.labelSmall
                               ?.copyWith(
                                 color: AppColors.heading,
@@ -309,8 +312,8 @@ class _SubscriptionSection extends StatelessWidget {
                     ),
                   ),
                   if (currentCode != 'free')
-                    const StatusChip(
-                      label: 'Active',
+                    StatusChip(
+                      label: locale.tr('profile_active'),
                       tone: StatusChipTone.success,
                     ),
                   const SizedBox(width: 4),
@@ -318,7 +321,9 @@ class _SubscriptionSection extends StatelessWidget {
                     onPressed: onManage,
                     iconAlignment: IconAlignment.end,
                     icon: const Icon(Icons.open_in_new_rounded, size: 13),
-                    label: Text(currentCode == 'free' ? 'Upgrade' : 'Manage'),
+                    label: Text(currentCode == 'free'
+                        ? locale.tr('profile_upgrade_action')
+                        : locale.tr('profile_manage')),
                     style: TextButton.styleFrom(
                       padding: const EdgeInsets.symmetric(horizontal: 8),
                       minimumSize: const Size(0, 32),
@@ -336,8 +341,8 @@ class _SubscriptionSection extends StatelessWidget {
               if (usage.isEmpty)
                 Text(
                   currentCode == 'free'
-                      ? 'Upgrade for higher monthly limits and premium reports.'
-                      : 'Your current membership benefits are active.',
+                      ? locale.tr('profile_free_upgrade_prompt')
+                      : locale.tr('profile_premium_active_prompt'),
                   style: Theme.of(context).textTheme.bodySmall,
                 )
               else
@@ -514,6 +519,7 @@ class _ChipSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
     final cleaned = values.where((item) => item.trim().isNotEmpty).toList();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -521,8 +527,8 @@ class _ChipSection extends StatelessWidget {
         _SectionLabel(label),
         const SizedBox(height: AppSpacing.sm),
         if (cleaned.isEmpty)
-          const StatusChip(
-            label: 'Not provided yet',
+          StatusChip(
+            label: locale.tr('profile_not_provided'),
             icon: Icons.info_outline_rounded,
           )
         else
@@ -538,7 +544,7 @@ class _ChipSection extends StatelessWidget {
                 ),
               ),
               StatusChip(
-                label: '+ Add',
+                label: locale.tr('profile_add_concern'),
                 icon: Icons.add_rounded,
                 tone: StatusChipTone.neutral,
               ),
@@ -557,31 +563,98 @@ class _AccountActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
     return AppCard(
       padding: EdgeInsets.zero,
       child: Column(
         children: [
           _ActionRow(
             icon: Icons.edit_outlined,
-            label: 'Edit Profile',
+            label: locale.tr('profile_edit_profile'),
             onTap: onEdit,
           ),
           const Divider(height: 1),
-          const _ActionRow(
-            icon: Icons.notifications_none_rounded,
-            label: 'Notifications',
+          _ActionRow(
+            icon: Icons.language_rounded,
+            label: '${locale.tr('profile_language')}: ${locale.displayName}',
+            onTap: () => _showLanguageDialog(context, locale),
           ),
           const Divider(height: 1),
-          const _ActionRow(
+          _ActionRow(
+            icon: Icons.notifications_none_rounded,
+            label: locale.tr('profile_notifications'),
+          ),
+          const Divider(height: 1),
+          _ActionRow(
             icon: Icons.lock_outline_rounded,
-            label: 'Security & Privacy',
+            label: locale.tr('profile_security_privacy'),
           ),
           const Divider(height: 1),
           _ActionRow(
             icon: Icons.logout_rounded,
-            label: 'Log Out',
+            label: locale.tr('profile_logout'),
             danger: true,
-            onTap: onLogout,
+            onTap: () => _confirmLogout(context, locale),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showLanguageDialog(BuildContext context, AppLocale locale) {
+    showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(locale.tr('profile_language')),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              title: Text(locale.tr('profile_vietnamese')),
+              trailing: locale.locale == 'vi'
+                  ? const Icon(Icons.check_rounded, color: AppColors.primaryDark)
+                  : null,
+              onTap: () {
+                locale.setLocale('vi');
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              title: Text(locale.tr('profile_english')),
+              trailing: locale.locale == 'en'
+                  ? const Icon(Icons.check_rounded, color: AppColors.primaryDark)
+                  : null,
+              onTap: () {
+                locale.setLocale('en');
+                Navigator.pop(context);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _confirmLogout(BuildContext context, AppLocale locale) {
+    showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(locale.tr('profile_logout')),
+        content: Text(locale.tr('profile_confirm_logout')),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(locale.tr('profile_cancel')),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              onLogout();
+            },
+            child: Text(
+              locale.tr('profile_logout'),
+              style: const TextStyle(color: AppColors.error),
+            ),
           ),
         ],
       ),
@@ -639,15 +712,15 @@ class _SectionLabel extends StatelessWidget {
   }
 }
 
-String _friendlyText(String? value) {
+String _friendlyText(String? value, AppLocale locale) {
   final trimmed = value?.trim() ?? '';
-  return trimmed.isEmpty ? 'Not provided yet' : trimmed;
+  return trimmed.isEmpty ? locale.tr('profile_not_provided') : trimmed;
 }
 
-String _ageRange(String? dateOfBirth) {
+String _ageRange(String? dateOfBirth, AppLocale locale) {
   final parsed = DateTime.tryParse(dateOfBirth ?? '');
   if (parsed == null) {
-    return 'Not provided yet';
+    return locale.tr('profile_not_provided');
   }
   final now = DateTime.now();
   var age = now.year - parsed.year;
@@ -656,18 +729,18 @@ String _ageRange(String? dateOfBirth) {
     age--;
   }
   if (age < 20) {
-    return 'Under 20';
+    return locale.tr('profile_age_under_20');
   }
   if (age < 30) {
-    return 'Late 20s';
+    return locale.tr('profile_age_late_20s');
   }
   if (age < 40) {
-    return '30s';
+    return locale.tr('profile_age_30s');
   }
-  return '40+';
+  return locale.tr('profile_age_40_plus');
 }
 
-String _primaryGoal(SkinProfile? profile) {
+String _primaryGoal(SkinProfile? profile, AppLocale locale) {
   final values = profile?.goals.isNotEmpty == true
       ? profile!.goals
       : profile?.skinGoals ?? const <String>[];
@@ -676,7 +749,7 @@ String _primaryGoal(SkinProfile? profile) {
       return item;
     }
   }
-  return 'Not provided yet';
+  return locale.tr('profile_not_provided');
 }
 
 String _brandedPlanName(SubscriptionPlan? plan, String fallbackCode) {

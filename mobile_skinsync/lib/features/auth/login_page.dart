@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/l10n/app_locale.dart';
 import '../../core/responsive/responsive.dart';
 import '../../core/routes/app_routes.dart';
 import '../../core/state/app_state.dart';
@@ -202,37 +203,38 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   bool _validateInput() {
+    final locale = AppLocale.of(context);
     final email = _emailController.text.trim();
     final password = _passwordController.text;
 
     if (_isRegisterMode && _nameController.text.trim().isEmpty) {
-      _showMessage('Please enter your full name.');
+      _showMessage(locale.tr('validate_name_empty'));
       return false;
     }
 
     if (email.isEmpty ||
         !RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(email)) {
-      _showMessage('Please enter a valid email.');
+      _showMessage(locale.tr('validate_email_invalid'));
       return false;
     }
 
     if (password.isEmpty) {
-      _showMessage('Please enter your password.');
+      _showMessage(locale.tr('validate_password_empty'));
       return false;
     }
 
     if (_isRegisterMode && password.length < 8) {
-      _showMessage('Password must be at least 8 characters.');
+      _showMessage(locale.tr('validate_password_short'));
       return false;
     }
 
     if (_isRegisterMode && password != _confirmPasswordController.text) {
-      _showMessage('Confirm password does not match.');
+      _showMessage(locale.tr('validate_password_mismatch'));
       return false;
     }
 
     if (_isRegisterMode && !_acceptedTerms) {
-      _showMessage('Please agree to the terms of service.');
+      _showMessage(locale.tr('validate_terms'));
       return false;
     }
 
@@ -279,6 +281,7 @@ class _HeroCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
     return ClipRRect(
       borderRadius: BorderRadius.circular(20),
       child: SizedBox(
@@ -311,12 +314,12 @@ class _HeroCard extends StatelessWidget {
                 children: [
                   _HeroBadge(
                     label: isRegisterMode
-                        ? 'AI Skin Analyze'
-                        : 'Future · Science · AI Fusion',
+                        ? locale.tr('hero_badge_register')
+                        : locale.tr('hero_badge_login'),
                   ),
                   const Spacer(),
                   Text(
-                    'Perfect skin\nstarts here',
+                    locale.tr('hero_title'),
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                       color: Colors.white,
                       fontSize: 24,
@@ -326,7 +329,7 @@ class _HeroCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 9),
                   Text(
-                    'Your personalized skincare journey\ncalibrated just for you.',
+                    locale.tr('hero_subtitle'),
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(
                       color: Colors.white.withValues(alpha: 0.92),
                       fontSize: 11,
@@ -422,6 +425,7 @@ class _AuthCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
       decoration: BoxDecoration(
@@ -444,7 +448,7 @@ class _AuthCard extends StatelessWidget {
           ),
           const SizedBox(height: 19),
           Text(
-            isRegisterMode ? 'Create new account' : 'Welcome Back',
+            isRegisterMode ? locale.tr('create_new_account') : locale.tr('welcome_back'),
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
               color: AppColors.foreground,
               fontSize: 22,
@@ -454,8 +458,8 @@ class _AuthCard extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             isRegisterMode
-                ? 'Start your personalized skincare journey with AI.'
-                : 'Log in to continue your personalized skincare journey.',
+                ? locale.tr('register_subtitle')
+                : locale.tr('login_subtitle'),
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
               color: AppColors.foreground,
               height: 1.35,
@@ -468,7 +472,7 @@ class _AuthCard extends StatelessWidget {
           ],
           if (isRegisterMode) ...[
             _AuthTextField(
-              label: 'Full Name',
+              label: locale.tr('full_name'),
               hint: 'John Doe',
               icon: Icons.person_outline_rounded,
               controller: nameController,
@@ -477,7 +481,7 @@ class _AuthCard extends StatelessWidget {
             const SizedBox(height: 12),
           ],
           _AuthTextField(
-            label: 'Email',
+            label: locale.tr('email'),
             hint: 'hello@example.com',
             icon: Icons.mail_outline_rounded,
             keyboardType: TextInputType.emailAddress,
@@ -487,7 +491,7 @@ class _AuthCard extends StatelessWidget {
           const SizedBox(height: 12),
           if (isRegisterMode) ...[
             _AuthTextField(
-              label: 'Phone Number',
+              label: locale.tr('phone_number'),
               hint: '+ 0901234567',
               icon: Icons.phone_outlined,
               keyboardType: TextInputType.phone,
@@ -497,7 +501,7 @@ class _AuthCard extends StatelessWidget {
             const SizedBox(height: 12),
           ],
           _AuthTextField(
-            label: 'Password',
+            label: locale.tr('password'),
             hint: '••••••',
             icon: Icons.lock_outline_rounded,
             obscureText: !showPassword,
@@ -512,12 +516,17 @@ class _AuthCard extends StatelessWidget {
             const SizedBox(height: 7),
             Align(
               alignment: Alignment.centerRight,
-              child: Text(
-                'Forgot Password?',
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: AppColors.primaryDark,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w800,
+              child: GestureDetector(
+                onTap: () {
+                  // Forgot password action
+                },
+                child: Text(
+                  locale.tr('forgot_password'),
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: AppColors.primaryDark,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
             ),
@@ -525,7 +534,7 @@ class _AuthCard extends StatelessWidget {
           if (isRegisterMode) ...[
             const SizedBox(height: 12),
             _AuthTextField(
-              label: 'Confirm Password',
+              label: locale.tr('confirm_password'),
               hint: '••••••',
               icon: Icons.lock_outline_rounded,
               obscureText: !showConfirmPassword,
@@ -541,7 +550,7 @@ class _AuthCard extends StatelessWidget {
           ],
           const SizedBox(height: 14),
           _PrimaryButton(
-            label: isRegisterMode ? 'Create Account' : 'Login',
+            label: isRegisterMode ? locale.tr('create_account') : locale.tr('login'),
             isLoading: isBusy,
             onPressed: isBusy ? null : onSubmit,
           ),
@@ -559,11 +568,11 @@ class _AuthCard extends StatelessWidget {
               child: Text.rich(
                 TextSpan(
                   text: isRegisterMode
-                      ? 'Already have an account? '
-                      : "Don't have an account? ",
+                      ? locale.tr('already_have_account')
+                      : locale.tr('dont_have_account'),
                   children: [
                     TextSpan(
-                      text: isRegisterMode ? 'Login' : 'Sign up now',
+                      text: isRegisterMode ? locale.tr('login') : locale.tr('sign_up_now'),
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
                         fontWeight: FontWeight.w800,
                         color: AppColors.foreground,
@@ -592,6 +601,7 @@ class _ModeTabs extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
     return Container(
       height: 48,
       padding: const EdgeInsets.all(5),
@@ -603,14 +613,14 @@ class _ModeTabs extends StatelessWidget {
         children: [
           Expanded(
             child: _ModeTab(
-              label: 'Login',
+              label: locale.tr('login'),
               selected: !isRegisterMode,
               onTap: () => onModeChanged(false),
             ),
           ),
           Expanded(
             child: _ModeTab(
-              label: 'Register',
+              label: locale.tr('register'),
               selected: isRegisterMode,
               onTap: () => onModeChanged(true),
             ),
@@ -760,8 +770,9 @@ class _EyeButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
     return IconButton(
-      tooltip: showing ? 'Hide password' : 'Show password',
+      tooltip: showing ? locale.tr('hide_password') : locale.tr('show_password'),
       icon: Icon(
         showing ? Icons.visibility_off_outlined : Icons.visibility_outlined,
         color: AppColors.primaryDark,
@@ -780,26 +791,15 @@ class _TermsRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SizedBox(
-          width: 18,
-          height: 18,
-          child: Checkbox(
-            value: value,
-            activeColor: AppColors.primaryDark,
-            side: BorderSide(color: AppColors.border.withValues(alpha: 0.9)),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(3),
-            ),
-            onChanged: onChanged,
-          ),
-        ),
+        SpacerColorFixCheck(value, onChanged),
         const SizedBox(width: 9),
         Expanded(
           child: Text(
-            'I agree to the Terms of Service and Privacy Policy.',
+            locale.tr('agree_terms'),
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
               color: AppColors.foreground,
               fontSize: 10,
@@ -808,6 +808,22 @@ class _TermsRow extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+
+  Widget SpacerColorFixCheck(bool value, ValueChanged<bool?> onChanged) {
+    return SizedBox(
+      width: 18,
+      height: 18,
+      child: Checkbox(
+        value: value,
+        activeColor: AppColors.primaryDark,
+        side: BorderSide(color: AppColors.border.withValues(alpha: 0.9)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(3),
+        ),
+        onChanged: onChanged,
+      ),
     );
   }
 }
@@ -868,6 +884,7 @@ class _DividerLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
     return Row(
       children: [
         Expanded(
@@ -876,7 +893,7 @@ class _DividerLabel extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 13),
           child: Text(
-            'Or',
+            locale.tr('or'),
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
               color: AppColors.foreground,
               fontSize: 10,
@@ -899,6 +916,7 @@ class _GoogleButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
     return SizedBox(
       width: double.infinity,
       height: 48,
@@ -932,7 +950,7 @@ class _GoogleButton extends StatelessWidget {
                   const _GoogleMark(size: 15),
                   const SizedBox(width: 10),
                   Text(
-                    'Continue with Google',
+                    locale.tr('continue_with_google'),
                     style: Theme.of(context).textTheme.labelMedium?.copyWith(
                       color: AppColors.foreground,
                       fontSize: 13,

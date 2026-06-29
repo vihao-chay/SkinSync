@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/l10n/app_locale.dart';
 import '../../core/models/app_models.dart';
 import '../../core/responsive/responsive.dart';
 import '../../core/routes/app_routes.dart';
@@ -37,6 +38,7 @@ class _UploadPageState extends State<UploadPage> {
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
     final appState = context.watch<AppState>();
     final flowArgs =
         ModalRoute.of(context)?.settings.arguments as SkinAnalysisFlowArgs?;
@@ -44,10 +46,10 @@ class _UploadPageState extends State<UploadPage> {
     final noticeMessage = _membershipNotice(appState.errorMessage);
 
     return AppScaffold(
-      title: isProgressFlow ? 'Add a progress photo' : 'Upload Photo',
+      title: isProgressFlow ? locale.tr('upload_progress_title') : locale.tr('upload_title'),
       subtitle: isProgressFlow
-          ? 'Analyze a fresh photo and save it straight into your skin progress timeline.'
-          : 'Use a clear portrait in natural light for the best AI read.',
+          ? locale.tr('upload_progress_subtitle')
+          : locale.tr('upload_subtitle'),
       compactHeader: true,
       showBackButton: true,
       body: ListView(
@@ -60,7 +62,7 @@ class _UploadPageState extends State<UploadPage> {
         ),
         children: [
           Text(
-            isProgressFlow ? 'Today\'s scan preview' : 'High-quality photos',
+            isProgressFlow ? locale.tr('upload_scan_preview') : locale.tr('upload_high_quality'),
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
               color: AppColors.heading,
               fontWeight: FontWeight.w700,
@@ -75,40 +77,40 @@ class _UploadPageState extends State<UploadPage> {
           ),
           const SizedBox(height: AppSpacing.md),
           Text(
-            'Tips for best results'.toUpperCase(),
+            locale.tr('upload_tips_title'),
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
               color: AppColors.heading,
               fontWeight: FontWeight.w800,
             ),
           ),
           const SizedBox(height: AppSpacing.xs),
-          const _TipRow(
+          _TipRow(
             icon: Icons.light_mode_outlined,
-            text: 'Good lighting, preferably natural daylight',
+            text: locale.tr('upload_tip_lighting'),
           ),
           const SizedBox(height: AppSpacing.xs),
-          const _TipRow(
+          _TipRow(
             icon: Icons.face_rounded,
-            text: 'Face forward directly at the camera',
+            text: locale.tr('upload_tip_face'),
           ),
           const SizedBox(height: AppSpacing.xs),
-          const _TipRow(
+          _TipRow(
             icon: Icons.filter_alt_off_outlined,
-            text: 'No heavy makeup or filters applied',
+            text: locale.tr('upload_tip_makeup'),
           ),
           const SizedBox(height: AppSpacing.md),
           LayoutBuilder(
             builder: (context, constraints) {
               final stack = constraints.maxWidth < 420;
               final takePhoto = _CompactOutlineAction(
-                label: 'Take photo',
+                label: locale.tr('upload_take_photo'),
                 icon: Icons.camera_alt_outlined,
                 onPressed: appState.isBusy
                     ? null
                     : () => _pickImage(ImageSource.camera),
               );
               final chooseGallery = _CompactOutlineAction(
-                label: 'Choose gallery',
+                label: locale.tr('upload_choose_gallery'),
                 icon: Icons.photo_library_outlined,
                 onPressed: appState.isBusy
                     ? null
@@ -250,7 +252,7 @@ class _UploadPickerCard extends StatelessWidget {
                       ),
                       const SizedBox(height: AppSpacing.sm),
                       Text(
-                        'Tap to upload or take a photo',
+                        AppLocale.of(context).tr('upload_placeholder'),
                         style: Theme.of(context).textTheme.labelMedium
                             ?.copyWith(
                               color: AppColors.heading,
@@ -375,7 +377,7 @@ class _AnalyzeButton extends StatelessWidget {
               dimension: 16,
               child: CircularProgressIndicator(strokeWidth: 2),
             )
-          : const Text('Analyze skin'),
+          : Text(AppLocale.of(context).tr('upload_analyze')),
     );
   }
 }

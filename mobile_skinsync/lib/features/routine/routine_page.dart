@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/config/app_config.dart';
+import '../../core/l10n/app_locale.dart';
 import '../../core/models/app_models.dart';
 import '../../core/routes/app_routes.dart';
 import '../../core/responsive/responsive.dart';
@@ -52,9 +53,10 @@ class _RoutinePageState extends State<RoutinePage> {
         if (!mounted) {
           return;
         }
+        final locale = AppLocale.of(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Routine reloaded from your saved backend regimen.'),
+          SnackBar(
+            content: Text(locale.tr('routine_reloaded')),
           ),
         );
       });
@@ -73,6 +75,7 @@ class _RoutinePageState extends State<RoutinePage> {
     AppState appState,
     String stepId,
   ) async {
+    final locale = AppLocale.of(context);
     final wasCompleted = _draftCompletedStepIds.contains(stepId);
     setState(() {
       if (wasCompleted) {
@@ -96,7 +99,7 @@ class _RoutinePageState extends State<RoutinePage> {
           _draftCompletedStepIds.remove(stepId);
         }
         _actionErrorMessage =
-            appState.errorMessage ?? 'Could not update this routine step.';
+            appState.errorMessage ?? locale.tr('routine_error_update_step');
       });
     }
   }
@@ -106,6 +109,7 @@ class _RoutinePageState extends State<RoutinePage> {
     String routineType,
     String time,
   ) async {
+    final locale = AppLocale.of(context);
     try {
       await appState.saveReminder(routineType, time, true);
       if (mounted) {
@@ -115,14 +119,14 @@ class _RoutinePageState extends State<RoutinePage> {
       if (mounted) {
         setState(() {
           _actionErrorMessage =
-              appState.errorMessage ??
-              'Could not save your reminder right now.';
+              appState.errorMessage ?? locale.tr('routine_error_save_reminder');
         });
       }
     }
   }
 
   Future<void> _optimizeReminders(AppState appState) async {
+    final locale = AppLocale.of(context);
     setState(() => _optimizing = true);
     try {
       final result = await appState.optimizeAiReminders();
@@ -139,8 +143,7 @@ class _RoutinePageState extends State<RoutinePage> {
       if (mounted) {
         setState(() {
           _actionErrorMessage =
-              appState.errorMessage ??
-              'Could not optimize reminders right now.';
+              appState.errorMessage ?? locale.tr('routine_error_optimize');
         });
       }
     } finally {
@@ -152,6 +155,7 @@ class _RoutinePageState extends State<RoutinePage> {
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
     final appState = context.watch<AppState>();
     final regimen = appState.regimen;
     final tracking = appState.trackingToday;
@@ -209,11 +213,11 @@ class _RoutinePageState extends State<RoutinePage> {
                         if (appState.routineDataErrorMessage != null ||
                             _actionErrorMessage != null) ...[
                           ErrorStateCard(
-                            title: 'Routine data needs attention',
+                            title: locale.tr('routine_error_data_attention'),
                             description:
                                 _actionErrorMessage ??
                                 appState.routineDataErrorMessage!,
-                            ctaLabel: 'Try again',
+                            ctaLabel: locale.tr('common_retry'),
                             onCta: appState.refreshHome,
                           ),
                           const SizedBox(height: AppSpacing.md),
@@ -243,10 +247,9 @@ class _RoutinePageState extends State<RoutinePage> {
                             (morningSteps.isEmpty && eveningSteps.isEmpty))
                           EmptyStateCard(
                             icon: Icons.checklist_rtl_outlined,
-                            title: 'Choose products first',
-                            description:
-                                'Routine steps only appear from your active regimen. Open Shop and add products you want to use.',
-                            ctaLabel: 'Open Shop',
+                            title: locale.tr('routine_empty_title'),
+                            description: locale.tr('routine_empty_desc'),
+                            ctaLabel: locale.tr('recommendation_open_shop'),
                             onCta: () => MainShell.navigateToTab(
                               context,
                               AppRoutes.products,
@@ -256,18 +259,16 @@ class _RoutinePageState extends State<RoutinePage> {
                             ),
                           )
                         else if (activeSteps.isEmpty)
-                          const EmptyStateCard(
+                          EmptyStateCard(
                             icon: Icons.spa_outlined,
-                            title: 'No steps here yet',
-                            description:
-                                'Your active routine does not have products for this time of day.',
+                            title: locale.tr('routine_no_steps_title'),
+                            description: locale.tr('routine_no_steps_desc'),
                           )
                         else
                           ...activeSteps.map(
                             (step) => Padding(
                               padding: const EdgeInsets.only(
-                                bottom: AppSpacing.sm,
-                              ),
+                                  bottom: AppSpacing.sm),
                               child: _RoutineStepTile(
                                 step: step,
                                 completed: _draftCompletedStepIds.contains(
@@ -282,7 +283,7 @@ class _RoutinePageState extends State<RoutinePage> {
                           ),
                         const SizedBox(height: AppSpacing.sm),
                         AppButton(
-                          label: '+ Add Product',
+                          label: locale.tr('routine_add_product'),
                           onPressed: () => MainShell.navigateToTab(
                             context,
                             AppRoutes.products,
@@ -291,7 +292,7 @@ class _RoutinePageState extends State<RoutinePage> {
                         ),
                         const SizedBox(height: AppSpacing.sm),
                         AppButton(
-                          label: 'Optimize Routine',
+                          label: locale.tr('routine_optimize'),
                           variant: AppButtonVariant.secondary,
                           icon: const Icon(Icons.auto_awesome_rounded),
                           isLoading: _optimizing,
@@ -334,12 +335,24 @@ class _ProgressHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
+    final desc = totalSteps == 0
+        ? locale.tr('routine_no_steps_today')
+        : locale
+            .tr('routine_progress_desc_format')
+            .replaceAll('{completed}', '$completedSteps')
+            .replaceAll('{total}', '$totalSteps');
+
     return Column(
       children: [
-        CircularScore(score: percent, size: 132, label: 'Completed'),
+        CircularScore(
+          score: percent,
+          size: 132,
+          label: locale.tr('routine_completed'),
+        ),
         const SizedBox(height: 12),
         Text(
-          'Today\'s Progress',
+          locale.tr('routine_today_progress'),
           textAlign: TextAlign.center,
           style: Theme.of(
             context,
@@ -347,9 +360,7 @@ class _ProgressHeader extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         Text(
-          totalSteps == 0
-              ? 'No routine steps yet'
-              : '$completedSteps of $totalSteps steps completed today',
+          desc,
           textAlign: TextAlign.center,
           style: Theme.of(context).textTheme.bodySmall,
         ),
@@ -369,6 +380,7 @@ class _RoutineSegmentedControl extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
     return AppCard(
       padding: const EdgeInsets.all(5),
       radius: AppRadius.pill,
@@ -377,14 +389,14 @@ class _RoutineSegmentedControl extends StatelessWidget {
         children: [
           Expanded(
             child: _SegmentButton(
-              label: 'Morning',
+              label: locale.tr('routine_morning'),
               selected: showMorning,
               onTap: () => onChanged(true),
             ),
           ),
           Expanded(
             child: _SegmentButton(
-              label: 'Evening',
+              label: locale.tr('routine_evening'),
               selected: !showMorning,
               onTap: () => onChanged(false),
             ),
@@ -449,19 +461,20 @@ class _ReminderRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
     return LayoutBuilder(
       builder: (context, constraints) {
         if (constraints.maxWidth < 420) {
           return Column(
             children: [
               _ReminderCard(
-                label: 'Morning',
+                label: locale.tr('routine_morning'),
                 time: morning?.time ?? '07:00',
                 onTap: onMorning,
               ),
               const SizedBox(height: AppSpacing.sm),
               _ReminderCard(
-                label: 'Evening',
+                label: locale.tr('routine_evening'),
                 time: evening?.time ?? '21:00',
                 onTap: onEvening,
               ),
@@ -473,7 +486,7 @@ class _ReminderRow extends StatelessWidget {
           children: [
             Expanded(
               child: _ReminderCard(
-                label: 'Morning',
+                label: locale.tr('routine_morning'),
                 time: morning?.time ?? '07:00',
                 onTap: onMorning,
               ),
@@ -481,7 +494,7 @@ class _ReminderRow extends StatelessWidget {
             const SizedBox(width: AppSpacing.sm),
             Expanded(
               child: _ReminderCard(
-                label: 'Evening',
+                label: locale.tr('routine_evening'),
                 time: evening?.time ?? '21:00',
                 onTap: onEvening,
               ),
@@ -587,7 +600,7 @@ class _RoutineStepTile extends StatelessWidget {
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  _subtitle(step),
+                  _subtitle(step, context),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.labelSmall,
@@ -622,7 +635,7 @@ class _RoutineStepTile extends StatelessWidget {
     );
   }
 
-  String _subtitle(RegimenStep step) {
+  String _subtitle(RegimenStep step, BuildContext context) {
     final instruction = step.instruction?.trim() ?? '';
     if (instruction.isNotEmpty) {
       return instruction;
@@ -633,7 +646,7 @@ class _RoutineStepTile extends StatelessWidget {
     }
     return step.purpose?.trim().isNotEmpty == true
         ? step.purpose!
-        : 'Apply in your routine.';
+        : AppLocale.of(context).tr('routine_step_apply_default');
   }
 }
 
@@ -690,6 +703,7 @@ class _ReminderSuggestionSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
     return SafeArea(
       top: false,
       child: Padding(
@@ -710,7 +724,7 @@ class _ReminderSuggestionSheet extends StatelessWidget {
             ),
             const SizedBox(height: AppSpacing.lg),
             Text(
-              'SkinSync AI reminder plan',
+              locale.tr('routine_ai_plan_title'),
               style: Theme.of(
                 context,
               ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
@@ -718,7 +732,7 @@ class _ReminderSuggestionSheet extends StatelessWidget {
             const SizedBox(height: AppSpacing.sm),
             Text(
               result.overallAdvice.isEmpty
-                  ? 'SkinSync did not return a summary yet.'
+                  ? locale.tr('routine_ai_no_summary')
                   : result.overallAdvice,
               style: Theme.of(
                 context,

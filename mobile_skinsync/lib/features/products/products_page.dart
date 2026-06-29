@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/l10n/app_locale.dart';
 import '../../core/models/app_models.dart';
 import '../../core/routes/app_routes.dart';
 import '../../core/responsive/responsive.dart';
@@ -62,6 +63,7 @@ class _ProductsPageState extends State<ProductsPage> {
     if (!mounted) {
       return;
     }
+    final locale = AppLocale.of(context);
     setState(() {
       _loading = true;
       _errorMessage = null;
@@ -82,7 +84,7 @@ class _ProductsPageState extends State<ProductsPage> {
       setState(() {
         _errorMessage =
             context.read<AppState>().errorMessage ??
-            'Could not load your latest saved recommendations right now.';
+            locale.tr('products_load_error');
       });
     } finally {
       if (mounted) {
@@ -96,6 +98,7 @@ class _ProductsPageState extends State<ProductsPage> {
     if (!mounted) {
       return;
     }
+    final locale = AppLocale.of(context);
     setState(() {
       _isGenerating = true;
       _errorMessage = null;
@@ -121,7 +124,7 @@ class _ProductsPageState extends State<ProductsPage> {
       setState(() {
         _errorMessage =
             context.read<AppState>().errorMessage ??
-            'Could not generate product recommendations right now.';
+            locale.tr('products_load_error');
       });
     } finally {
       if (mounted) {
@@ -176,13 +179,14 @@ class _ProductsPageState extends State<ProductsPage> {
 
     String selection = 'Morning';
     final appState = context.read<AppState>();
+    final locale = AppLocale.of(context);
 
     final didAdd = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       builder: (context) {
         return _SheetFrame(
-          title: 'Add to routine',
+          title: locale.tr('products_add_to_routine'),
           child: StatefulBuilder(
             builder: (context, setSheetState) {
               return Column(
@@ -197,7 +201,7 @@ class _ProductsPageState extends State<ProductsPage> {
                   ),
                   const SizedBox(height: AppSpacing.sm),
                   Text(
-                    'Choose where this product should appear in your regimen.',
+                    locale.tr('products_choose_regimen_prompt'),
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: AppColors.mutedText,
                     ),
@@ -210,7 +214,7 @@ class _ProductsPageState extends State<ProductsPage> {
                   ),
                   const SizedBox(height: AppSpacing.lg),
                   AppButton(
-                    label: 'Add to routine',
+                    label: locale.tr('products_add_to_routine'),
                     onPressed: () async {
                       try {
                         await _submitAddToRoutine(
@@ -228,7 +232,7 @@ class _ProductsPageState extends State<ProductsPage> {
                             SnackBar(
                               content: Text(
                                 appState.errorMessage ??
-                                    'Could not add this product right now.',
+                                    locale.tr('products_error_add_routine'),
                               ),
                             ),
                           );
@@ -270,9 +274,9 @@ class _ProductsPageState extends State<ProductsPage> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('${item.name} was added to your routine.'),
+        content: Text(locale.tr('products_added_success').replaceAll('{name}', item.name)),
         action: SnackBarAction(
-          label: 'View routine',
+          label: locale.tr('products_view_routine_action'),
           onPressed: () => MainShell.navigateToTab(
             context,
             AppRoutes.routine,
@@ -317,7 +321,15 @@ class _ProductsPageState extends State<ProductsPage> {
     }
   }
 
+  Future<_CategoryTab?> _findTab(String categoryKey) async {
+    return _tabs.cast<_CategoryTab?>().firstWhere(
+      (tab) => tab?.key == categoryKey,
+      orElse: () => null,
+    );
+  }
+
   Future<void> _viewDetails(AiRecommendedProduct item) async {
+    final locale = AppLocale.of(context);
     final result = await Navigator.pushNamed(
       context,
       AppRoutes.productDetail,
@@ -355,9 +367,9 @@ class _ProductsPageState extends State<ProductsPage> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('${item.name} was added to your routine.'),
+        content: Text(locale.tr('products_added_success').replaceAll('{name}', item.name)),
         action: SnackBarAction(
-          label: 'View routine',
+          label: locale.tr('products_view_routine_action'),
           onPressed: () => MainShell.navigateToTab(
             context,
             AppRoutes.routine,
@@ -373,13 +385,14 @@ class _ProductsPageState extends State<ProductsPage> {
   Future<void> _checkIngredients(AiRecommendedProduct item) async {
     final ingredientsText = item.ingredientsText?.trim() ?? '';
     final appState = context.read<AppState>();
+    final locale = AppLocale.of(context);
     if (ingredientsText.isEmpty) {
       if (!mounted) {
         return;
       }
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('This product does not have ingredient data yet.'),
+        SnackBar(
+          content: Text(locale.tr('products_no_ingredient_data')),
         ),
       );
       return;
@@ -410,7 +423,7 @@ class _ProductsPageState extends State<ProductsPage> {
         isScrollControlled: true,
         builder: (context) {
           return _SheetFrame(
-            title: 'Ingredient check',
+            title: locale.tr('products_ingredient_check_title'),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
@@ -423,12 +436,12 @@ class _ProductsPageState extends State<ProductsPage> {
                 ),
                 const SizedBox(height: AppSpacing.md),
                 _DetailBlock(
-                  title: 'Overall fit',
+                  title: locale.tr('products_overall_fit'),
                   body: result.overallExplanation,
                 ),
                 const SizedBox(height: AppSpacing.md),
                 _DetailBlock(
-                  title: 'Suggested use',
+                  title: locale.tr('products_suggested_use'),
                   body: result.usageSuggestion,
                 ),
                 if (result.warnings.isNotEmpty) ...[
@@ -458,13 +471,14 @@ class _ProductsPageState extends State<ProductsPage> {
       }
       final message =
           appState.errorMessage ??
-          'Ingredient check is not available right now.';
+          locale.tr('products_error_ingredient_check');
       messenger.showSnackBar(SnackBar(content: Text(message)));
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
     final appState = context.watch<AppState>();
     final recommendation = _recommendation;
     final profileSummary = recommendation?.profileSummary;
@@ -525,15 +539,15 @@ class _ProductsPageState extends State<ProductsPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Recommended for You',
+                          locale.tr('products_recommended_for_you'),
                           style: Theme.of(context).textTheme.headlineSmall
                               ?.copyWith(fontWeight: FontWeight.w800),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           recommendation?.generatedAt == null
-                              ? 'Based on AI analysis and your skin profile.'
-                              : 'Based on AI analysis from ${_formatGeneratedAt(recommendation!.generatedAt!)}',
+                              ? locale.tr('products_based_on_ai')
+                              : locale.tr('products_based_on_ai_format').replaceAll('{date}', _formatGeneratedAt(recommendation!.generatedAt!)),
                           style: Theme.of(context).textTheme.labelSmall
                               ?.copyWith(color: AppColors.foreground),
                         ),
@@ -542,8 +556,8 @@ class _ProductsPageState extends State<ProductsPage> {
                           alignment: Alignment.centerLeft,
                           child: AppButton(
                             label: recommendation?.hasRecommendation == true
-                                ? 'Refresh'
-                                : 'Generate',
+                                ? locale.tr('products_refresh')
+                                : locale.tr('products_generate'),
                             expand: false,
                             icon: const Icon(Icons.auto_awesome_rounded),
                             isLoading: _isGenerating,
@@ -558,7 +572,7 @@ class _ProductsPageState extends State<ProductsPage> {
                             StatusChip(
                               label:
                                   profileSummary?.skinType ??
-                                  _friendlyText(appState.profile?.skinType),
+                                  _friendlyText(appState.profile?.skinType, locale),
                               icon: Icons.spa_outlined,
                               tone: StatusChipTone.accent,
                             ),
@@ -567,12 +581,14 @@ class _ProductsPageState extends State<ProductsPage> {
                                 profileSummary?.concerns ??
                                     appState.profile?.concerns ??
                                     const [],
+                                locale,
                               ),
                               icon: Icons.psychology_alt_outlined,
                             ),
                             StatusChip(
                               label: _friendlyText(
                                 appState.profile?.budgetLabel,
+                                locale,
                               ),
                               icon: Icons.payments_outlined,
                             ),
@@ -590,16 +606,14 @@ class _ProductsPageState extends State<ProductsPage> {
                         ),
                         const SizedBox(height: AppSpacing.md),
                         if (_isGenerating)
-                          const _InlineNotice(
-                            message:
-                                'Ranking products from your saved catalog...',
+                          _InlineNotice(
+                            message: locale.tr('products_ranking_notice'),
                           ),
                         if (widget.args.showGeneratePrompt &&
                             recommendation?.hasRecommendation != true &&
                             !_isGenerating)
-                          const _InlineNotice(
-                            message:
-                                'Your latest skin analysis is ready. Tap Generate to create a saved recommendation session.',
+                          _InlineNotice(
+                            message: locale.tr('products_analysis_ready_notice'),
                           ),
                         if (recommendation?.summary?.trim().isNotEmpty == true)
                           _InlineNotice(message: recommendation!.summary!),
@@ -614,24 +628,24 @@ class _ProductsPageState extends State<ProductsPage> {
                         else if (_errorMessage != null &&
                             recommendation == null)
                           ErrorStateCard(
-                            title: 'Recommendations could not load',
+                            title: locale.tr('products_load_error'),
                             description: _errorMessage!,
-                            ctaLabel: 'Try again',
+                            ctaLabel: locale.tr('common_retry'),
                             onCta: _fetchLatestRecommendations,
                           )
                         else if (recommendation == null ||
                             recommendation.hasRecommendation == false)
                           EmptyStateCard(
                             icon: Icons.shopping_bag_outlined,
-                            title: 'No saved recommendations yet',
+                            title: locale.tr('products_no_saved_yet'),
                             description:
                                 recommendation?.message ??
-                                'Products only show your latest saved recommendation session here.',
+                                locale.tr('products_only_saved_session_desc'),
                             ctaLabel:
                                 appState.latestAnalysis?.canGenerateProducts ==
                                     true
-                                ? 'Generate recommendations'
-                                : 'Analyze skin',
+                                ? locale.tr('products_generate')
+                                : locale.tr('products_analyze_skin_action'),
                             onCta: () {
                               if (appState
                                       .latestAnalysis
@@ -646,14 +660,13 @@ class _ProductsPageState extends State<ProductsPage> {
                         else if (category.items.isEmpty)
                           EmptyStateCard(
                             icon: Icons.inventory_2_outlined,
-                            title:
-                                'No ${category.label.toLowerCase()} matches yet',
+                            title: locale.tr('products_no_matches_yet').replaceAll('{category}', category.label.toLowerCase()),
                             description:
                                 recommendation.message?.trim().isNotEmpty ==
                                     true
                                 ? recommendation.message!
-                                : 'Refresh suggestions when your skin context changes.',
-                            ctaLabel: 'Generate recommendations',
+                                : locale.tr('products_refresh_context_desc'),
+                            ctaLabel: locale.tr('products_generate'),
                             onCta: _generateRecommendations,
                           )
                         else ...[
@@ -706,16 +719,16 @@ class _ProductsPageState extends State<ProductsPage> {
                               recommendation.message?.trim().isNotEmpty == true)
                             EmptyStateCard(
                               icon: Icons.inventory_2_outlined,
-                              title: 'No recommendations yet',
+                              title: locale.tr('products_no_matches_yet').replaceAll('{category}', ''),
                               description: recommendation.message!,
-                              ctaLabel: 'Generate recommendations',
+                              ctaLabel: locale.tr('products_generate'),
                               onCta: _generateRecommendations,
                             ),
                         ],
                         const SizedBox(height: AppSpacing.sm),
                         Center(
                           child: AppButton(
-                            label: 'Refresh All Suggestions',
+                            label: locale.tr('products_refresh_all_action'),
                             expand: false,
                             variant: AppButtonVariant.secondary,
                             icon: const Icon(Icons.refresh_rounded),
@@ -743,12 +756,12 @@ class _ProductsPageState extends State<ProductsPage> {
     return '${local.day}/${local.month}/${local.year} ${local.hour}:$minutes';
   }
 
-  String _concernSummary(List<String> concerns) {
+  String _concernSummary(List<String> concerns, AppLocale locale) {
     final cleaned = concerns
         .where((item) => item.trim().isNotEmpty)
         .take(2)
         .toList();
-    return cleaned.isEmpty ? 'Not provided yet' : cleaned.join(', ');
+    return cleaned.isEmpty ? locale.tr('profile_not_provided') : cleaned.join(', ');
   }
 }
 
@@ -814,7 +827,13 @@ class _RoutineTargetSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const options = ['Morning', 'Evening', 'Both'];
+    final locale = AppLocale.of(context);
+    final options = ['Morning', 'Evening', 'Both'];
+    final labels = {
+      'Morning': locale.tr('routine_morning'),
+      'Evening': locale.tr('routine_evening'),
+      'Both': locale.tr('products_both_routines'),
+    };
     return AppCard(
       variant: AppCardVariant.muted,
       padding: const EdgeInsets.all(6),
@@ -823,7 +842,7 @@ class _RoutineTargetSelector extends StatelessWidget {
           for (var i = 0; i < options.length; i++) ...[
             Expanded(
               child: _RoutineTargetButton(
-                label: options[i],
+                label: labels[options[i]] ?? options[i],
                 selected: value == options[i],
                 onTap: () => onChanged(options[i]),
               ),
@@ -975,8 +994,9 @@ class _ConflictWarningSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
     return _SheetFrame(
-      title: 'Check routine conflicts',
+      title: locale.tr('products_conflict_warning_title'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1009,7 +1029,7 @@ class _ConflictWarningSheet extends StatelessWidget {
             ),
           ),
           AppButton(
-            label: 'Add anyway',
+            label: locale.tr('products_add_anyway_action'),
             onPressed: () => Navigator.pop(context, true),
           ),
         ],
@@ -1018,9 +1038,9 @@ class _ConflictWarningSheet extends StatelessWidget {
   }
 }
 
-String _friendlyText(String? value) {
+String _friendlyText(String? value, AppLocale locale) {
   final text = value?.trim();
-  return text == null || text.isEmpty ? 'Not provided yet' : text;
+  return text == null || text.isEmpty ? locale.tr('profile_not_provided') : text;
 }
 
 String _normalizeCategoryKey(String? value) {

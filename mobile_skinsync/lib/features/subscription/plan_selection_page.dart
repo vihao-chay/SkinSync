@@ -557,6 +557,7 @@ class _PlanBottomAction extends StatelessWidget {
         : 'Continue with ${_brandedPlanName(selectedPlan.name, selectedPlan.code)}';
 
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.pagePadding,
         10,
@@ -571,6 +572,7 @@ class _PlanBottomAction extends StatelessWidget {
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           FilledButton.icon(
             onPressed: isCurrent || isLoading ? null : onContinue,
