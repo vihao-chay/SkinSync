@@ -55,7 +55,11 @@ class _ProductsPageState extends State<ProductsPage> {
     if (_selectedCategory.isEmpty) {
       _selectedCategory = _tabs.first.key;
     }
-    _fetchLatestRecommendations();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _fetchLatestRecommendations();
+      }
+    });
   }
 
   Future<void> _fetchLatestRecommendations() async {
@@ -63,7 +67,7 @@ class _ProductsPageState extends State<ProductsPage> {
     if (!mounted) {
       return;
     }
-    final locale = AppLocale.of(context);
+    final locale = AppLocale.of(context, listen: false);
     setState(() {
       _loading = true;
       _errorMessage = null;
@@ -98,7 +102,7 @@ class _ProductsPageState extends State<ProductsPage> {
     if (!mounted) {
       return;
     }
-    final locale = AppLocale.of(context);
+    final locale = AppLocale.of(context, listen: false);
     setState(() {
       _isGenerating = true;
       _errorMessage = null;
@@ -274,7 +278,9 @@ class _ProductsPageState extends State<ProductsPage> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(locale.tr('products_added_success').replaceAll('{name}', item.name)),
+        content: Text(
+          locale.tr('products_added_success').replaceAll('{name}', item.name),
+        ),
         action: SnackBarAction(
           label: locale.tr('products_view_routine_action'),
           onPressed: () => MainShell.navigateToTab(
@@ -321,13 +327,6 @@ class _ProductsPageState extends State<ProductsPage> {
     }
   }
 
-  Future<_CategoryTab?> _findTab(String categoryKey) async {
-    return _tabs.cast<_CategoryTab?>().firstWhere(
-      (tab) => tab?.key == categoryKey,
-      orElse: () => null,
-    );
-  }
-
   Future<void> _viewDetails(AiRecommendedProduct item) async {
     final locale = AppLocale.of(context);
     final result = await Navigator.pushNamed(
@@ -367,7 +366,9 @@ class _ProductsPageState extends State<ProductsPage> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(locale.tr('products_added_success').replaceAll('{name}', item.name)),
+        content: Text(
+          locale.tr('products_added_success').replaceAll('{name}', item.name),
+        ),
         action: SnackBarAction(
           label: locale.tr('products_view_routine_action'),
           onPressed: () => MainShell.navigateToTab(
@@ -391,9 +392,7 @@ class _ProductsPageState extends State<ProductsPage> {
         return;
       }
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(locale.tr('products_no_ingredient_data')),
-        ),
+        SnackBar(content: Text(locale.tr('products_no_ingredient_data'))),
       );
       return;
     }
@@ -470,8 +469,7 @@ class _ProductsPageState extends State<ProductsPage> {
         Navigator.pop(context);
       }
       final message =
-          appState.errorMessage ??
-          locale.tr('products_error_ingredient_check');
+          appState.errorMessage ?? locale.tr('products_error_ingredient_check');
       messenger.showSnackBar(SnackBar(content: Text(message)));
     }
   }
@@ -516,9 +514,7 @@ class _ProductsPageState extends State<ProductsPage> {
               onRefresh: _fetchLatestRecommendations,
               child: ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.only(
-                  bottom: 0,
-                ),
+                padding: const EdgeInsets.only(bottom: 0),
                 children: [
                   StitchTopBar(
                     avatarUrl: appState.user?.avatarUrl,
@@ -530,11 +526,11 @@ class _ProductsPageState extends State<ProductsPage> {
                   ),
                   Padding(
                     padding: EdgeInsets.fromLTRB(
-                        horizontalPadding,
-                        4,
-                        horizontalPadding,
-                        0,
-                      ),
+                      horizontalPadding,
+                      4,
+                      horizontalPadding,
+                      0,
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -547,7 +543,14 @@ class _ProductsPageState extends State<ProductsPage> {
                         Text(
                           recommendation?.generatedAt == null
                               ? locale.tr('products_based_on_ai')
-                              : locale.tr('products_based_on_ai_format').replaceAll('{date}', _formatGeneratedAt(recommendation!.generatedAt!)),
+                              : locale
+                                    .tr('products_based_on_ai_format')
+                                    .replaceAll(
+                                      '{date}',
+                                      _formatGeneratedAt(
+                                        recommendation!.generatedAt!,
+                                      ),
+                                    ),
                           style: Theme.of(context).textTheme.labelSmall
                               ?.copyWith(color: AppColors.foreground),
                         ),
@@ -572,7 +575,10 @@ class _ProductsPageState extends State<ProductsPage> {
                             StatusChip(
                               label:
                                   profileSummary?.skinType ??
-                                  _friendlyText(appState.profile?.skinType, locale),
+                                  _friendlyText(
+                                    appState.profile?.skinType,
+                                    locale,
+                                  ),
                               icon: Icons.spa_outlined,
                               tone: StatusChipTone.accent,
                             ),
@@ -613,7 +619,9 @@ class _ProductsPageState extends State<ProductsPage> {
                             recommendation?.hasRecommendation != true &&
                             !_isGenerating)
                           _InlineNotice(
-                            message: locale.tr('products_analysis_ready_notice'),
+                            message: locale.tr(
+                              'products_analysis_ready_notice',
+                            ),
                           ),
                         if (recommendation?.summary?.trim().isNotEmpty == true)
                           _InlineNotice(message: recommendation!.summary!),
@@ -660,7 +668,12 @@ class _ProductsPageState extends State<ProductsPage> {
                         else if (category.items.isEmpty)
                           EmptyStateCard(
                             icon: Icons.inventory_2_outlined,
-                            title: locale.tr('products_no_matches_yet').replaceAll('{category}', category.label.toLowerCase()),
+                            title: locale
+                                .tr('products_no_matches_yet')
+                                .replaceAll(
+                                  '{category}',
+                                  category.label.toLowerCase(),
+                                ),
                             description:
                                 recommendation.message?.trim().isNotEmpty ==
                                     true
@@ -691,8 +704,8 @@ class _ProductsPageState extends State<ProductsPage> {
                               final itemWidth = columns == 1
                                   ? constraints.maxWidth
                                   : (constraints.maxWidth -
-                                          (AppSpacing.md * (columns - 1))) /
-                                      columns;
+                                            (AppSpacing.md * (columns - 1))) /
+                                        columns;
                               return Wrap(
                                 spacing: AppSpacing.md,
                                 runSpacing: AppSpacing.md,
@@ -719,7 +732,9 @@ class _ProductsPageState extends State<ProductsPage> {
                               recommendation.message?.trim().isNotEmpty == true)
                             EmptyStateCard(
                               icon: Icons.inventory_2_outlined,
-                              title: locale.tr('products_no_matches_yet').replaceAll('{category}', ''),
+                              title: locale
+                                  .tr('products_no_matches_yet')
+                                  .replaceAll('{category}', ''),
                               description: recommendation.message!,
                               ctaLabel: locale.tr('products_generate'),
                               onCta: _generateRecommendations,
@@ -761,7 +776,9 @@ class _ProductsPageState extends State<ProductsPage> {
         .where((item) => item.trim().isNotEmpty)
         .take(2)
         .toList();
-    return cleaned.isEmpty ? locale.tr('profile_not_provided') : cleaned.join(', ');
+    return cleaned.isEmpty
+        ? locale.tr('profile_not_provided')
+        : cleaned.join(', ');
   }
 }
 
@@ -1040,7 +1057,9 @@ class _ConflictWarningSheet extends StatelessWidget {
 
 String _friendlyText(String? value, AppLocale locale) {
   final text = value?.trim();
-  return text == null || text.isEmpty ? locale.tr('profile_not_provided') : text;
+  return text == null || text.isEmpty
+      ? locale.tr('profile_not_provided')
+      : text;
 }
 
 String _normalizeCategoryKey(String? value) {

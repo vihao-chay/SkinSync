@@ -218,7 +218,7 @@ class _TodayCheckupPageState extends State<TodayCheckupPage> {
                           : StatusChipTone.warning,
                     ),
                     StatusChip(
-                      label: locale.tr('checkup_feeling_${_skinFeeling}'),
+                      label: locale.tr('checkup_feeling_$_skinFeeling'),
                       icon: Icons.mood_outlined,
                     ),
                   ],

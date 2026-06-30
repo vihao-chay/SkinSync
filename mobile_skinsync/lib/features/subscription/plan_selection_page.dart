@@ -792,11 +792,16 @@ SubscriptionUsage? _findUsage(
 }
 
 String _planDisplayName(String? name, String code) {
+  final normalizedCode = code.trim().toLowerCase();
+  if (normalizedCode == 'plus' || normalizedCode == 'premium') {
+    return _capitalize(normalizedCode);
+  }
+
   final resolved = name?.trim().isNotEmpty == true
       ? name!.trim()
       : _capitalize(code);
   final withoutBrand = resolved.replaceFirst(
-    RegExp(r'^SkinSync\s*', caseSensitive: false),
+    RegExp(r'^SkinSync[\s_-]*', caseSensitive: false),
     '',
   );
   return withoutBrand.trim().isEmpty ? _capitalize(code) : withoutBrand.trim();

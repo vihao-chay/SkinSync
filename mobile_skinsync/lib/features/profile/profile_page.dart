@@ -753,12 +753,9 @@ String _primaryGoal(SkinProfile? profile, AppLocale locale) {
 }
 
 String _brandedPlanName(SubscriptionPlan? plan, String fallbackCode) {
-  final resolved = plan != null && plan.name.trim().isNotEmpty
+  return plan != null && plan.name.trim().isNotEmpty
       ? plan.name.trim()
       : _capitalize(fallbackCode);
-  return resolved.toLowerCase().startsWith('skinsync')
-      ? resolved
-      : 'SkinSync $resolved';
 }
 
 String _capitalize(String value) {
