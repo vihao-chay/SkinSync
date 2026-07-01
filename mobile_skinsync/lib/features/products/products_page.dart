@@ -7,6 +7,7 @@ import '../../core/routes/app_routes.dart';
 import '../../core/responsive/responsive.dart';
 import '../../core/state/app_state.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_card.dart';
@@ -520,16 +521,15 @@ class _ProductsPageState extends State<ProductsPage> {
                     avatarUrl: appState.user?.avatarUrl,
                     onLeadingTap: () =>
                         MainShell.navigateToTab(context, AppRoutes.profile),
-                    onTrailingTap: _isGenerating
-                        ? null
-                        : _generateRecommendations,
+                    onTrailingTap: () =>
+                        MainShell.navigateToTab(context, AppRoutes.progress),
                   ),
                   Padding(
                     padding: EdgeInsets.fromLTRB(
                       horizontalPadding,
                       4,
                       horizontalPadding,
-                      0,
+                      Responsive.contentBottomSpacing(context, extra: 20),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -888,14 +888,14 @@ class _RoutineTargetButton extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(AppRadius.large),
         onTap: onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
           padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
           decoration: BoxDecoration(
             color: selected ? AppColors.secondary : Colors.transparent,
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(AppRadius.large),
           ),
           alignment: Alignment.center,
           child: Text(
@@ -924,8 +924,8 @@ class _InlineNotice extends StatelessWidget {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: AppColors.secondary,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(AppRadius.large),
+        border: Border.all(color: Colors.white),
       ),
       child: Text(
         message,
@@ -983,7 +983,7 @@ class _SheetFrame extends StatelessWidget {
                 width: 44,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: AppColors.border,
+                  color: AppColors.outline,
                   borderRadius: BorderRadius.circular(999),
                 ),
               ),

@@ -112,9 +112,7 @@ class _DashboardPageState extends State<DashboardPage> {
               onRefresh: _refreshAll,
               child: ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.only(
-                  bottom: 0,
-                ),
+                padding: const EdgeInsets.only(bottom: 0),
                 children: [
                   StitchTopBar(
                     avatarUrl: appState.user?.avatarUrl,
@@ -128,7 +126,7 @@ class _DashboardPageState extends State<DashboardPage> {
                       horizontalPadding,
                       4,
                       horizontalPadding,
-                      0,
+                      Responsive.contentBottomSpacing(context, extra: 20),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -354,7 +352,9 @@ class _SkinHealthCard extends StatelessWidget {
           CircularScore(
             score: resolvedScore,
             size: 136,
-            label: score == null ? locale.tr('dashboard_no_scan') : locale.tr('dashboard_skin_balanced'),
+            label: score == null
+                ? locale.tr('dashboard_no_scan')
+                : locale.tr('dashboard_skin_balanced'),
             suffix: score == null ? '' : '%',
             progressColor: AppColors.primary,
           ),
@@ -760,7 +760,7 @@ class _RoutineBubble extends StatelessWidget {
             decoration: BoxDecoration(
               color: AppColors.surfaceStrong,
               shape: BoxShape.circle,
-              border: Border.all(color: AppColors.border),
+              border: Border.all(color: Colors.white),
             ),
             child: Icon(
               _categoryIcon(step.category),
@@ -927,7 +927,9 @@ class _ProductPreview extends StatelessWidget {
           Expanded(child: _ProductImage(product: product)),
           const SizedBox(height: 8),
           Text(
-            product.brand.trim().isEmpty ? locale.tr('product_default_brand') : product.brand,
+            product.brand.trim().isEmpty
+                ? locale.tr('product_default_brand')
+                : product.brand,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
@@ -969,7 +971,7 @@ class _ProductImage extends StatelessWidget {
         : '${AppConfig.apiBaseUrl}$raw';
 
     return ClipRRect(
-      borderRadius: BorderRadius.circular(AppRadius.medium),
+      borderRadius: BorderRadius.circular(AppRadius.large),
       child: Container(
         width: double.infinity,
         color: AppColors.surfaceStrong,
@@ -1091,7 +1093,7 @@ class _SecondaryActionCard extends StatelessWidget {
       color: AppColors.surface,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppRadius.large),
-        side: BorderSide(color: AppColors.border.withValues(alpha: 0.88)),
+        side: const BorderSide(color: Colors.white),
       ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(

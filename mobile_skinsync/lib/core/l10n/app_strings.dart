@@ -260,6 +260,8 @@ class AppStrings {
     'progress_history_at_glance': 'Lịch sử sức khỏe làn da của bạn.',
     'progress_checkup_saved': 'Đã lưu kiểm tra',
     'progress_analysis_saved': 'Đã lưu phân tích',
+    'progress_snapshot': 'Tổng quan tiến trình',
+    'progress_score_label': 'điểm',
     'progress_hero_placeholder_insight':
         'Cập nhật tiến trình sau khi phân tích, theo dõi lộ trình và lưu nhật ký hàng ngày.',
     'progress_improve_format': 'Cải thiện {percent}%',
@@ -892,6 +894,8 @@ class AppStrings {
     'progress_history_at_glance': 'Your skin health history at a glance.',
     'progress_checkup_saved': 'Check-up saved',
     'progress_analysis_saved': 'Analysis saved',
+    'progress_snapshot': 'Progress snapshot',
+    'progress_score_label': 'score',
     'progress_hero_placeholder_insight':
         'Progress updates after analysis, routine tracking, and daily logs are saved.',
     'progress_improve_format': '{percent}% improve',

@@ -85,19 +85,17 @@ class AppCard extends StatelessWidget {
 
   Color _borderForVariant(AppCardVariant variant) {
     return switch (variant) {
-      AppCardVariant.standard => AppColors.border.withValues(alpha: 0.62),
-      AppCardVariant.hero => Colors.white.withValues(alpha: 0.7),
-      AppCardVariant.accent => AppColors.primaryContainer.withValues(
-        alpha: 0.38,
-      ),
-      AppCardVariant.muted => AppColors.border.withValues(alpha: 0.56),
-      AppCardVariant.metric => Colors.white.withValues(alpha: 0.76),
+      AppCardVariant.standard => Colors.white,
+      AppCardVariant.hero => Colors.white,
+      AppCardVariant.accent => Colors.white.withValues(alpha: 0.88),
+      AppCardVariant.muted => Colors.white,
+      AppCardVariant.metric => Colors.white,
     };
   }
 
   double _radiusForVariant(AppCardVariant variant) {
     return switch (variant) {
-      AppCardVariant.metric => AppRadius.medium,
+      AppCardVariant.metric => AppRadius.card,
       AppCardVariant.hero => AppRadius.card,
       AppCardVariant.accent => AppRadius.card,
       AppCardVariant.muted => AppRadius.card,

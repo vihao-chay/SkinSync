@@ -101,10 +101,8 @@ class ProductRecommendationCard extends StatelessWidget {
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: AppColors.surfaceMuted,
-              borderRadius: BorderRadius.circular(AppRadius.medium),
-              border: Border.all(
-                color: AppColors.border.withValues(alpha: 0.7),
-              ),
+              borderRadius: BorderRadius.circular(AppRadius.large),
+              border: Border.all(color: Colors.white),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -201,7 +199,7 @@ class _ProductThumb extends StatelessWidget {
         : (raw.startsWith('http') ? raw : '${AppConfig.apiBaseUrl}$raw');
 
     return ClipRRect(
-      borderRadius: BorderRadius.circular(AppRadius.medium),
+      borderRadius: BorderRadius.circular(AppRadius.large),
       child: Container(
         width: double.infinity,
         height: 190,
@@ -238,7 +236,7 @@ class _ConfidenceBadge extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.secondary.withValues(alpha: 0.94),
         borderRadius: BorderRadius.circular(AppRadius.pill),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: Colors.white),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

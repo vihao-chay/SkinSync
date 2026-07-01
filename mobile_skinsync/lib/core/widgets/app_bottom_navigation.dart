@@ -1,11 +1,8 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 
 import '../responsive/responsive.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_radius.dart';
-import '../theme/app_shadows.dart';
 
 class AppBottomNavigation extends StatelessWidget {
   const AppBottomNavigation({
@@ -36,28 +33,26 @@ class AppBottomNavigation extends StatelessWidget {
       tablet: 64,
       desktop: 66,
     );
+
     return SafeArea(
       top: false,
-      minimum: const EdgeInsets.fromLTRB(0, 0, 0, 0),
+      minimum: EdgeInsets.zero,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Flexible(
             child: ConstrainedBox(
               constraints: BoxConstraints(maxWidth: maxWidth),
-              child: ClipRRect(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   color: AppColors.surface.withValues(alpha: 0.92),
-                  border: Border(
-                    top: BorderSide(
-                      color: AppColors.border.withValues(alpha: 0.44),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.foreground.withValues(alpha: 0.06),
+                      blurRadius: 16,
+                      offset: const Offset(0, -4),
                     ),
-                  ),
-                  boxShadow: AppShadows.soft,
+                  ],
                 ),
                 child: Padding(
                   padding: EdgeInsets.fromLTRB(
@@ -144,11 +139,9 @@ class AppBottomNavigation extends StatelessWidget {
               ),
             ),
           ),
-        ),
+        ],
       ),
-    ],
-  ),
-);
+    );
   }
 }
 

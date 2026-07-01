@@ -43,9 +43,7 @@ class ProfilePage extends StatelessWidget {
               onRefresh: appState.refreshProfileState,
               child: ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.only(
-                  bottom: 0,
-                ),
+                padding: const EdgeInsets.only(bottom: 0),
                 children: [
                   StitchTopBar(avatarUrl: user?.avatarUrl),
                   Padding(
@@ -53,7 +51,7 @@ class ProfilePage extends StatelessWidget {
                       Responsive.responsiveHorizontalPadding(context),
                       4,
                       Responsive.responsiveHorizontalPadding(context),
-                      0,
+                      Responsive.contentBottomSpacing(context, extra: 20),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -92,7 +90,10 @@ class ProfilePage extends StatelessWidget {
                             ),
                             _ProfileInfoItem(
                               label: locale.tr('profile_budget'),
-                              value: _friendlyText(profile?.budgetLabel, locale),
+                              value: _friendlyText(
+                                profile?.budgetLabel,
+                                locale,
+                              ),
                               icon: Icons.payments_outlined,
                             ),
                             _ProfileInfoItem(
@@ -175,7 +176,7 @@ class _ProfileHero extends StatelessWidget {
           decoration: BoxDecoration(
             color: AppColors.surface,
             shape: BoxShape.circle,
-            border: Border.all(color: AppColors.border),
+            border: Border.all(color: Colors.white),
             boxShadow: [
               BoxShadow(
                 color: AppColors.primaryDark.withValues(alpha: 0.08),
@@ -321,9 +322,11 @@ class _SubscriptionSection extends StatelessWidget {
                     onPressed: onManage,
                     iconAlignment: IconAlignment.end,
                     icon: const Icon(Icons.open_in_new_rounded, size: 13),
-                    label: Text(currentCode == 'free'
-                        ? locale.tr('profile_upgrade_action')
-                        : locale.tr('profile_manage')),
+                    label: Text(
+                      currentCode == 'free'
+                          ? locale.tr('profile_upgrade_action')
+                          : locale.tr('profile_manage'),
+                    ),
                     style: TextButton.styleFrom(
                       padding: const EdgeInsets.symmetric(horizontal: 8),
                       minimumSize: const Size(0, 32),
@@ -377,8 +380,8 @@ class _UsageMiniTile extends StatelessWidget {
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: AppColors.surfaceMuted,
-        borderRadius: BorderRadius.circular(AppRadius.medium),
-        border: Border.all(color: AppColors.border.withValues(alpha: 0.7)),
+        borderRadius: BorderRadius.circular(AppRadius.large),
+        border: Border.all(color: Colors.white),
       ),
       child: Column(
         children: [
@@ -612,7 +615,10 @@ class _AccountActions extends StatelessWidget {
             ListTile(
               title: Text(locale.tr('profile_vietnamese')),
               trailing: locale.locale == 'vi'
-                  ? const Icon(Icons.check_rounded, color: AppColors.primaryDark)
+                  ? const Icon(
+                      Icons.check_rounded,
+                      color: AppColors.primaryDark,
+                    )
                   : null,
               onTap: () {
                 locale.setLocale('vi');
@@ -622,7 +628,10 @@ class _AccountActions extends StatelessWidget {
             ListTile(
               title: Text(locale.tr('profile_english')),
               trailing: locale.locale == 'en'
-                  ? const Icon(Icons.check_rounded, color: AppColors.primaryDark)
+                  ? const Icon(
+                      Icons.check_rounded,
+                      color: AppColors.primaryDark,
+                    )
                   : null,
               onTap: () {
                 locale.setLocale('en');

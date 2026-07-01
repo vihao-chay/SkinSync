@@ -176,9 +176,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
     final locale = AppLocale.of(context);
     if (detail == null || !detail.hasIngredientData) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(locale.tr('products_no_ingredient_data')),
-        ),
+        SnackBar(content: Text(locale.tr('products_no_ingredient_data'))),
       );
       return;
     }
@@ -310,7 +308,9 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                   Text(_errorMessage!),
                   const SizedBox(height: AppSpacing.md),
                   AppButton(
-                      label: locale.tr('common_retry'), onPressed: _loadDetail),
+                    label: locale.tr('common_retry'),
+                    onPressed: _loadDetail,
+                  ),
                 ],
               ),
             ),
@@ -376,18 +376,21 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                           ),
                           if (matchValue != null)
                             StatusChip(
-                              label: locale
-                                  .tr('product_match_percent')
-                                  .replaceAll('{percent}', '$matchValue')
-                                  .contains('{percent}')
-                                      ? '$matchValue% match'
-                                      : '$matchValue% ${locale.tr('product_match_percent')}',
+                              label:
+                                  locale
+                                      .tr('product_match_percent')
+                                      .replaceAll('{percent}', '$matchValue')
+                                      .contains('{percent}')
+                                  ? '$matchValue% match'
+                                  : '$matchValue% ${locale.tr('product_match_percent')}',
                               icon: Icons.auto_awesome_rounded,
                               tone: StatusChipTone.accent,
                             ),
                           if (product.alreadyInRoutine)
                             StatusChip(
-                              label: locale.tr('products_detail_already_in_routine'),
+                              label: locale.tr(
+                                'products_detail_already_in_routine',
+                              ),
                               icon: Icons.check_circle_outline_rounded,
                               tone: StatusChipTone.success,
                             ),
@@ -442,13 +445,13 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
             SectionHeader(
               icon: Icons.warning_amber_rounded,
               title: locale.tr('products_detail_cautions_conflicts'),
-              subtitle: locale.tr('products_detail_cautions_conflicts_subtitle'),
+              subtitle: locale.tr(
+                'products_detail_cautions_conflicts_subtitle',
+              ),
             ),
             const SizedBox(height: AppSpacing.md),
             if (cautions.isEmpty && conflicts.isEmpty)
-              _EmptyCopy(
-                locale.tr('products_detail_cautions_conflicts_none'),
-              )
+              _EmptyCopy(locale.tr('products_detail_cautions_conflicts_none'))
             else ...[
               if (cautions.isNotEmpty)
                 _ChipGroup(tone: StatusChipTone.warning, items: cautions),
@@ -767,7 +770,7 @@ class _BottomSheetFrame extends StatelessWidget {
                 width: 44,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: AppColors.border,
+                  color: AppColors.outline,
                   borderRadius: BorderRadius.circular(999),
                 ),
               ),

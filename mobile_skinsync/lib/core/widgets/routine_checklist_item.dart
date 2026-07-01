@@ -35,7 +35,7 @@ class RoutineChecklistItem extends StatelessWidget {
                 shape: BoxShape.circle,
                 color: completed ? AppColors.primaryDark : Colors.white,
                 border: Border.all(
-                  color: completed ? AppColors.primaryDark : AppColors.border,
+                  color: completed ? AppColors.primaryDark : Colors.white,
                   width: 1.4,
                 ),
               ),
@@ -154,7 +154,7 @@ class _StepBubble extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.secondary,
         shape: BoxShape.circle,
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: Colors.white),
       ),
       alignment: Alignment.center,
       child: Text(

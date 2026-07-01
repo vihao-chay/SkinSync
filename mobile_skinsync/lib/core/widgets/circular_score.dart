@@ -14,6 +14,8 @@ class CircularScore extends StatelessWidget {
     this.label = 'Skin score',
     this.suffix = '',
     this.progressColor,
+    this.scoreFontSize,
+    this.labelFontSize,
   });
 
   final int score;
@@ -21,6 +23,8 @@ class CircularScore extends StatelessWidget {
   final String label;
   final String suffix;
   final Color? progressColor;
+  final double? scoreFontSize;
+  final double? labelFontSize;
 
   @override
   Widget build(BuildContext context) {
@@ -43,6 +47,7 @@ class CircularScore extends StatelessWidget {
                   Text(
                     '$clamped$suffix',
                     style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                      fontSize: scoreFontSize,
                       fontFamily: 'PlayfairDisplay',
                       color: AppColors.heading,
                       fontWeight: FontWeight.w700,
@@ -52,6 +57,7 @@ class CircularScore extends StatelessWidget {
                   Text(
                     label,
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      fontSize: labelFontSize,
                       color: AppColors.mutedText,
                     ),
                   ),

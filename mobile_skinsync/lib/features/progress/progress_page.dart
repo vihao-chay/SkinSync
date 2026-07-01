@@ -12,9 +12,14 @@ import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_card.dart';
-import '../../core/widgets/app_scaffold.dart';
 import '../../core/widgets/circular_score.dart';
+import '../../core/widgets/main_shell.dart';
+import '../../core/widgets/stitch_top_bar.dart';
 import '../../core/widgets/status_chip.dart';
+
+const double _progressCardRadius = AppRadius.large;
+const Color _progressCardBorder = Colors.white;
+const Color _progressVisualPlaceholderColor = Color(0xFFE3E0DA);
 
 class ProgressPage extends StatefulWidget {
   const ProgressPage({super.key, ProgressPageArgs? args})
@@ -85,89 +90,148 @@ class _ProgressPageState extends State<ProgressPage> {
     final showAnalysisState =
         widget.args.entryPoint == ProgressEntryPoint.analysisResult;
 
-    return AppScaffold(
-      title: locale.tr('progress_title'),
-      subtitle: locale.tr('progress_history_at_glance'),
-      compactHeader: true,
-      onRefresh: _refreshProgressData,
-      body: ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: EdgeInsets.fromLTRB(
-          horizontalPadding,
-          AppSpacing.xs,
-          horizontalPadding,
-          Responsive.contentBottomSpacing(context, extra: 20),
+    return ColoredBox(
+      color: AppColors.pageBackground,
+      child: SafeArea(
+        bottom: false,
+        child: Center(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: Responsive.maxContentWidth(
+                context,
+                mobile: double.infinity,
+                tablet: 760,
+                desktop: 960,
+              ),
+            ),
+            child: RefreshIndicator(
+              color: AppColors.primaryDark,
+              onRefresh: _refreshProgressData,
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.only(bottom: 0),
+                children: [
+                  StitchTopBar(
+                    avatarUrl: appState.user?.avatarUrl,
+                    onLeadingTap: () =>
+                        MainShell.navigateToTab(context, AppRoutes.profile),
+                    onTrailingTap: () =>
+                        MainShell.navigateToTab(context, AppRoutes.progress),
+                  ),
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      horizontalPadding,
+                      4,
+                      horizontalPadding,
+                      Responsive.contentBottomSpacing(context, extra: 20),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          locale.tr('progress_title'),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.headlineSmall
+                              ?.copyWith(
+                                color: AppColors.heading,
+                                fontWeight: FontWeight.w800,
+                              ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          locale.tr('progress_history_at_glance'),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(color: AppColors.mutedText),
+                        ),
+                        const SizedBox(height: AppSpacing.md),
+                        if (showCheckupSavedState) ...[
+                          StatusChip(
+                            label: locale.tr('progress_checkup_saved'),
+                            icon: Icons.check_circle_outline_rounded,
+                            tone: StatusChipTone.success,
+                          ),
+                          const SizedBox(height: AppSpacing.sm),
+                        ] else if (showAnalysisState) ...[
+                          StatusChip(
+                            label: locale.tr('progress_analysis_saved'),
+                            icon: Icons.analytics_outlined,
+                            tone: StatusChipTone.accent,
+                          ),
+                          const SizedBox(height: AppSpacing.sm),
+                        ],
+                        if (_isRefreshing && !hasProgressContent)
+                          const _ProgressLoadingCard()
+                        else if (!hasProgressContent && progressError != null)
+                          _ProgressErrorCard(
+                            message: progressError,
+                            onRetry: () =>
+                                _refreshProgressData(showLoading: true),
+                          )
+                        else if (!hasProgressContent)
+                          _NoProgressCard(onStart: _openUpload)
+                        else ...[
+                          if (progressError != null) ...[
+                            _ProgressNoticeCard(message: progressError),
+                            const SizedBox(height: AppSpacing.sm),
+                          ],
+                          _ProgressHero(
+                            score: currentScore,
+                            insight: insight,
+                            improvementPercent: progress?.improvementPercent,
+                          ),
+                          const SizedBox(height: AppSpacing.sm),
+                          _MetricsGrid(
+                            currentScore: currentScore,
+                            currentStreak: progress?.currentStreak,
+                            improvementPercent: progress?.improvementPercent,
+                            routinePercent: (routineProgress * 100).round(),
+                          ),
+                          const SizedBox(height: AppSpacing.sm),
+                          _RoutineCompletionCard(
+                            completedSteps: completedSteps,
+                            totalSteps: totalSteps,
+                            progress: routineProgress,
+                          ),
+                          const SizedBox(height: AppSpacing.sm),
+                          _ProgressSectionTitle(
+                            locale.tr('progress_score_trend'),
+                          ),
+                          const SizedBox(height: AppSpacing.xs),
+                          const _ScoreTrendCard(),
+                          const SizedBox(height: AppSpacing.sm),
+                          _ProgressSectionTitle(
+                            locale.tr('progress_visual_journey'),
+                          ),
+                          const SizedBox(height: AppSpacing.xs),
+                          _VisualJourneyCard(
+                            imageUrl: todayLog?.dailyImageUrl,
+                            onAddPhoto: _openProgressUpload,
+                          ),
+                          const SizedBox(height: AppSpacing.sm),
+                          _ProgressSectionTitle(
+                            locale.tr('progress_recent_activity'),
+                          ),
+                          const SizedBox(height: AppSpacing.xs),
+                          _RecentActivityCard(
+                            latestAnalysis: latestAnalysis,
+                            completedSteps: completedSteps,
+                            totalSteps: totalSteps,
+                            hasPhoto:
+                                todayLog?.dailyImageUrl?.trim().isNotEmpty ==
+                                true,
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
-        children: [
-          if (showCheckupSavedState) ...[
-            StatusChip(
-              label: locale.tr('progress_checkup_saved'),
-              icon: Icons.check_circle_outline_rounded,
-              tone: StatusChipTone.success,
-            ),
-            const SizedBox(height: AppSpacing.sm),
-          ] else if (showAnalysisState) ...[
-            StatusChip(
-              label: locale.tr('progress_analysis_saved'),
-              icon: Icons.analytics_outlined,
-              tone: StatusChipTone.accent,
-            ),
-            const SizedBox(height: AppSpacing.sm),
-          ],
-          if (_isRefreshing && !hasProgressContent)
-            const _ProgressLoadingCard()
-          else if (!hasProgressContent && progressError != null)
-            _ProgressErrorCard(
-              message: progressError,
-              onRetry: () => _refreshProgressData(showLoading: true),
-            )
-          else if (!hasProgressContent)
-            _NoProgressCard(onStart: _openUpload)
-          else ...[
-            if (progressError != null) ...[
-              _ProgressNoticeCard(message: progressError),
-              const SizedBox(height: AppSpacing.sm),
-            ],
-            _ProgressHero(
-              score: currentScore,
-              insight: insight,
-              improvementPercent: progress?.improvementPercent,
-            ),
-            const SizedBox(height: AppSpacing.md),
-            _MetricsGrid(
-              currentScore: currentScore,
-              currentStreak: progress?.currentStreak,
-              improvementPercent: progress?.improvementPercent,
-              routinePercent: (routineProgress * 100).round(),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            _RoutineCompletionCard(
-              completedSteps: completedSteps,
-              totalSteps: totalSteps,
-              progress: routineProgress,
-            ),
-            const SizedBox(height: AppSpacing.md),
-            _ProgressSectionTitle(locale.tr('progress_score_trend')),
-            const SizedBox(height: AppSpacing.xs),
-            const _ScoreTrendCard(),
-            const SizedBox(height: AppSpacing.md),
-            _ProgressSectionTitle(locale.tr('progress_visual_journey')),
-            const SizedBox(height: AppSpacing.xs),
-            _VisualJourneyCard(
-              imageUrl: todayLog?.dailyImageUrl,
-              onAddPhoto: _openProgressUpload,
-            ),
-            const SizedBox(height: AppSpacing.md),
-            _ProgressSectionTitle(locale.tr('progress_recent_activity')),
-            const SizedBox(height: AppSpacing.xs),
-            _RecentActivityCard(
-              latestAnalysis: latestAnalysis,
-              completedSteps: completedSteps,
-              totalSteps: totalSteps,
-              hasPhoto: todayLog?.dailyImageUrl?.trim().isNotEmpty == true,
-            ),
-          ],
-        ],
       ),
     );
   }
@@ -236,69 +300,82 @@ class _ProgressHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
     final hasImprovement = improvementPercent != null;
+    final insightText = insight?.trim().isNotEmpty == true
+        ? insight!.trim()
+        : locale.tr('progress_hero_placeholder_insight');
+    final badgeText = hasImprovement
+        ? locale
+              .tr('progress_improve_format')
+              .replaceAll('{percent}', improvementPercent!.toStringAsFixed(1))
+        : locale.tr('progress_not_enough_data');
+
     return AppCard(
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final stack = constraints.maxWidth < 420;
-          final details = Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                insight?.trim().isNotEmpty == true
-                    ? insight!
-                    : 'Progress updates after analysis, routine tracking, and daily logs are saved.',
-                maxLines: stack ? 4 : 3,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: AppColors.heading,
-                  height: 1.35,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.xs),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
+      radius: _progressCardRadius,
+      borderColor: _progressCardBorder,
+      padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          CircularScore(
+            score: score ?? 0,
+            size: 74,
+            label: locale.tr('progress_score_label'),
+            progressColor: AppColors.primary,
+            scoreFontSize: 24,
+            labelFontSize: 8,
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  locale.tr('progress_snapshot'),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    color: AppColors.heading,
+                    fontWeight: FontWeight.w800,
                   ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  insightText,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: AppColors.mutedText,
+                    height: 1.35,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                DecoratedBox(
                   decoration: BoxDecoration(
                     color: AppColors.secondary,
                     borderRadius: BorderRadius.circular(AppRadius.pill),
                   ),
-                  child: Text(
-                    hasImprovement
-                        ? '${improvementPercent!.toStringAsFixed(1)}% improve'
-                        : 'Not enough data',
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.w800,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
+                    child: Text(
+                      badgeText,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ],
-          );
-          return Flex(
-            direction: stack ? Axis.vertical : Axis.horizontal,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              CircularScore(
-                score: score ?? 0,
-                size: 104,
-                label: 'score',
-                progressColor: AppColors.primary,
-              ),
-              SizedBox(
-                width: stack ? 0 : AppSpacing.sm,
-                height: stack ? AppSpacing.sm : 0,
-              ),
-              if (stack) details else Flexible(child: details),
-            ],
-          );
-        },
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -319,27 +396,33 @@ class _MetricsGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
+    final streakDays = currentStreak ?? 0;
     final items = [
       _MetricData(
-        label: 'Current Score',
-        value: currentScore == null ? 'No data' : '$currentScore',
+        label: locale.tr('progress_metric_current_score'),
+        value: currentScore == null
+            ? locale.tr('common_no_data')
+            : '$currentScore',
         icon: Icons.favorite_outline_rounded,
       ),
       _MetricData(
-        label: 'Current Streak',
-        value: currentStreak == null ? '0 days' : '$currentStreak days',
+        label: locale.tr('progress_metric_current_streak'),
+        value: locale
+            .tr('progress_metric_current_streak_val')
+            .replaceAll('{days}', '$streakDays'),
         icon: Icons.local_fire_department_outlined,
         alert: currentStreak == null || currentStreak == 0,
       ),
       _MetricData(
-        label: 'Improvement',
+        label: locale.tr('progress_improvement'),
         value: improvementPercent == null
             ? '0%'
             : '${improvementPercent!.toStringAsFixed(1)}%',
         icon: Icons.trending_up_rounded,
       ),
       _MetricData(
-        label: 'Routine',
+        label: locale.tr('progress_metric_routine'),
         value: '$routinePercent%',
         icon: Icons.checklist_rounded,
       ),
@@ -347,18 +430,12 @@ class _MetricsGrid extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final columns = constraints.maxWidth >= 900
-            ? 4
-            : constraints.maxWidth >= 560
-            ? 2
-            : 1;
-        final tileWidth = columns == 1
-            ? constraints.maxWidth
-            : (constraints.maxWidth - (AppSpacing.sm * (columns - 1))) /
-                  columns;
+        final columns = constraints.maxWidth >= 900 ? 4 : 2;
+        final tileWidth =
+            (constraints.maxWidth - (AppSpacing.xs * (columns - 1))) / columns;
         return Wrap(
-          spacing: AppSpacing.sm,
-          runSpacing: AppSpacing.sm,
+          spacing: AppSpacing.xs,
+          runSpacing: AppSpacing.xs,
           children: items
               .map(
                 (item) => SizedBox(width: tileWidth, child: _MetricTile(item)),
@@ -393,7 +470,9 @@ class _MetricTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return AppCard(
       variant: AppCardVariant.metric,
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      radius: _progressCardRadius,
+      borderColor: _progressCardBorder,
+      padding: const EdgeInsets.fromLTRB(10, 9, 10, 9),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -414,7 +493,11 @@ class _MetricTile extends StatelessWidget {
             data.label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.labelSmall,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: AppColors.mutedText,
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+            ),
           ),
           const SizedBox(height: 2),
           Text(
@@ -446,10 +529,13 @@ class _RoutineCompletionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
     final clampedProgress = progress.clamp(0.0, 1.0);
     final percent = (clampedProgress * 100).round();
     return AppCard(
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      radius: _progressCardRadius,
+      borderColor: _progressCardBorder,
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 11),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -457,7 +543,7 @@ class _RoutineCompletionCard extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  'Routine Completion',
+                  locale.tr('progress_routine_completion'),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.labelLarge?.copyWith(
@@ -470,8 +556,11 @@ class _RoutineCompletionCard extends StatelessWidget {
               Flexible(
                 child: Text(
                   totalSteps == 0
-                      ? 'No steps'
-                      : '$completedSteps/$totalSteps steps',
+                      ? locale.tr('progress_routine_no_steps')
+                      : locale
+                            .tr('progress_routine_steps_format')
+                            .replaceAll('{completed}', '$completedSteps')
+                            .replaceAll('{total}', '$totalSteps'),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.right,
@@ -495,8 +584,10 @@ class _RoutineCompletionCard extends StatelessWidget {
           const SizedBox(height: AppSpacing.xs),
           Text(
             totalSteps == 0
-                ? 'No routine steps tracked yet.'
-                : '$percent% complete today.',
+                ? locale.tr('progress_routine_no_steps_tracked_yet')
+                : locale
+                      .tr('progress_routine_complete_today_format')
+                      .replaceAll('{percent}', '$percent'),
             style: Theme.of(context).textTheme.labelSmall,
           ),
         ],
@@ -510,7 +601,10 @@ class _ScoreTrendCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
     return AppCard(
+      radius: _progressCardRadius,
+      borderColor: _progressCardBorder,
       padding: const EdgeInsets.fromLTRB(14, 18, 14, 18),
       child: Column(
         children: [
@@ -530,7 +624,7 @@ class _ScoreTrendCard extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.sm),
           Text(
-            'Not enough trend data yet',
+            locale.tr('progress_not_enough_trend_data'),
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
               color: AppColors.mutedText,
@@ -550,6 +644,8 @@ class _ProgressLoadingCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final locale = AppLocale.of(context);
     return AppCard(
+      radius: _progressCardRadius,
+      borderColor: _progressCardBorder,
       padding: const EdgeInsets.fromLTRB(16, 24, 16, 22),
       child: Column(
         children: [
@@ -583,6 +679,8 @@ class _ProgressErrorCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final locale = AppLocale.of(context);
     return AppCard(
+      radius: _progressCardRadius,
+      borderColor: _progressCardBorder,
       padding: const EdgeInsets.fromLTRB(16, 20, 16, 18),
       child: Column(
         children: [
@@ -637,6 +735,8 @@ class _ProgressNoticeCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return AppCard(
       variant: AppCardVariant.muted,
+      radius: _progressCardRadius,
+      borderColor: _progressCardBorder,
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
       child: Row(
         children: [
@@ -670,15 +770,18 @@ class _VisualJourneyCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
     final resolvedUrl = _resolveImageUrl(imageUrl);
     return AppCard(
+      radius: _progressCardRadius,
+      borderColor: _progressCardBorder,
       padding: const EdgeInsets.all(10),
       child: Container(
         height: 176,
         width: double.infinity,
         decoration: BoxDecoration(
-          color: AppColors.surfaceContainerHigh,
-          borderRadius: BorderRadius.circular(AppRadius.medium),
+          color: _progressVisualPlaceholderColor,
+          borderRadius: BorderRadius.circular(AppRadius.large),
         ),
         clipBehavior: Clip.antiAlias,
         child: resolvedUrl == null
@@ -696,12 +799,13 @@ class _VisualJourneyCard extends StatelessWidget {
                     child: const Icon(
                       Icons.camera_alt_outlined,
                       size: 17,
-                      color: AppColors.primary,
+                      color: AppColors.mutedText,
                     ),
                   ),
                   const SizedBox(height: AppSpacing.sm),
                   Text(
-                    'No comparison photo yet.',
+                    locale.tr('progress_no_comparison_photo'),
+                    textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(
                       color: AppColors.mutedText,
                     ),
@@ -710,13 +814,15 @@ class _VisualJourneyCard extends StatelessWidget {
                   OutlinedButton.icon(
                     onPressed: onAddPhoto,
                     icon: const Icon(Icons.camera_alt_outlined, size: 12),
-                    label: const Text('Take Progress Photo'),
+                    label: Text(locale.tr('progress_take_photo_action')),
                     style: OutlinedButton.styleFrom(
                       minimumSize: const Size(0, 30),
                       padding: const EdgeInsets.symmetric(horizontal: 12),
-                      foregroundColor: AppColors.primary,
+                      foregroundColor: AppColors.mutedText.withValues(
+                        alpha: 0.64,
+                      ),
                       side: BorderSide(
-                        color: AppColors.primary.withValues(alpha: 0.56),
+                        color: AppColors.mutedText.withValues(alpha: 0.28),
                       ),
                       textStyle: const TextStyle(
                         fontFamily: 'PlusJakartaSans',
@@ -742,7 +848,8 @@ class _VisualJourneyCard extends StatelessWidget {
                     ),
                     const SizedBox(height: AppSpacing.sm),
                     Text(
-                      'Photo preview unavailable.',
+                      locale.tr('progress_photo_preview_unavailable'),
+                      textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.labelSmall,
                     ),
                   ],
@@ -776,28 +883,36 @@ class _RecentActivityCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
     return AppCard(
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      radius: _progressCardRadius,
+      borderColor: _progressCardBorder,
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
       child: Column(
         children: [
           _ActivityRow(
             icon: Icons.analytics_outlined,
-            title: 'Latest analysis',
+            title: locale.tr('progress_activity_latest_analysis'),
             value: latestAnalysis == null
-                ? 'No analysis yet'
+                ? locale.tr('progress_activity_no_analysis_yet')
                 : '${latestAnalysis!.overallScore}/100',
           ),
           const SizedBox(height: AppSpacing.sm),
           _ActivityRow(
             icon: Icons.fact_check_outlined,
-            title: 'Routine tracking',
-            value: '$completedSteps/$totalSteps steps',
+            title: locale.tr('progress_activity_routine_tracking'),
+            value: locale
+                .tr('progress_routine_steps_format')
+                .replaceAll('{completed}', '$completedSteps')
+                .replaceAll('{total}', '$totalSteps'),
           ),
           const SizedBox(height: AppSpacing.sm),
           _ActivityRow(
             icon: Icons.photo_camera_back_outlined,
-            title: 'Latest photo',
-            value: hasPhoto ? 'Photo saved' : 'No photo yet',
+            title: locale.tr('progress_activity_latest_photo'),
+            value: hasPhoto
+                ? locale.tr('progress_activity_photo_saved')
+                : locale.tr('progress_activity_no_photo_yet'),
           ),
         ],
       ),
@@ -866,6 +981,8 @@ class _NoProgressCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final locale = AppLocale.of(context);
     return AppCard(
+      radius: _progressCardRadius,
+      borderColor: _progressCardBorder,
       padding: const EdgeInsets.fromLTRB(16, 20, 16, 18),
       child: Column(
         children: [

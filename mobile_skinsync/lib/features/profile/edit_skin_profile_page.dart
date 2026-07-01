@@ -7,6 +7,7 @@ import '../../core/responsive/responsive.dart';
 import '../../core/routes/app_routes.dart';
 import '../../core/state/app_state.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_card.dart';
@@ -131,8 +132,9 @@ class _EditSkinProfilePageState extends State<EditSkinProfilePage> {
                           locale.tr('edit_profile_gender_prefer_not_to_say'),
                         ],
                         selected: _genderLabel(_gender, locale),
-                        onSelected: (value) =>
-                            setState(() => _gender = _genderFromLabel(value, locale)),
+                        onSelected: (value) => setState(
+                          () => _gender = _genderFromLabel(value, locale),
+                        ),
                       ),
                     ),
                     _SelectionField(
@@ -216,7 +218,9 @@ class _EditSkinProfilePageState extends State<EditSkinProfilePage> {
                       ),
                     ),
                     Text(
-                      _hasSensitivity ? '${_sensitivity.round()}/10' : locale.tr('edit_profile_sensitivity_off'),
+                      _hasSensitivity
+                          ? '${_sensitivity.round()}/10'
+                          : locale.tr('edit_profile_sensitivity_off'),
                       style: textTheme.labelLarge,
                     ),
                   ],
@@ -507,13 +511,13 @@ class _SelectionField extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(AppRadius.large),
         child: Ink(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: AppColors.surfaceMuted,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: AppColors.border),
+            borderRadius: BorderRadius.circular(AppRadius.large),
+            border: Border.all(color: Colors.white),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -574,7 +578,7 @@ class _ChoiceChipCard extends StatelessWidget {
             color: selected ? AppColors.secondary : AppColors.surfaceMuted,
             borderRadius: BorderRadius.circular(999),
             border: Border.all(
-              color: selected ? AppColors.primary : AppColors.border,
+              color: selected ? AppColors.primary : Colors.white,
             ),
           ),
           child: Text(
