@@ -17,7 +17,7 @@ import '../../core/widgets/error_state_card.dart';
 import '../../core/widgets/loading_skeleton.dart';
 import '../../core/widgets/main_shell.dart';
 import '../../core/widgets/product_recommendation_card.dart';
-import '../../core/widgets/stitch_top_bar.dart';
+import '../../core/widgets/skin_sync_header.dart';
 import '../../core/widgets/status_chip.dart';
 
 class ProductsPage extends StatefulWidget {
@@ -517,17 +517,16 @@ class _ProductsPageState extends State<ProductsPage> {
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.only(bottom: 0),
                 children: [
-                  StitchTopBar(
+                  SkinSyncHeader(
+                    name: appState.profileDisplayName,
                     avatarUrl: appState.user?.avatarUrl,
-                    onLeadingTap: () =>
+                    onAvatarTap: () =>
                         MainShell.navigateToTab(context, AppRoutes.profile),
-                    onTrailingTap: () =>
-                        MainShell.navigateToTab(context, AppRoutes.progress),
                   ),
                   Padding(
                     padding: EdgeInsets.fromLTRB(
                       horizontalPadding,
-                      4,
+                      12,
                       horizontalPadding,
                       Responsive.contentBottomSpacing(context, extra: 20),
                     ),

@@ -11,7 +11,7 @@ import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/error_state_card.dart';
-import '../../core/widgets/stitch_top_bar.dart';
+import '../../core/widgets/skin_sync_header.dart';
 import '../../core/widgets/status_chip.dart';
 
 class ProfilePage extends StatelessWidget {
@@ -45,11 +45,14 @@ class ProfilePage extends StatelessWidget {
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.only(bottom: 0),
                 children: [
-                  StitchTopBar(avatarUrl: user?.avatarUrl),
+                  SkinSyncHeader(
+                    name: appState.profileDisplayName,
+                    avatarUrl: user?.avatarUrl,
+                  ),
                   Padding(
                     padding: EdgeInsets.fromLTRB(
                       Responsive.responsiveHorizontalPadding(context),
-                      4,
+                      12,
                       Responsive.responsiveHorizontalPadding(context),
                       Responsive.contentBottomSpacing(context, extra: 20),
                     ),

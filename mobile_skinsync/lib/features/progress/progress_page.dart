@@ -14,7 +14,7 @@ import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/circular_score.dart';
 import '../../core/widgets/main_shell.dart';
-import '../../core/widgets/stitch_top_bar.dart';
+import '../../core/widgets/skin_sync_header.dart';
 import '../../core/widgets/status_chip.dart';
 
 const double _progressCardRadius = AppRadius.large;
@@ -111,17 +111,16 @@ class _ProgressPageState extends State<ProgressPage> {
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.only(bottom: 0),
                 children: [
-                  StitchTopBar(
+                  SkinSyncHeader(
+                    name: appState.profileDisplayName,
                     avatarUrl: appState.user?.avatarUrl,
-                    onLeadingTap: () =>
+                    onAvatarTap: () =>
                         MainShell.navigateToTab(context, AppRoutes.profile),
-                    onTrailingTap: () =>
-                        MainShell.navigateToTab(context, AppRoutes.progress),
                   ),
                   Padding(
                     padding: EdgeInsets.fromLTRB(
                       horizontalPadding,
-                      4,
+                      12,
                       horizontalPadding,
                       Responsive.contentBottomSpacing(context, extra: 20),
                     ),

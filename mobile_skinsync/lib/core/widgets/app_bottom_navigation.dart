@@ -65,67 +65,45 @@ class AppBottomNavigation extends StatelessWidget {
                     children: List.generate(destinations.length, (index) {
                       final destination = destinations[index];
                       final selected = selectedIndex == index;
+                      final itemColor = selected
+                          ? AppColors.primaryDark
+                          : AppColors.onSurfaceVariant;
                       return Expanded(
                         child: Material(
                           color: Colors.transparent,
                           child: InkWell(
                             borderRadius: BorderRadius.circular(AppRadius.pill),
+                            splashColor: Colors.transparent,
+                            highlightColor: Colors.transparent,
+                            focusColor: Colors.transparent,
                             onTap: () => onTap(index),
                             child: SizedBox(
                               height: navHeight,
-                              child: Stack(
-                                alignment: Alignment.center,
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  AnimatedContainer(
-                                    duration: const Duration(milliseconds: 180),
-                                    curve: Curves.easeOut,
-                                    width: selected ? 66 : 48,
-                                    height: selected ? 58 : 48,
-                                    decoration: BoxDecoration(
-                                      color: selected
-                                          ? AppColors.primaryFixed.withValues(
-                                              alpha: 0.55,
-                                            )
-                                          : Colors.transparent,
-                                      borderRadius: BorderRadius.circular(
-                                        AppRadius.pill,
-                                      ),
-                                    ),
+                                  Icon(
+                                    destination.icon,
+                                    size: 24,
+                                    color: itemColor,
                                   ),
-                                  Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        destination.icon,
-                                        size: 24,
-                                        color: selected
-                                            ? AppColors.primary
-                                            : AppColors.onSurfaceVariant,
-                                      ),
-                                      const SizedBox(height: 3),
-                                      Text(
-                                        destination.label,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        softWrap: false,
-                                        textAlign: TextAlign.center,
-                                        style: theme.textTheme.labelSmall
-                                            ?.copyWith(
-                                              color: selected
-                                                  ? AppColors.primary
-                                                  : AppColors.onSurfaceVariant,
-                                              fontSize:
-                                                  Responsive.isSmallMobile(
-                                                    context,
-                                                  )
-                                                  ? 11
-                                                  : 12,
-                                              fontWeight: selected
-                                                  ? FontWeight.w700
-                                                  : FontWeight.w600,
-                                            ),
-                                      ),
-                                    ],
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    destination.label,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    softWrap: false,
+                                    textAlign: TextAlign.center,
+                                    style: theme.textTheme.labelSmall?.copyWith(
+                                      color: itemColor,
+                                      fontSize:
+                                          Responsive.isSmallMobile(context)
+                                          ? 11
+                                          : 12,
+                                      fontWeight: selected
+                                          ? FontWeight.w700
+                                          : FontWeight.w600,
+                                    ),
                                   ),
                                 ],
                               ),

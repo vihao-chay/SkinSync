@@ -107,7 +107,10 @@ class ApiClient {
       () => http.delete(_uri(path), headers: _headers()),
     );
     if (response.statusCode >= 400) {
-      throw ApiException(_extractMessage(response.body), response.statusCode);
+      throw ApiException(
+        _extractMessage(_responseBody(response)),
+        response.statusCode,
+      );
     }
   }
 
@@ -211,7 +214,7 @@ class ApiClient {
   }
 
   Map<String, dynamic> _decodeResponse(http.Response response) {
-    final body = response.body.isEmpty ? '{}' : response.body;
+    final body = _responseBody(response);
     if (response.statusCode >= 400) {
       throw ApiException(_extractMessage(body), response.statusCode);
     }
@@ -242,6 +245,13 @@ class ApiClient {
     }
 
     return <String, dynamic>{'items': decoded};
+  }
+
+  String _responseBody(http.Response response) {
+    if (response.bodyBytes.isEmpty) {
+      return '{}';
+    }
+    return utf8.decode(response.bodyBytes, allowMalformed: true);
   }
 
   String _extractMessage(String body) {

@@ -10,6 +10,9 @@ import '../../core/state/app_state.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/brand_logo.dart';
 
+const double _authCornerRadius = 16;
+const Color _authBorderColor = Colors.white;
+
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
@@ -82,38 +85,37 @@ class _LoginPageState extends State<LoginPage> {
                   top: 10,
                   bottom: 24,
                 ),
-              children: [
-                const _BrandHeader(),
-                const SizedBox(height: 16),
-                _HeroCard(isRegisterMode: _isRegisterMode),
-                Transform.translate(
-                  offset: const Offset(0, -10),
-                  child: _AuthCard(
-                    isRegisterMode: _isRegisterMode,
-                    isBusy: appState.isBusy,
-                    errorMessage: appState.errorMessage,
-                    nameController: _nameController,
-                    emailController: _emailController,
-                    phoneController: _phoneController,
-                    passwordController: _passwordController,
-                    confirmPasswordController: _confirmPasswordController,
-                    showPassword: _showPassword,
-                    showConfirmPassword: _showConfirmPassword,
-                    acceptedTerms: _acceptedTerms,
-                    onModeChanged: _switchMode,
-                    onChanged: (_) => context.read<AppState>().clearError(),
-                    onTogglePassword: () =>
-                        setState(() => _showPassword = !_showPassword),
-                    onToggleConfirmPassword: () => setState(
-                      () => _showConfirmPassword = !_showConfirmPassword,
+                children: [
+                  const _BrandHeader(),
+                  const SizedBox(height: 16),
+                  _HeroCard(isRegisterMode: _isRegisterMode),
+                  Transform.translate(
+                    offset: const Offset(0, -10),
+                    child: _AuthCard(
+                      isRegisterMode: _isRegisterMode,
+                      isBusy: appState.isBusy,
+                      nameController: _nameController,
+                      emailController: _emailController,
+                      phoneController: _phoneController,
+                      passwordController: _passwordController,
+                      confirmPasswordController: _confirmPasswordController,
+                      showPassword: _showPassword,
+                      showConfirmPassword: _showConfirmPassword,
+                      acceptedTerms: _acceptedTerms,
+                      onModeChanged: _switchMode,
+                      onChanged: (_) => context.read<AppState>().clearError(),
+                      onTogglePassword: () =>
+                          setState(() => _showPassword = !_showPassword),
+                      onToggleConfirmPassword: () => setState(
+                        () => _showConfirmPassword = !_showConfirmPassword,
+                      ),
+                      onTermsChanged: (value) =>
+                          setState(() => _acceptedTerms = value ?? false),
+                      onSubmit: () => _submit(appState),
+                      onGoogleSubmit: () => _submitGoogle(appState),
                     ),
-                    onTermsChanged: (value) =>
-                        setState(() => _acceptedTerms = value ?? false),
-                    onSubmit: () => _submit(appState),
-                    onGoogleSubmit: () => _submitGoogle(appState),
                   ),
-                ),
-              ],
+                ],
               ),
             ),
           ),
@@ -173,6 +175,7 @@ class _LoginPageState extends State<LoginPage> {
     } catch (_) {
       if (mounted) {
         setState(() => _isSubmittingAuth = false);
+        _showAppStateError(appState);
       }
     }
   }
@@ -198,6 +201,7 @@ class _LoginPageState extends State<LoginPage> {
     } catch (_) {
       if (mounted) {
         setState(() => _isSubmittingAuth = false);
+        _showAppStateError(appState);
       }
     }
   }
@@ -245,7 +249,53 @@ class _LoginPageState extends State<LoginPage> {
     context.read<AppState>().clearError();
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(message)));
+      ..showSnackBar(
+        SnackBar(backgroundColor: Colors.black87, content: Text(message)),
+      );
+  }
+
+  void _showAppStateError(AppState appState) {
+    final message = appState.errorMessage?.trim();
+    if (message == null || message.isEmpty) {
+      return;
+    }
+    _showMessage(_authErrorMessage(message));
+  }
+
+  String _authErrorMessage(String message) {
+    final locale = AppLocale.of(context, listen: false);
+    final lower = message.toLowerCase();
+
+    if (lower.contains('password must include') ||
+        lower.contains('password should contain') ||
+        lower.contains('password must contain') ||
+        lower.contains('at least one character of each') ||
+        lower.contains('uppercase') && lower.contains('special')) {
+      return locale.isVietnamese
+          ? 'Mật khẩu phải có chữ thường, chữ hoa, số và ký tự đặc biệt.'
+          : 'Password must include lowercase, uppercase, number, and special character.';
+    }
+
+    if (lower.contains('email or password') ||
+        lower.contains('incorrect') && lower.contains('password')) {
+      return locale.isVietnamese
+          ? 'Email hoặc mật khẩu không đúng.'
+          : 'Email or password is incorrect.';
+    }
+
+    if (lower.startsWith('email') &&
+        (lower.contains('already') ||
+            lower.contains('registered') ||
+            lower.contains('đăng') ||
+            lower.contains('tồn tại') ||
+            lower.contains('ã') ||
+            lower.contains('ä'))) {
+      return locale.isVietnamese
+          ? 'Email này đã được đăng ký.'
+          : 'This email is already registered.';
+    }
+
+    return message;
   }
 }
 
@@ -283,7 +333,7 @@ class _HeroCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final locale = AppLocale.of(context);
     return ClipRRect(
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(_authCornerRadius),
       child: SizedBox(
         height: 168,
         child: Stack(
@@ -386,7 +436,6 @@ class _AuthCard extends StatelessWidget {
   const _AuthCard({
     required this.isRegisterMode,
     required this.isBusy,
-    required this.errorMessage,
     required this.nameController,
     required this.emailController,
     required this.phoneController,
@@ -406,7 +455,6 @@ class _AuthCard extends StatelessWidget {
 
   final bool isRegisterMode;
   final bool isBusy;
-  final String? errorMessage;
   final TextEditingController nameController;
   final TextEditingController emailController;
   final TextEditingController phoneController;
@@ -430,7 +478,8 @@ class _AuthCard extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.97),
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(_authCornerRadius),
+        border: Border.all(color: _authBorderColor),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.10),
@@ -448,7 +497,9 @@ class _AuthCard extends StatelessWidget {
           ),
           const SizedBox(height: 19),
           Text(
-            isRegisterMode ? locale.tr('create_new_account') : locale.tr('welcome_back'),
+            isRegisterMode
+                ? locale.tr('create_new_account')
+                : locale.tr('welcome_back'),
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
               color: AppColors.foreground,
               fontSize: 22,
@@ -466,10 +517,6 @@ class _AuthCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 19),
-          if (errorMessage != null) ...[
-            _ErrorBanner(message: errorMessage!),
-            const SizedBox(height: 12),
-          ],
           if (isRegisterMode) ...[
             _AuthTextField(
               label: locale.tr('full_name'),
@@ -550,7 +597,9 @@ class _AuthCard extends StatelessWidget {
           ],
           const SizedBox(height: 14),
           _PrimaryButton(
-            label: isRegisterMode ? locale.tr('create_account') : locale.tr('login'),
+            label: isRegisterMode
+                ? locale.tr('create_account')
+                : locale.tr('login'),
             isLoading: isBusy,
             onPressed: isBusy ? null : onSubmit,
           ),
@@ -572,7 +621,9 @@ class _AuthCard extends StatelessWidget {
                       : locale.tr('dont_have_account'),
                   children: [
                     TextSpan(
-                      text: isRegisterMode ? locale.tr('login') : locale.tr('sign_up_now'),
+                      text: isRegisterMode
+                          ? locale.tr('login')
+                          : locale.tr('sign_up_now'),
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
                         fontWeight: FontWeight.w800,
                         color: AppColors.foreground,
@@ -607,7 +658,8 @@ class _ModeTabs extends StatelessWidget {
       padding: const EdgeInsets.all(5),
       decoration: BoxDecoration(
         color: const Color(0xFFF4EFE8),
-        borderRadius: BorderRadius.circular(15),
+        borderRadius: BorderRadius.circular(_authCornerRadius),
+        border: Border.all(color: _authBorderColor),
       ),
       child: Row(
         children: [
@@ -647,14 +699,14 @@ class _ModeTab extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(_authCornerRadius),
         onTap: onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: selected ? Colors.white : Colors.transparent,
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(_authCornerRadius),
             boxShadow: selected
                 ? [
                     BoxShadow(
@@ -733,22 +785,18 @@ class _AuthTextField extends StatelessWidget {
               prefixIcon: Icon(icon, size: 16, color: AppColors.mutedText),
               suffixIcon: trailing,
               filled: true,
-              fillColor: const Color(0xFFFEFCF9),
+              fillColor: const Color(0xFFF5F0E8),
               contentPadding: const EdgeInsets.symmetric(horizontal: 14),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(11),
-                borderSide: BorderSide(
-                  color: AppColors.border.withValues(alpha: 0.86),
-                ),
+                borderRadius: BorderRadius.circular(_authCornerRadius),
+                borderSide: const BorderSide(color: _authBorderColor),
               ),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(11),
-                borderSide: BorderSide(
-                  color: AppColors.border.withValues(alpha: 0.86),
-                ),
+                borderRadius: BorderRadius.circular(_authCornerRadius),
+                borderSide: const BorderSide(color: _authBorderColor),
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(11),
+                borderRadius: BorderRadius.circular(_authCornerRadius),
                 borderSide: const BorderSide(
                   color: AppColors.primaryDark,
                   width: 1.1,
@@ -772,7 +820,9 @@ class _EyeButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final locale = AppLocale.of(context);
     return IconButton(
-      tooltip: showing ? locale.tr('hide_password') : locale.tr('show_password'),
+      tooltip: showing
+          ? locale.tr('hide_password')
+          : locale.tr('show_password'),
       icon: Icon(
         showing ? Icons.visibility_off_outlined : Icons.visibility_outlined,
         color: AppColors.primaryDark,
@@ -792,36 +842,51 @@ class _TermsRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final locale = AppLocale.of(context);
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SpacerColorFixCheck(value, onChanged),
-        const SizedBox(width: 9),
-        Expanded(
-          child: Text(
-            locale.tr('agree_terms'),
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: AppColors.foreground,
-              fontSize: 10,
-              height: 1.25,
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF5F0E8),
+        borderRadius: BorderRadius.circular(_authCornerRadius),
+        border: Border.all(color: _authBorderColor),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          _spacerColorFixCheck(value, onChanged),
+          const SizedBox(width: 9),
+          Expanded(
+            child: Text(
+              locale.tr('agree_terms'),
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: AppColors.foreground,
+                fontSize: 10,
+                height: 1.25,
+              ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
-  Widget SpacerColorFixCheck(bool value, ValueChanged<bool?> onChanged) {
+  Widget _spacerColorFixCheck(bool value, ValueChanged<bool?> onChanged) {
     return SizedBox(
       width: 18,
       height: 18,
       child: Checkbox(
         value: value,
         activeColor: AppColors.primaryDark,
-        side: BorderSide(color: AppColors.border.withValues(alpha: 0.9)),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(3),
+        checkColor: Colors.white,
+        fillColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.selected)
+              ? AppColors.primaryDark
+              : Colors.white,
         ),
+        side: const BorderSide(color: Color(0xFF9D7550), width: 1.4),
+        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        visualDensity: VisualDensity.compact,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(3)),
         onChanged: onChanged,
       ),
     );
@@ -841,39 +906,57 @@ class _PrimaryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      height: 45,
-      child: FilledButton(
-        style: FilledButton.styleFrom(
-          backgroundColor: const Color(0xFF9D7550),
-          foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(11),
+    final enabled = onPressed != null && !isLoading;
+    final labelStyle = Theme.of(context).textTheme.labelLarge?.copyWith(
+      color: Colors.white,
+      fontSize: 14,
+      fontWeight: FontWeight.w800,
+      height: 1.45,
+    );
+
+    return Material(
+      color: const Color(0xFF9D7550).withValues(alpha: enabled ? 1 : 0.65),
+      borderRadius: BorderRadius.circular(_authCornerRadius),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: enabled ? onPressed : null,
+        child: SizedBox(
+          width: double.infinity,
+          height: 48,
+          child: Center(
+            child: isLoading
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        label,
+                        maxLines: 1,
+                        overflow: TextOverflow.visible,
+                        softWrap: false,
+                        strutStyle: const StrutStyle(
+                          fontSize: 14,
+                          height: 1.45,
+                        ),
+                        style: labelStyle,
+                      ),
+                      const SizedBox(width: 8),
+                      const Icon(
+                        Icons.arrow_forward_rounded,
+                        size: 17,
+                        color: Colors.white,
+                      ),
+                    ],
+                  ),
           ),
-          textStyle: Theme.of(
-            context,
-          ).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w800),
         ),
-        onPressed: onPressed,
-        child: isLoading
-            ? const SizedBox(
-                width: 18,
-                height: 18,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: Colors.white,
-                ),
-              )
-            : Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(label),
-                  const SizedBox(width: 8),
-                  const Icon(Icons.arrow_forward_rounded, size: 15),
-                ],
-              ),
       ),
     );
   }
@@ -888,7 +971,7 @@ class _DividerLabel extends StatelessWidget {
     return Row(
       children: [
         Expanded(
-          child: Divider(color: AppColors.border.withValues(alpha: 0.65)),
+          child: Divider(color: _authBorderColor.withValues(alpha: 0.9)),
         ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 13),
@@ -901,7 +984,7 @@ class _DividerLabel extends StatelessWidget {
           ),
         ),
         Expanded(
-          child: Divider(color: AppColors.border.withValues(alpha: 0.65)),
+          child: Divider(color: _authBorderColor.withValues(alpha: 0.9)),
         ),
       ],
     );
@@ -917,49 +1000,61 @@ class _GoogleButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final locale = AppLocale.of(context);
-    return SizedBox(
-      width: double.infinity,
-      height: 48,
-      child: OutlinedButton(
-        onPressed: isLoading ? null : onPressed,
-        style: OutlinedButton.styleFrom(
-          backgroundColor: const Color(0xFFFFFCF8),
-          foregroundColor: AppColors.foreground,
-          side: BorderSide(color: AppColors.border.withValues(alpha: 0.88)),
-          minimumSize: const Size.fromHeight(48),
-          padding: const EdgeInsets.symmetric(horizontal: 14),
-          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          visualDensity: VisualDensity.compact,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(11),
+    final enabled = onPressed != null && !isLoading;
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(_authCornerRadius),
+        border: Border.all(color: const Color(0xFFE7D9C8)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 14,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(_authCornerRadius),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: enabled ? onPressed : null,
+          child: SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: Center(
+              child: isLoading
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: AppColors.primaryDark,
+                      ),
+                    )
+                  : Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const _GoogleMark(size: 15),
+                        const SizedBox(width: 10),
+                        Text(
+                          locale.tr('continue_with_google'),
+                          style: Theme.of(context).textTheme.labelMedium
+                              ?.copyWith(
+                                color: AppColors.foreground,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w800,
+                                height: 1.2,
+                              ),
+                        ),
+                      ],
+                    ),
+            ),
           ),
         ),
-        child: isLoading
-            ? const SizedBox(
-                width: 18,
-                height: 18,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: AppColors.primaryDark,
-                ),
-              )
-            : Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const _GoogleMark(size: 15),
-                  const SizedBox(width: 10),
-                  Text(
-                    locale.tr('continue_with_google'),
-                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                      color: AppColors.foreground,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w800,
-                      height: 1,
-                    ),
-                  ),
-                ],
-              ),
       ),
     );
   }
@@ -1016,29 +1111,4 @@ class _GoogleMarkPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-class _ErrorBanner extends StatelessWidget {
-  const _ErrorBanner({required this.message});
-
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: AppColors.error.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.error.withValues(alpha: 0.20)),
-      ),
-      child: Text(
-        message,
-        style: Theme.of(
-          context,
-        ).textTheme.labelSmall?.copyWith(color: AppColors.error),
-      ),
-    );
-  }
 }

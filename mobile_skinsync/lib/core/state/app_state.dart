@@ -116,7 +116,7 @@ class AppState extends ChangeNotifier {
       if (savedSession != null) {
         session = savedSession;
         _apiClient.attachSession(savedSession);
-        
+
         final currentUserId = savedSession.user.id;
         if (currentUserId.isNotEmpty) {
           hasPendingOnboarding =
@@ -263,8 +263,12 @@ class AppState extends ChangeNotifier {
         _loadTodayLog(),
         _loadSubscription(),
       ]);
-      if (profileLoadErrorMessage == null && _hasCompletedOnboarding(profile)) {
-        await _clearOnboardingPendingForCurrentUser();
+      if (profileLoadErrorMessage == null) {
+        if (_hasCompletedOnboarding(profile)) {
+          await _clearOnboardingPendingForCurrentUser();
+        } else {
+          await _markOnboardingPendingForCurrentUser();
+        }
       }
     }, showBusy: false);
   }
@@ -804,6 +808,11 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> markOnboardingPendingForCurrentUser() async {
+    await _markOnboardingPendingForCurrentUser();
+    notifyListeners();
+  }
+
+  Future<void> _markOnboardingPendingForCurrentUser() async {
     final currentUserId = session?.user.id;
     if (currentUserId == null || currentUserId.isEmpty) {
       return;
@@ -811,7 +820,6 @@ class AppState extends ChangeNotifier {
 
     hasPendingOnboarding = true;
     await _sessionStore.markOnboardingPendingFor(currentUserId);
-    notifyListeners();
   }
 
   Future<void> _clearOnboardingPendingForCurrentUser() async {
@@ -1518,14 +1526,28 @@ class AppState extends ChangeNotifier {
       return true;
     }
 
-    return (value.displayName?.trim().isNotEmpty ?? false) ||
-        (value.skinType?.trim().isNotEmpty ?? false) ||
+    final hasDisplayName = value.displayName?.trim().isNotEmpty ?? false;
+    final hasDateOfBirth = value.dateOfBirth?.trim().isNotEmpty ?? false;
+    final hasGender = value.gender?.trim().isNotEmpty ?? false;
+    final hasSkinType = value.skinType?.trim().isNotEmpty ?? false;
+    final hasBudget =
         value.monthlyBudget != null ||
-        (value.budgetLabel?.trim().isNotEmpty ?? false) ||
-        (value.currentRoutineLevel?.trim().isNotEmpty ?? false) ||
-        value.concerns.any((item) => item.trim().isNotEmpty) ||
+        (value.budgetLabel?.trim().isNotEmpty ?? false);
+    final hasConcerns = value.concerns.any((item) => item.trim().isNotEmpty);
+    final hasRoutineLevel =
+        value.currentRoutineLevel?.trim().isNotEmpty ?? false;
+    final hasGoals =
         value.goals.any((item) => item.trim().isNotEmpty) ||
         value.skinGoals.any((item) => item.trim().isNotEmpty);
+
+    return hasDisplayName &&
+        hasDateOfBirth &&
+        hasGender &&
+        hasSkinType &&
+        hasBudget &&
+        hasConcerns &&
+        hasRoutineLevel &&
+        hasGoals;
   }
 
   bool _isExpectedEmptyError(ApiException error) {

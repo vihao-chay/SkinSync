@@ -16,6 +16,7 @@ import '../../core/widgets/circular_score.dart';
 import '../../core/widgets/empty_state_card.dart';
 import '../../core/widgets/error_state_card.dart';
 import '../../core/widgets/main_shell.dart';
+import '../../core/widgets/skin_sync_header.dart';
 import '../../core/widgets/status_chip.dart';
 
 class RoutinePage extends StatefulWidget {
@@ -189,11 +190,10 @@ class _RoutinePageState extends State<RoutinePage> {
                 padding: const EdgeInsets.only(bottom: 0),
                 children: [
                   _RoutineHeroHeader(
+                    name: appState.profileDisplayName,
                     avatarUrl: appState.user?.avatarUrl,
-                    onLeadingTap: () =>
+                    onAvatarTap: () =>
                         MainShell.navigateToTab(context, AppRoutes.profile),
-                    onTrailingTap: () =>
-                        MainShell.navigateToTab(context, AppRoutes.progress),
                     percent: (progress * 100).round(),
                   ),
                   Padding(
@@ -315,15 +315,15 @@ class _RoutinePageState extends State<RoutinePage> {
 
 class _RoutineHeroHeader extends StatelessWidget {
   const _RoutineHeroHeader({
+    required this.name,
     required this.avatarUrl,
-    required this.onLeadingTap,
-    required this.onTrailingTap,
+    required this.onAvatarTap,
     required this.percent,
   });
 
+  final String name;
   final String? avatarUrl;
-  final VoidCallback onLeadingTap;
-  final VoidCallback onTrailingTap;
+  final VoidCallback onAvatarTap;
   final int percent;
 
   @override
@@ -331,25 +331,16 @@ class _RoutineHeroHeader extends StatelessWidget {
     final locale = AppLocale.of(context);
     final width = MediaQuery.sizeOf(context).width;
     final isWide = width >= 600;
-    final topBarHeight = isWide ? 64.0 : 56.0;
     final progressSize = isWide ? 150.0 : 124.0;
 
     return DecoratedBox(
       decoration: const BoxDecoration(color: AppColors.pageBackground),
       child: Column(
         children: [
-          SizedBox(
-            height: topBarHeight,
-            child: _RoutineTopBar(
-              avatarUrl: avatarUrl,
-              onLeadingTap: onLeadingTap,
-              onTrailingTap: onTrailingTap,
-            ),
-          ),
-          Divider(
-            height: 1,
-            thickness: 1,
-            color: AppColors.outline.withValues(alpha: 0.28),
+          SkinSyncHeader(
+            name: name,
+            avatarUrl: avatarUrl,
+            onAvatarTap: onAvatarTap,
           ),
           SizedBox(height: isWide ? 28 : 18),
           CircularScore(
@@ -370,142 +361,6 @@ class _RoutineHeroHeader extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _RoutineTopBar extends StatelessWidget {
-  const _RoutineTopBar({
-    required this.avatarUrl,
-    required this.onLeadingTap,
-    required this.onTrailingTap,
-  });
-
-  final String? avatarUrl;
-  final VoidCallback onLeadingTap;
-  final VoidCallback onTrailingTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final horizontalPadding = Responsive.responsiveHorizontalPadding(context);
-
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-      child: Row(
-        children: [
-          Expanded(
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: _RoutineAvatarButton(
-                avatarUrl: avatarUrl,
-                size: 28,
-                onTap: onLeadingTap,
-              ),
-            ),
-          ),
-          Expanded(
-            child: Center(
-              child: Text(
-                'SkinSync',
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontFamily: 'PlayfairDisplay',
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.primary,
-                  height: 1,
-                ),
-              ),
-            ),
-          ),
-          Expanded(
-            child: Align(
-              alignment: Alignment.centerRight,
-              child: _RoutineIconButton(
-                size: 32,
-                onTap: onTrailingTap,
-                icon: Icons.notifications_none_rounded,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _RoutineAvatarButton extends StatelessWidget {
-  const _RoutineAvatarButton({
-    required this.avatarUrl,
-    required this.size,
-    required this.onTap,
-  });
-
-  final String? avatarUrl;
-  final double size;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final imageUrl = avatarUrl?.trim() ?? '';
-
-    return Material(
-      color: AppColors.surfaceContainer,
-      shape: const CircleBorder(),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        customBorder: const CircleBorder(),
-        child: SizedBox.square(
-          dimension: size,
-          child: imageUrl.isNotEmpty
-              ? Image.network(
-                  imageUrl,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, _, _) => const _RoutineAvatarFallback(),
-                )
-              : const _RoutineAvatarFallback(),
-        ),
-      ),
-    );
-  }
-}
-
-class _RoutineAvatarFallback extends StatelessWidget {
-  const _RoutineAvatarFallback();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: Icon(Icons.person_outline_rounded, color: AppColors.primary),
-    );
-  }
-}
-
-class _RoutineIconButton extends StatelessWidget {
-  const _RoutineIconButton({
-    required this.size,
-    required this.onTap,
-    required this.icon,
-  });
-
-  final double size;
-  final VoidCallback onTap;
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      shape: const CircleBorder(),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: SizedBox.square(
-          dimension: size,
-          child: Icon(icon, size: size * 0.58, color: AppColors.primary),
-        ),
       ),
     );
   }

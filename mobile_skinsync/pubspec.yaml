@@ -66,6 +66,7 @@ flutter:
 
   assets:
     - logo.jpg
+    - logo_perfect.png
     - login_register.png
     - bank.jpg
 

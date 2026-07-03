@@ -14,7 +14,7 @@ import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/circular_score.dart';
 import '../../core/widgets/main_shell.dart';
-import '../../core/widgets/stitch_top_bar.dart';
+import '../../core/widgets/skin_sync_header.dart';
 import '../../core/widgets/status_chip.dart';
 
 class DashboardPage extends StatefulWidget {
@@ -114,29 +114,22 @@ class _DashboardPageState extends State<DashboardPage> {
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.only(bottom: 0),
                 children: [
-                  StitchTopBar(
+                  SkinSyncHeader(
+                    name: appState.profileDisplayName,
                     avatarUrl: appState.user?.avatarUrl,
-                    onLeadingTap: () =>
+                    onAvatarTap: () =>
                         MainShell.navigateToTab(context, AppRoutes.profile),
-                    onTrailingTap: () =>
-                        MainShell.navigateToTab(context, AppRoutes.progress),
                   ),
                   Padding(
                     padding: EdgeInsets.fromLTRB(
                       horizontalPadding,
-                      4,
+                      12,
                       horizontalPadding,
                       Responsive.contentBottomSpacing(context, extra: 20),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _Greeting(
-                          name: _firstName(appState.profileDisplayName),
-                          hasRoutine: regimen != null,
-                          hasAnalysis: latestAnalysis != null,
-                        ),
-                        const SizedBox(height: AppSpacing.md),
                         _SkinHealthCard(
                           score:
                               latestAnalysis?.displaySkinHealthScore ??
@@ -223,14 +216,6 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  String _firstName(String value) {
-    final trimmed = value.trim();
-    if (trimmed.isEmpty || trimmed == 'You') {
-      return '';
-    }
-    return trimmed.split(' ').first.trim();
-  }
-
   int? _issueScore(AnalysisResult? result, String contains) {
     if (result == null) {
       return null;
@@ -256,50 +241,6 @@ class _DashboardPageState extends State<DashboardPage> {
       return locale.tr('hydration_balanced');
     }
     return locale.tr('hydration_low');
-  }
-}
-
-class _Greeting extends StatelessWidget {
-  const _Greeting({
-    required this.name,
-    required this.hasRoutine,
-    required this.hasAnalysis,
-  });
-
-  final String name;
-  final bool hasRoutine;
-  final bool hasAnalysis;
-
-  @override
-  Widget build(BuildContext context) {
-    final locale = AppLocale.of(context);
-    final helloStr = name.isEmpty
-        ? locale.tr('dashboard_hello')
-        : '${locale.tr('dashboard_hello')}, $name';
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          helloStr,
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-            fontWeight: FontWeight.w800,
-            color: AppColors.heading,
-          ),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          hasRoutine
-              ? locale.tr('dashboard_greeting_ready')
-              : hasAnalysis
-              ? locale.tr('dashboard_greeting_insights')
-              : locale.tr('dashboard_greeting_start'),
-          style: Theme.of(
-            context,
-          ).textTheme.labelSmall?.copyWith(color: AppColors.foreground),
-        ),
-      ],
-    );
   }
 }
 
