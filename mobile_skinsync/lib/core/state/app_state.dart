@@ -114,13 +114,15 @@ class AppState extends ChangeNotifier {
     try {
       final savedSession = await _sessionStore.read();
       if (savedSession != null) {
-        session = savedSession;
-        _apiClient.attachSession(savedSession);
+        final restoredSession = await _withSelectedAvatar(savedSession);
+        session = restoredSession;
+        _apiClient.attachSession(restoredSession);
 
-        final currentUserId = savedSession.user.id;
+        final currentUserId = restoredSession.user.id;
         if (currentUserId.isNotEmpty) {
-          hasPendingOnboarding =
-              await _sessionStore.isOnboardingPendingFor(currentUserId);
+          hasPendingOnboarding = await _sessionStore.isOnboardingPendingFor(
+            currentUserId,
+          );
         }
         await refreshHome();
       } else {
@@ -226,6 +228,29 @@ class AppState extends ChangeNotifier {
         }
       },
     );
+  }
+
+  Future<void> updateAvatarSelection(String avatarUrl) async {
+    final trimmed = avatarUrl.trim();
+    final currentSession = session;
+    if (trimmed.isEmpty || currentSession == null) {
+      return;
+    }
+
+    await _apiClient.put(
+      '/api/auth/avatar/selection',
+      body: {'avatarUrl': trimmed},
+    );
+    await _sessionStore.saveSelectedAvatarFor(currentSession.user.id, trimmed);
+
+    session = AuthSession(
+      accessToken: currentSession.accessToken,
+      refreshToken: currentSession.refreshToken,
+      user: currentSession.user.copyWith(avatarUrl: trimmed),
+    );
+    _apiClient.attachSession(session);
+    await _sessionStore.save(session!);
+    notifyListeners();
   }
 
   Future<void> logout() async {
@@ -435,7 +460,8 @@ class AppState extends ChangeNotifier {
     final response = await _apiClient.post(
       '/api/ai/products/recommendations/generate',
       body: {
-        if (category != null && category.trim().isNotEmpty) 'category': category,
+        if (category != null && category.trim().isNotEmpty)
+          'category': category,
         if (concern != null && concern.trim().isNotEmpty) 'concern': concern,
         if (budgetMax != null)
           'budgetRange': {
@@ -470,10 +496,9 @@ class AppState extends ChangeNotifier {
           'category': category.trim(),
       },
     );
-    return _readAiCollection(response)
-        .whereType<Map<String, dynamic>>()
-        .map(ProductDetail.fromJson)
-        .toList();
+    return _readAiCollection(
+      response,
+    ).whereType<Map<String, dynamic>>().map(ProductDetail.fromJson).toList();
   }
 
   Future<AiIngredientCheckResponse> checkIngredients({
@@ -518,7 +543,8 @@ class AppState extends ChangeNotifier {
       body: {
         'routineType': routineType,
         'allowConflicts': allowConflicts,
-        if (frequency != null && frequency.trim().isNotEmpty) 'frequency': frequency,
+        if (frequency != null && frequency.trim().isNotEmpty)
+          'frequency': frequency,
         if (notes != null && notes.trim().isNotEmpty) 'notes': notes,
       },
     );
@@ -618,9 +644,7 @@ class AppState extends ChangeNotifier {
   Future<VerifyPaymentResponse> verifyPayment(int orderCode) async {
     late VerifyPaymentResponse verifyRes;
     await _runBusy(() async {
-      final response = await _apiClient.get(
-        '/api/payment/verify/$orderCode',
-      );
+      final response = await _apiClient.get('/api/payment/verify/$orderCode');
       final data = _readAiData(response);
       verifyRes = VerifyPaymentResponse.fromJson(data);
       if (verifyRes.status == 'paid') {
@@ -704,7 +728,8 @@ class AppState extends ChangeNotifier {
         'eveningCompleted':
             trackingToday?.eveningCompleted.toString() ?? 'false',
         'isIrritated':
-            (normalizedFeeling == 'irritated' || normalizedFeeling == 'sensitive')
+            (normalizedFeeling == 'irritated' ||
+                    normalizedFeeling == 'sensitive')
                 .toString(),
         if (completedStepIds != null)
           'completedStepIdsJson': jsonEncode(completedStepIds),
@@ -755,9 +780,7 @@ class AppState extends ChangeNotifier {
     }
 
     try {
-      profile = SkinProfile.fromJson(
-        await _apiClient.get('/api/users/survey'),
-      );
+      profile = SkinProfile.fromJson(await _apiClient.get('/api/users/survey'));
       profileLoadErrorMessage = null;
       hasResolvedProfileState = true;
     } on ApiException catch (error) {
@@ -1089,16 +1112,16 @@ class AppState extends ChangeNotifier {
       );
 
       final refreshed = _sessionFromPayload(data);
-      return refreshed;
+      return _withSelectedAvatar(refreshed);
     } catch (_) {
       return null;
     }
   }
 
   Future<void> _persistSessionChange(AuthSession? nextSession) async {
-    session = nextSession;
-    _apiClient.attachSession(nextSession);
     if (nextSession == null) {
+      session = null;
+      _apiClient.attachSession(null);
       hasPendingOnboarding = false;
       hasResolvedProfileState = false;
       _resetLoadErrors();
@@ -1106,10 +1129,14 @@ class AppState extends ChangeNotifier {
       return;
     }
 
+    final restoredSession = await _withSelectedAvatar(nextSession);
+    session = restoredSession;
+    _apiClient.attachSession(restoredSession);
+
     hasPendingOnboarding = await _sessionStore.isOnboardingPendingFor(
-      nextSession.user.id,
+      restoredSession.user.id,
     );
-    await _sessionStore.save(nextSession);
+    await _sessionStore.save(restoredSession);
   }
 
   String? _extractAccessToken(String callbackUrl) {
@@ -1137,7 +1164,7 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> _applySessionFromLoginPayload(Map<String, dynamic> data) async {
-    session = _sessionFromPayload(data);
+    session = await _withSelectedAvatar(_sessionFromPayload(data));
     _apiClient.attachSession(session);
     await _sessionStore.save(session!);
     hasPendingOnboarding = await _sessionStore.isOnboardingPendingFor(
@@ -1145,6 +1172,25 @@ class AppState extends ChangeNotifier {
     );
     hasResolvedProfileState = false;
     _resetLoadErrors();
+  }
+
+  Future<AuthSession> _withSelectedAvatar(AuthSession source) async {
+    var selectedAvatar = await _sessionStore.selectedAvatarFor(source.user.id);
+    final currentAvatar = source.user.avatarUrl?.trim() ?? '';
+    if (selectedAvatar == null && currentAvatar.startsWith('assets/avatars/')) {
+      await _sessionStore.saveSelectedAvatarFor(source.user.id, currentAvatar);
+      selectedAvatar = currentAvatar;
+    }
+
+    if (selectedAvatar == null || selectedAvatar == source.user.avatarUrl) {
+      return source;
+    }
+
+    return AuthSession(
+      accessToken: source.accessToken,
+      refreshToken: source.refreshToken,
+      user: source.user.copyWith(avatarUrl: selectedAvatar),
+    );
   }
 
   Future<void> _replaceCurrentUserFullName(String? fullName) async {
@@ -1313,9 +1359,12 @@ class AppState extends ChangeNotifier {
                               .map(
                                 (item) =>
                                     (((item['confidence'] as num?) ?? 0.8) > 1
-                                                ? ((item['confidence'] as num?) ?? 80)
-                                                : (((item['confidence'] as num?) ?? 0.8) * 100))
-                                            .round(),
+                                            ? ((item['confidence'] as num?) ??
+                                                  80)
+                                            : (((item['confidence'] as num?) ??
+                                                      0.8) *
+                                                  100))
+                                        .round(),
                               )
                               .reduce((a, b) => a + b) ~/
                           concerns.length)
@@ -1324,12 +1373,16 @@ class AppState extends ChangeNotifier {
     final legacySeverity =
         (data['overallConcernSeverity'] ??
                 data['overallScore'] ??
-                data['skinScore']) as num?;
+                data['skinScore'])
+            as num?;
     final skinHealthValue = data['skinHealthScore'] as num?;
     final rawMetrics = data['metrics'] is Map<String, dynamic>
         ? data['metrics'] as Map<String, dynamic>
         : <String, dynamic>{};
-    final hasMeaningfulMetricSignal = _hasMeaningfulMetricSignal(rawMetrics, data);
+    final hasMeaningfulMetricSignal = _hasMeaningfulMetricSignal(
+      rawMetrics,
+      data,
+    );
     final hasMeaningfulConcernSignal = concerns.any(
       (item) =>
           ((item['score'] as num?)?.round() ?? 0) > 0 ||
@@ -1344,15 +1397,17 @@ class AppState extends ChangeNotifier {
         !hasMeaningfulMetricSignal;
     final resolvedMetrics = hasMeaningfulMetricSignal
         ? (data['metrics'] is Map<String, dynamic>
-            ? AnalysisMetrics.fromJson(data['metrics'] as Map<String, dynamic>)
-            : AnalysisMetrics(
-                acne: (data['acneLevel'] as num?)?.round(),
-                redness: (data['rednessLevel'] as num?)?.round(),
-                oiliness: (data['oilinessLevel'] as num?)?.round(),
-                dryness: (data['drynessLevel'] as num?)?.round(),
-                moisture: (data['hydrationLevel'] as num?)?.round(),
-                texture: (data['textureLevel'] as num?)?.round(),
-              ))
+              ? AnalysisMetrics.fromJson(
+                  data['metrics'] as Map<String, dynamic>,
+                )
+              : AnalysisMetrics(
+                  acne: (data['acneLevel'] as num?)?.round(),
+                  redness: (data['rednessLevel'] as num?)?.round(),
+                  oiliness: (data['oilinessLevel'] as num?)?.round(),
+                  dryness: (data['drynessLevel'] as num?)?.round(),
+                  moisture: (data['hydrationLevel'] as num?)?.round(),
+                  texture: (data['textureLevel'] as num?)?.round(),
+                ))
         : const AnalysisMetrics();
     final overallConcernSeverity = shouldHideFallbackScores
         ? null
@@ -1360,9 +1415,9 @@ class AppState extends ChangeNotifier {
     final skinHealthScore = shouldHideFallbackScores
         ? null
         : skinHealthValue?.round() ??
-            (overallConcernSeverity == null
-                ? null
-                : (100 - overallConcernSeverity).clamp(0, 100));
+              (overallConcernSeverity == null
+                  ? null
+                  : (100 - overallConcernSeverity).clamp(0, 100));
 
     return AnalysisResult(
       id:
@@ -1428,12 +1483,17 @@ class AppState extends ChangeNotifier {
     final existingHasMetricDetail = _hasMetricDetail(existing);
     return AnalysisResult(
       id: incoming.id,
-      analysisSessionId: incoming.analysisSessionId ?? existing.analysisSessionId,
+      analysisSessionId:
+          incoming.analysisSessionId ?? existing.analysisSessionId,
       progressEntryId: incoming.progressEntryId ?? existing.progressEntryId,
       photoId: incoming.photoId ?? existing.photoId,
       source: incoming.source ?? existing.source,
-      imageUrl: incoming.imageUrl.isNotEmpty ? incoming.imageUrl : existing.imageUrl,
-      skinType: incoming.skinType.trim().isNotEmpty ? incoming.skinType : existing.skinType,
+      imageUrl: incoming.imageUrl.isNotEmpty
+          ? incoming.imageUrl
+          : existing.imageUrl,
+      skinType: incoming.skinType.trim().isNotEmpty
+          ? incoming.skinType
+          : existing.skinType,
       overallScore: incoming.overallScore ?? existing.overallScore,
       skinHealthScore: incoming.skinHealthScore ?? existing.skinHealthScore,
       overallConcernSeverity:
@@ -1450,12 +1510,15 @@ class AppState extends ChangeNotifier {
       disclaimer: (incoming.disclaimer?.trim().isNotEmpty ?? false)
           ? incoming.disclaimer
           : existing.disclaimer,
-      warnings: incoming.warnings.isNotEmpty ? incoming.warnings : existing.warnings,
+      warnings: incoming.warnings.isNotEmpty
+          ? incoming.warnings
+          : existing.warnings,
       issues: incoming.issues.isNotEmpty ? incoming.issues : existing.issues,
       recommendations: incoming.recommendations.isNotEmpty
           ? incoming.recommendations
           : existing.recommendations,
-      canGenerateProducts: incoming.canGenerateProducts || existing.canGenerateProducts,
+      canGenerateProducts:
+          incoming.canGenerateProducts || existing.canGenerateProducts,
     );
   }
 

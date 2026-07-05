@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/l10n/app_locale.dart';
@@ -10,9 +11,13 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/widgets/app_card.dart';
+import '../../core/widgets/avatar_image.dart';
 import '../../core/widgets/error_state_card.dart';
 import '../../core/widgets/skin_sync_header.dart';
 import '../../core/widgets/status_chip.dart';
+
+const _profileAvatarDirectory = 'assets/avatars/';
+const _profileAvatarExtensions = {'.webp', '.png', '.jpg', '.jpeg'};
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
@@ -48,6 +53,7 @@ class ProfilePage extends StatelessWidget {
                   SkinSyncHeader(
                     name: appState.profileDisplayName,
                     avatarUrl: user?.avatarUrl,
+                    onAvatarTap: () => _showAvatarPicker(context),
                   ),
                   Padding(
                     padding: EdgeInsets.fromLTRB(
@@ -64,6 +70,7 @@ class ProfilePage extends StatelessWidget {
                           email: _friendlyText(user?.email, locale),
                           avatarUrl: user?.avatarUrl,
                           skinType: _friendlyText(profile?.skinType, locale),
+                          onAvatarTap: () => _showAvatarPicker(context),
                           onEdit: () => Navigator.pushNamed(
                             context,
                             AppRoutes.editProfile,
@@ -152,12 +159,56 @@ class ProfilePage extends StatelessWidget {
   }
 }
 
+Future<void> _showAvatarPicker(BuildContext context) async {
+  final locale = AppLocale.of(context);
+  final appState = context.read<AppState>();
+  final selectedAvatar = await showModalBottomSheet<String>(
+    context: context,
+    backgroundColor: Colors.transparent,
+    builder: (sheetContext) => _AvatarPickerSheet(
+      selectedAvatar: appState.user?.avatarUrl,
+      avatarAssetsFuture: _loadProfileAvatarAssets(),
+    ),
+  );
+
+  if (selectedAvatar == null || !context.mounted) {
+    return;
+  }
+
+  await context.read<AppState>().updateAvatarSelection(selectedAvatar);
+  if (!context.mounted) {
+    return;
+  }
+
+  ScaffoldMessenger.of(
+    context,
+  ).showSnackBar(SnackBar(content: Text(locale.tr('profile_avatar_saved'))));
+}
+
+Future<List<String>> _loadProfileAvatarAssets() async {
+  final manifest = await AssetManifest.loadFromAssetBundle(rootBundle);
+  final avatars = manifest.listAssets().where(_isProfileAvatarAsset).toList()
+    ..sort();
+  return avatars;
+}
+
+bool _isProfileAvatarAsset(String asset) {
+  final normalized = asset.replaceAll('\\', '/');
+  if (!normalized.startsWith(_profileAvatarDirectory)) {
+    return false;
+  }
+
+  final lower = normalized.toLowerCase();
+  return _profileAvatarExtensions.any(lower.endsWith);
+}
+
 class _ProfileHero extends StatelessWidget {
   const _ProfileHero({
     required this.name,
     required this.email,
     required this.avatarUrl,
     required this.skinType,
+    required this.onAvatarTap,
     required this.onEdit,
   });
 
@@ -165,51 +216,80 @@ class _ProfileHero extends StatelessWidget {
   final String email;
   final String? avatarUrl;
   final String skinType;
+  final VoidCallback onAvatarTap;
   final VoidCallback onEdit;
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
     final imageUrl = avatarUrl?.trim() ?? '';
     return Column(
       children: [
-        Container(
-          width: 92,
-          height: 92,
-          padding: const EdgeInsets.all(4),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            shape: BoxShape.circle,
-            border: Border.all(color: Colors.white),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.primaryDark.withValues(alpha: 0.08),
-                blurRadius: 18,
-                offset: const Offset(0, 8),
-              ),
-            ],
-          ),
-          child: ClipOval(
-            child: imageUrl.isEmpty
-                ? Container(
-                    color: AppColors.surfaceStrong,
-                    child: const Icon(
-                      Icons.person_outline_rounded,
-                      color: AppColors.primaryDark,
-                      size: 42,
-                    ),
-                  )
-                : Image.network(
-                    imageUrl,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, _, _) => Container(
-                      color: AppColors.surfaceStrong,
-                      child: const Icon(
-                        Icons.person_outline_rounded,
-                        color: AppColors.primaryDark,
-                        size: 42,
+        Semantics(
+          button: true,
+          label: locale.tr('profile_tap_avatar_hint'),
+          child: GestureDetector(
+            onTap: onAvatarTap,
+            child: SizedBox.square(
+              dimension: 102,
+              child: Stack(
+                children: [
+                  Center(
+                    child: Container(
+                      width: 92,
+                      height: 92,
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.primaryDark.withValues(
+                              alpha: 0.08,
+                            ),
+                            blurRadius: 18,
+                            offset: const Offset(0, 8),
+                          ),
+                        ],
+                      ),
+                      child: ClipOval(
+                        child: AvatarImage(
+                          source: imageUrl,
+                          fit: BoxFit.cover,
+                          fallback: Container(
+                            color: AppColors.surfaceStrong,
+                            child: const Icon(
+                              Icons.person_outline_rounded,
+                              color: AppColors.primaryDark,
+                              size: 42,
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                   ),
+                  Positioned(
+                    right: 6,
+                    bottom: 8,
+                    child: Container(
+                      width: 30,
+                      height: 30,
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryDark,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: AppColors.surface, width: 2),
+                      ),
+                      child: const Icon(
+                        Icons.edit_rounded,
+                        size: 15,
+                        color: AppColors.onPrimary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
         const SizedBox(height: AppSpacing.sm),
@@ -237,6 +317,226 @@ class _ProfileHero extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _AvatarPickerSheet extends StatelessWidget {
+  const _AvatarPickerSheet({
+    required this.selectedAvatar,
+    required this.avatarAssetsFuture,
+  });
+
+  final String? selectedAvatar;
+  final Future<List<String>> avatarAssetsFuture;
+
+  @override
+  Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
+    final selected = selectedAvatar?.trim();
+
+    return SafeArea(
+      top: false,
+      child: Container(
+        margin: const EdgeInsets.all(12),
+        padding: const EdgeInsets.fromLTRB(18, 10, 18, 14),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(AppRadius.large),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.foreground.withValues(alpha: 0.12),
+              blurRadius: 24,
+              offset: const Offset(0, -6),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 42,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.outline.withValues(alpha: 0.55),
+                borderRadius: BorderRadius.circular(AppRadius.pill),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    locale.tr('profile_choose_avatar'),
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.heading,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.close_rounded),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            FutureBuilder<List<String>>(
+              future: avatarAssetsFuture,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState != ConnectionState.done) {
+                  return const SizedBox(
+                    height: 180,
+                    child: Center(
+                      child: CircularProgressIndicator(
+                        color: AppColors.primaryDark,
+                      ),
+                    ),
+                  );
+                }
+
+                final avatarAssets = snapshot.data ?? const <String>[];
+                if (avatarAssets.isEmpty) {
+                  return SizedBox(
+                    height: 160,
+                    child: Center(
+                      child: Text(
+                        locale.tr('profile_no_avatar_assets'),
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: AppColors.mutedText,
+                        ),
+                      ),
+                    ),
+                  );
+                }
+
+                return SizedBox(
+                  height: 150,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    physics: const BouncingScrollPhysics(),
+                    padding: const EdgeInsets.symmetric(horizontal: 2),
+                    itemCount: avatarAssets.length,
+                    separatorBuilder: (_, _) => const SizedBox(width: 14),
+                    itemBuilder: (context, index) {
+                      final asset = avatarAssets[index];
+                      final isSelected = selected == asset;
+                      return SizedBox(
+                        width: 150,
+                        child: _AvatarOptionTile(
+                          asset: asset,
+                          selected: isSelected,
+                          label: locale
+                              .tr('profile_avatar_option')
+                              .replaceAll('{number}', '${index + 1}'),
+                          onTap: () => Navigator.pop(context, asset),
+                        ),
+                      );
+                    },
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AvatarOptionTile extends StatelessWidget {
+  const _AvatarOptionTile({
+    required this.asset,
+    required this.selected,
+    required this.label,
+    required this.onTap,
+  });
+
+  final String asset;
+  final bool selected;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.surfaceMuted,
+      borderRadius: BorderRadius.circular(AppRadius.large),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadius.large),
+            border: Border.all(
+              color: selected ? AppColors.primaryDark : Colors.white,
+              width: selected ? 2 : 1,
+            ),
+          ),
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    SizedBox.square(
+                      dimension: 108,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(AppRadius.medium),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(AppRadius.medium),
+                          child: Image.asset(
+                            asset,
+                            width: double.infinity,
+                            height: double.infinity,
+                            fit: BoxFit.contain,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: AppColors.heading,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (selected)
+                Positioned(
+                  top: 6,
+                  right: 6,
+                  child: Container(
+                    width: 24,
+                    height: 24,
+                    decoration: const BoxDecoration(
+                      color: AppColors.primaryDark,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.check_rounded,
+                      size: 15,
+                      color: AppColors.onPrimary,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

@@ -317,6 +317,12 @@ class AppStrings {
     'profile_save': 'Lưu',
     'profile_cancel': 'Hủy',
     'profile_saved_success': 'Đã lưu thành công',
+    'profile_choose_avatar': 'Chọn ảnh đại diện',
+    'profile_avatar_saved': 'Đã cập nhật ảnh đại diện.',
+    'profile_tap_avatar_hint': 'Chạm để đổi ảnh đại diện',
+    'profile_avatar_option': 'Avatar {number}',
+    'profile_no_avatar_assets':
+        'Chưa có ảnh đại diện nào trong thư mục assets/avatars.',
     'profile_confirm_logout': 'Bạn có chắc muốn đăng xuất?',
     'profile_confirm_delete':
         'Bạn có chắc muốn xóa tài khoản? Hành động này không thể hoàn tác.',
@@ -949,6 +955,11 @@ class AppStrings {
     'profile_save': 'Save',
     'profile_cancel': 'Cancel',
     'profile_saved_success': 'Saved successfully',
+    'profile_choose_avatar': 'Choose avatar',
+    'profile_avatar_saved': 'Avatar updated.',
+    'profile_tap_avatar_hint': 'Tap to change avatar',
+    'profile_avatar_option': 'Avatar {number}',
+    'profile_no_avatar_assets': 'No avatars found in assets/avatars yet.',
     'profile_confirm_logout': 'Are you sure you want to logout?',
     'profile_confirm_delete':
         'Are you sure you want to delete your account? This action cannot be undone.',

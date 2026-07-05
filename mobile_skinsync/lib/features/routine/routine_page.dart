@@ -342,22 +342,42 @@ class _RoutineHeroHeader extends StatelessWidget {
             avatarUrl: avatarUrl,
             onAvatarTap: onAvatarTap,
           ),
-          SizedBox(height: isWide ? 28 : 18),
-          CircularScore(
-            score: percent,
-            size: progressSize,
-            label: locale.tr('routine_completed'),
-            scoreFontSize: isWide ? 34 : 28,
-            labelFontSize: isWide ? 11 : 9,
-          ),
-          const SizedBox(height: 12),
-          Text(
-            locale.tr('routine_today_progress'),
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.labelLarge?.copyWith(
-              fontFamily: 'PlayfairDisplay',
-              fontWeight: FontWeight.w800,
-              color: AppColors.heading,
+          Padding(
+            padding: EdgeInsets.fromLTRB(
+              Responsive.responsiveHorizontalPadding(context),
+              isWide ? 28 : 18,
+              Responsive.responsiveHorizontalPadding(context),
+              0,
+            ),
+            child: AppCard(
+              radius: AppRadius.card,
+              backgroundColor: AppColors.surface,
+              borderColor: Colors.white,
+              padding: EdgeInsets.symmetric(
+                horizontal: AppSpacing.md,
+                vertical: isWide ? 24 : 20,
+              ),
+              child: Column(
+                children: [
+                  Text(
+                    locale.tr('routine_today_progress'),
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      fontFamily: 'PlayfairDisplay',
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.heading,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  CircularScore(
+                    score: percent,
+                    size: progressSize,
+                    label: locale.tr('routine_completed'),
+                    scoreFontSize: isWide ? 34 : 28,
+                    labelFontSize: isWide ? 11 : 9,
+                  ),
+                ],
+              ),
             ),
           ),
         ],

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../l10n/app_locale.dart';
 import '../responsive/responsive.dart';
 import '../theme/app_colors.dart';
+import 'avatar_image.dart';
 
 class SkinSyncHeader extends StatelessWidget {
   const SkinSyncHeader({
@@ -135,14 +136,11 @@ class _HeaderAvatar extends StatelessWidget {
         customBorder: const CircleBorder(),
         child: SizedBox.square(
           dimension: SkinSyncHeader._avatarSize,
-          child: imageUrl.isNotEmpty
-              ? Image.network(
-                  imageUrl,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, _, _) =>
-                      _HeaderAvatarFallback(initial: _initialFromName(name)),
-                )
-              : _HeaderAvatarFallback(initial: _initialFromName(name)),
+          child: AvatarImage(
+            source: imageUrl,
+            fit: BoxFit.cover,
+            fallback: _HeaderAvatarFallback(initial: _initialFromName(name)),
+          ),
         ),
       ),
     );

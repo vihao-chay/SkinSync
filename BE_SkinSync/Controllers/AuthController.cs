@@ -74,6 +74,7 @@ public class AuthController : ControllerBase
                 FullName = fullName,
                 Email = email,
                 Phone = request.Phone.Trim(),
+                AvatarUrl = "assets/avatars/chibi_01.webp",
                 PasswordHash = string.Empty,
                 Role = "user",
                 Status = UserStatus.Active.ToDbValue(),
@@ -417,6 +418,40 @@ public class AuthController : ControllerBase
         await _userRepository.UpdateAsync(user, cancellationToken);
 
         return ResponseEntity<AuthUserResponseDto>.Ok(user.ToAuthUserDto(), "Cáº­p nháº­t áº£nh Ä‘áº¡i diá»‡n thÃ nh cÃ´ng.");
+    }
+
+    [HttpPut("avatar/selection")]
+    public async Task<ResponseEntity<AuthUserResponseDto>> UpdateAvatarSelection(
+        [FromBody] UpdateAvatarSelectionRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        if (!HttpContext.TryGetUserId(out var id))
+        {
+            return ResponseEntity<AuthUserResponseDto>.Fail("Missing user identity.", 401);
+        }
+
+        var avatarUrl = request.AvatarUrl.Trim().Replace('\\', '/');
+        var extension = Path.GetExtension(avatarUrl);
+        var supportedExtensions = new[] { ".webp", ".png", ".jpg", ".jpeg" };
+        if (!avatarUrl.StartsWith("assets/avatars/", StringComparison.Ordinal)
+            || avatarUrl.Contains("..", StringComparison.Ordinal)
+            || !supportedExtensions.Contains(extension, StringComparer.OrdinalIgnoreCase))
+        {
+            return ResponseEntity<AuthUserResponseDto>.Fail("Invalid avatar selection.", 400);
+        }
+
+        var user = await _userRepository.GetByIdAsync(id, cancellationToken);
+        if (user is null)
+        {
+            return ResponseEntity<AuthUserResponseDto>.Fail("User not found.", 404);
+        }
+
+        user.AvatarUrl = avatarUrl;
+        await _userRepository.UpdateAsync(user, cancellationToken);
+
+        return ResponseEntity<AuthUserResponseDto>.Ok(
+            user.ToAuthUserDto(),
+            "Avatar updated successfully.");
     }
 
     private async Task<User> EnsureLocalUserFromSupabaseAsync(SupabaseUserProfile supabaseUser, CancellationToken cancellationToken)

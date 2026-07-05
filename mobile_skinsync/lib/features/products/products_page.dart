@@ -277,23 +277,54 @@ class _ProductsPageState extends State<ProductsPage> {
       return;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          locale.tr('products_added_success').replaceAll('{name}', item.name),
-        ),
-        action: SnackBarAction(
-          label: locale.tr('products_view_routine_action'),
-          onPressed: () => MainShell.navigateToTab(
-            context,
-            AppRoutes.routine,
-            arguments: const RoutinePageArgs(
-              entryPoint: RoutineEntryPoint.productAdded,
-            ),
+    _showAddedToRoutineSnackBar(item);
+  }
+
+  void _showAddedToRoutineSnackBar(AiRecommendedProduct item) {
+    final locale = AppLocale.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          padding: const EdgeInsets.fromLTRB(18, 14, 18, 10),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                locale
+                    .tr('products_added_success')
+                    .replaceAll('{name}', item.name),
+              ),
+              const SizedBox(height: 4),
+              TextButton.icon(
+                onPressed: () {
+                  messenger.hideCurrentSnackBar();
+                  MainShell.navigateToTab(
+                    context,
+                    AppRoutes.routine,
+                    arguments: const RoutinePageArgs(
+                      entryPoint: RoutineEntryPoint.productAdded,
+                    ),
+                  );
+                },
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.primary,
+                  padding: EdgeInsets.zero,
+                  minimumSize: const Size(0, 32),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  alignment: Alignment.centerLeft,
+                ),
+                iconAlignment: IconAlignment.end,
+                icon: const Icon(Icons.arrow_forward_rounded, size: 17),
+                label: Text(locale.tr('products_view_routine_action')),
+              ),
+            ],
           ),
         ),
-      ),
-    );
+      );
   }
 
   Future<void> _submitAddToRoutine({
@@ -329,7 +360,6 @@ class _ProductsPageState extends State<ProductsPage> {
   }
 
   Future<void> _viewDetails(AiRecommendedProduct item) async {
-    final locale = AppLocale.of(context);
     final result = await Navigator.pushNamed(
       context,
       AppRoutes.productDetail,
@@ -365,23 +395,7 @@ class _ProductsPageState extends State<ProductsPage> {
       return;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          locale.tr('products_added_success').replaceAll('{name}', item.name),
-        ),
-        action: SnackBarAction(
-          label: locale.tr('products_view_routine_action'),
-          onPressed: () => MainShell.navigateToTab(
-            context,
-            AppRoutes.routine,
-            arguments: const RoutinePageArgs(
-              entryPoint: RoutineEntryPoint.productAdded,
-            ),
-          ),
-        ),
-      ),
-    );
+    _showAddedToRoutineSnackBar(item);
   }
 
   Future<void> _checkIngredients(AiRecommendedProduct item) async {

@@ -69,6 +69,7 @@ flutter:
     - logo_perfect.png
     - login_register.png
     - bank.jpg
+    - assets/avatars/
 
   fonts:
     - family: PlayfairDisplay
