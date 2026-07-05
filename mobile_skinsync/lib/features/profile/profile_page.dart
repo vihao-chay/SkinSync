@@ -60,7 +60,10 @@ class ProfilePage extends StatelessWidget {
                       Responsive.responsiveHorizontalPadding(context),
                       12,
                       Responsive.responsiveHorizontalPadding(context),
-                      Responsive.contentBottomSpacing(context, extra: 20),
+                      Responsive.floatingNavigationBottomSpacing(
+                        context,
+                        extra: 20,
+                      ),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -585,86 +588,93 @@ class _SubscriptionSection extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.md),
         ],
-        AppCard(
-          backgroundColor: AppColors.primaryFixed.withValues(alpha: 0.18),
-          borderColor: AppColors.primaryContainer.withValues(alpha: 0.34),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          locale.tr('profile_membership'),
-                          style: Theme.of(context).textTheme.labelSmall
-                              ?.copyWith(
-                                color: AppColors.heading,
-                                fontWeight: FontWeight.w900,
-                              ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          _brandedPlanName(currentPlan, currentCode),
-                          style: Theme.of(context).textTheme.titleMedium
-                              ?.copyWith(fontWeight: FontWeight.w800),
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (currentCode != 'free')
-                    StatusChip(
-                      label: locale.tr('profile_active'),
-                      tone: StatusChipTone.success,
-                    ),
-                  const SizedBox(width: 4),
-                  TextButton.icon(
-                    onPressed: onManage,
-                    iconAlignment: IconAlignment.end,
-                    icon: const Icon(Icons.open_in_new_rounded, size: 13),
-                    label: Text(
-                      currentCode == 'free'
-                          ? locale.tr('profile_upgrade_action')
-                          : locale.tr('profile_manage'),
-                    ),
-                    style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      minimumSize: const Size(0, 32),
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      textStyle: const TextStyle(
-                        fontFamily: 'PlusJakartaSans',
-                        fontSize: 10,
-                        fontWeight: FontWeight.w800,
+        DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                AppColors.primaryFixed,
+                AppColors.surfaceMuted,
+                Colors.white,
+              ],
+              stops: [0, 0.58, 1],
+            ),
+            borderRadius: BorderRadius.circular(AppRadius.card),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.9)),
+          ),
+          child: AppCard(
+            backgroundColor: Colors.transparent,
+            borderColor: Colors.transparent,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text(
+                      locale.tr('profile_membership'),
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: AppColors.heading,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w900,
                       ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.md),
-              if (usage.isEmpty)
-                Text(
-                  currentCode == 'free'
-                      ? locale.tr('profile_free_upgrade_prompt')
-                      : locale.tr('profile_premium_active_prompt'),
-                  style: Theme.of(context).textTheme.bodySmall,
-                )
-              else
-                Row(
-                  children: usage
-                      .map(
-                        (item) => Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.only(right: 8),
-                            child: _UsageMiniTile(usage: item),
-                          ),
+                    const Spacer(),
+                    TextButton.icon(
+                      onPressed: onManage,
+                      iconAlignment: IconAlignment.end,
+                      icon: const Icon(Icons.open_in_new_rounded, size: 14),
+                      label: Text(
+                        currentCode == 'free'
+                            ? locale.tr('profile_upgrade_action')
+                            : locale.tr('profile_manage'),
+                      ),
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        minimumSize: const Size(0, 24),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        visualDensity: VisualDensity.compact,
+                        textStyle: const TextStyle(
+                          fontFamily: 'PlusJakartaSans',
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
                         ),
-                      )
-                      .toList(),
+                      ),
+                    ),
+                  ],
                 ),
-            ],
+                const SizedBox(height: 4),
+                Text(
+                  _brandedPlanName(currentPlan, currentCode),
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontSize: 21,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                if (usage.isEmpty)
+                  Text(
+                    currentCode == 'free'
+                        ? locale.tr('profile_free_upgrade_prompt')
+                        : locale.tr('profile_premium_active_prompt'),
+                    style: Theme.of(context).textTheme.bodySmall,
+                  )
+                else
+                  Row(
+                    children: usage
+                        .map(
+                          (item) => Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.only(right: 8),
+                              child: _UsageMiniTile(usage: item),
+                            ),
+                          ),
+                        )
+                        .toList(),
+                  ),
+              ],
+            ),
           ),
         ),
       ],
@@ -679,6 +689,7 @@ class _UsageMiniTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
@@ -691,14 +702,15 @@ class _UsageMiniTile extends StatelessWidget {
           Icon(_usageIcon(usage.featureKey), color: AppColors.primaryDark),
           const SizedBox(height: 6),
           Text(
-            '${usage.used}',
+            _usageCount(usage),
             style: Theme.of(context).textTheme.titleSmall?.copyWith(
               fontFamily: 'PlusJakartaSans',
               fontWeight: FontWeight.w900,
             ),
           ),
+          const SizedBox(height: 2),
           Text(
-            usage.displayName,
+            _usageLabel(usage, locale),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
@@ -707,6 +719,22 @@ class _UsageMiniTile extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  String _usageCount(SubscriptionUsage usage) {
+    final limit = usage.isUnlimited
+        ? '∞'
+        : usage.monthlyLimit?.toString() ?? '-';
+    return '${usage.used}/$limit';
+  }
+
+  String _usageLabel(SubscriptionUsage usage, AppLocale locale) {
+    return switch (usage.featureKey) {
+      'skin_analysis' => locale.tr('profile_usage_analyse'),
+      'ai_chat' => locale.tr('profile_usage_chat'),
+      'routine_generation' => locale.tr('profile_usage_routine'),
+      _ => usage.displayName,
+    };
   }
 
   IconData _usageIcon(String key) {
@@ -736,7 +764,7 @@ class _ProfileInfoGrid extends StatelessWidget {
           children: items
               .map(
                 (item) => SizedBox(
-                  width: item.fullWidth || constraints.maxWidth < 340
+                  width: item.fullWidth
                       ? constraints.maxWidth
                       : (constraints.maxWidth - AppSpacing.sm) / 2,
                   child: AppCard(

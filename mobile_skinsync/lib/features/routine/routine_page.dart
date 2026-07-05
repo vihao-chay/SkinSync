@@ -201,7 +201,10 @@ class _RoutinePageState extends State<RoutinePage> {
                       Responsive.responsiveHorizontalPadding(context),
                       AppSpacing.md,
                       Responsive.responsiveHorizontalPadding(context),
-                      Responsive.contentBottomSpacing(context, extra: 20),
+                      Responsive.floatingNavigationBottomSpacing(
+                        context,
+                        extra: 20,
+                      ),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,

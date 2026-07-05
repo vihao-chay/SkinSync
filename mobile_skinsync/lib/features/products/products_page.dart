@@ -542,7 +542,10 @@ class _ProductsPageState extends State<ProductsPage> {
                       horizontalPadding,
                       12,
                       horizontalPadding,
-                      Responsive.contentBottomSpacing(context, extra: 20),
+                      Responsive.floatingNavigationBottomSpacing(
+                        context,
+                        extra: 20,
+                      ),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,

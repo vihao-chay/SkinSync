@@ -75,7 +75,10 @@ class _PlanSelectionPageState extends State<PlanSelectionPage> {
             constraints: const BoxConstraints(maxWidth: 460),
             child: Column(
               children: [
-                _PlanTopBar(onClose: () => Navigator.maybePop(context)),
+                _PlanTopBar(
+                  title: locale.tr('plan_title'),
+                  onBack: () => Navigator.maybePop(context),
+                ),
                 Expanded(
                   child: RefreshIndicator(
                     color: AppColors.primary,
@@ -84,18 +87,11 @@ class _PlanSelectionPageState extends State<PlanSelectionPage> {
                       physics: const AlwaysScrollableScrollPhysics(),
                       padding: const EdgeInsets.fromLTRB(
                         AppSpacing.pagePadding,
-                        10,
+                        4,
                         AppSpacing.pagePadding,
                         24,
                       ),
                       children: [
-                        Text(
-                          locale.tr('plan_title'),
-                          textAlign: TextAlign.center,
-                          style: Theme.of(context).textTheme.headlineMedium
-                              ?.copyWith(fontWeight: FontWeight.w800),
-                        ),
-                        const SizedBox(height: 6),
                         Text(
                           locale.tr('plan_subtitle'),
                           textAlign: TextAlign.center,
@@ -276,36 +272,56 @@ class _PlanSelectionPageState extends State<PlanSelectionPage> {
 }
 
 class _PlanTopBar extends StatelessWidget {
-  const _PlanTopBar({required this.onClose});
+  const _PlanTopBar({required this.title, required this.onBack});
 
-  final VoidCallback onClose;
+  final String title;
+  final VoidCallback onBack;
 
   @override
   Widget build(BuildContext context) {
     final locale = AppLocale.of(context);
-    return SizedBox(
-      width: double.infinity,
-      height: 54,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Text(
-            'SkinSync',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              color: AppColors.primary,
-              fontWeight: FontWeight.w800,
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.pagePadding,
+        8,
+        AppSpacing.pagePadding,
+        4,
+      ),
+      child: SizedBox(
+        height: 48,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            Align(
+              alignment: Alignment.centerLeft,
+              child: IconButton(
+                tooltip: locale.tr('common_back'),
+                onPressed: onBack,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints.tightFor(
+                  width: 40,
+                  height: 40,
+                ),
+                color: AppColors.heading,
+                iconSize: 30,
+                icon: const Icon(Icons.chevron_left_rounded),
+              ),
             ),
-          ),
-          Positioned(
-            right: 8,
-            child: IconButton(
-              tooltip: locale.tr('common_close'),
-              onPressed: onClose,
-              color: AppColors.heading,
-              icon: const Icon(Icons.close_rounded),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 44),
+              child: Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  color: AppColors.heading,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -413,12 +429,12 @@ class _PlanChoiceCard extends StatelessWidget {
 
     return AppCard(
       onTap: onTap,
-      radius: AppRadius.small,
+      radius: AppRadius.card,
       padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
       backgroundColor: selected
           ? AppColors.primaryFixed.withValues(alpha: 0.22)
           : AppColors.surface,
-      borderColor: selected ? AppColors.primaryContainer : AppColors.border,
+      borderColor: selected ? AppColors.primaryContainer : Colors.white,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -567,12 +583,7 @@ class _PlanBottomAction extends StatelessWidget {
         AppSpacing.pagePadding,
         12,
       ),
-      decoration: BoxDecoration(
-        color: AppColors.surface.withValues(alpha: 0.97),
-        border: Border(
-          top: BorderSide(color: AppColors.border.withValues(alpha: 0.6)),
-        ),
-      ),
+      color: AppColors.surface,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,

@@ -125,7 +125,10 @@ class _DashboardPageState extends State<DashboardPage> {
                       horizontalPadding,
                       12,
                       horizontalPadding,
-                      Responsive.contentBottomSpacing(context, extra: 20),
+                      Responsive.floatingNavigationBottomSpacing(
+                        context,
+                        extra: 20,
+                      ),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,

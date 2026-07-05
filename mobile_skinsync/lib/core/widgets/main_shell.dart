@@ -173,6 +173,7 @@ class _MainShellState extends State<MainShell> {
 
     return Scaffold(
       backgroundColor: AppColors.pageBackground,
+      extendBody: true,
       body: IndexedStack(
         index: _selectedIndex,
         sizing: StackFit.expand,
