@@ -212,6 +212,7 @@ class _OnboardingBodyState extends State<_OnboardingBody> {
 
   void _back(OnboardingState state) {
     if (state.currentStep == 0) {
+      Navigator.pushReplacementNamed(context, AppRoutes.onboardingIntro);
       return;
     }
     state.back();
@@ -366,17 +367,9 @@ class _BasicInfoStep extends StatelessWidget {
                   isPlaceholder: state.dateOfBirth == null,
                 ),
                 const SizedBox(height: 18),
-                _ChoiceWrap(
-                  label: 'Gender',
-                  children: OnboardingGender.values
-                      .map(
-                        (item) => _ChoiceChipCard(
-                          label: _genderLabel(item),
-                          selected: state.gender == item,
-                          onTap: () => state.setGender(item),
-                        ),
-                      )
-                      .toList(),
+                _GenderDropdown(
+                  value: state.gender,
+                  onChanged: state.setGender,
                 ),
               ],
             ),
@@ -573,6 +566,8 @@ class _PhotoStep extends StatelessWidget {
                 if (photo != null) ...[
                   const SizedBox(height: 18),
                   Wrap(
+                    alignment: WrapAlignment.center,
+                    runAlignment: WrapAlignment.center,
                     spacing: 12,
                     runSpacing: 12,
                     children: [
@@ -827,6 +822,81 @@ class _ActionField extends StatelessWidget {
                 ],
               ),
             ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _GenderDropdown extends StatelessWidget {
+  const _GenderDropdown({required this.value, required this.onChanged});
+
+  final OnboardingGender? value;
+  final ValueChanged<OnboardingGender> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final textStyle = Theme.of(context).textTheme.bodyMedium?.copyWith(
+      color: AppColors.foreground,
+      fontWeight: FontWeight.w600,
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Gender',
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w700,
+            color: AppColors.heading,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.person_2_outlined, color: AppColors.mutedText),
+              const SizedBox(width: 12),
+              Expanded(
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<OnboardingGender>(
+                    value: value,
+                    isExpanded: true,
+                    borderRadius: BorderRadius.circular(18),
+                    dropdownColor: AppColors.surface,
+                    icon: const Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      color: AppColors.mutedText,
+                    ),
+                    hint: Text(
+                      'Select gender',
+                      style: textStyle?.copyWith(color: AppColors.mutedText),
+                    ),
+                    style: textStyle,
+                    items: OnboardingGender.values
+                        .map(
+                          (item) => DropdownMenuItem(
+                            value: item,
+                            child: Text(_genderLabel(item)),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (item) {
+                      if (item != null) {
+                        onChanged(item);
+                      }
+                    },
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ],

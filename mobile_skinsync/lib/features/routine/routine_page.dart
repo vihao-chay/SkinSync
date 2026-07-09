@@ -12,7 +12,6 @@ import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_card.dart';
-import '../../core/widgets/circular_score.dart';
 import '../../core/widgets/empty_state_card.dart';
 import '../../core/widgets/error_state_card.dart';
 import '../../core/widgets/main_shell.dart';
@@ -334,7 +333,8 @@ class _RoutineHeroHeader extends StatelessWidget {
     final locale = AppLocale.of(context);
     final width = MediaQuery.sizeOf(context).width;
     final isWide = width >= 600;
-    final progressSize = isWide ? 150.0 : 124.0;
+    final imageHeight = isWide ? 460.0 : 382.0;
+    final clampedPercent = percent.clamp(0, 100);
 
     return DecoratedBox(
       decoration: const BoxDecoration(color: AppColors.pageBackground),
@@ -346,40 +346,95 @@ class _RoutineHeroHeader extends StatelessWidget {
             onAvatarTap: onAvatarTap,
           ),
           Padding(
-            padding: EdgeInsets.fromLTRB(
-              Responsive.responsiveHorizontalPadding(context),
-              isWide ? 28 : 18,
-              Responsive.responsiveHorizontalPadding(context),
-              0,
-            ),
-            child: AppCard(
-              radius: AppRadius.card,
-              backgroundColor: AppColors.surface,
-              borderColor: Colors.white,
-              padding: EdgeInsets.symmetric(
-                horizontal: AppSpacing.md,
-                vertical: isWide ? 24 : 20,
-              ),
-              child: Column(
-                children: [
-                  Text(
-                    locale.tr('routine_today_progress'),
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      fontFamily: 'PlayfairDisplay',
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.heading,
+            padding: EdgeInsets.only(top: isWide ? 28 : 18),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(isWide ? AppRadius.card : 0),
+              child: SizedBox(
+                height: imageHeight,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    const Image(
+                      image: AssetImage('img/logo_routine_perfect.png'),
+                      fit: BoxFit.cover,
+                      alignment: Alignment.center,
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  CircularScore(
-                    score: percent,
-                    size: progressSize,
-                    label: locale.tr('routine_completed'),
-                    scoreFontSize: isWide ? 34 : 28,
-                    labelFontSize: isWide ? 11 : 9,
-                  ),
-                ],
+                    const Align(
+                      alignment: Alignment.bottomCenter,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Color(0x00FAF7F2),
+                              AppColors.pageBackground,
+                              AppColors.pageBackground,
+                            ],
+                            stops: [0, 0.72, 1],
+                          ),
+                        ),
+                        child: SizedBox(height: 72, width: double.infinity),
+                      ),
+                    ),
+                    const Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      height: 12,
+                      child: ColoredBox(color: AppColors.pageBackground),
+                    ),
+                    Align(
+                      alignment: Alignment.bottomCenter,
+                      child: Container(
+                        margin: const EdgeInsets.all(10),
+                        padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
+                        decoration: BoxDecoration(
+                          color: AppColors.secondaryAction.withValues(
+                            alpha: 0.9,
+                          ),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    '${locale.tr('routine_today_progress')} $clampedPercent%',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelLarge
+                                        ?.copyWith(
+                                          color: AppColors.onSecondary,
+                                          fontWeight: FontWeight.w900,
+                                        ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(
+                                AppRadius.pill,
+                              ),
+                              child: LinearProgressIndicator(
+                                value: clampedPercent / 100,
+                                minHeight: 4,
+                                backgroundColor: AppColors.onSecondary
+                                    .withValues(alpha: 0.28),
+                                valueColor: const AlwaysStoppedAnimation<Color>(
+                                  AppColors.onSecondary,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -598,34 +653,44 @@ class _RoutineStepTile extends StatelessWidget {
           _StepImage(step: step),
           const SizedBox(width: AppSpacing.sm),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  step.brand.trim().isEmpty ? step.category : step.brand,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: AppColors.primaryDark,
-                    fontWeight: FontWeight.w800,
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(AppRadius.small),
+                onTap: () => _showStepDetails(context, step),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        step.brand.trim().isEmpty ? step.category : step.brand,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: AppColors.primaryDark,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      Text(
+                        step.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        _subtitle(step, context),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.labelSmall,
+                      ),
+                    ],
                   ),
                 ),
-                Text(
-                  step.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w800),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  _subtitle(step, context),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.labelSmall,
-                ),
-              ],
+              ),
             ),
           ),
           const SizedBox(width: AppSpacing.sm),
@@ -677,29 +742,34 @@ class _StepImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final raw = step.imageUrl?.trim() ?? '';
-    final url = raw.isEmpty
-        ? ''
-        : raw.startsWith('http')
-        ? raw
-        : '${AppConfig.apiBaseUrl}$raw';
+    final url = _resolveStepImageUrl(step);
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(AppRadius.large),
-      child: Container(
-        width: 72,
-        height: 72,
-        color: AppColors.surfaceStrong,
-        child: url.isEmpty
-            ? Icon(_categoryIcon(step.category), color: AppColors.primaryDark)
-            : Image.network(
-                url,
-                fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => Icon(
-                  _categoryIcon(step.category),
-                  color: AppColors.primaryDark,
-                ),
-              ),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppRadius.large),
+        onTap: url.isEmpty ? null : () => _showStepImage(context, url),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(AppRadius.large),
+          child: Container(
+            width: 72,
+            height: 72,
+            color: AppColors.surfaceStrong,
+            child: url.isEmpty
+                ? Icon(
+                    _categoryIcon(step.category),
+                    color: AppColors.primaryDark,
+                  )
+                : Image.network(
+                    url,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, _, _) => Icon(
+                      _categoryIcon(step.category),
+                      color: AppColors.primaryDark,
+                    ),
+                  ),
+          ),
+        ),
       ),
     );
   }
@@ -714,6 +784,244 @@ class _StepImage extends StatelessWidget {
       _ => Icons.local_florist_outlined,
     };
   }
+}
+
+String _resolveStepImageUrl(RegimenStep step) {
+  final raw = step.imageUrl?.trim() ?? '';
+  if (raw.isEmpty || raw.startsWith('http')) {
+    return raw;
+  }
+  return '${AppConfig.apiBaseUrl}$raw';
+}
+
+Future<void> _showStepDetails(BuildContext context, RegimenStep step) {
+  final locale = AppLocale.of(context, listen: false);
+  final instruction = step.instruction?.trim() ?? '';
+  final purpose = step.purpose?.trim() ?? '';
+  final frequency = step.frequency?.trim() ?? '';
+  final caution = step.caution?.trim() ?? '';
+  final mainDescription = instruction.isNotEmpty
+      ? instruction
+      : purpose.isNotEmpty
+      ? purpose
+      : locale.tr('routine_step_apply_default');
+
+  return showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (sheetContext) => SafeArea(
+      top: false,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.sizeOf(sheetContext).height * 0.78,
+        ),
+        child: Container(
+          decoration: const BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.vertical(
+              top: Radius.circular(AppRadius.xl),
+            ),
+          ),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 42,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: AppColors.outline,
+                      borderRadius: BorderRadius.circular(AppRadius.pill),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            step.brand.trim().isEmpty
+                                ? step.category
+                                : step.brand,
+                            style: Theme.of(sheetContext).textTheme.labelMedium
+                                ?.copyWith(
+                                  color: AppColors.primaryDark,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            step.name,
+                            style: Theme.of(sheetContext).textTheme.titleLarge
+                                ?.copyWith(fontWeight: FontWeight.w800),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      tooltip: locale.tr('common_close'),
+                      onPressed: () => Navigator.pop(sheetContext),
+                      icon: const Icon(Icons.close_rounded),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                Wrap(
+                  spacing: AppSpacing.xs,
+                  runSpacing: AppSpacing.xs,
+                  children: [
+                    StatusChip(
+                      label: step.category,
+                      icon: Icons.category_outlined,
+                    ),
+                    if (frequency.isNotEmpty)
+                      StatusChip(
+                        label: frequency,
+                        icon: Icons.schedule_rounded,
+                        tone: StatusChipTone.accent,
+                      ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceMuted,
+                    borderRadius: BorderRadius.circular(AppRadius.large),
+                    border: Border.all(color: Colors.white),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(
+                        Icons.spa_outlined,
+                        size: 20,
+                        color: AppColors.primaryDark,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          mainDescription,
+                          style: Theme.of(
+                            sheetContext,
+                          ).textTheme.bodyMedium?.copyWith(height: 1.55),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (purpose.isNotEmpty && purpose != mainDescription) ...[
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(
+                    purpose,
+                    style: Theme.of(sheetContext).textTheme.bodyMedium
+                        ?.copyWith(color: AppColors.mutedText, height: 1.5),
+                  ),
+                ],
+                if (caution.isNotEmpty) ...[
+                  const SizedBox(height: AppSpacing.sm),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryFixed.withValues(alpha: 0.62),
+                      borderRadius: BorderRadius.circular(AppRadius.large),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(
+                          Icons.warning_amber_rounded,
+                          size: 20,
+                          color: AppColors.primaryDark,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            caution,
+                            style: Theme.of(
+                              sheetContext,
+                            ).textTheme.bodyMedium?.copyWith(height: 1.5),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+Future<void> _showStepImage(BuildContext context, String imageUrl) {
+  return showDialog<void>(
+    context: context,
+    barrierColor: Colors.black.withValues(alpha: 0.88),
+    builder: (dialogContext) => Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.all(18),
+      child: Stack(
+        children: [
+          ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: 560,
+              maxHeight: MediaQuery.sizeOf(dialogContext).height * 0.82,
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(AppRadius.large),
+              child: ColoredBox(
+                color: Colors.white,
+                child: InteractiveViewer(
+                  minScale: 0.8,
+                  maxScale: 4,
+                  child: Center(
+                    child: Image.network(
+                      imageUrl,
+                      fit: BoxFit.contain,
+                      errorBuilder: (_, _, _) => Padding(
+                        padding: const EdgeInsets.all(48),
+                        child: const Icon(
+                          Icons.image_not_supported_outlined,
+                          size: 72,
+                          color: AppColors.primaryDark,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            top: 10,
+            right: 10,
+            child: IconButton.filled(
+              tooltip: AppLocale.of(dialogContext).tr('common_close'),
+              style: IconButton.styleFrom(
+                backgroundColor: Colors.black.withValues(alpha: 0.62),
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () => Navigator.pop(dialogContext),
+              icon: const Icon(Icons.close_rounded),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 class _ReminderSuggestionSheet extends StatelessWidget {

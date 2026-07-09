@@ -26,8 +26,9 @@ class AppLocale extends ChangeNotifier {
   /// Whether current locale is Vietnamese.
   bool get isVietnamese => _locale == 'vi';
 
-  /// Translate a key.  Returns the key itself if not found.
-  String tr(String key) => _strings[key] ?? key;
+  /// Translate a key. Returns the key itself if not found.
+  String tr(String key) =>
+      _strings[key] ?? AppStrings.forLocale(_locale)[key] ?? key;
 
   /// Convenience: read AppLocale from the widget tree.
   static AppLocale of(BuildContext context, {bool listen = true}) =>
@@ -70,17 +71,19 @@ class AppLocale extends ChangeNotifier {
 
 /// InheritedWidget so `AppLocale.of(context)` works with rebuilds.
 class _InheritedLocale extends InheritedNotifier<AppLocale> {
-  const _InheritedLocale({
-    required AppLocale locale,
-    required super.child,
-  }) : super(notifier: locale);
+  const _InheritedLocale({required AppLocale locale, required super.child})
+    : super(notifier: locale);
 
   static AppLocale of(BuildContext context, {bool listen = true}) {
     final _InheritedLocale? widget;
     if (listen) {
       widget = context.dependOnInheritedWidgetOfExactType<_InheritedLocale>();
     } else {
-      widget = context.getElementForInheritedWidgetOfExactType<_InheritedLocale>()?.widget as _InheritedLocale?;
+      widget =
+          context
+                  .getElementForInheritedWidgetOfExactType<_InheritedLocale>()
+                  ?.widget
+              as _InheritedLocale?;
     }
     assert(widget != null, 'No _InheritedLocale found. Wrap with LocaleScope.');
     return widget!.notifier!;
@@ -91,11 +94,7 @@ class _InheritedLocale extends InheritedNotifier<AppLocale> {
 ///
 /// Place this above MaterialApp in the widget tree.
 class LocaleScope extends StatelessWidget {
-  const LocaleScope({
-    super.key,
-    required this.locale,
-    required this.child,
-  });
+  const LocaleScope({super.key, required this.locale, required this.child});
 
   final AppLocale locale;
   final Widget child;

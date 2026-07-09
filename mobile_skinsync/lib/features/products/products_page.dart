@@ -5,6 +5,7 @@ import '../../core/l10n/app_locale.dart';
 import '../../core/models/app_models.dart';
 import '../../core/routes/app_routes.dart';
 import '../../core/responsive/responsive.dart';
+import '../../core/services/api_client.dart';
 import '../../core/state/app_state.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_radius.dart';
@@ -18,7 +19,6 @@ import '../../core/widgets/loading_skeleton.dart';
 import '../../core/widgets/main_shell.dart';
 import '../../core/widgets/product_recommendation_card.dart';
 import '../../core/widgets/skin_sync_header.dart';
-import '../../core/widgets/status_chip.dart';
 
 class ProductsPage extends StatefulWidget {
   const ProductsPage({super.key, ProductsPageArgs? args})
@@ -35,10 +35,12 @@ class _ProductsPageState extends State<ProductsPage> {
   bool _loading = true;
   bool _isGenerating = false;
   bool _didForwardToRoutine = false;
+  int _recommendationRevision = 0;
   String? _errorMessage;
   late String _selectedCategory;
 
   static const _tabs = <_CategoryTab>[
+    _CategoryTab('all', 'All', Icons.grid_view_rounded),
     _CategoryTab('cleanser', 'Cleanser', Icons.soap_outlined),
     _CategoryTab('toner', 'Toner', Icons.opacity_outlined),
     _CategoryTab('serum', 'Serum', Icons.auto_awesome_outlined),
@@ -81,6 +83,7 @@ class _ProductsPageState extends State<ProductsPage> {
       }
       setState(() {
         _recommendation = _normalizeResponse(result);
+        _recommendationRevision += 1;
       });
     } catch (_) {
       if (!mounted) {
@@ -104,44 +107,167 @@ class _ProductsPageState extends State<ProductsPage> {
       return;
     }
     final locale = AppLocale.of(context, listen: false);
+    final appState = context.read<AppState>();
     setState(() {
       _isGenerating = true;
+      _loading = _recommendation == null;
+      _selectedCategory = _tabs.first.key;
+      _recommendationRevision += 1;
       _errorMessage = null;
     });
 
     try {
-      final result = await context.read<AppState>().generateRecommendations(
-        category: widget.args.initialCategory,
-        concern: widget.args.initialConcern,
-        budgetMax: widget.args.initialBudget,
-        limitPerCategory: 5,
+      final generated = _normalizeResponse(
+        await appState.generateRecommendations(
+          category: widget.args.initialCategory,
+          concern: widget.args.initialConcern,
+          budgetMax: widget.args.initialBudget,
+          limitPerCategory: 5,
+        ),
+      );
+
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _recommendation = generated;
+        _loading = false;
+        _selectedCategory = _tabs.first.key;
+        _recommendationRevision += 1;
+      });
+
+      final latest = await _fetchLatestAfterGeneration(
+        fallback: generated,
+        appState: appState,
       );
       if (!mounted) {
         return;
       }
       setState(() {
-        _recommendation = _normalizeResponse(result);
+        _recommendation = latest;
+        _recommendationRevision += 1;
       });
-    } catch (_) {
+    } catch (error) {
       if (!mounted) {
         return;
       }
+      final message = _errorText(
+        error,
+        appState.errorMessage ?? locale.tr('products_load_error'),
+      );
       setState(() {
-        _errorMessage =
-            context.read<AppState>().errorMessage ??
-            locale.tr('products_load_error');
+        _errorMessage = _recommendation == null ? message : null;
       });
+      if (_recommendation != null && mounted) {
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(SnackBar(content: Text(message)));
+      }
     } finally {
       if (mounted) {
-        setState(() => _isGenerating = false);
+        setState(() {
+          _isGenerating = false;
+          _loading = false;
+        });
       }
     }
+  }
+
+  String _errorText(Object error, String fallback) {
+    if (error is ApiException && error.message.trim().isNotEmpty) {
+      return error.message;
+    }
+    return fallback;
+  }
+
+  Future<AiProductRecommendResponse> _fetchLatestAfterGeneration({
+    required AiProductRecommendResponse fallback,
+    required AppState appState,
+  }) async {
+    var best = fallback;
+    final hasGenerationMarker =
+        fallback.sessionId?.trim().isNotEmpty == true ||
+        fallback.sourceAnalysisId?.trim().isNotEmpty == true ||
+        fallback.generatedAt != null;
+    for (var attempt = 0; attempt < 5; attempt += 1) {
+      if (attempt > 0) {
+        await Future<void>.delayed(const Duration(milliseconds: 500));
+      }
+
+      try {
+        final latest = _normalizeResponse(
+          await appState.getLatestRecommendations(),
+        );
+        final latestMatchesGeneration =
+            !hasGenerationMarker ||
+            _matchesGeneratedRecommendation(
+              generated: fallback,
+              latest: latest,
+            );
+        if (latestMatchesGeneration) {
+          best = latest;
+        }
+        if (_hasRecommendedProducts(best) && latestMatchesGeneration) {
+          break;
+        }
+      } catch (_) {
+        break;
+      }
+    }
+
+    return best;
+  }
+
+  bool _matchesGeneratedRecommendation({
+    required AiProductRecommendResponse generated,
+    required AiProductRecommendResponse latest,
+  }) {
+    final generatedSessionId = generated.sessionId?.trim();
+    final latestSessionId = latest.sessionId?.trim();
+    if (generatedSessionId?.isNotEmpty == true &&
+        latestSessionId?.isNotEmpty == true) {
+      return latestSessionId == generatedSessionId;
+    }
+
+    final generatedSourceAnalysisId = generated.sourceAnalysisId?.trim();
+    final latestSourceAnalysisId = latest.sourceAnalysisId?.trim();
+    if (generatedSourceAnalysisId?.isNotEmpty == true &&
+        latestSourceAnalysisId?.isNotEmpty == true) {
+      return latestSourceAnalysisId == generatedSourceAnalysisId;
+    }
+
+    final generatedAt = generated.generatedAt;
+    final latestAt = latest.generatedAt;
+    if (generatedAt != null && latestAt != null) {
+      return !latestAt.isBefore(generatedAt);
+    }
+
+    return generatedSessionId?.isNotEmpty != true &&
+        generatedSourceAnalysisId?.isNotEmpty != true;
+  }
+
+  bool _hasRecommendedProducts(AiProductRecommendResponse value) {
+    if (value.products.isNotEmpty) {
+      return true;
+    }
+    return value.categories.any((category) => category.items.isNotEmpty);
   }
 
   AiProductRecommendResponse _normalizeResponse(
     AiProductRecommendResponse value,
   ) {
+    final sourceProducts = value.products.isNotEmpty
+        ? value.products
+        : value.categories.expand((category) => category.items).toList();
     final mappedCategories = _tabs.map((tab) {
+      if (tab.key == 'all') {
+        return AiProductRecommendationCategory(
+          key: tab.key,
+          label: tab.label,
+          items: sourceProducts,
+        );
+      }
+
       final existing = value.categories.where(
         (category) => category.key.toLowerCase() == tab.key,
       );
@@ -166,9 +292,7 @@ class _ProductsPageState extends State<ProductsPage> {
       expiresAt: value.expiresAt,
       status: value.status,
       summary: value.summary,
-      products: value.products.isNotEmpty
-          ? value.products
-          : mappedCategories.expand((category) => category.items).toList(),
+      products: sourceProducts,
       categories: mappedCategories,
       profileSummary: value.profileSummary,
       message: value.message,
@@ -179,6 +303,7 @@ class _ProductsPageState extends State<ProductsPage> {
 
   Future<void> _openAddToRoutine(AiRecommendedProduct item) async {
     if (item.alreadyInRoutine) {
+      MainShell.navigateToTab(context, AppRoutes.routine);
       return;
     }
 
@@ -359,142 +484,11 @@ class _ProductsPageState extends State<ProductsPage> {
     }
   }
 
-  Future<void> _viewDetails(AiRecommendedProduct item) async {
-    final result = await Navigator.pushNamed(
-      context,
-      AppRoutes.productDetail,
-      arguments: ProductDetailPageArgs(
-        productId: item.productId,
-        recommendationItem: item,
-        sourceProductsEntryPoint: widget.args.entryPoint,
-        alreadyInRoutine: item.alreadyInRoutine,
-      ),
-    );
-
-    if (!mounted ||
-        result is! ProductDetailActionResult ||
-        !result.addedToRoutine) {
-      return;
-    }
-
-    await _fetchLatestRecommendations();
-    if (!mounted) {
-      return;
-    }
-
-    if (widget.args.entryPoint == ProductsEntryPoint.analysisResult &&
-        !_didForwardToRoutine) {
-      _didForwardToRoutine = true;
-      MainShell.navigateToTab(
-        context,
-        AppRoutes.routine,
-        arguments: const RoutinePageArgs(
-          entryPoint: RoutineEntryPoint.productAdded,
-        ),
-      );
-      return;
-    }
-
-    _showAddedToRoutineSnackBar(item);
-  }
-
-  Future<void> _checkIngredients(AiRecommendedProduct item) async {
-    final ingredientsText = item.ingredientsText?.trim() ?? '';
-    final appState = context.read<AppState>();
-    final locale = AppLocale.of(context);
-    if (ingredientsText.isEmpty) {
-      if (!mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(locale.tr('products_no_ingredient_data'))),
-      );
-      return;
-    }
-
-    final messenger = ScaffoldMessenger.of(context);
-    showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const Center(
-        child: CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryDark),
-        ),
-      ),
-    );
-
-    try {
-      final result = await context.read<AppState>().checkIngredients(
-        productName: item.name,
-        ingredientsText: ingredientsText,
-      );
-      if (!mounted) {
-        return;
-      }
-      Navigator.pop(context);
-      await showModalBottomSheet<void>(
-        context: context,
-        isScrollControlled: true,
-        builder: (context) {
-          return _SheetFrame(
-            title: locale.tr('products_ingredient_check_title'),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  item.name,
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                _DetailBlock(
-                  title: locale.tr('products_overall_fit'),
-                  body: result.overallExplanation,
-                ),
-                const SizedBox(height: AppSpacing.md),
-                _DetailBlock(
-                  title: locale.tr('products_suggested_use'),
-                  body: result.usageSuggestion,
-                ),
-                if (result.warnings.isNotEmpty) ...[
-                  const SizedBox(height: AppSpacing.md),
-                  Wrap(
-                    spacing: AppSpacing.xs,
-                    runSpacing: AppSpacing.xs,
-                    children: result.warnings
-                        .map(
-                          (warning) => StatusChip(
-                            label: warning,
-                            icon: Icons.warning_amber_rounded,
-                            tone: StatusChipTone.warning,
-                          ),
-                        )
-                        .toList(),
-                  ),
-                ],
-              ],
-            ),
-          );
-        },
-      );
-    } catch (_) {
-      if (mounted) {
-        Navigator.pop(context);
-      }
-      final message =
-          appState.errorMessage ?? locale.tr('products_error_ingredient_check');
-      messenger.showSnackBar(SnackBar(content: Text(message)));
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final locale = AppLocale.of(context);
     final appState = context.watch<AppState>();
     final recommendation = _recommendation;
-    final profileSummary = recommendation?.profileSummary;
     final category =
         recommendation?.categories.firstWhere(
           (item) => item.key == _selectedCategory,
@@ -569,52 +563,6 @@ class _ProductsPageState extends State<ProductsPage> {
                                     ),
                           style: Theme.of(context).textTheme.labelSmall
                               ?.copyWith(color: AppColors.foreground),
-                        ),
-                        const SizedBox(height: AppSpacing.sm),
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: AppButton(
-                            label: recommendation?.hasRecommendation == true
-                                ? locale.tr('products_refresh')
-                                : locale.tr('products_generate'),
-                            expand: false,
-                            icon: const Icon(Icons.auto_awesome_rounded),
-                            isLoading: _isGenerating,
-                            onPressed: _isGenerating
-                                ? null
-                                : _generateRecommendations,
-                          ),
-                        ),
-                        const SizedBox(height: AppSpacing.md),
-                        _HorizontalChipStrip(
-                          children: [
-                            StatusChip(
-                              label:
-                                  profileSummary?.skinType ??
-                                  _friendlyText(
-                                    appState.profile?.skinType,
-                                    locale,
-                                  ),
-                              icon: Icons.spa_outlined,
-                              tone: StatusChipTone.accent,
-                            ),
-                            StatusChip(
-                              label: _concernSummary(
-                                profileSummary?.concerns ??
-                                    appState.profile?.concerns ??
-                                    const [],
-                                locale,
-                              ),
-                              icon: Icons.psychology_alt_outlined,
-                            ),
-                            StatusChip(
-                              label: _friendlyText(
-                                appState.profile?.budgetLabel,
-                                locale,
-                              ),
-                              icon: Icons.payments_outlined,
-                            ),
-                          ],
                         ),
                         const SizedBox(height: AppSpacing.md),
                         CategoryChipBar<_CategoryTab>(
@@ -710,39 +658,43 @@ class _ProductsPageState extends State<ProductsPage> {
                             ),
                             const SizedBox(height: AppSpacing.md),
                           ],
-                          LayoutBuilder(
-                            builder: (context, constraints) {
-                              final columns = constraints.maxWidth >= 980
-                                  ? 3
-                                  : constraints.maxWidth >= 640
-                                  ? 2
-                                  : 1;
-                              final itemWidth = columns == 1
-                                  ? constraints.maxWidth
-                                  : (constraints.maxWidth -
-                                            (AppSpacing.md * (columns - 1))) /
-                                        columns;
-                              return Wrap(
-                                spacing: AppSpacing.md,
-                                runSpacing: AppSpacing.md,
-                                children: category.items
-                                    .map(
-                                      (item) => SizedBox(
-                                        width: itemWidth,
-                                        child: ProductRecommendationCard(
-                                          item: item,
-                                          onViewDetails: () =>
-                                              _viewDetails(item),
-                                          onAddToRoutine: () =>
-                                              _openAddToRoutine(item),
-                                          onCheckIngredients: () =>
-                                              _checkIngredients(item),
+                          KeyedSubtree(
+                            key: ValueKey(
+                              'products_${_recommendationRevision}_${recommendation.sessionId ?? ''}_${recommendation.generatedAt?.millisecondsSinceEpoch ?? 0}_$_selectedCategory',
+                            ),
+                            child: LayoutBuilder(
+                              builder: (context, constraints) {
+                                final columns = constraints.maxWidth >= 980
+                                    ? 3
+                                    : constraints.maxWidth >= 640
+                                    ? 2
+                                    : 1;
+                                final itemWidth = columns == 1
+                                    ? constraints.maxWidth
+                                    : (constraints.maxWidth -
+                                              (AppSpacing.md * (columns - 1))) /
+                                          columns;
+                                return Wrap(
+                                  spacing: AppSpacing.md,
+                                  runSpacing: AppSpacing.md,
+                                  children: category.items
+                                      .map(
+                                        (item) => SizedBox(
+                                          key: ValueKey(
+                                            '${_recommendationRevision}_${item.productId}_${item.matchPercent ?? item.matchScore}_${item.alreadyInRoutine}',
+                                          ),
+                                          width: itemWidth,
+                                          child: ProductRecommendationCard(
+                                            item: item,
+                                            onAddToRoutine: () =>
+                                                _openAddToRoutine(item),
+                                          ),
                                         ),
-                                      ),
-                                    )
-                                    .toList(),
-                              );
-                            },
+                                      )
+                                      .toList(),
+                                );
+                              },
+                            ),
                           ),
                           if (!hasAnyItems &&
                               recommendation.message?.trim().isNotEmpty == true)
@@ -786,16 +738,6 @@ class _ProductsPageState extends State<ProductsPage> {
     final minutes = local.minute.toString().padLeft(2, '0');
     return '${local.day}/${local.month}/${local.year} ${local.hour}:$minutes';
   }
-
-  String _concernSummary(List<String> concerns, AppLocale locale) {
-    final cleaned = concerns
-        .where((item) => item.trim().isNotEmpty)
-        .take(2)
-        .toList();
-    return cleaned.isEmpty
-        ? locale.tr('profile_not_provided')
-        : cleaned.join(', ');
-  }
 }
 
 class _CategoryTab {
@@ -804,30 +746,6 @@ class _CategoryTab {
   final String key;
   final String label;
   final IconData icon;
-}
-
-class _HorizontalChipStrip extends StatelessWidget {
-  const _HorizontalChipStrip({required this.children});
-
-  final List<Widget> children;
-
-  @override
-  Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      clipBehavior: Clip.none,
-      physics: const BouncingScrollPhysics(),
-      child: Row(
-        children: [
-          for (var index = 0; index < children.length; index++) ...[
-            children[index],
-            if (index != children.length - 1)
-              const SizedBox(width: AppSpacing.xs),
-          ],
-        ],
-      ),
-    );
-  }
 }
 
 class _ProductsLoadingState extends StatelessWidget {
@@ -954,30 +872,6 @@ class _InlineNotice extends StatelessWidget {
   }
 }
 
-class _DetailBlock extends StatelessWidget {
-  const _DetailBlock({required this.title, required this.body});
-
-  final String title;
-  final String body;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: Theme.of(
-            context,
-          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-        ),
-        const SizedBox(height: AppSpacing.xs),
-        Text(body, style: Theme.of(context).textTheme.bodyMedium),
-      ],
-    );
-  }
-}
-
 class _SheetFrame extends StatelessWidget {
   const _SheetFrame({required this.title, required this.child});
 
@@ -1069,13 +963,6 @@ class _ConflictWarningSheet extends StatelessWidget {
       ),
     );
   }
-}
-
-String _friendlyText(String? value, AppLocale locale) {
-  final text = value?.trim();
-  return text == null || text.isEmpty
-      ? locale.tr('profile_not_provided')
-      : text;
 }
 
 String _normalizeCategoryKey(String? value) {

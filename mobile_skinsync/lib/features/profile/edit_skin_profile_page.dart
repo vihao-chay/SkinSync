@@ -12,6 +12,8 @@ import '../../core/theme/app_spacing.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/app_scaffold.dart';
+import '../../core/widgets/avatar_image.dart';
+import '../../core/widgets/avatar_picker.dart';
 import '../onboarding/onboarding_state.dart';
 
 class EditSkinProfilePage extends StatefulWidget {
@@ -78,10 +80,11 @@ class _EditSkinProfilePageState extends State<EditSkinProfilePage> {
 
     return AppScaffold(
       title: locale.tr('edit_profile_title'),
-      subtitle: locale.tr('edit_profile_subtitle'),
       onRefresh: appState.refreshProfileState,
       compactHeader: true,
       showBackButton: true,
+      backIcon: Icons.chevron_left_rounded,
+      headerBottomSpacing: AppSpacing.sm,
       body: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: EdgeInsets.fromLTRB(
@@ -91,18 +94,23 @@ class _EditSkinProfilePageState extends State<EditSkinProfilePage> {
           Responsive.contentBottomSpacing(context, extra: 20),
         ),
         children: [
+          _EditProfileIdentity(
+            avatarUrl: appState.user?.avatarUrl,
+            onTap: () => _changeAvatar(context),
+          ),
+          const SizedBox(height: AppSpacing.md),
           AppCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   locale.tr('edit_profile_skin_basics'),
-                  style: textTheme.titleLarge?.copyWith(
+                  style: textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
                 ),
                 const SizedBox(height: AppSpacing.sm),
-                _TwoColumnWrap(
+                _FieldColumn(
                   children: [
                     _SelectionField(
                       label: locale.tr('profile_skin_type'),
@@ -143,6 +151,7 @@ class _EditSkinProfilePageState extends State<EditSkinProfilePage> {
                           ? locale.tr('profile_not_provided')
                           : DateFormat('dd/MM/yyyy').format(_dateOfBirth!),
                       onTap: _pickDateOfBirth,
+                      trailingIcon: Icons.calendar_today_outlined,
                     ),
                     _SelectionField(
                       label: locale.tr('profile_budget'),
@@ -166,19 +175,19 @@ class _EditSkinProfilePageState extends State<EditSkinProfilePage> {
               ],
             ),
           ),
-          const SizedBox(height: AppSpacing.sectionGap),
+          const SizedBox(height: AppSpacing.sm),
           AppCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   locale.tr('edit_profile_preferences'),
-                  style: textTheme.titleLarge?.copyWith(
+                  style: textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
                 ),
                 const SizedBox(height: AppSpacing.sm),
-                _TwoColumnWrap(
+                _FieldColumn(
                   children: [
                     _SelectionField(
                       label: locale.tr('edit_profile_routine_level'),
@@ -247,14 +256,14 @@ class _EditSkinProfilePageState extends State<EditSkinProfilePage> {
               ],
             ),
           ),
-          const SizedBox(height: AppSpacing.sectionGap),
+          const SizedBox(height: AppSpacing.sm),
           AppCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   locale.tr('edit_profile_concerns'),
-                  style: textTheme.titleLarge?.copyWith(
+                  style: textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -288,14 +297,14 @@ class _EditSkinProfilePageState extends State<EditSkinProfilePage> {
               ],
             ),
           ),
-          const SizedBox(height: AppSpacing.sectionGap),
+          const SizedBox(height: AppSpacing.sm),
           AppCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   locale.tr('edit_profile_goals'),
-                  style: textTheme.titleLarge?.copyWith(
+                  style: textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -329,41 +338,20 @@ class _EditSkinProfilePageState extends State<EditSkinProfilePage> {
               ],
             ),
           ),
-          const SizedBox(height: AppSpacing.sectionGap),
-          AppCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  locale.tr('edit_profile_save_changes'),
-                  style: textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                Text(
-                  locale.tr('edit_profile_save_subtitle'),
-                  style: textTheme.bodySmall?.copyWith(
-                    color: AppColors.mutedText,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                AppButton(
-                  label: locale.tr('profile_save'),
-                  icon: const Icon(Icons.check_rounded),
-                  isLoading: appState.isBusy,
-                  onPressed: () => _saveProfile(context, refreshRoutine: false),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                AppButton(
-                  label: locale.tr('edit_profile_save_refresh_ai'),
-                  variant: AppButtonVariant.secondary,
-                  icon: const Icon(Icons.auto_awesome_rounded),
-                  isLoading: appState.isBusy,
-                  onPressed: () => _saveProfile(context, refreshRoutine: true),
-                ),
-              ],
-            ),
+          const SizedBox(height: AppSpacing.sm),
+          AppButton(
+            label: locale.tr('profile_save'),
+            icon: const Icon(Icons.check_rounded),
+            isLoading: appState.isBusy,
+            onPressed: () => _saveProfile(context, refreshRoutine: false),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          AppButton(
+            label: locale.tr('edit_profile_save_refresh_ai'),
+            variant: AppButtonVariant.secondary,
+            icon: const Icon(Icons.auto_awesome_rounded),
+            isLoading: appState.isBusy,
+            onPressed: () => _saveProfile(context, refreshRoutine: true),
           ),
           if (profile == null) ...[
             const SizedBox(height: AppSpacing.sm),
@@ -376,6 +364,40 @@ class _EditSkinProfilePageState extends State<EditSkinProfilePage> {
         ],
       ),
     );
+  }
+
+  Future<void> _changeAvatar(BuildContext context) async {
+    final appState = context.read<AppState>();
+    final selectedAvatar = await showAvatarPickerSheet(
+      context,
+      selectedAvatar: appState.user?.avatarUrl,
+    );
+    if (selectedAvatar == null || !context.mounted) {
+      return;
+    }
+
+    try {
+      await appState.updateAvatarSelection(selectedAvatar);
+      if (!context.mounted) {
+        return;
+      }
+      final locale = AppLocale.of(context, listen: false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(locale.tr('profile_avatar_saved'))),
+      );
+    } catch (_) {
+      if (!context.mounted) {
+        return;
+      }
+      final locale = AppLocale.of(context, listen: false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            appState.errorMessage ?? locale.tr('edit_profile_error_save'),
+          ),
+        ),
+      );
+    }
   }
 
   Future<void> _pickDateOfBirth() async {
@@ -454,42 +476,102 @@ class _EditSkinProfilePageState extends State<EditSkinProfilePage> {
   }
 }
 
-class _TwoColumnWrap extends StatelessWidget {
-  const _TwoColumnWrap({required this.children});
+class _EditProfileIdentity extends StatelessWidget {
+  const _EditProfileIdentity({required this.avatarUrl, required this.onTap});
+
+  final String? avatarUrl;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
+    return Center(
+      child: Semantics(
+        button: true,
+        label: locale.tr('profile_tap_avatar_hint'),
+        child: GestureDetector(
+          onTap: onTap,
+          child: SizedBox.square(
+            dimension: 84,
+            child: Stack(
+              children: [
+                Center(
+                  child: Container(
+                    width: 76,
+                    height: 76,
+                    padding: const EdgeInsets.all(3),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.foreground.withValues(alpha: 0.08),
+                          blurRadius: 16,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
+                    ),
+                    child: ClipOval(
+                      child: AvatarImage(
+                        source: avatarUrl,
+                        fit: BoxFit.cover,
+                        fallback: const ColoredBox(
+                          color: AppColors.surfaceStrong,
+                          child: Icon(
+                            Icons.person_outline_rounded,
+                            color: AppColors.primaryDark,
+                            size: 34,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  right: 0,
+                  bottom: 2,
+                  child: Container(
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryDark,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: AppColors.surface, width: 2),
+                    ),
+                    child: const Icon(
+                      Icons.edit_rounded,
+                      size: 14,
+                      color: AppColors.onPrimary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FieldColumn extends StatelessWidget {
+  const _FieldColumn({required this.children});
 
   final List<Widget> children;
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final useSingleColumn = constraints.maxWidth < 360;
-        if (useSingleColumn) {
-          return Column(
-            children: children
-                .map(
-                  (child) => Padding(
-                    padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                    child: child,
-                  ),
-                )
-                .toList(),
-          );
-        }
-
-        return Wrap(
-          spacing: AppSpacing.sm,
-          runSpacing: AppSpacing.sm,
-          children: children
-              .map(
-                (child) => SizedBox(
-                  width: (constraints.maxWidth - AppSpacing.sm) / 2,
-                  child: child,
-                ),
-              )
-              .toList(),
-        );
-      },
+    return Column(
+      children: List.generate(
+        children.length,
+        (index) => Padding(
+          padding: EdgeInsets.only(
+            bottom: index == children.length - 1 ? 0 : AppSpacing.sm,
+          ),
+          child: children[index],
+        ),
+      ),
     );
   }
 }
@@ -499,11 +581,13 @@ class _SelectionField extends StatelessWidget {
     required this.label,
     required this.value,
     required this.onTap,
+    this.trailingIcon = Icons.keyboard_arrow_down_rounded,
   });
 
   final String label;
   final String value;
   final VoidCallback onTap;
+  final IconData trailingIcon;
 
   @override
   Widget build(BuildContext context) {
@@ -511,12 +595,12 @@ class _SelectionField extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(AppRadius.large),
+        borderRadius: BorderRadius.circular(AppRadius.medium),
         child: Ink(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
-            color: AppColors.surfaceMuted,
-            borderRadius: BorderRadius.circular(AppRadius.large),
+            color: AppColors.surfaceStrong,
+            borderRadius: BorderRadius.circular(AppRadius.medium),
             border: Border.all(color: Colors.white),
           ),
           child: Column(
@@ -524,9 +608,11 @@ class _SelectionField extends StatelessWidget {
             children: [
               Text(
                 label,
-                style: Theme.of(
-                  context,
-                ).textTheme.labelMedium?.copyWith(color: AppColors.primaryDark),
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: AppColors.heading,
+                  fontSize: 9,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
               const SizedBox(height: AppSpacing.xs),
               Row(
@@ -536,14 +622,14 @@ class _SelectionField extends StatelessWidget {
                       value,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodyMedium,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AppColors.heading,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                   const SizedBox(width: AppSpacing.xs),
-                  const Icon(
-                    Icons.keyboard_arrow_down_rounded,
-                    color: AppColors.primaryDark,
-                  ),
+                  Icon(trailingIcon, size: 18, color: AppColors.heading),
                 ],
               ),
             ],
@@ -575,17 +661,19 @@ class _ChoiceChipCard extends StatelessWidget {
         child: Ink(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(
-            color: selected ? AppColors.secondary : AppColors.surfaceMuted,
+            color: selected ? AppColors.primaryFixed : AppColors.surface,
             borderRadius: BorderRadius.circular(999),
             border: Border.all(
-              color: selected ? AppColors.primary : Colors.white,
+              color: selected
+                  ? AppColors.primary
+                  : AppColors.heading.withValues(alpha: 0.55),
             ),
           ),
           child: Text(
             label,
-            style: Theme.of(
-              context,
-            ).textTheme.labelLarge?.copyWith(color: AppColors.primaryDark),
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+              color: selected ? AppColors.primaryDark : AppColors.heading,
+            ),
           ),
         ),
       ),
@@ -623,12 +711,14 @@ Future<void> _showChoiceSheet(
                 (option) => ListTile(
                   contentPadding: EdgeInsets.zero,
                   title: Text(option),
-                  trailing: selected == option
-                      ? const Icon(
-                          Icons.check_circle_rounded,
-                          color: AppColors.primaryDark,
-                        )
-                      : null,
+                  trailing: Icon(
+                    selected == option
+                        ? Icons.radio_button_checked_rounded
+                        : Icons.radio_button_unchecked_rounded,
+                    color: selected == option
+                        ? AppColors.primary
+                        : AppColors.heading,
+                  ),
                   onTap: () {
                     onSelected(option);
                     Navigator.of(context).pop();

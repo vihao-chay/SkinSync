@@ -17,10 +17,8 @@ import '../../core/widgets/app_card.dart';
 import '../../core/widgets/app_scaffold.dart';
 import '../../core/widgets/empty_state_card.dart';
 import '../../core/widgets/error_state_card.dart';
-import '../../core/widgets/linear_progress_stat.dart';
 import '../../core/widgets/routine_checklist_item.dart';
 import '../../core/widgets/section_header.dart';
-import '../../core/widgets/status_chip.dart';
 
 class TodayCheckupPage extends StatefulWidget {
   const TodayCheckupPage({super.key});
@@ -148,15 +146,11 @@ class _TodayCheckupPageState extends State<TodayCheckupPage> {
 
     return AppScaffold(
       title: locale.tr('checkup_title'),
-      subtitle: locale.tr('checkup_subtitle'),
+      compactHeader: true,
+      showBackButton: true,
+      backIcon: Icons.chevron_left_rounded,
+      headerBottomSpacing: AppSpacing.sm,
       onRefresh: appState.refreshHome,
-      headerTrailing: _HeaderHomeButton(
-        onTap: () => Navigator.pushNamedAndRemoveUntil(
-          context,
-          AppRoutes.dashboard,
-          (route) => false,
-        ),
-      ),
       body: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: EdgeInsets.fromLTRB(
@@ -175,64 +169,12 @@ class _TodayCheckupPageState extends State<TodayCheckupPage> {
             ),
             const SizedBox(height: AppSpacing.sectionGap),
           ],
-          AppCard(
-            variant: AppCardVariant.hero,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                StatusChip(
-                  label: locale.tr('progress_routine_completion'),
-                  icon: Icons.favorite_border_rounded,
-                  tone: StatusChipTone.accent,
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                Text(
-                  locale
-                      .tr('checkup_routine_completion_desc')
-                      .replaceAll('{completed}', '$completedSteps')
-                      .replaceAll('{total}', '$totalSteps'),
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodyMedium?.copyWith(color: AppColors.mutedText),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                LinearProgressStat(
-                  label: locale.tr('routine_today_progress'),
-                  value: '$completedSteps/$totalSteps',
-                  progress: progress,
-                  caption: locale.tr('checkup_completion_saves_desc'),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                Wrap(
-                  spacing: AppSpacing.sm,
-                  runSpacing: AppSpacing.sm,
-                  children: [
-                    StatusChip(
-                      label: morningCompleted
-                          ? locale.tr('checkup_morning_done')
-                          : locale.tr('checkup_morning_pending'),
-                      icon: Icons.wb_sunny_outlined,
-                      tone: morningCompleted
-                          ? StatusChipTone.success
-                          : StatusChipTone.warning,
-                    ),
-                    StatusChip(
-                      label: eveningCompleted
-                          ? locale.tr('checkup_evening_done')
-                          : locale.tr('checkup_evening_pending'),
-                      icon: Icons.nightlight_round,
-                      tone: eveningCompleted
-                          ? StatusChipTone.success
-                          : StatusChipTone.warning,
-                    ),
-                    StatusChip(
-                      label: locale.tr('checkup_feeling_$_skinFeeling'),
-                      icon: Icons.mood_outlined,
-                    ),
-                  ],
-                ),
-              ],
-            ),
+          _CheckupOverviewCard(
+            completedSteps: completedSteps,
+            totalSteps: totalSteps,
+            progress: progress,
+            morningCompleted: morningCompleted,
+            eveningCompleted: eveningCompleted,
           ),
           const SizedBox(height: AppSpacing.sectionGap),
           if (regimen == null ||
@@ -320,6 +262,15 @@ class _TodayCheckupPageState extends State<TodayCheckupPage> {
                           ).tr('checkup_feeling_${option.value}'),
                         ),
                         selected: selected,
+                        showCheckmark: false,
+                        backgroundColor: AppColors.surfaceMuted,
+                        selectedColor: AppColors.primaryFixed,
+                        side: BorderSide(
+                          color: selected
+                              ? AppColors.primaryDark
+                              : Colors.white,
+                        ),
+                        shape: const StadiumBorder(),
                         onSelected: (_) =>
                             setState(() => _skinFeeling = option.value),
                       );
@@ -361,20 +312,33 @@ class _TodayCheckupPageState extends State<TodayCheckupPage> {
                             imageUrl: todayLog?.dailyImageUrl,
                             onTap: _pickImage,
                             enabled: true,
+                            height: 184,
                           ),
                           const SizedBox(height: AppSpacing.sm),
-                          _PhotoSlot(
-                            label: locale.tr('checkup_left'),
-                            imageFile: null,
-                            imageUrl: null,
-                            enabled: false,
-                          ),
-                          const SizedBox(height: AppSpacing.sm),
-                          _PhotoSlot(
-                            label: locale.tr('checkup_right'),
-                            imageFile: null,
-                            imageUrl: null,
-                            enabled: false,
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _PhotoSlot(
+                                  label: locale.tr('checkup_left'),
+                                  imageFile: null,
+                                  imageUrl: null,
+                                  enabled: false,
+                                  height: 120,
+                                  compact: true,
+                                ),
+                              ),
+                              const SizedBox(width: AppSpacing.sm),
+                              Expanded(
+                                child: _PhotoSlot(
+                                  label: locale.tr('checkup_right'),
+                                  imageFile: null,
+                                  imageUrl: null,
+                                  enabled: false,
+                                  height: 120,
+                                  compact: true,
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       );
@@ -389,6 +353,7 @@ class _TodayCheckupPageState extends State<TodayCheckupPage> {
                             imageUrl: todayLog?.dailyImageUrl,
                             onTap: _pickImage,
                             enabled: true,
+                            height: 168,
                           ),
                         ),
                         const SizedBox(width: AppSpacing.sm),
@@ -398,6 +363,7 @@ class _TodayCheckupPageState extends State<TodayCheckupPage> {
                             imageFile: null,
                             imageUrl: null,
                             enabled: false,
+                            height: 168,
                           ),
                         ),
                         const SizedBox(width: AppSpacing.sm),
@@ -407,6 +373,7 @@ class _TodayCheckupPageState extends State<TodayCheckupPage> {
                             imageFile: null,
                             imageUrl: null,
                             enabled: false,
+                            height: 168,
                           ),
                         ),
                       ],
@@ -423,17 +390,6 @@ class _TodayCheckupPageState extends State<TodayCheckupPage> {
             isLoading: _saving,
             onPressed: _saving ? null : () => _saveCheckup(appState),
           ),
-          const SizedBox(height: AppSpacing.sm),
-          AppButton(
-            label: locale.tr('checkup_back_to_home'),
-            variant: AppButtonVariant.secondary,
-            icon: const Icon(Icons.home_rounded),
-            onPressed: () => Navigator.pushNamedAndRemoveUntil(
-              context,
-              AppRoutes.dashboard,
-              (route) => false,
-            ),
-          ),
         ],
       ),
     );
@@ -445,6 +401,182 @@ class _TodayCheckupPageState extends State<TodayCheckupPage> {
       return normalized;
     }
     return 'good';
+  }
+}
+
+class _CheckupOverviewCard extends StatelessWidget {
+  const _CheckupOverviewCard({
+    required this.completedSteps,
+    required this.totalSteps,
+    required this.progress,
+    required this.morningCompleted,
+    required this.eveningCompleted,
+  });
+
+  final int completedSteps;
+  final int totalSteps;
+  final double progress;
+  final bool morningCompleted;
+  final bool eveningCompleted;
+
+  @override
+  Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
+    final safeProgress = progress.clamp(0.0, 1.0).toDouble();
+    final percent = (safeProgress * 100).round();
+
+    return AppCard(
+      variant: AppCardVariant.accent,
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.82),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                alignment: Alignment.center,
+                child: const Icon(
+                  Icons.checklist_rounded,
+                  color: AppColors.primaryDark,
+                  size: 23,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      locale.tr('progress_routine_completion'),
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      locale.tr('routine_today_progress'),
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AppColors.mutedText,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    '$completedSteps/$totalSteps',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontFamily: 'PlusJakartaSans',
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.primaryDark,
+                    ),
+                  ),
+                  Text(
+                    '$percent%',
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: AppColors.mutedText,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: LinearProgressIndicator(
+              value: safeProgress,
+              minHeight: 8,
+              backgroundColor: Colors.white.withValues(alpha: 0.78),
+              valueColor: const AlwaysStoppedAnimation<Color>(
+                AppColors.primaryDark,
+              ),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          Row(
+            children: [
+              Expanded(
+                child: _PeriodStatusTile(
+                  icon: Icons.wb_sunny_outlined,
+                  label: morningCompleted
+                      ? locale.tr('checkup_morning_done')
+                      : locale.tr('checkup_morning_pending'),
+                  completed: morningCompleted,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: _PeriodStatusTile(
+                  icon: Icons.nightlight_round,
+                  label: eveningCompleted
+                      ? locale.tr('checkup_evening_done')
+                      : locale.tr('checkup_evening_pending'),
+                  completed: eveningCompleted,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PeriodStatusTile extends StatelessWidget {
+  const _PeriodStatusTile({
+    required this.icon,
+    required this.label,
+    required this.completed,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool completed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: const BoxConstraints(minHeight: 62),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.78),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 19, color: AppColors.primaryDark),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              label,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(
+                context,
+              ).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w700),
+            ),
+          ),
+          const SizedBox(width: 4),
+          Icon(
+            completed ? Icons.check_circle_rounded : Icons.schedule_rounded,
+            size: 17,
+            color: completed ? AppColors.primaryDark : AppColors.mutedText,
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -480,33 +612,6 @@ class _RoutineSegmentedControl extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _HeaderHomeButton extends StatelessWidget {
-  const _HeaderHomeButton({required this.onTap});
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: onTap,
-        child: Ink(
-          width: 48,
-          height: 48,
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.82),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white),
-          ),
-          child: const Icon(Icons.home_rounded, color: AppColors.primaryDark),
-        ),
       ),
     );
   }
@@ -557,6 +662,8 @@ class _PhotoSlot extends StatelessWidget {
     required this.imageUrl,
     this.onTap,
     this.enabled = false,
+    this.height = 144,
+    this.compact = false,
   });
 
   final String label;
@@ -564,6 +671,8 @@ class _PhotoSlot extends StatelessWidget {
   final String? imageUrl;
   final VoidCallback? onTap;
   final bool enabled;
+  final double height;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -576,8 +685,8 @@ class _PhotoSlot extends StatelessWidget {
     return GestureDetector(
       onTap: enabled ? onTap : null,
       child: Container(
-        height: 144,
-        padding: const EdgeInsets.all(12),
+        height: height,
+        padding: EdgeInsets.all(compact ? 10 : 12),
         decoration: BoxDecoration(
           color: enabled ? Colors.white : AppColors.surfaceMuted,
           borderRadius: BorderRadius.circular(16),
@@ -612,15 +721,17 @@ class _PhotoSlot extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 6),
-            Text(
-              enabled
-                  ? AppLocale.of(context).tr('checkup_tap_to_capture')
-                  : AppLocale.of(context).tr('checkup_placeholder'),
-              style: Theme.of(
-                context,
-              ).textTheme.bodySmall?.copyWith(color: AppColors.mutedText),
-            ),
+            if (!compact) ...[
+              const SizedBox(height: 6),
+              Text(
+                enabled
+                    ? AppLocale.of(context).tr('checkup_tap_to_capture')
+                    : AppLocale.of(context).tr('checkup_placeholder'),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: AppColors.mutedText),
+              ),
+            ],
           ],
         ),
       ),

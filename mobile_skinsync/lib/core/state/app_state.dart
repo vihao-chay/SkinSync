@@ -459,6 +459,7 @@ class AppState extends ChangeNotifier {
     debugPrint('[SkinSync] manual recommendation generate');
     final response = await _apiClient.post(
       '/api/ai/products/recommendations/generate',
+      timeout: const Duration(seconds: 240),
       body: {
         if (category != null && category.trim().isNotEmpty)
           'category': category,
@@ -1429,6 +1430,12 @@ class AppState extends ChangeNotifier {
       progressEntryId: data['progressEntryId']?.toString(),
       photoId: data['photoId']?.toString(),
       source: data['source']?.toString(),
+      createdAt: DateTime.tryParse(
+        (data['createdAt'] ?? data['CreatedAt'])?.toString() ?? '',
+      ),
+      completedAt: DateTime.tryParse(
+        (data['completedAt'] ?? data['CompletedAt'])?.toString() ?? '',
+      ),
       imageUrl: data['imageUrl']?.toString() ?? '',
       skinType:
           data['skinType']?.toString() ??
@@ -1488,6 +1495,8 @@ class AppState extends ChangeNotifier {
       progressEntryId: incoming.progressEntryId ?? existing.progressEntryId,
       photoId: incoming.photoId ?? existing.photoId,
       source: incoming.source ?? existing.source,
+      createdAt: incoming.createdAt ?? existing.createdAt,
+      completedAt: incoming.completedAt ?? existing.completedAt,
       imageUrl: incoming.imageUrl.isNotEmpty
           ? incoming.imageUrl
           : existing.imageUrl,

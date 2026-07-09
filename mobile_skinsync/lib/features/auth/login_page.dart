@@ -49,12 +49,7 @@ class _LoginPageState extends State<LoginPage> {
     if (appState.isAuthenticated && !_isSubmittingAuth && !_isRegisterMode) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
-          Navigator.pushReplacementNamed(
-            context,
-            appState.shouldShowOnboarding
-                ? AppRoutes.onboarding
-                : AppRoutes.dashboard,
-          );
+          Navigator.pushReplacementNamed(context, _postAuthRoute(appState));
         }
       });
     }
@@ -167,9 +162,7 @@ class _LoginPageState extends State<LoginPage> {
 
       Navigator.pushNamedAndRemoveUntil(
         context,
-        appState.shouldShowOnboarding
-            ? AppRoutes.onboarding
-            : AppRoutes.dashboard,
+        _postAuthRoute(appState, newlyRegistered: _isRegisterMode),
         (route) => false,
       );
     } catch (_) {
@@ -193,9 +186,7 @@ class _LoginPageState extends State<LoginPage> {
 
       Navigator.pushNamedAndRemoveUntil(
         context,
-        appState.shouldShowOnboarding
-            ? AppRoutes.onboarding
-            : AppRoutes.dashboard,
+        _postAuthRoute(appState, newlyRegistered: _isRegisterMode),
         (route) => false,
       );
     } catch (_) {
@@ -204,6 +195,13 @@ class _LoginPageState extends State<LoginPage> {
         _showAppStateError(appState);
       }
     }
+  }
+
+  String _postAuthRoute(AppState appState, {bool newlyRegistered = false}) {
+    if (newlyRegistered || appState.shouldShowOnboarding) {
+      return AppRoutes.onboardingIntro;
+    }
+    return AppRoutes.dashboard;
   }
 
   bool _validateInput() {

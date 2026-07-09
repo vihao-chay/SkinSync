@@ -16,6 +16,9 @@ class CircularScore extends StatelessWidget {
     this.progressColor,
     this.scoreFontSize,
     this.labelFontSize,
+    this.scoreColor,
+    this.labelColor,
+    this.textShadows,
   });
 
   final int score;
@@ -25,6 +28,9 @@ class CircularScore extends StatelessWidget {
   final Color? progressColor;
   final double? scoreFontSize;
   final double? labelFontSize;
+  final Color? scoreColor;
+  final Color? labelColor;
+  final List<Shadow>? textShadows;
 
   @override
   Widget build(BuildContext context) {
@@ -49,16 +55,18 @@ class CircularScore extends StatelessWidget {
                     style: Theme.of(context).textTheme.headlineLarge?.copyWith(
                       fontSize: scoreFontSize,
                       fontFamily: 'PlayfairDisplay',
-                      color: AppColors.heading,
+                      color: scoreColor ?? AppColors.heading,
                       fontWeight: FontWeight.w700,
                       fontFeatures: const [FontFeature.tabularFigures()],
+                      shadows: textShadows,
                     ),
                   ),
                   Text(
                     label,
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(
                       fontSize: labelFontSize,
-                      color: AppColors.mutedText,
+                      color: labelColor ?? AppColors.mutedText,
+                      shadows: textShadows,
                     ),
                   ),
                 ],

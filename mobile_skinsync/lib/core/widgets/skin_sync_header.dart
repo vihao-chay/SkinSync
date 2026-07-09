@@ -109,6 +109,11 @@ class _HeaderLogo extends StatelessWidget {
         'logo_perfect.png',
         fit: BoxFit.contain,
         semanticLabel: 'SkinSync logo',
+        errorBuilder: (context, error, stackTrace) => Image.asset(
+          'logo.jpg',
+          fit: BoxFit.contain,
+          semanticLabel: 'SkinSync logo',
+        ),
       ),
     );
   }

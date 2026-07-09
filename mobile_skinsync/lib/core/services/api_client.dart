@@ -55,13 +55,18 @@ class ApiClient {
     return _decodeResponse(response);
   }
 
-  Future<Map<String, dynamic>> post(String path, {Object? body}) async {
+  Future<Map<String, dynamic>> post(
+    String path, {
+    Object? body,
+    Duration? timeout,
+  }) async {
     final response = await _sendWithRefresh(
       () => http.post(
         _uri(path),
         headers: _headers(),
         body: jsonEncode(body ?? const {}),
       ),
+      timeout: timeout,
     );
     return _decodeResponse(response);
   }
@@ -145,9 +150,10 @@ class ApiClient {
   }
 
   Future<http.Response> _sendWithRefresh(
-    Future<http.Response> Function() send,
-  ) async {
-    var response = await _sendNetworkRequest(send);
+    Future<http.Response> Function() send, {
+    Duration? timeout,
+  }) async {
+    var response = await _sendNetworkRequest(send, timeout: timeout);
     if (response.statusCode != 401 ||
         _session == null ||
         _refreshSessionHandler == null) {
@@ -159,15 +165,16 @@ class ApiClient {
       return response;
     }
 
-    response = await _sendNetworkRequest(send);
+    response = await _sendNetworkRequest(send, timeout: timeout);
     return response;
   }
 
   Future<http.Response> _sendNetworkRequest(
-    Future<http.Response> Function() send,
-  ) async {
+    Future<http.Response> Function() send, {
+    Duration? timeout,
+  }) async {
     try {
-      return await send().timeout(_requestTimeout);
+      return await send().timeout(timeout ?? _requestTimeout);
     } on TimeoutException {
       throw ApiException(
         'Cannot connect to backend at $baseUrl. Check that the backend is running and this phone is on the same Wi-Fi.',

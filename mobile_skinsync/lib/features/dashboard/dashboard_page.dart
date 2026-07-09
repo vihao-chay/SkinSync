@@ -75,7 +75,6 @@ class _DashboardPageState extends State<DashboardPage> {
     final latestAnalysis = appState.latestAnalysis;
     final regimen = appState.regimen;
     final tracking = appState.trackingToday;
-    final progress = appState.progress;
     final scanUsage = _findUsage(
       appState.subscription?.usage ?? const <SubscriptionUsage>[],
       'skin_analysis',
@@ -83,10 +82,7 @@ class _DashboardPageState extends State<DashboardPage> {
     final totalSteps = tracking?.totalSteps ?? 0;
     final completedSteps = tracking?.completedSteps ?? 0;
     final routineProgress = totalSteps == 0 ? 0.0 : completedSteps / totalSteps;
-    final routineSteps = [
-      ...?regimen?.morning,
-      ...?regimen?.evening,
-    ].take(3).toList();
+    final routineSteps = _routinePreviewItems(regimen, locale);
     final products =
         (_latestRecommendation?.products ?? const <AiRecommendedProduct>[])
             .where((item) => item.name.trim().isNotEmpty)
@@ -137,7 +133,7 @@ class _DashboardPageState extends State<DashboardPage> {
                           score:
                               latestAnalysis?.displaySkinHealthScore ??
                               latestAnalysis?.overallScore,
-                          insight: progress?.progressInsight,
+                          lastScanAt: latestAnalysis?.lastScanAt,
                           scanUsage: scanUsage,
                           onUpgrade: () => Navigator.pushNamed(
                             context,
@@ -250,13 +246,13 @@ class _DashboardPageState extends State<DashboardPage> {
 class _SkinHealthCard extends StatelessWidget {
   const _SkinHealthCard({
     required this.score,
-    required this.insight,
+    required this.lastScanAt,
     required this.scanUsage,
     required this.onUpgrade,
   });
 
   final int? score;
-  final String? insight;
+  final DateTime? lastScanAt;
   final SubscriptionUsage? scanUsage;
   final VoidCallback onUpgrade;
 
@@ -282,98 +278,240 @@ class _SkinHealthCard extends StatelessWidget {
         ? '$used ${locale.tr('plan_scans')}'
         : '$used/$limit ${locale.tr('plan_scans')}';
 
-    return AppCard(
-      padding: const EdgeInsets.fromLTRB(18, 16, 18, 14),
-      child: Column(
-        children: [
-          Text(
-            locale.tr('dashboard_skin_health_title'),
-            style: Theme.of(
-              context,
-            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 12),
-          CircularScore(
-            score: resolvedScore,
-            size: 136,
-            label: score == null
-                ? locale.tr('dashboard_no_scan')
-                : locale.tr('dashboard_skin_balanced'),
-            suffix: score == null ? '' : '%',
-            progressColor: AppColors.primary,
-          ),
-          const SizedBox(height: 10),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final cardWidth = constraints.maxWidth.isFinite
+            ? constraints.maxWidth
+            : MediaQuery.sizeOf(context).width;
+        final cardHeight = (cardWidth * (exhausted ? 0.9 : 0.82))
+            .clamp(exhausted ? 324.0 : 294.0, exhausted ? 354.0 : 326.0)
+            .toDouble();
+        final scoreSize = (cardWidth * 0.34).clamp(118.0, 132.0).toDouble();
+        final usageRailWidth = (cardWidth * 0.64)
+            .clamp(218.0, 252.0)
+            .toDouble();
+        const pairedGap = 12.0;
+
+        return SizedBox(
+          height: cardHeight,
+          child: Container(
+            width: double.infinity,
+            clipBehavior: Clip.antiAlias,
             decoration: BoxDecoration(
-              color: AppColors.surfaceMuted,
-              borderRadius: BorderRadius.circular(AppRadius.pill),
-            ),
-            child: Text(
-              score == null
-                  ? locale.tr('dashboard_scan_prompt')
-                  : insight?.trim().isNotEmpty == true
-                  ? insight!
-                  : locale.tr('dashboard_baseline_saved'),
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.labelSmall,
-            ),
-          ),
-          if (usageLabel != null) ...[
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    locale.tr('dashboard_usage'),
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: AppColors.heading,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ),
-                Text(
-                  usageLabel,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: exhausted ? AppColors.error : AppColors.heading,
-                    fontWeight: FontWeight.w800,
-                  ),
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(AppRadius.card),
+              border: Border.all(color: Colors.white),
+              image: const DecorationImage(
+                image: AssetImage('img/logo_home_perfect.png'),
+                fit: BoxFit.cover,
+                filterQuality: FilterQuality.high,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.foreground.withValues(alpha: 0.08),
+                  blurRadius: 20,
+                  offset: const Offset(0, 6),
                 ),
               ],
             ),
-            const SizedBox(height: 7),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(AppRadius.pill),
-              child: LinearProgressIndicator(
-                value: usageProgress,
-                minHeight: 5,
-                backgroundColor: AppColors.surfaceContainerHigh,
-                valueColor: AlwaysStoppedAnimation<Color>(
-                  exhausted ? AppColors.error : AppColors.primary,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: AppColors.surface.withValues(alpha: 0.08),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(18, 16, 18, 14),
+                child: Column(
+                  children: [
+                    Text(
+                      locale.tr('dashboard_skin_health_title'),
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontFamily: 'PlayfairDisplay',
+                        color: AppColors.heading,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        height: 1.05,
+                      ),
+                    ),
+                    const SizedBox(height: pairedGap),
+                    CircularScore(
+                      score: resolvedScore,
+                      size: scoreSize,
+                      label: score == null
+                          ? locale.tr('dashboard_no_scan')
+                          : locale.tr('dashboard_skin_balanced'),
+                      suffix: score == null ? '' : '%',
+                      progressColor: AppColors.primaryDark,
+                      scoreFontSize: 30,
+                      labelFontSize: 10,
+                      scoreColor: AppColors.heading,
+                      labelColor: AppColors.heading,
+                    ),
+                    const SizedBox(height: 22),
+                    if (lastScanAt != null) ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 7,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.surface.withValues(alpha: 0.9),
+                          borderRadius: BorderRadius.circular(AppRadius.pill),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.history_rounded,
+                              size: 14,
+                              color: AppColors.primaryDark,
+                            ),
+                            const SizedBox(width: 6),
+                            Flexible(
+                              child: Text(
+                                locale
+                                    .tr('dashboard_last_scan_format')
+                                    .replaceAll(
+                                      '{time}',
+                                      _relativeScanTime(lastScanAt!, locale),
+                                    ),
+                                overflow: TextOverflow.ellipsis,
+                                style: Theme.of(context).textTheme.labelSmall
+                                    ?.copyWith(
+                                      color: AppColors.heading,
+                                      fontSize: 10.5,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                    if (usageLabel != null) ...[
+                      const SizedBox(height: pairedGap),
+                      SizedBox(
+                        width: usageRailWidth,
+                        child: Column(
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    locale.tr('dashboard_usage'),
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelSmall
+                                        ?.copyWith(
+                                          color: AppColors.heading,
+                                          fontSize: 10.5,
+                                          fontWeight: FontWeight.w900,
+                                        ),
+                                  ),
+                                ),
+                                Text(
+                                  usageLabel,
+                                  style: Theme.of(context).textTheme.labelSmall
+                                      ?.copyWith(
+                                        color: AppColors.heading,
+                                        fontSize: 10.5,
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(
+                                AppRadius.pill,
+                              ),
+                              child: LinearProgressIndicator(
+                                value: usageProgress,
+                                minHeight: 5,
+                                backgroundColor: AppColors.surface.withValues(
+                                  alpha: 0.82,
+                                ),
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  exhausted
+                                      ? AppColors.error
+                                      : AppColors.primaryDark,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (exhausted) ...[
+                        const SizedBox(height: 5),
+                        TextButton.icon(
+                          onPressed: onUpgrade,
+                          iconAlignment: IconAlignment.end,
+                          icon: const Icon(
+                            Icons.arrow_forward_rounded,
+                            size: 14,
+                          ),
+                          label: Text(
+                            locale.tr('dashboard_upgrade_unlimited_scans'),
+                          ),
+                          style: TextButton.styleFrom(
+                            foregroundColor: AppColors.primaryDark,
+                            textStyle: Theme.of(context).textTheme.labelSmall
+                                ?.copyWith(
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                            minimumSize: const Size.fromHeight(26),
+                            padding: EdgeInsets.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ],
                 ),
               ),
             ),
-            if (exhausted) ...[
-              const SizedBox(height: 5),
-              TextButton.icon(
-                onPressed: onUpgrade,
-                iconAlignment: IconAlignment.end,
-                icon: const Icon(Icons.arrow_forward_rounded, size: 15),
-                label: Text(locale.tr('dashboard_upgrade_unlimited_scans')),
-                style: TextButton.styleFrom(
-                  minimumSize: const Size.fromHeight(32),
-                  padding: EdgeInsets.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
-              ),
-            ],
-          ],
-        ],
-      ),
+          ),
+        );
+      },
     );
   }
+}
+
+String _relativeScanTime(DateTime value, AppLocale locale) {
+  final localValue = value.toLocal();
+  var difference = DateTime.now().difference(localValue);
+  if (difference.isNegative) {
+    difference = Duration.zero;
+  }
+
+  if (difference.inMinutes < 1) {
+    return locale.tr('dashboard_scan_just_now');
+  }
+  if (difference.inMinutes < 60) {
+    final minutes = difference.inMinutes;
+    final key = minutes == 1
+        ? 'dashboard_scan_minute_ago'
+        : 'dashboard_scan_minutes_ago';
+    return locale.tr(key).replaceAll('{count}', '$minutes');
+  }
+  if (difference.inHours < 24) {
+    final hours = difference.inHours;
+    final key = hours == 1
+        ? 'dashboard_scan_hour_ago'
+        : 'dashboard_scan_hours_ago';
+    return locale.tr(key).replaceAll('{count}', '$hours');
+  }
+  if (difference.inDays < 30) {
+    final days = difference.inDays;
+    final key = days == 1
+        ? 'dashboard_scan_day_ago'
+        : 'dashboard_scan_days_ago';
+    return locale.tr(key).replaceAll('{count}', '$days');
+  }
+
+  final day = localValue.day.toString().padLeft(2, '0');
+  final month = localValue.month.toString().padLeft(2, '0');
+  return '$day/$month/${localValue.year}';
 }
 
 class _SectionTitle extends StatelessWidget {
@@ -622,7 +760,7 @@ class _RoutinePreviewCard extends StatelessWidget {
   final int completedSteps;
   final int totalSteps;
   final double progress;
-  final List<RegimenStep> steps;
+  final List<_RoutinePreviewItem> steps;
   final VoidCallback onOpen;
 
   @override
@@ -671,13 +809,32 @@ class _RoutinePreviewCard extends StatelessWidget {
             )
           else
             SizedBox(
-              height: 92,
+              height: 116,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 itemCount: steps.length,
-                separatorBuilder: (_, _) => const SizedBox(width: 12),
+                separatorBuilder: (_, index) {
+                  final changesPeriod =
+                      steps[index].periodLabel != steps[index + 1].periodLabel;
+                  if (!changesPeriod) {
+                    return const SizedBox(width: 12);
+                  }
+                  return SizedBox(
+                    width: 24,
+                    child: Center(
+                      child: Container(
+                        width: 1.5,
+                        height: 86,
+                        decoration: BoxDecoration(
+                          color: AppColors.outline.withValues(alpha: 0.9),
+                          borderRadius: BorderRadius.circular(AppRadius.pill),
+                        ),
+                      ),
+                    ),
+                  );
+                },
                 itemBuilder: (context, index) =>
-                    _RoutineBubble(step: steps[index]),
+                    _RoutineBubble(item: steps[index]),
               ),
             ),
         ],
@@ -687,34 +844,28 @@ class _RoutinePreviewCard extends StatelessWidget {
 }
 
 class _RoutineBubble extends StatelessWidget {
-  const _RoutineBubble({required this.step});
+  const _RoutineBubble({required this.item});
 
-  final RegimenStep step;
+  final _RoutinePreviewItem item;
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
+    final step = item.step;
+    final category = step.category.trim().isEmpty
+        ? locale.tr('product_default_brand')
+        : step.category.trim();
+    final stepLabel = locale
+        .tr('dashboard_step_number')
+        .replaceAll('{number}', '${item.sequence}');
     return SizedBox(
-      width: 78,
+      width: 96,
       child: Column(
         children: [
-          Container(
-            width: 54,
-            height: 54,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: AppColors.surfaceStrong,
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.white),
-            ),
-            child: Icon(
-              _categoryIcon(step.category),
-              color: AppColors.primaryDark,
-              size: 22,
-            ),
-          ),
+          _RoutineProductImage(step: step),
           const SizedBox(height: 7),
           Text(
-            step.category,
+            category,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
@@ -723,28 +874,140 @@ class _RoutineBubble extends StatelessWidget {
               color: AppColors.heading,
             ),
           ),
+          const SizedBox(height: 3),
           Text(
-            step.name,
+            item.periodLabel,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.labelSmall,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: AppColors.primaryDark,
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            stepLabel,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: AppColors.primaryDark,
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ],
       ),
     );
   }
+}
 
-  IconData _categoryIcon(String category) {
-    return switch (category.trim().toLowerCase()) {
-      'cleanser' => Icons.soap_outlined,
-      'toner' => Icons.opacity_outlined,
-      'serum' => Icons.science_outlined,
-      'moisturizer' => Icons.spa_outlined,
-      'sunscreen' => Icons.wb_sunny_outlined,
-      _ => Icons.local_florist_outlined,
-    };
+class _RoutineProductImage extends StatelessWidget {
+  const _RoutineProductImage({required this.step});
+
+  final RegimenStep step;
+
+  @override
+  Widget build(BuildContext context) {
+    final raw = step.imageUrl?.trim() ?? '';
+    final url = raw.isEmpty
+        ? ''
+        : raw.startsWith('http')
+        ? raw
+        : '${AppConfig.apiBaseUrl}$raw';
+
+    return Container(
+      width: 58,
+      height: 58,
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceStrong,
+        shape: BoxShape.circle,
+        border: Border.all(color: Colors.white, width: 1.4),
+      ),
+      child: ClipOval(
+        child: url.isEmpty
+            ? _RoutineImageFallback(category: step.category)
+            : Image.network(
+                url,
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) =>
+                    _RoutineImageFallback(category: step.category),
+              ),
+      ),
+    );
   }
+}
+
+class _RoutineImageFallback extends StatelessWidget {
+  const _RoutineImageFallback({required this.category});
+
+  final String category;
+
+  @override
+  Widget build(BuildContext context) {
+    return ColoredBox(
+      color: AppColors.surfaceStrong,
+      child: Icon(
+        _categoryIcon(category),
+        color: AppColors.primaryDark,
+        size: 22,
+      ),
+    );
+  }
+}
+
+class _RoutinePreviewItem {
+  const _RoutinePreviewItem({
+    required this.step,
+    required this.periodLabel,
+    required this.sequence,
+  });
+
+  final RegimenStep step;
+  final String periodLabel;
+  final int sequence;
+}
+
+List<_RoutinePreviewItem> _routinePreviewItems(
+  CurrentRegimen? regimen,
+  AppLocale locale,
+) {
+  if (regimen == null) {
+    return const [];
+  }
+
+  _RoutinePreviewItem buildItem(
+    RegimenStep step,
+    int index,
+    String periodLabel,
+  ) {
+    return _RoutinePreviewItem(
+      step: step,
+      periodLabel: periodLabel,
+      sequence: step.stepOrder > 0 ? step.stepOrder : index + 1,
+    );
+  }
+
+  return [
+    for (var i = 0; i < regimen.morning.length; i++)
+      buildItem(regimen.morning[i], i, locale.tr('dashboard_morning')),
+    for (var i = 0; i < regimen.evening.length; i++)
+      buildItem(regimen.evening[i], i, locale.tr('dashboard_evening')),
+  ];
+}
+
+IconData _categoryIcon(String category) {
+  return switch (category.trim().toLowerCase()) {
+    'cleanser' => Icons.soap_outlined,
+    'toner' => Icons.opacity_outlined,
+    'serum' => Icons.science_outlined,
+    'moisturizer' => Icons.spa_outlined,
+    'sunscreen' => Icons.wb_sunny_outlined,
+    _ => Icons.local_florist_outlined,
+  };
 }
 
 class _ForYouSection extends StatelessWidget {

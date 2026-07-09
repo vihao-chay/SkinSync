@@ -18,6 +18,7 @@ class AppScaffold extends StatelessWidget {
     this.compactHeader = false,
     this.showBackButton = false,
     this.onBack,
+    this.backIcon = Icons.arrow_back_rounded,
   });
 
   final String title;
@@ -31,6 +32,7 @@ class AppScaffold extends StatelessWidget {
   final bool compactHeader;
   final bool showBackButton;
   final VoidCallback? onBack;
+  final IconData backIcon;
 
   @override
   Widget build(BuildContext context) {
@@ -76,7 +78,10 @@ class AppScaffold extends StatelessWidget {
                     bottomPadding,
                   ),
                   child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    crossAxisAlignment:
+                        subtitle == null || subtitle!.trim().isEmpty
+                        ? CrossAxisAlignment.center
+                        : CrossAxisAlignment.start,
                     children: [
                       if (showBackButton) ...[
                         SizedBox.square(
@@ -84,10 +89,7 @@ class AppScaffold extends StatelessWidget {
                           child: IconButton(
                             tooltip: 'Back',
                             padding: EdgeInsets.zero,
-                            icon: const Icon(
-                              Icons.arrow_back_rounded,
-                              size: 22,
-                            ),
+                            icon: Icon(backIcon, size: 22),
                             color: AppColors.heading,
                             onPressed:
                                 onBack ??

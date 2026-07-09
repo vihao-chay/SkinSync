@@ -45,6 +45,7 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  flutter_launcher_icons: ^0.14.4
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
@@ -52,6 +53,14 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "logo_perfect.png"
+  adaptive_icon_background: "#FAF7F2"
+  adaptive_icon_foreground: "logo_perfect.png"
+  adaptive_icon_foreground_inset: 0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -66,9 +75,13 @@ flutter:
 
   assets:
     - logo.jpg
+    - logo_home.png
+    - img/logo_home_2.jpg
+    - img/logo_home_perfect.png
+    - img/logo_routine_perfect.png
+    - img/logo_onboard-perfect.png
     - logo_perfect.png
     - login_register.png
-    - bank.jpg
     - assets/avatars/
 
   fonts:
