@@ -333,7 +333,7 @@ class _RoutineHeroHeader extends StatelessWidget {
     final locale = AppLocale.of(context);
     final width = MediaQuery.sizeOf(context).width;
     final isWide = width >= 600;
-    final imageHeight = isWide ? 460.0 : 382.0;
+    final imageHeight = isWide ? 500.0 : 440.0;
     final clampedPercent = percent.clamp(0, 100);
 
     return DecoratedBox(
@@ -357,7 +357,7 @@ class _RoutineHeroHeader extends StatelessWidget {
                     const Image(
                       image: AssetImage('img/logo_routine_perfect.png'),
                       fit: BoxFit.cover,
-                      alignment: Alignment.center,
+                      alignment: Alignment(0, -0.42),
                     ),
                     const Align(
                       alignment: Alignment.bottomCenter,

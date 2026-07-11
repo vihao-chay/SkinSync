@@ -79,11 +79,12 @@ class _ProgressPageState extends State<ProgressPage> {
         progress?.dailyTip ??
         latestAnalysis?.overview;
     final hasProgressContent = !_hasNoProgressData(appState);
-    final progressError =
-        appState.progressLoadErrorMessage ??
-        appState.analysisLoadErrorMessage ??
-        appState.trackingLoadErrorMessage ??
-        appState.todayLogLoadErrorMessage;
+    final progressError = appState.isRefreshingHome
+        ? null
+        : appState.progressLoadErrorMessage ??
+              appState.analysisLoadErrorMessage ??
+              appState.trackingLoadErrorMessage ??
+              appState.todayLogLoadErrorMessage;
     final horizontalPadding = Responsive.responsiveHorizontalPadding(context);
     final showCheckupSavedState =
         widget.args.entryPoint == ProgressEntryPoint.checkupSaved;

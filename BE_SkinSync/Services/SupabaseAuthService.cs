@@ -210,7 +210,20 @@ public class SupabaseAuthService : ISupabaseAuthService
 
     private bool HasValidConfig()
     {
-        return !string.IsNullOrWhiteSpace(_supabaseUrl) && !string.IsNullOrWhiteSpace(_anonKey);
+        if (string.IsNullOrWhiteSpace(_supabaseUrl) ||
+            string.IsNullOrWhiteSpace(_anonKey))
+        {
+            return false;
+        }
+
+        if (_supabaseUrl.Contains("your-project", StringComparison.OrdinalIgnoreCase) ||
+            _anonKey.Equals("CHANGE_ME", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        return Uri.TryCreate(_supabaseUrl, UriKind.Absolute, out var uri) &&
+               (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
     }
 
     private HttpRequestMessage BuildRequest(HttpMethod method, string url, object payload)

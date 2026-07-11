@@ -54,8 +54,13 @@ class _LoginPageState extends State<LoginPage> {
       });
     }
 
+    if (_isSubmittingAuth) {
+      return const _AuthProcessingView();
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8F3EC),
+      resizeToAvoidBottomInset: true,
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
@@ -67,51 +72,44 @@ class _LoginPageState extends State<LoginPage> {
                 desktop: 520,
               ),
             ),
-            child: AnimatedPadding(
-              duration: const Duration(milliseconds: 180),
-              padding: EdgeInsets.only(
-                bottom: MediaQuery.viewInsetsOf(context).bottom,
+            child: ListView(
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+              padding: Responsive.responsivePadding(
+                context,
+                top: 10,
+                bottom: 24,
               ),
-              child: ListView(
-                keyboardDismissBehavior:
-                    ScrollViewKeyboardDismissBehavior.onDrag,
-                padding: Responsive.responsivePadding(
-                  context,
-                  top: 10,
-                  bottom: 24,
-                ),
-                children: [
-                  const _BrandHeader(),
-                  const SizedBox(height: 16),
-                  _HeroCard(isRegisterMode: _isRegisterMode),
-                  Transform.translate(
-                    offset: const Offset(0, -10),
-                    child: _AuthCard(
-                      isRegisterMode: _isRegisterMode,
-                      isBusy: appState.isBusy,
-                      nameController: _nameController,
-                      emailController: _emailController,
-                      phoneController: _phoneController,
-                      passwordController: _passwordController,
-                      confirmPasswordController: _confirmPasswordController,
-                      showPassword: _showPassword,
-                      showConfirmPassword: _showConfirmPassword,
-                      acceptedTerms: _acceptedTerms,
-                      onModeChanged: _switchMode,
-                      onChanged: (_) => context.read<AppState>().clearError(),
-                      onTogglePassword: () =>
-                          setState(() => _showPassword = !_showPassword),
-                      onToggleConfirmPassword: () => setState(
-                        () => _showConfirmPassword = !_showConfirmPassword,
-                      ),
-                      onTermsChanged: (value) =>
-                          setState(() => _acceptedTerms = value ?? false),
-                      onSubmit: () => _submit(appState),
-                      onGoogleSubmit: () => _submitGoogle(appState),
+              children: [
+                const _BrandHeader(),
+                const SizedBox(height: 16),
+                _HeroCard(isRegisterMode: _isRegisterMode),
+                Transform.translate(
+                  offset: const Offset(0, -10),
+                  child: _AuthCard(
+                    isRegisterMode: _isRegisterMode,
+                    isBusy: appState.isBusy,
+                    nameController: _nameController,
+                    emailController: _emailController,
+                    phoneController: _phoneController,
+                    passwordController: _passwordController,
+                    confirmPasswordController: _confirmPasswordController,
+                    showPassword: _showPassword,
+                    showConfirmPassword: _showConfirmPassword,
+                    acceptedTerms: _acceptedTerms,
+                    onModeChanged: _switchMode,
+                    onChanged: (_) => context.read<AppState>().clearError(),
+                    onTogglePassword: () =>
+                        setState(() => _showPassword = !_showPassword),
+                    onToggleConfirmPassword: () => setState(
+                      () => _showConfirmPassword = !_showConfirmPassword,
                     ),
+                    onTermsChanged: (value) =>
+                        setState(() => _acceptedTerms = value ?? false),
+                    onSubmit: () => _submit(appState),
+                    onGoogleSubmit: () => _submitGoogle(appState),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),
@@ -318,6 +316,84 @@ class _BrandHeader extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _AuthProcessingView extends StatelessWidget {
+  const _AuthProcessingView();
+
+  @override
+  Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
+    final isVietnamese = locale.isVietnamese;
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8F3EC),
+      body: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 360),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(_authCornerRadius),
+                  border: Border.all(color: _authBorderColor),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.08),
+                      blurRadius: 24,
+                      offset: const Offset(0, 14),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const BrandLogo(size: 42, radius: 14),
+                    const SizedBox(height: 18),
+                    const SizedBox(
+                      width: 26,
+                      height: 26,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.4,
+                        color: AppColors.primaryDark,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Text(
+                      isVietnamese
+                          ? '\u0110ang ho\u00e0n t\u1ea5t \u0111\u0103ng nh\u1eadp'
+                          : 'Completing sign in',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: AppColors.foreground,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      isVietnamese
+                          ? 'SkinSync \u0111ang x\u00e1c th\u1ef1c tai kho\u1ea3n c\u1ee7a b\u1ea1n.'
+                          : 'SkinSync is verifying your account.',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AppColors.mutedText,
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

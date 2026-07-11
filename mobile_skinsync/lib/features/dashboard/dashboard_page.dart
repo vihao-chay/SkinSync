@@ -86,7 +86,7 @@ class _DashboardPageState extends State<DashboardPage> {
     final products =
         (_latestRecommendation?.products ?? const <AiRecommendedProduct>[])
             .where((item) => item.name.trim().isNotEmpty)
-            .take(2)
+            .take(3)
             .toList();
     final contentMaxWidth = Responsive.maxContentWidth(
       context,
@@ -1090,6 +1090,8 @@ class _ForYouLoading extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: const [
+        Expanded(child: _LoadingBlock()),
+        SizedBox(width: AppSpacing.sm),
         Expanded(child: _LoadingBlock()),
         SizedBox(width: AppSpacing.sm),
         Expanded(child: _LoadingBlock()),

@@ -36,6 +36,7 @@ class AppState extends ChangeNotifier {
   CurrentSubscription? subscription;
   bool isBusy = false;
   bool isBootstrapping = true;
+  bool isRefreshingHome = false;
   bool hasPendingOnboarding = false;
   bool hasResolvedProfileState = false;
   String? errorMessage;
@@ -49,6 +50,7 @@ class AppState extends ChangeNotifier {
   String? subscriptionPlansLoadErrorMessage;
   String? subscriptionStatusLoadErrorMessage;
   int _messageVersion = 0;
+  Future<void>? _refreshHomeFuture;
 
   bool get isAuthenticated => session != null;
   bool get shouldShowOnboarding =>
@@ -59,28 +61,36 @@ class AppState extends ChangeNotifier {
               !_hasCompletedOnboarding(profile)));
   AppUser? get user => session?.user;
   ApiClient get apiClient => _apiClient;
-  String? get homeDataErrorMessage => _firstErrorMessage([
-    profileLoadErrorMessage,
-    analysisLoadErrorMessage,
-    regimenLoadErrorMessage,
-    trackingLoadErrorMessage,
-    progressLoadErrorMessage,
-    todayLogLoadErrorMessage,
-  ]);
-  String? get routineDataErrorMessage => _firstErrorMessage([
-    regimenLoadErrorMessage,
-    trackingLoadErrorMessage,
-    remindersLoadErrorMessage,
-  ]);
-  String? get todayCheckupDataErrorMessage => _firstErrorMessage([
-    regimenLoadErrorMessage,
-    trackingLoadErrorMessage,
-    todayLogLoadErrorMessage,
-  ]);
-  String? get membershipLoadErrorMessage => _firstErrorMessage([
-    subscriptionPlansLoadErrorMessage,
-    subscriptionStatusLoadErrorMessage,
-  ]);
+  String? get homeDataErrorMessage => isRefreshingHome
+      ? null
+      : _firstErrorMessage([
+          profileLoadErrorMessage,
+          analysisLoadErrorMessage,
+          regimenLoadErrorMessage,
+          trackingLoadErrorMessage,
+          progressLoadErrorMessage,
+          todayLogLoadErrorMessage,
+        ]);
+  String? get routineDataErrorMessage => isRefreshingHome
+      ? null
+      : _firstErrorMessage([
+          regimenLoadErrorMessage,
+          trackingLoadErrorMessage,
+          remindersLoadErrorMessage,
+        ]);
+  String? get todayCheckupDataErrorMessage => isRefreshingHome
+      ? null
+      : _firstErrorMessage([
+          regimenLoadErrorMessage,
+          trackingLoadErrorMessage,
+          todayLogLoadErrorMessage,
+        ]);
+  String? get membershipLoadErrorMessage => isRefreshingHome
+      ? null
+      : _firstErrorMessage([
+          subscriptionPlansLoadErrorMessage,
+          subscriptionStatusLoadErrorMessage,
+        ]);
   String get onboardingDisplayNameSeed {
     final fullName = user?.fullName.trim() ?? '';
     if (fullName.isNotEmpty && !_looksLikeEmail(fullName)) {
@@ -152,7 +162,7 @@ class AppState extends ChangeNotifier {
       );
 
       await _applySessionFromLoginPayload(data);
-      await refreshHome();
+      await _resolvePostAuthProfileState();
     });
   }
 
@@ -217,7 +227,7 @@ class AppState extends ChangeNotifier {
         );
 
         await _applySessionFromLoginPayload(data);
-        await refreshHome();
+        await _resolvePostAuthProfileState();
       },
       onError: (error) {
         if (error is PlatformException) {
@@ -266,6 +276,8 @@ class AppState extends ChangeNotifier {
     subscription = null;
     hasPendingOnboarding = false;
     hasResolvedProfileState = false;
+    isRefreshingHome = false;
+    _refreshHomeFuture = null;
     _resetLoadErrors();
     _apiClient.attachSession(null);
     await _sessionStore.clear();
@@ -277,25 +289,58 @@ class AppState extends ChangeNotifier {
       return;
     }
 
-    await _runBusy(() async {
-      await Future.wait([
-        _loadProfile(),
-        _loadLatestAnalysis(),
-        _loadRegimen(),
-        _loadTracking(),
-        _loadProgress(),
-        _loadReminders(),
-        _loadTodayLog(),
-        _loadSubscription(),
-      ]);
-      if (profileLoadErrorMessage == null) {
-        if (_hasCompletedOnboarding(profile)) {
-          await _clearOnboardingPendingForCurrentUser();
-        } else {
-          await _markOnboardingPendingForCurrentUser();
-        }
+    final currentRefresh = _refreshHomeFuture;
+    if (currentRefresh != null) {
+      return currentRefresh;
+    }
+
+    final nextRefresh = _refreshHomeInternal();
+    _refreshHomeFuture = nextRefresh;
+    try {
+      await nextRefresh;
+    } finally {
+      if (identical(_refreshHomeFuture, nextRefresh)) {
+        _refreshHomeFuture = null;
       }
-    }, showBusy: false);
+    }
+  }
+
+  Future<void> _refreshHomeInternal() async {
+    isRefreshingHome = true;
+    notifyListeners();
+    try {
+      await _runBusy(() async {
+        await _loadProfile();
+        await _loadLatestAnalysis();
+        await _loadRegimen();
+        await _loadTracking();
+        await _loadProgress();
+        await _loadReminders();
+        await _loadTodayLog();
+        await _loadSubscription();
+        await _syncOnboardingPendingFromProfile();
+      }, showBusy: false);
+    } finally {
+      isRefreshingHome = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> _resolvePostAuthProfileState() async {
+    await _loadProfile();
+    await _syncOnboardingPendingFromProfile();
+  }
+
+  Future<void> _syncOnboardingPendingFromProfile() async {
+    if (profileLoadErrorMessage != null || !hasResolvedProfileState) {
+      return;
+    }
+
+    if (_hasCompletedOnboarding(profile)) {
+      await _clearOnboardingPendingForCurrentUser();
+    } else {
+      await _markOnboardingPendingForCurrentUser();
+    }
   }
 
   Future<void> saveSurvey({
@@ -1125,6 +1170,8 @@ class AppState extends ChangeNotifier {
       _apiClient.attachSession(null);
       hasPendingOnboarding = false;
       hasResolvedProfileState = false;
+      isRefreshingHome = false;
+      _refreshHomeFuture = null;
       _resetLoadErrors();
       await _sessionStore.clear();
       return;

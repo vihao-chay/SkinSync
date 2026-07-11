@@ -13,7 +13,7 @@ typedef SessionChangedHandler = Future<void> Function(AuthSession? session);
 class ApiClient {
   ApiClient({required this.baseUrl});
 
-  static const _requestTimeout = Duration(seconds: 20);
+  static const _requestTimeout = Duration(seconds: 60);
 
   final String baseUrl;
   AuthSession? _session;
@@ -177,7 +177,7 @@ class ApiClient {
       return await send().timeout(timeout ?? _requestTimeout);
     } on TimeoutException {
       throw ApiException(
-        'Cannot connect to backend at $baseUrl. Check that the backend is running and this phone is on the same Wi-Fi.',
+        'Cannot connect to backend at $baseUrl. The server may be waking up or taking too long to respond. Please try again.',
         0,
       );
     } on SocketException {
@@ -265,8 +265,10 @@ class ApiClient {
     try {
       final decoded = jsonDecode(body);
       if (decoded is Map<String, dynamic>) {
-        return (decoded['message'] ?? decoded['title'] ?? 'Request failed')
-            .toString();
+        return _sanitizeServerMessage(
+          (decoded['message'] ?? decoded['title'] ?? 'Request failed')
+              .toString(),
+        );
       }
     } catch (_) {}
 
@@ -278,6 +280,26 @@ class ApiClient {
     if (normalized.startsWith('<!DOCTYPE html') ||
         normalized.startsWith('<html')) {
       return 'Backend returned an HTML error page instead of JSON. Please check the backend logs.';
+    }
+
+    return _sanitizeServerMessage(normalized);
+  }
+
+  String _sanitizeServerMessage(String message) {
+    final normalized = message.trim();
+    final lower = normalized.toLowerCase();
+
+    if (lower.contains('max clients reached') ||
+        lower.contains('too many clients') ||
+        lower.contains('remaining connection slots') ||
+        lower.contains('npgsql.postgresexception')) {
+      return 'D\u1eef li\u1ec7u \u0111ang qu\u00e1 t\u1ea3i. Vui l\u00f2ng th\u1eed l\u1ea1i sau gi\u00e2y l\u00e1t.';
+    }
+
+    if (lower.contains(' at npgsql.') ||
+        lower.contains(' at microsoft.entityframeworkcore.') ||
+        lower.contains(' at system.runtime.compilerservices.')) {
+      return 'Backend is busy right now. Please try again in a moment.';
     }
 
     return normalized;

@@ -83,6 +83,11 @@ class _MainShellState extends State<MainShell> {
     _routineArgs = const RoutinePageArgs();
     _progressArgs = const ProgressPageArgs();
     _applyInitialArgs(widget.initialRoute, widget.initialArgs);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        context.read<AppState>().refreshHome();
+      }
+    });
   }
 
   int _routeToIndex(String route) {
