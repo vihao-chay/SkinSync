@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/app_locale.dart';
 import '../theme/app_spacing.dart';
 import 'app_button.dart';
 import 'app_card.dart';
@@ -23,6 +24,7 @@ class ProfileHeaderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
     final url = avatarUrl?.trim();
     return AppCard(
       variant: AppCardVariant.accent,
@@ -79,7 +81,7 @@ class ProfileHeaderCard extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.md),
           AppButton(
-            label: 'Edit profile',
+            label: locale.tr('profile_edit_profile'),
             variant: AppButtonVariant.secondary,
             icon: const Icon(Icons.edit_outlined),
             onPressed: onEdit,

@@ -60,14 +60,15 @@ public static class UserMapper
 
     private static bool IsOnboardingCompleted(UserProfile profile, UserProfilePayload payload)
     {
-        return !string.IsNullOrWhiteSpace(payload.DisplayName)
+        return payload.OnboardingCompleted
+            || (!string.IsNullOrWhiteSpace(payload.DisplayName)
             && !string.IsNullOrWhiteSpace(payload.DateOfBirth)
             && !string.IsNullOrWhiteSpace(payload.Gender)
             && !string.IsNullOrWhiteSpace(profile.SkinType)
             && !string.IsNullOrWhiteSpace(payload.BudgetLevel)
             && payload.Concerns.Count > 0
             && !string.IsNullOrWhiteSpace(payload.CurrentRoutineLevel)
-            && payload.SkinGoals.Count > 0;
+            && (payload.Goals.Count > 0 || payload.SkinGoals.Count > 0));
     }
 
     public static AdminUserItemDto ToAdminUserDto(this User user)

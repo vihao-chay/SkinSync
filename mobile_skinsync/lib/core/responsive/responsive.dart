@@ -68,8 +68,7 @@ class Responsive {
     double bottom = 0,
     double? horizontal,
   }) {
-    final horizontalValue =
-        horizontal ?? responsiveHorizontalPadding(context);
+    final horizontalValue = horizontal ?? responsiveHorizontalPadding(context);
     return EdgeInsets.fromLTRB(horizontalValue, top, horizontalValue, bottom);
   }
 
@@ -86,10 +85,19 @@ class Responsive {
     return bottomSafeArea(context) + extra;
   }
 
-  static double headerTopSpacing(
+  static double floatingNavigationBottomSpacing(
     BuildContext context, {
-    bool compact = false,
+    double extra = 20,
   }) {
+    const navigationHeight = 64.0;
+    const navigationBottomMargin = 8.0;
+    return bottomSafeArea(context) +
+        navigationHeight +
+        navigationBottomMargin +
+        extra;
+  }
+
+  static double headerTopSpacing(BuildContext context, {bool compact = false}) {
     return responsiveValue<double>(
       context,
       mobileSmall: compact ? 8 : 12,
@@ -135,11 +143,6 @@ class Responsive {
     int tablet = 2,
     int desktop = 3,
   }) {
-    return columns(
-      context,
-      mobile: mobile,
-      tablet: tablet,
-      desktop: desktop,
-    );
+    return columns(context, mobile: mobile, tablet: tablet, desktop: desktop);
   }
 }

@@ -17,9 +17,12 @@ class LandingPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final nextRoute = context.watch<AppState>().isAuthenticated
-        ? AppRoutes.dashboard
-        : AppRoutes.login;
+    final appState = context.watch<AppState>();
+    final nextRoute = !appState.isAuthenticated
+        ? AppRoutes.login
+        : appState.shouldShowOnboarding
+        ? AppRoutes.onboardingIntro
+        : AppRoutes.dashboard;
 
     return Scaffold(
       backgroundColor: AppColors.pageBackground,
@@ -66,7 +69,9 @@ class LandingPage extends StatelessWidget {
                           borderRadius: BorderRadius.circular(22),
                         ),
                         child: AspectRatio(
-                          aspectRatio: Responsive.isTablet(context) ? 1.9 : 1.35,
+                          aspectRatio: Responsive.isTablet(context)
+                              ? 1.9
+                              : 1.35,
                           child: Stack(
                             fit: StackFit.expand,
                             children: [
@@ -105,8 +110,12 @@ class LandingPage extends StatelessWidget {
                                         vertical: 8,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: Colors.white.withValues(alpha: 0.88),
-                                        borderRadius: BorderRadius.circular(999),
+                                        color: Colors.white.withValues(
+                                          alpha: 0.88,
+                                        ),
+                                        borderRadius: BorderRadius.circular(
+                                          999,
+                                        ),
                                       ),
                                       child: Text(
                                         'Live data only',
@@ -137,7 +146,9 @@ class LandingPage extends StatelessWidget {
                                       style: Theme.of(context)
                                           .textTheme
                                           .bodyMedium
-                                          ?.copyWith(color: AppColors.mutedText),
+                                          ?.copyWith(
+                                            color: AppColors.mutedText,
+                                          ),
                                     ),
                                   ],
                                 ),

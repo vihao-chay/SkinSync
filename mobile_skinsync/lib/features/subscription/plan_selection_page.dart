@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/l10n/app_locale.dart';
 import '../../core/models/app_models.dart';
 import '../../core/state/app_state.dart';
 import '../../core/theme/app_colors.dart';
@@ -41,6 +42,7 @@ class _PlanSelectionPageState extends State<PlanSelectionPage> {
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
     final appState = context.watch<AppState>();
     final currentCode =
         (appState.subscription?.plan.code ?? appState.user?.planType ?? 'free')
@@ -73,7 +75,10 @@ class _PlanSelectionPageState extends State<PlanSelectionPage> {
             constraints: const BoxConstraints(maxWidth: 460),
             child: Column(
               children: [
-                _PlanTopBar(onClose: () => Navigator.maybePop(context)),
+                _PlanTopBar(
+                  title: locale.tr('plan_title'),
+                  onBack: () => Navigator.maybePop(context),
+                ),
                 Expanded(
                   child: RefreshIndicator(
                     color: AppColors.primary,
@@ -82,20 +87,13 @@ class _PlanSelectionPageState extends State<PlanSelectionPage> {
                       physics: const AlwaysScrollableScrollPhysics(),
                       padding: const EdgeInsets.fromLTRB(
                         AppSpacing.pagePadding,
-                        10,
+                        4,
                         AppSpacing.pagePadding,
                         24,
                       ),
                       children: [
                         Text(
-                          'Choose Your Plan',
-                          textAlign: TextAlign.center,
-                          style: Theme.of(context).textTheme.headlineMedium
-                              ?.copyWith(fontWeight: FontWeight.w800),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'Unlock personalized AI skincare insights and more room to build your wellness routine.',
+                          locale.tr('plan_subtitle'),
                           textAlign: TextAlign.center,
                           style: Theme.of(
                             context,
@@ -103,7 +101,7 @@ class _PlanSelectionPageState extends State<PlanSelectionPage> {
                         ),
                         const SizedBox(height: AppSpacing.lg),
                         _CurrentUsagePanel(
-                          currentPlanName: _brandedPlanName(
+                          currentPlanName: _planDisplayName(
                             appState.subscription?.plan.name,
                             currentCode,
                           ),
@@ -112,9 +110,9 @@ class _PlanSelectionPageState extends State<PlanSelectionPage> {
                         if (appState.membershipLoadErrorMessage != null) ...[
                           const SizedBox(height: AppSpacing.md),
                           ErrorStateCard(
-                            title: 'Plans could not load',
+                            title: locale.tr('common_plans_error'),
                             description: appState.membershipLoadErrorMessage!,
-                            ctaLabel: 'Try again',
+                            ctaLabel: locale.tr('common_try_again'),
                             onCta: appState.refreshSubscription,
                           ),
                         ],
@@ -216,7 +214,7 @@ class _PlanSelectionPageState extends State<PlanSelectionPage> {
             content: Text(
               message?.trim().isNotEmpty == true
                   ? message!
-                  : 'Could not start payment. Please try again.',
+                  : AppLocale.of(context).tr('payment_error'),
             ),
           ),
         );
@@ -229,21 +227,20 @@ class _PlanSelectionPageState extends State<PlanSelectionPage> {
   }
 
   Future<void> _cancelMembership(AppState appState) async {
+    final locale = AppLocale.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Cancel membership?'),
-        content: const Text(
-          'Your account will return to the Free plan and its monthly limits.',
-        ),
+        title: Text(locale.tr('plan_cancel_confirm')),
+        content: Text(locale.tr('plan_cancel_description')),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Keep plan'),
+            child: Text(locale.tr('plan_keep')),
           ),
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Cancel plan'),
+            child: Text(locale.tr('plan_cancel')),
           ),
         ],
       ),
@@ -257,7 +254,7 @@ class _PlanSelectionPageState extends State<PlanSelectionPage> {
       if (mounted) {
         setState(() => _selectedPlanCode = null);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Membership changed to Free.')),
+          SnackBar(content: Text(locale.tr('plan_cancelled_success'))),
         );
       }
     } catch (_) {
@@ -265,7 +262,7 @@ class _PlanSelectionPageState extends State<PlanSelectionPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              appState.errorMessage ?? 'Could not cancel membership.',
+              appState.errorMessage ?? locale.tr('common_could_not_cancel'),
             ),
           ),
         );
@@ -275,35 +272,56 @@ class _PlanSelectionPageState extends State<PlanSelectionPage> {
 }
 
 class _PlanTopBar extends StatelessWidget {
-  const _PlanTopBar({required this.onClose});
+  const _PlanTopBar({required this.title, required this.onBack});
 
-  final VoidCallback onClose;
+  final String title;
+  final VoidCallback onBack;
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      height: 54,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Text(
-            'SkinSync',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              color: AppColors.primary,
-              fontWeight: FontWeight.w800,
+    final locale = AppLocale.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.pagePadding,
+        8,
+        AppSpacing.pagePadding,
+        4,
+      ),
+      child: SizedBox(
+        height: 48,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            Align(
+              alignment: Alignment.centerLeft,
+              child: IconButton(
+                tooltip: locale.tr('common_back'),
+                onPressed: onBack,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints.tightFor(
+                  width: 40,
+                  height: 40,
+                ),
+                color: AppColors.heading,
+                iconSize: 30,
+                icon: const Icon(Icons.chevron_left_rounded),
+              ),
             ),
-          ),
-          Positioned(
-            right: 8,
-            child: IconButton(
-              tooltip: 'Close',
-              onPressed: onClose,
-              color: AppColors.heading,
-              icon: const Icon(Icons.close_rounded),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 44),
+              child: Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  color: AppColors.heading,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -320,6 +338,7 @@ class _CurrentUsagePanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
     final limit = usage?.monthlyLimit;
     final used = usage?.used ?? 0;
     final unlimited = usage?.isUnlimited ?? false;
@@ -337,7 +356,7 @@ class _CurrentUsagePanel extends StatelessWidget {
           children: [
             Expanded(
               child: Text(
-                'CURRENT PLAN USAGE',
+                locale.tr('plan_current_usage'),
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
                   color: AppColors.heading,
                   fontWeight: FontWeight.w900,
@@ -346,10 +365,10 @@ class _CurrentUsagePanel extends StatelessWidget {
             ),
             Text(
               unlimited
-                  ? 'Unlimited scans'
+                  ? locale.tr('plan_unlimited_scans')
                   : limit == null
                   ? currentPlanName
-                  : '$used/$limit scans',
+                  : '$used/$limit ${locale.tr('plan_scans')}',
               style: Theme.of(context).textTheme.labelSmall?.copyWith(
                 color: exhausted ? AppColors.error : AppColors.heading,
                 fontWeight: FontWeight.w800,
@@ -371,9 +390,7 @@ class _CurrentUsagePanel extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Text(
-          exhausted
-              ? 'Limit reached. Upgrade to unlock more scans.'
-              : currentPlanName,
+          exhausted ? locale.tr('plan_limit_reached') : currentPlanName,
           style: Theme.of(context).textTheme.labelSmall?.copyWith(
             color: exhausted ? AppColors.error : AppColors.mutedText,
           ),
@@ -400,6 +417,7 @@ class _PlanChoiceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
     final features = plan.features
         .where(
           (feature) =>
@@ -411,12 +429,12 @@ class _PlanChoiceCard extends StatelessWidget {
 
     return AppCard(
       onTap: onTap,
-      radius: AppRadius.small,
+      radius: AppRadius.card,
       padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
       backgroundColor: selected
           ? AppColors.primaryFixed.withValues(alpha: 0.22)
           : AppColors.surface,
-      borderColor: selected ? AppColors.primaryContainer : AppColors.border,
+      borderColor: selected ? AppColors.primaryContainer : Colors.white,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -439,13 +457,13 @@ class _PlanChoiceCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      _brandedPlanName(plan.name, plan.code),
+                      _planDisplayName(plan.name, plan.code),
                       style: Theme.of(context).textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w800,
                       ),
                     ),
                     Text(
-                      _formatPlanPrice(plan),
+                      _formatPlanPrice(plan, locale),
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
                         color: AppColors.heading,
                         fontWeight: FontWeight.w700,
@@ -455,15 +473,15 @@ class _PlanChoiceCard extends StatelessWidget {
                 ),
               ),
               if (current)
-                const _PlanBadge(label: 'Current')
+                _PlanBadge(label: locale.tr('plan_current'))
               else if (bestValue)
-                const _PlanBadge(label: 'Best Value'),
+                _PlanBadge(label: locale.tr('plan_best_value')),
             ],
           ),
-          if (plan.description?.trim().isNotEmpty == true) ...[
+          if (_planDescription(plan, locale).trim().isNotEmpty) ...[
             const SizedBox(height: 10),
             Text(
-              plan.description!,
+              _planDescription(plan, locale),
               style: Theme.of(context).textTheme.labelSmall?.copyWith(
                 color: AppColors.heading,
                 height: 1.35,
@@ -488,7 +506,7 @@ class _PlanChoiceCard extends StatelessWidget {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      _featureLabel(feature),
+                      _featureLabel(feature, locale),
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
                         color: AppColors.heading,
                         height: 1.3,
@@ -549,28 +567,26 @@ class _PlanBottomAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
     final selectedPlan = plan;
     final label = selectedPlan == null
-        ? 'Choose a plan'
+        ? locale.tr('plan_choose')
         : isCurrent
-        ? 'Current Plan'
-        : 'Continue with ${_brandedPlanName(selectedPlan.name, selectedPlan.code)}';
+        ? locale.tr('plan_current_plan')
+        : '${locale.tr('plan_continue_with')} ${_planDisplayName(selectedPlan.name, selectedPlan.code)}';
 
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.pagePadding,
         10,
         AppSpacing.pagePadding,
         12,
       ),
-      decoration: BoxDecoration(
-        color: AppColors.surface.withValues(alpha: 0.97),
-        border: Border(
-          top: BorderSide(color: AppColors.border.withValues(alpha: 0.6)),
-        ),
-      ),
+      color: AppColors.surface,
       child: Column(
         mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           FilledButton.icon(
             onPressed: isCurrent || isLoading ? null : onContinue,
@@ -589,7 +605,7 @@ class _PlanBottomAction extends StatelessWidget {
             const SizedBox(height: 2),
             TextButton(
               onPressed: isLoading ? null : onCancelPlan,
-              child: const Text('Cancel membership'),
+              child: Text(locale.tr('plan_cancel_membership')),
             ),
           ],
         ],
@@ -660,18 +676,18 @@ class _PaymentStatusDialogState extends State<_PaymentStatusDialog>
           return;
         case 'cancelled':
           setState(() {
-            _statusMessage = 'This payment was cancelled or expired.';
+            _statusMessage = AppLocale.of(context).tr('payment_cancelled');
           });
           break;
         default:
           setState(() {
-            _statusMessage = 'Waiting for PayOS to confirm your payment...';
+            _statusMessage = AppLocale.of(context).tr('payment_waiting_payos');
           });
       }
     } catch (_) {
       if (mounted) {
         setState(() {
-          _statusMessage = 'Still waiting for payment confirmation...';
+          _statusMessage = AppLocale.of(context).tr('payment_still_waiting');
         });
       }
     } finally {
@@ -683,9 +699,10 @@ class _PaymentStatusDialogState extends State<_PaymentStatusDialog>
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
     return AlertDialog(
       title: Text(
-        'Complete ${_brandedPlanName(widget.plan.name, widget.plan.code)}',
+        '${locale.tr('payment_complete')} ${_planDisplayName(widget.plan.name, widget.plan.code)}',
       ),
       content: Column(
         mainAxisSize: MainAxisSize.min,
@@ -697,7 +714,7 @@ class _PaymentStatusDialogState extends State<_PaymentStatusDialog>
           ),
           const SizedBox(height: AppSpacing.sm),
           Text(
-            'Finish payment in the browser. This screen will update automatically when payment succeeds.',
+            locale.tr('payment_browser'),
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodySmall,
           ),
@@ -725,7 +742,7 @@ class _PaymentStatusDialogState extends State<_PaymentStatusDialog>
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context, false),
-          child: const Text('Later'),
+          child: Text(locale.tr('payment_later')),
         ),
       ],
     );
@@ -785,36 +802,73 @@ SubscriptionUsage? _findUsage(
   return null;
 }
 
-String _brandedPlanName(String? name, String code) {
+String _planDisplayName(String? name, String code) {
+  final normalizedCode = code.trim().toLowerCase();
+  if (normalizedCode == 'plus' || normalizedCode == 'premium') {
+    return _capitalize(normalizedCode);
+  }
+
   final resolved = name?.trim().isNotEmpty == true
       ? name!.trim()
       : _capitalize(code);
-  return resolved.toLowerCase().startsWith('skinsync')
-      ? resolved
-      : 'SkinSync $resolved';
+  final withoutBrand = resolved.replaceFirst(
+    RegExp(r'^SkinSync[\s_-]*', caseSensitive: false),
+    '',
+  );
+  return withoutBrand.trim().isEmpty ? _capitalize(code) : withoutBrand.trim();
 }
 
-String _formatPlanPrice(SubscriptionPlan plan) {
+String _formatPlanPrice(SubscriptionPlan plan, AppLocale locale) {
   if (plan.priceVnd <= 0) {
-    return 'Free';
+    return locale.tr('plan_free');
   }
   final formatter = NumberFormat.decimalPattern('vi_VN');
-  final cycle = plan.billingCycle.toLowerCase() == 'yearly' ? 'yr' : 'mo';
-  return '${formatter.format(plan.priceVnd.round())} VND/$cycle';
+  final cycle = plan.billingCycle.toLowerCase() == 'yearly'
+      ? locale.tr('plan_per_year')
+      : locale.tr('plan_per_month');
+  return '${formatter.format(plan.priceVnd.round())} VND$cycle';
 }
 
-String _featureLabel(SubscriptionPlanFeature feature) {
-  final name = feature.displayName.trim().isEmpty
-      ? _capitalize(feature.featureKey.replaceAll('_', ' '))
-      : feature.displayName.trim();
+String _planDescription(SubscriptionPlan plan, AppLocale locale) {
+  final normalizedCode = plan.code.trim().toLowerCase();
+  return switch (normalizedCode) {
+    'plus' => locale.tr('plan_plus_description'),
+    'premium' => locale.tr('plan_premium_description'),
+    _ => plan.description?.trim() ?? '',
+  };
+}
+
+String _featureLabel(SubscriptionPlanFeature feature, AppLocale locale) {
+  final name = _featureName(feature, locale);
   if (feature.isUnlimited) {
-    return 'Unlimited $name';
+    return '${locale.tr('membership_unlimited')} $name';
   }
   final limit = feature.monthlyLimit;
   if (limit != null && limit > 0) {
-    return '$limit $name / month';
+    return '$limit $name ${locale.tr('plan_feature_month_suffix')}';
   }
   return name;
+}
+
+String _featureName(SubscriptionPlanFeature feature, AppLocale locale) {
+  final key = feature.featureKey.trim().toLowerCase();
+  return switch (key) {
+    'skin_analysis' ||
+    'skin_analyses' ||
+    'analysis' => locale.tr('plan_feature_skin_analysis'),
+    'ai_chat' || 'chat' => locale.tr('plan_feature_ai_chat'),
+    'routine_generation' ||
+    'routine_generator' ||
+    'routine' => locale.tr('plan_feature_routine'),
+    'ingredient_check' ||
+    'ingredients_check' => locale.tr('plan_feature_ingredient'),
+    'conflict_check' ||
+    'routine_conflict_check' => locale.tr('plan_feature_conflict'),
+    _ =>
+      feature.displayName.trim().isEmpty
+          ? _capitalize(feature.featureKey.replaceAll('_', ' '))
+          : feature.displayName.trim(),
+  };
 }
 
 String _capitalize(String value) {

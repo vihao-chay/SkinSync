@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 import 'app_colors.dart';
 import 'app_radius.dart';
@@ -128,7 +128,7 @@ class AppTheme {
           foregroundColor: AppColors.onPrimary,
           elevation: 0,
           disabledBackgroundColor: AppColors.surfaceContainerHigh,
-          disabledForegroundColor: AppColors.outline,
+          disabledForegroundColor: AppColors.mutedText,
           minimumSize: const Size(0, 52),
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           shape: RoundedRectangleBorder(

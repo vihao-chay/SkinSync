@@ -2,6 +2,7 @@ class AppRoutes {
   static const landing = '/';
   static const splash = '/splash';
   static const onboarding = '/onboarding';
+  static const onboardingIntro = '/onboarding/welcome';
   static const login = '/login';
   static const quiz = '/quiz';
   static const upload = '/upload';

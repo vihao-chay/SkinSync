@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/app_locale.dart';
 import '../models/app_models.dart';
 import '../routes/app_routes.dart';
 import '../theme/app_colors.dart';
@@ -28,7 +29,7 @@ class FloatingAiButton extends StatelessWidget {
           backgroundColor: AppColors.ai,
           foregroundColor: Colors.white,
           icon: const Icon(Icons.auto_awesome_rounded),
-          label: const Text('SkinSync AI'),
+          label: Text(AppLocale.of(context).tr('floating_ai_ask')),
         ),
       ),
     );

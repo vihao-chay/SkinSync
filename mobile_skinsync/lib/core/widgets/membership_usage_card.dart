@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/app_locale.dart';
 import '../models/app_models.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
@@ -28,6 +29,7 @@ class MembershipUsageCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
     final visibleUsage = usage.take(4).toList();
     return AppCard(
       variant: AppCardVariant.hero,
@@ -36,8 +38,8 @@ class MembershipUsageCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const StatusChip(
-                label: 'Membership',
+              StatusChip(
+                label: locale.tr('dashboard_membership'),
                 icon: Icons.workspace_premium_outlined,
                 tone: StatusChipTone.accent,
               ),
@@ -66,7 +68,7 @@ class MembershipUsageCard extends StatelessWidget {
               ),
               if (showUpgrade)
                 AppButton(
-                  label: 'Upgrade',
+                  label: locale.tr('dashboard_upgrade'),
                   expand: false,
                   onPressed: onUpgrade,
                 ),
@@ -134,12 +136,13 @@ class _UsageTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
     final limit = usage.monthlyLimit;
     final progress = usage.isUnlimited || limit == null || limit <= 0
         ? 0.0
         : (usage.used / limit).clamp(0.0, 1.0);
     final value = usage.isUnlimited
-        ? '${usage.used} used'
+        ? '${usage.used} ${locale.tr('membership_used')}'
         : '${usage.used}/${limit ?? 0}';
 
     return AppCard(
@@ -161,8 +164,8 @@ class _UsageTile extends StatelessWidget {
                 ),
               ),
               if (!usage.isEnabled)
-                const StatusChip(
-                  label: 'Locked',
+                StatusChip(
+                  label: locale.tr('membership_locked'),
                   icon: Icons.lock_outline_rounded,
                   tone: StatusChipTone.warning,
                 ),
@@ -179,14 +182,14 @@ class _UsageTile extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           LinearProgressStat(
-            label: usage.isUnlimited ? 'Flexible usage' : 'Monthly usage',
+            label: usage.isUnlimited ? locale.tr('membership_flexible_usage') : locale.tr('membership_monthly_usage'),
             value: usage.isUnlimited
-                ? 'Unlimited'
+                ? locale.tr('membership_unlimited')
                 : '${(progress * 100).round()}%',
             progress: usage.isUnlimited ? 0.35 : progress,
             caption: usage.remaining == null
                 ? null
-                : '${usage.remaining} remaining this cycle',
+                : '${usage.remaining} ${locale.tr('membership_remaining_cycle')}',
             color: usage.isEnabled
                 ? AppColors.primaryDark
                 : AppColors.subtleText,

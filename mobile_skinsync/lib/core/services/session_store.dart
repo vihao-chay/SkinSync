@@ -7,6 +7,7 @@ import '../models/app_models.dart';
 class SessionStore {
   static const _sessionKey = 'skinsync_session';
   static const _pendingOnboardingUsersKey = 'skinsync_pending_onboarding_users';
+  static const _selectedAvatarKeyPrefix = 'skinsync_selected_avatar_';
 
   Future<AuthSession?> read() async {
     final prefs = await SharedPreferences.getInstance();
@@ -26,6 +27,34 @@ class SessionStore {
   Future<void> clear() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_sessionKey);
+  }
+
+  Future<String?> selectedAvatarFor(String userId) async {
+    final normalizedUserId = userId.trim();
+    if (normalizedUserId.isEmpty) {
+      return null;
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    final avatar = prefs.getString(
+      '$_selectedAvatarKeyPrefix$normalizedUserId',
+    );
+    final normalizedAvatar = avatar?.trim() ?? '';
+    return normalizedAvatar.isEmpty ? null : normalizedAvatar;
+  }
+
+  Future<void> saveSelectedAvatarFor(String userId, String avatarUrl) async {
+    final normalizedUserId = userId.trim();
+    final normalizedAvatar = avatarUrl.trim();
+    if (normalizedUserId.isEmpty || normalizedAvatar.isEmpty) {
+      return;
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      '$_selectedAvatarKeyPrefix$normalizedUserId',
+      normalizedAvatar,
+    );
   }
 
   Future<bool> isOnboardingPendingFor(String userId) async {

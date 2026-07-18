@@ -13,7 +13,7 @@ typedef SessionChangedHandler = Future<void> Function(AuthSession? session);
 class ApiClient {
   ApiClient({required this.baseUrl});
 
-  static const _requestTimeout = Duration(seconds: 20);
+  static const _requestTimeout = Duration(seconds: 60);
 
   final String baseUrl;
   AuthSession? _session;
@@ -55,13 +55,18 @@ class ApiClient {
     return _decodeResponse(response);
   }
 
-  Future<Map<String, dynamic>> post(String path, {Object? body}) async {
+  Future<Map<String, dynamic>> post(
+    String path, {
+    Object? body,
+    Duration? timeout,
+  }) async {
     final response = await _sendWithRefresh(
       () => http.post(
         _uri(path),
         headers: _headers(),
         body: jsonEncode(body ?? const {}),
       ),
+      timeout: timeout,
     );
     return _decodeResponse(response);
   }
@@ -107,7 +112,10 @@ class ApiClient {
       () => http.delete(_uri(path), headers: _headers()),
     );
     if (response.statusCode >= 400) {
-      throw ApiException(_extractMessage(response.body), response.statusCode);
+      throw ApiException(
+        _extractMessage(_responseBody(response)),
+        response.statusCode,
+      );
     }
   }
 
@@ -142,9 +150,10 @@ class ApiClient {
   }
 
   Future<http.Response> _sendWithRefresh(
-    Future<http.Response> Function() send,
-  ) async {
-    var response = await _sendNetworkRequest(send);
+    Future<http.Response> Function() send, {
+    Duration? timeout,
+  }) async {
+    var response = await _sendNetworkRequest(send, timeout: timeout);
     if (response.statusCode != 401 ||
         _session == null ||
         _refreshSessionHandler == null) {
@@ -156,18 +165,19 @@ class ApiClient {
       return response;
     }
 
-    response = await _sendNetworkRequest(send);
+    response = await _sendNetworkRequest(send, timeout: timeout);
     return response;
   }
 
   Future<http.Response> _sendNetworkRequest(
-    Future<http.Response> Function() send,
-  ) async {
+    Future<http.Response> Function() send, {
+    Duration? timeout,
+  }) async {
     try {
-      return await send().timeout(_requestTimeout);
+      return await send().timeout(timeout ?? _requestTimeout);
     } on TimeoutException {
       throw ApiException(
-        'Cannot connect to backend at $baseUrl. Check that the backend is running and this phone is on the same Wi-Fi.',
+        'Cannot connect to backend at $baseUrl. The server may be waking up or taking too long to respond. Please try again.',
         0,
       );
     } on SocketException {
@@ -211,7 +221,7 @@ class ApiClient {
   }
 
   Map<String, dynamic> _decodeResponse(http.Response response) {
-    final body = response.body.isEmpty ? '{}' : response.body;
+    final body = _responseBody(response);
     if (response.statusCode >= 400) {
       throw ApiException(_extractMessage(body), response.statusCode);
     }
@@ -244,12 +254,21 @@ class ApiClient {
     return <String, dynamic>{'items': decoded};
   }
 
+  String _responseBody(http.Response response) {
+    if (response.bodyBytes.isEmpty) {
+      return '{}';
+    }
+    return utf8.decode(response.bodyBytes, allowMalformed: true);
+  }
+
   String _extractMessage(String body) {
     try {
       final decoded = jsonDecode(body);
       if (decoded is Map<String, dynamic>) {
-        return (decoded['message'] ?? decoded['title'] ?? 'Request failed')
-            .toString();
+        return _sanitizeServerMessage(
+          (decoded['message'] ?? decoded['title'] ?? 'Request failed')
+              .toString(),
+        );
       }
     } catch (_) {}
 
@@ -261,6 +280,26 @@ class ApiClient {
     if (normalized.startsWith('<!DOCTYPE html') ||
         normalized.startsWith('<html')) {
       return 'Backend returned an HTML error page instead of JSON. Please check the backend logs.';
+    }
+
+    return _sanitizeServerMessage(normalized);
+  }
+
+  String _sanitizeServerMessage(String message) {
+    final normalized = message.trim();
+    final lower = normalized.toLowerCase();
+
+    if (lower.contains('max clients reached') ||
+        lower.contains('too many clients') ||
+        lower.contains('remaining connection slots') ||
+        lower.contains('npgsql.postgresexception')) {
+      return 'D\u1eef li\u1ec7u \u0111ang qu\u00e1 t\u1ea3i. Vui l\u00f2ng th\u1eed l\u1ea1i sau gi\u00e2y l\u00e1t.';
+    }
+
+    if (lower.contains(' at npgsql.') ||
+        lower.contains(' at microsoft.entityframeworkcore.') ||
+        lower.contains(' at system.runtime.compilerservices.')) {
+      return 'Backend is busy right now. Please try again in a moment.';
     }
 
     return normalized;

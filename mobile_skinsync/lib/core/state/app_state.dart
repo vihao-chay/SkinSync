@@ -36,6 +36,7 @@ class AppState extends ChangeNotifier {
   CurrentSubscription? subscription;
   bool isBusy = false;
   bool isBootstrapping = true;
+  bool isRefreshingHome = false;
   bool hasPendingOnboarding = false;
   bool hasResolvedProfileState = false;
   String? errorMessage;
@@ -49,6 +50,7 @@ class AppState extends ChangeNotifier {
   String? subscriptionPlansLoadErrorMessage;
   String? subscriptionStatusLoadErrorMessage;
   int _messageVersion = 0;
+  Future<void>? _refreshHomeFuture;
 
   bool get isAuthenticated => session != null;
   bool get shouldShowOnboarding =>
@@ -59,28 +61,36 @@ class AppState extends ChangeNotifier {
               !_hasCompletedOnboarding(profile)));
   AppUser? get user => session?.user;
   ApiClient get apiClient => _apiClient;
-  String? get homeDataErrorMessage => _firstErrorMessage([
-    profileLoadErrorMessage,
-    analysisLoadErrorMessage,
-    regimenLoadErrorMessage,
-    trackingLoadErrorMessage,
-    progressLoadErrorMessage,
-    todayLogLoadErrorMessage,
-  ]);
-  String? get routineDataErrorMessage => _firstErrorMessage([
-    regimenLoadErrorMessage,
-    trackingLoadErrorMessage,
-    remindersLoadErrorMessage,
-  ]);
-  String? get todayCheckupDataErrorMessage => _firstErrorMessage([
-    regimenLoadErrorMessage,
-    trackingLoadErrorMessage,
-    todayLogLoadErrorMessage,
-  ]);
-  String? get membershipLoadErrorMessage => _firstErrorMessage([
-    subscriptionPlansLoadErrorMessage,
-    subscriptionStatusLoadErrorMessage,
-  ]);
+  String? get homeDataErrorMessage => isRefreshingHome
+      ? null
+      : _firstErrorMessage([
+          profileLoadErrorMessage,
+          analysisLoadErrorMessage,
+          regimenLoadErrorMessage,
+          trackingLoadErrorMessage,
+          progressLoadErrorMessage,
+          todayLogLoadErrorMessage,
+        ]);
+  String? get routineDataErrorMessage => isRefreshingHome
+      ? null
+      : _firstErrorMessage([
+          regimenLoadErrorMessage,
+          trackingLoadErrorMessage,
+          remindersLoadErrorMessage,
+        ]);
+  String? get todayCheckupDataErrorMessage => isRefreshingHome
+      ? null
+      : _firstErrorMessage([
+          regimenLoadErrorMessage,
+          trackingLoadErrorMessage,
+          todayLogLoadErrorMessage,
+        ]);
+  String? get membershipLoadErrorMessage => isRefreshingHome
+      ? null
+      : _firstErrorMessage([
+          subscriptionPlansLoadErrorMessage,
+          subscriptionStatusLoadErrorMessage,
+        ]);
   String get onboardingDisplayNameSeed {
     final fullName = user?.fullName.trim() ?? '';
     if (fullName.isNotEmpty && !_looksLikeEmail(fullName)) {
@@ -112,20 +122,25 @@ class AppState extends ChangeNotifier {
     notifyListeners();
 
     try {
-      await _sessionStore.clear();
+      final savedSession = await _sessionStore.read();
+      if (savedSession != null) {
+        final restoredSession = await _withSelectedAvatar(savedSession);
+        session = restoredSession;
+        _apiClient.attachSession(restoredSession);
+
+        final currentUserId = restoredSession.user.id;
+        if (currentUserId.isNotEmpty) {
+          hasPendingOnboarding = await _sessionStore.isOnboardingPendingFor(
+            currentUserId,
+          );
+        }
+        await refreshHome();
+      } else {
+        session = null;
+        _apiClient.attachSession(null);
+      }
+    } catch (_) {
       session = null;
-      profile = null;
-      latestAnalysis = null;
-      regimen = null;
-      trackingToday = null;
-      progress = null;
-      todayLog = null;
-      reminders = const [];
-      subscriptionPlans = const [];
-      subscription = null;
-      hasPendingOnboarding = false;
-      hasResolvedProfileState = false;
-      _resetLoadErrors();
       _apiClient.attachSession(null);
     } finally {
       isBootstrapping = false;
@@ -147,7 +162,7 @@ class AppState extends ChangeNotifier {
       );
 
       await _applySessionFromLoginPayload(data);
-      await refreshHome();
+      await _resolvePostAuthProfileState();
     });
   }
 
@@ -212,7 +227,7 @@ class AppState extends ChangeNotifier {
         );
 
         await _applySessionFromLoginPayload(data);
-        await refreshHome();
+        await _resolvePostAuthProfileState();
       },
       onError: (error) {
         if (error is PlatformException) {
@@ -223,6 +238,29 @@ class AppState extends ChangeNotifier {
         }
       },
     );
+  }
+
+  Future<void> updateAvatarSelection(String avatarUrl) async {
+    final trimmed = avatarUrl.trim();
+    final currentSession = session;
+    if (trimmed.isEmpty || currentSession == null) {
+      return;
+    }
+
+    await _apiClient.put(
+      '/api/auth/avatar/selection',
+      body: {'avatarUrl': trimmed},
+    );
+    await _sessionStore.saveSelectedAvatarFor(currentSession.user.id, trimmed);
+
+    session = AuthSession(
+      accessToken: currentSession.accessToken,
+      refreshToken: currentSession.refreshToken,
+      user: currentSession.user.copyWith(avatarUrl: trimmed),
+    );
+    _apiClient.attachSession(session);
+    await _sessionStore.save(session!);
+    notifyListeners();
   }
 
   Future<void> logout() async {
@@ -238,6 +276,8 @@ class AppState extends ChangeNotifier {
     subscription = null;
     hasPendingOnboarding = false;
     hasResolvedProfileState = false;
+    isRefreshingHome = false;
+    _refreshHomeFuture = null;
     _resetLoadErrors();
     _apiClient.attachSession(null);
     await _sessionStore.clear();
@@ -249,21 +289,58 @@ class AppState extends ChangeNotifier {
       return;
     }
 
-    await _runBusy(() async {
-      await Future.wait([
-        _loadProfile(),
-        _loadLatestAnalysis(),
-        _loadRegimen(),
-        _loadTracking(),
-        _loadProgress(),
-        _loadReminders(),
-        _loadTodayLog(),
-        _loadSubscription(),
-      ]);
-      if (profileLoadErrorMessage == null && _hasCompletedOnboarding(profile)) {
-        await _clearOnboardingPendingForCurrentUser();
+    final currentRefresh = _refreshHomeFuture;
+    if (currentRefresh != null) {
+      return currentRefresh;
+    }
+
+    final nextRefresh = _refreshHomeInternal();
+    _refreshHomeFuture = nextRefresh;
+    try {
+      await nextRefresh;
+    } finally {
+      if (identical(_refreshHomeFuture, nextRefresh)) {
+        _refreshHomeFuture = null;
       }
-    }, showBusy: false);
+    }
+  }
+
+  Future<void> _refreshHomeInternal() async {
+    isRefreshingHome = true;
+    notifyListeners();
+    try {
+      await _runBusy(() async {
+        await _loadProfile();
+        await _loadLatestAnalysis();
+        await _loadRegimen();
+        await _loadTracking();
+        await _loadProgress();
+        await _loadReminders();
+        await _loadTodayLog();
+        await _loadSubscription();
+        await _syncOnboardingPendingFromProfile();
+      }, showBusy: false);
+    } finally {
+      isRefreshingHome = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> _resolvePostAuthProfileState() async {
+    await _loadProfile();
+    await _syncOnboardingPendingFromProfile();
+  }
+
+  Future<void> _syncOnboardingPendingFromProfile() async {
+    if (profileLoadErrorMessage != null || !hasResolvedProfileState) {
+      return;
+    }
+
+    if (_hasCompletedOnboarding(profile)) {
+      await _clearOnboardingPendingForCurrentUser();
+    } else {
+      await _markOnboardingPendingForCurrentUser();
+    }
   }
 
   Future<void> saveSurvey({
@@ -427,8 +504,10 @@ class AppState extends ChangeNotifier {
     debugPrint('[SkinSync] manual recommendation generate');
     final response = await _apiClient.post(
       '/api/ai/products/recommendations/generate',
+      timeout: const Duration(seconds: 240),
       body: {
-        if (category != null && category.trim().isNotEmpty) 'category': category,
+        if (category != null && category.trim().isNotEmpty)
+          'category': category,
         if (concern != null && concern.trim().isNotEmpty) 'concern': concern,
         if (budgetMax != null)
           'budgetRange': {
@@ -447,6 +526,25 @@ class AppState extends ChangeNotifier {
     final response = await _apiClient.get('/api/products/$productId');
     final data = _readAiData(response);
     return ProductDetail.fromJson(data);
+  }
+
+  Future<List<ProductDetail>> getProductCatalog({
+    String? category,
+    int page = 1,
+    int pageSize = 20,
+  }) async {
+    final response = await _apiClient.get(
+      '/api/products',
+      query: {
+        'page': page,
+        'pageSize': pageSize,
+        if (category != null && category.trim().isNotEmpty)
+          'category': category.trim(),
+      },
+    );
+    return _readAiCollection(
+      response,
+    ).whereType<Map<String, dynamic>>().map(ProductDetail.fromJson).toList();
   }
 
   Future<AiIngredientCheckResponse> checkIngredients({
@@ -491,7 +589,8 @@ class AppState extends ChangeNotifier {
       body: {
         'routineType': routineType,
         'allowConflicts': allowConflicts,
-        if (frequency != null && frequency.trim().isNotEmpty) 'frequency': frequency,
+        if (frequency != null && frequency.trim().isNotEmpty)
+          'frequency': frequency,
         if (notes != null && notes.trim().isNotEmpty) 'notes': notes,
       },
     );
@@ -591,9 +690,7 @@ class AppState extends ChangeNotifier {
   Future<VerifyPaymentResponse> verifyPayment(int orderCode) async {
     late VerifyPaymentResponse verifyRes;
     await _runBusy(() async {
-      final response = await _apiClient.get(
-        '/api/payment/verify/$orderCode',
-      );
+      final response = await _apiClient.get('/api/payment/verify/$orderCode');
       final data = _readAiData(response);
       verifyRes = VerifyPaymentResponse.fromJson(data);
       if (verifyRes.status == 'paid') {
@@ -677,7 +774,8 @@ class AppState extends ChangeNotifier {
         'eveningCompleted':
             trackingToday?.eveningCompleted.toString() ?? 'false',
         'isIrritated':
-            (normalizedFeeling == 'irritated' || normalizedFeeling == 'sensitive')
+            (normalizedFeeling == 'irritated' ||
+                    normalizedFeeling == 'sensitive')
                 .toString(),
         if (completedStepIds != null)
           'completedStepIdsJson': jsonEncode(completedStepIds),
@@ -728,9 +826,7 @@ class AppState extends ChangeNotifier {
     }
 
     try {
-      profile = SkinProfile.fromJson(
-        await _apiClient.get('/api/users/survey'),
-      );
+      profile = SkinProfile.fromJson(await _apiClient.get('/api/users/survey'));
       profileLoadErrorMessage = null;
       hasResolvedProfileState = true;
     } on ApiException catch (error) {
@@ -781,6 +877,11 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> markOnboardingPendingForCurrentUser() async {
+    await _markOnboardingPendingForCurrentUser();
+    notifyListeners();
+  }
+
+  Future<void> _markOnboardingPendingForCurrentUser() async {
     final currentUserId = session?.user.id;
     if (currentUserId == null || currentUserId.isEmpty) {
       return;
@@ -788,7 +889,6 @@ class AppState extends ChangeNotifier {
 
     hasPendingOnboarding = true;
     await _sessionStore.markOnboardingPendingFor(currentUserId);
-    notifyListeners();
   }
 
   Future<void> _clearOnboardingPendingForCurrentUser() async {
@@ -1058,27 +1158,33 @@ class AppState extends ChangeNotifier {
       );
 
       final refreshed = _sessionFromPayload(data);
-      return refreshed;
+      return _withSelectedAvatar(refreshed);
     } catch (_) {
       return null;
     }
   }
 
   Future<void> _persistSessionChange(AuthSession? nextSession) async {
-    session = nextSession;
-    _apiClient.attachSession(nextSession);
     if (nextSession == null) {
+      session = null;
+      _apiClient.attachSession(null);
       hasPendingOnboarding = false;
       hasResolvedProfileState = false;
+      isRefreshingHome = false;
+      _refreshHomeFuture = null;
       _resetLoadErrors();
       await _sessionStore.clear();
       return;
     }
 
+    final restoredSession = await _withSelectedAvatar(nextSession);
+    session = restoredSession;
+    _apiClient.attachSession(restoredSession);
+
     hasPendingOnboarding = await _sessionStore.isOnboardingPendingFor(
-      nextSession.user.id,
+      restoredSession.user.id,
     );
-    await _sessionStore.save(nextSession);
+    await _sessionStore.save(restoredSession);
   }
 
   String? _extractAccessToken(String callbackUrl) {
@@ -1106,7 +1212,7 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> _applySessionFromLoginPayload(Map<String, dynamic> data) async {
-    session = _sessionFromPayload(data);
+    session = await _withSelectedAvatar(_sessionFromPayload(data));
     _apiClient.attachSession(session);
     await _sessionStore.save(session!);
     hasPendingOnboarding = await _sessionStore.isOnboardingPendingFor(
@@ -1114,6 +1220,25 @@ class AppState extends ChangeNotifier {
     );
     hasResolvedProfileState = false;
     _resetLoadErrors();
+  }
+
+  Future<AuthSession> _withSelectedAvatar(AuthSession source) async {
+    var selectedAvatar = await _sessionStore.selectedAvatarFor(source.user.id);
+    final currentAvatar = source.user.avatarUrl?.trim() ?? '';
+    if (selectedAvatar == null && currentAvatar.startsWith('assets/avatars/')) {
+      await _sessionStore.saveSelectedAvatarFor(source.user.id, currentAvatar);
+      selectedAvatar = currentAvatar;
+    }
+
+    if (selectedAvatar == null || selectedAvatar == source.user.avatarUrl) {
+      return source;
+    }
+
+    return AuthSession(
+      accessToken: source.accessToken,
+      refreshToken: source.refreshToken,
+      user: source.user.copyWith(avatarUrl: selectedAvatar),
+    );
   }
 
   Future<void> _replaceCurrentUserFullName(String? fullName) async {
@@ -1282,9 +1407,12 @@ class AppState extends ChangeNotifier {
                               .map(
                                 (item) =>
                                     (((item['confidence'] as num?) ?? 0.8) > 1
-                                                ? ((item['confidence'] as num?) ?? 80)
-                                                : (((item['confidence'] as num?) ?? 0.8) * 100))
-                                            .round(),
+                                            ? ((item['confidence'] as num?) ??
+                                                  80)
+                                            : (((item['confidence'] as num?) ??
+                                                      0.8) *
+                                                  100))
+                                        .round(),
                               )
                               .reduce((a, b) => a + b) ~/
                           concerns.length)
@@ -1293,12 +1421,16 @@ class AppState extends ChangeNotifier {
     final legacySeverity =
         (data['overallConcernSeverity'] ??
                 data['overallScore'] ??
-                data['skinScore']) as num?;
+                data['skinScore'])
+            as num?;
     final skinHealthValue = data['skinHealthScore'] as num?;
     final rawMetrics = data['metrics'] is Map<String, dynamic>
         ? data['metrics'] as Map<String, dynamic>
         : <String, dynamic>{};
-    final hasMeaningfulMetricSignal = _hasMeaningfulMetricSignal(rawMetrics, data);
+    final hasMeaningfulMetricSignal = _hasMeaningfulMetricSignal(
+      rawMetrics,
+      data,
+    );
     final hasMeaningfulConcernSignal = concerns.any(
       (item) =>
           ((item['score'] as num?)?.round() ?? 0) > 0 ||
@@ -1313,15 +1445,17 @@ class AppState extends ChangeNotifier {
         !hasMeaningfulMetricSignal;
     final resolvedMetrics = hasMeaningfulMetricSignal
         ? (data['metrics'] is Map<String, dynamic>
-            ? AnalysisMetrics.fromJson(data['metrics'] as Map<String, dynamic>)
-            : AnalysisMetrics(
-                acne: (data['acneLevel'] as num?)?.round(),
-                redness: (data['rednessLevel'] as num?)?.round(),
-                oiliness: (data['oilinessLevel'] as num?)?.round(),
-                dryness: (data['drynessLevel'] as num?)?.round(),
-                moisture: (data['hydrationLevel'] as num?)?.round(),
-                texture: (data['textureLevel'] as num?)?.round(),
-              ))
+              ? AnalysisMetrics.fromJson(
+                  data['metrics'] as Map<String, dynamic>,
+                )
+              : AnalysisMetrics(
+                  acne: (data['acneLevel'] as num?)?.round(),
+                  redness: (data['rednessLevel'] as num?)?.round(),
+                  oiliness: (data['oilinessLevel'] as num?)?.round(),
+                  dryness: (data['drynessLevel'] as num?)?.round(),
+                  moisture: (data['hydrationLevel'] as num?)?.round(),
+                  texture: (data['textureLevel'] as num?)?.round(),
+                ))
         : const AnalysisMetrics();
     final overallConcernSeverity = shouldHideFallbackScores
         ? null
@@ -1329,9 +1463,9 @@ class AppState extends ChangeNotifier {
     final skinHealthScore = shouldHideFallbackScores
         ? null
         : skinHealthValue?.round() ??
-            (overallConcernSeverity == null
-                ? null
-                : (100 - overallConcernSeverity).clamp(0, 100));
+              (overallConcernSeverity == null
+                  ? null
+                  : (100 - overallConcernSeverity).clamp(0, 100));
 
     return AnalysisResult(
       id:
@@ -1343,6 +1477,12 @@ class AppState extends ChangeNotifier {
       progressEntryId: data['progressEntryId']?.toString(),
       photoId: data['photoId']?.toString(),
       source: data['source']?.toString(),
+      createdAt: DateTime.tryParse(
+        (data['createdAt'] ?? data['CreatedAt'])?.toString() ?? '',
+      ),
+      completedAt: DateTime.tryParse(
+        (data['completedAt'] ?? data['CompletedAt'])?.toString() ?? '',
+      ),
       imageUrl: data['imageUrl']?.toString() ?? '',
       skinType:
           data['skinType']?.toString() ??
@@ -1397,12 +1537,19 @@ class AppState extends ChangeNotifier {
     final existingHasMetricDetail = _hasMetricDetail(existing);
     return AnalysisResult(
       id: incoming.id,
-      analysisSessionId: incoming.analysisSessionId ?? existing.analysisSessionId,
+      analysisSessionId:
+          incoming.analysisSessionId ?? existing.analysisSessionId,
       progressEntryId: incoming.progressEntryId ?? existing.progressEntryId,
       photoId: incoming.photoId ?? existing.photoId,
       source: incoming.source ?? existing.source,
-      imageUrl: incoming.imageUrl.isNotEmpty ? incoming.imageUrl : existing.imageUrl,
-      skinType: incoming.skinType.trim().isNotEmpty ? incoming.skinType : existing.skinType,
+      createdAt: incoming.createdAt ?? existing.createdAt,
+      completedAt: incoming.completedAt ?? existing.completedAt,
+      imageUrl: incoming.imageUrl.isNotEmpty
+          ? incoming.imageUrl
+          : existing.imageUrl,
+      skinType: incoming.skinType.trim().isNotEmpty
+          ? incoming.skinType
+          : existing.skinType,
       overallScore: incoming.overallScore ?? existing.overallScore,
       skinHealthScore: incoming.skinHealthScore ?? existing.skinHealthScore,
       overallConcernSeverity:
@@ -1419,12 +1566,15 @@ class AppState extends ChangeNotifier {
       disclaimer: (incoming.disclaimer?.trim().isNotEmpty ?? false)
           ? incoming.disclaimer
           : existing.disclaimer,
-      warnings: incoming.warnings.isNotEmpty ? incoming.warnings : existing.warnings,
+      warnings: incoming.warnings.isNotEmpty
+          ? incoming.warnings
+          : existing.warnings,
       issues: incoming.issues.isNotEmpty ? incoming.issues : existing.issues,
       recommendations: incoming.recommendations.isNotEmpty
           ? incoming.recommendations
           : existing.recommendations,
-      canGenerateProducts: incoming.canGenerateProducts || existing.canGenerateProducts,
+      canGenerateProducts:
+          incoming.canGenerateProducts || existing.canGenerateProducts,
     );
   }
 
@@ -1495,14 +1645,28 @@ class AppState extends ChangeNotifier {
       return true;
     }
 
-    return (value.displayName?.trim().isNotEmpty ?? false) ||
-        (value.skinType?.trim().isNotEmpty ?? false) ||
+    final hasDisplayName = value.displayName?.trim().isNotEmpty ?? false;
+    final hasDateOfBirth = value.dateOfBirth?.trim().isNotEmpty ?? false;
+    final hasGender = value.gender?.trim().isNotEmpty ?? false;
+    final hasSkinType = value.skinType?.trim().isNotEmpty ?? false;
+    final hasBudget =
         value.monthlyBudget != null ||
-        (value.budgetLabel?.trim().isNotEmpty ?? false) ||
-        (value.currentRoutineLevel?.trim().isNotEmpty ?? false) ||
-        value.concerns.any((item) => item.trim().isNotEmpty) ||
+        (value.budgetLabel?.trim().isNotEmpty ?? false);
+    final hasConcerns = value.concerns.any((item) => item.trim().isNotEmpty);
+    final hasRoutineLevel =
+        value.currentRoutineLevel?.trim().isNotEmpty ?? false;
+    final hasGoals =
         value.goals.any((item) => item.trim().isNotEmpty) ||
         value.skinGoals.any((item) => item.trim().isNotEmpty);
+
+    return hasDisplayName &&
+        hasDateOfBirth &&
+        hasGender &&
+        hasSkinType &&
+        hasBudget &&
+        hasConcerns &&
+        hasRoutineLevel &&
+        hasGoals;
   }
 
   bool _isExpectedEmptyError(ApiException error) {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/config/app_config.dart';
+import '../../core/l10n/app_locale.dart';
 import '../../core/models/app_models.dart';
 import '../../core/routes/app_routes.dart';
 import '../../core/responsive/responsive.dart';
@@ -11,11 +12,10 @@ import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_card.dart';
-import '../../core/widgets/circular_score.dart';
 import '../../core/widgets/empty_state_card.dart';
 import '../../core/widgets/error_state_card.dart';
 import '../../core/widgets/main_shell.dart';
-import '../../core/widgets/stitch_top_bar.dart';
+import '../../core/widgets/skin_sync_header.dart';
 import '../../core/widgets/status_chip.dart';
 
 class RoutinePage extends StatefulWidget {
@@ -52,11 +52,10 @@ class _RoutinePageState extends State<RoutinePage> {
         if (!mounted) {
           return;
         }
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Routine reloaded from your saved backend regimen.'),
-          ),
-        );
+        final locale = AppLocale.of(context);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(locale.tr('routine_reloaded'))));
       });
     }
   }
@@ -73,6 +72,7 @@ class _RoutinePageState extends State<RoutinePage> {
     AppState appState,
     String stepId,
   ) async {
+    final locale = AppLocale.of(context);
     final wasCompleted = _draftCompletedStepIds.contains(stepId);
     setState(() {
       if (wasCompleted) {
@@ -96,7 +96,7 @@ class _RoutinePageState extends State<RoutinePage> {
           _draftCompletedStepIds.remove(stepId);
         }
         _actionErrorMessage =
-            appState.errorMessage ?? 'Could not update this routine step.';
+            appState.errorMessage ?? locale.tr('routine_error_update_step');
       });
     }
   }
@@ -106,6 +106,7 @@ class _RoutinePageState extends State<RoutinePage> {
     String routineType,
     String time,
   ) async {
+    final locale = AppLocale.of(context);
     try {
       await appState.saveReminder(routineType, time, true);
       if (mounted) {
@@ -115,14 +116,14 @@ class _RoutinePageState extends State<RoutinePage> {
       if (mounted) {
         setState(() {
           _actionErrorMessage =
-              appState.errorMessage ??
-              'Could not save your reminder right now.';
+              appState.errorMessage ?? locale.tr('routine_error_save_reminder');
         });
       }
     }
   }
 
   Future<void> _optimizeReminders(AppState appState) async {
+    final locale = AppLocale.of(context);
     setState(() => _optimizing = true);
     try {
       final result = await appState.optimizeAiReminders();
@@ -139,8 +140,7 @@ class _RoutinePageState extends State<RoutinePage> {
       if (mounted) {
         setState(() {
           _actionErrorMessage =
-              appState.errorMessage ??
-              'Could not optimize reminders right now.';
+              appState.errorMessage ?? locale.tr('routine_error_optimize');
         });
       }
     } finally {
@@ -152,6 +152,7 @@ class _RoutinePageState extends State<RoutinePage> {
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
     final appState = context.watch<AppState>();
     final regimen = appState.regimen;
     final tracking = appState.trackingToday;
@@ -185,23 +186,24 @@ class _RoutinePageState extends State<RoutinePage> {
               onRefresh: appState.refreshHome,
               child: ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.only(
-                  bottom: 0,
-                ),
+                padding: const EdgeInsets.only(bottom: 0),
                 children: [
-                  StitchTopBar(
+                  _RoutineHeroHeader(
+                    name: appState.profileDisplayName,
                     avatarUrl: appState.user?.avatarUrl,
-                    onLeadingTap: () =>
+                    onAvatarTap: () =>
                         MainShell.navigateToTab(context, AppRoutes.profile),
-                    onTrailingTap: () =>
-                        MainShell.navigateToTab(context, AppRoutes.progress),
+                    percent: (progress * 100).round(),
                   ),
                   Padding(
                     padding: EdgeInsets.fromLTRB(
                       Responsive.responsiveHorizontalPadding(context),
-                      4,
+                      AppSpacing.md,
                       Responsive.responsiveHorizontalPadding(context),
-                      0,
+                      Responsive.floatingNavigationBottomSpacing(
+                        context,
+                        extra: 20,
+                      ),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -209,21 +211,15 @@ class _RoutinePageState extends State<RoutinePage> {
                         if (appState.routineDataErrorMessage != null ||
                             _actionErrorMessage != null) ...[
                           ErrorStateCard(
-                            title: 'Routine data needs attention',
+                            title: locale.tr('routine_error_data_attention'),
                             description:
                                 _actionErrorMessage ??
                                 appState.routineDataErrorMessage!,
-                            ctaLabel: 'Try again',
+                            ctaLabel: locale.tr('common_retry'),
                             onCta: appState.refreshHome,
                           ),
                           const SizedBox(height: AppSpacing.md),
                         ],
-                        _ProgressHeader(
-                          percent: (progress * 100).round(),
-                          completedSteps: completedSteps,
-                          totalSteps: totalSteps,
-                        ),
-                        const SizedBox(height: AppSpacing.md),
                         _RoutineSegmentedControl(
                           showMorning: _showMorning,
                           onChanged: (value) =>
@@ -243,10 +239,9 @@ class _RoutinePageState extends State<RoutinePage> {
                             (morningSteps.isEmpty && eveningSteps.isEmpty))
                           EmptyStateCard(
                             icon: Icons.checklist_rtl_outlined,
-                            title: 'Choose products first',
-                            description:
-                                'Routine steps only appear from your active regimen. Open Shop and add products you want to use.',
-                            ctaLabel: 'Open Shop',
+                            title: locale.tr('routine_empty_title'),
+                            description: locale.tr('routine_empty_desc'),
+                            ctaLabel: locale.tr('recommendation_open_shop'),
                             onCta: () => MainShell.navigateToTab(
                               context,
                               AppRoutes.products,
@@ -256,11 +251,10 @@ class _RoutinePageState extends State<RoutinePage> {
                             ),
                           )
                         else if (activeSteps.isEmpty)
-                          const EmptyStateCard(
+                          EmptyStateCard(
                             icon: Icons.spa_outlined,
-                            title: 'No steps here yet',
-                            description:
-                                'Your active routine does not have products for this time of day.',
+                            title: locale.tr('routine_no_steps_title'),
+                            description: locale.tr('routine_no_steps_desc'),
                           )
                         else
                           ...activeSteps.map(
@@ -282,7 +276,7 @@ class _RoutinePageState extends State<RoutinePage> {
                           ),
                         const SizedBox(height: AppSpacing.sm),
                         AppButton(
-                          label: '+ Add Product',
+                          label: locale.tr('routine_add_product'),
                           onPressed: () => MainShell.navigateToTab(
                             context,
                             AppRoutes.products,
@@ -291,7 +285,7 @@ class _RoutinePageState extends State<RoutinePage> {
                         ),
                         const SizedBox(height: AppSpacing.sm),
                         AppButton(
-                          label: 'Optimize Routine',
+                          label: locale.tr('routine_optimize'),
                           variant: AppButtonVariant.secondary,
                           icon: const Icon(Icons.auto_awesome_rounded),
                           isLoading: _optimizing,
@@ -321,39 +315,131 @@ class _RoutinePageState extends State<RoutinePage> {
   }
 }
 
-class _ProgressHeader extends StatelessWidget {
-  const _ProgressHeader({
+class _RoutineHeroHeader extends StatelessWidget {
+  const _RoutineHeroHeader({
+    required this.name,
+    required this.avatarUrl,
+    required this.onAvatarTap,
     required this.percent,
-    required this.completedSteps,
-    required this.totalSteps,
   });
 
+  final String name;
+  final String? avatarUrl;
+  final VoidCallback onAvatarTap;
   final int percent;
-  final int completedSteps;
-  final int totalSteps;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        CircularScore(score: percent, size: 132, label: 'Completed'),
-        const SizedBox(height: 12),
-        Text(
-          'Today\'s Progress',
-          textAlign: TextAlign.center,
-          style: Theme.of(
-            context,
-          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          totalSteps == 0
-              ? 'No routine steps yet'
-              : '$completedSteps of $totalSteps steps completed today',
-          textAlign: TextAlign.center,
-          style: Theme.of(context).textTheme.bodySmall,
-        ),
-      ],
+    final locale = AppLocale.of(context);
+    final width = MediaQuery.sizeOf(context).width;
+    final isWide = width >= 600;
+    final imageHeight = isWide ? 500.0 : 440.0;
+    final clampedPercent = percent.clamp(0, 100);
+
+    return DecoratedBox(
+      decoration: const BoxDecoration(color: AppColors.pageBackground),
+      child: Column(
+        children: [
+          SkinSyncHeader(
+            name: name,
+            avatarUrl: avatarUrl,
+            onAvatarTap: onAvatarTap,
+          ),
+          Padding(
+            padding: EdgeInsets.only(top: isWide ? 28 : 18),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(isWide ? AppRadius.card : 0),
+              child: SizedBox(
+                height: imageHeight,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    const Image(
+                      image: AssetImage('img/logo_routine_perfect.png'),
+                      fit: BoxFit.cover,
+                      alignment: Alignment(0, -0.42),
+                    ),
+                    const Align(
+                      alignment: Alignment.bottomCenter,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Color(0x00FAF7F2),
+                              AppColors.pageBackground,
+                              AppColors.pageBackground,
+                            ],
+                            stops: [0, 0.72, 1],
+                          ),
+                        ),
+                        child: SizedBox(height: 72, width: double.infinity),
+                      ),
+                    ),
+                    const Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      height: 12,
+                      child: ColoredBox(color: AppColors.pageBackground),
+                    ),
+                    Align(
+                      alignment: Alignment.bottomCenter,
+                      child: Container(
+                        margin: const EdgeInsets.all(10),
+                        padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
+                        decoration: BoxDecoration(
+                          color: AppColors.secondaryAction.withValues(
+                            alpha: 0.9,
+                          ),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    '${locale.tr('routine_today_progress')} $clampedPercent%',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelLarge
+                                        ?.copyWith(
+                                          color: AppColors.onSecondary,
+                                          fontWeight: FontWeight.w900,
+                                        ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(
+                                AppRadius.pill,
+                              ),
+                              child: LinearProgressIndicator(
+                                value: clampedPercent / 100,
+                                minHeight: 4,
+                                backgroundColor: AppColors.onSecondary
+                                    .withValues(alpha: 0.28),
+                                valueColor: const AlwaysStoppedAnimation<Color>(
+                                  AppColors.onSecondary,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -369,6 +455,7 @@ class _RoutineSegmentedControl extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
     return AppCard(
       padding: const EdgeInsets.all(5),
       radius: AppRadius.pill,
@@ -377,14 +464,14 @@ class _RoutineSegmentedControl extends StatelessWidget {
         children: [
           Expanded(
             child: _SegmentButton(
-              label: 'Morning',
+              label: locale.tr('routine_morning'),
               selected: showMorning,
               onTap: () => onChanged(true),
             ),
           ),
           Expanded(
             child: _SegmentButton(
-              label: 'Evening',
+              label: locale.tr('routine_evening'),
               selected: !showMorning,
               onTap: () => onChanged(false),
             ),
@@ -449,19 +536,20 @@ class _ReminderRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
     return LayoutBuilder(
       builder: (context, constraints) {
         if (constraints.maxWidth < 420) {
           return Column(
             children: [
               _ReminderCard(
-                label: 'Morning',
+                label: locale.tr('routine_morning'),
                 time: morning?.time ?? '07:00',
                 onTap: onMorning,
               ),
               const SizedBox(height: AppSpacing.sm),
               _ReminderCard(
-                label: 'Evening',
+                label: locale.tr('routine_evening'),
                 time: evening?.time ?? '21:00',
                 onTap: onEvening,
               ),
@@ -473,7 +561,7 @@ class _ReminderRow extends StatelessWidget {
           children: [
             Expanded(
               child: _ReminderCard(
-                label: 'Morning',
+                label: locale.tr('routine_morning'),
                 time: morning?.time ?? '07:00',
                 onTap: onMorning,
               ),
@@ -481,7 +569,7 @@ class _ReminderRow extends StatelessWidget {
             const SizedBox(width: AppSpacing.sm),
             Expanded(
               child: _ReminderCard(
-                label: 'Evening',
+                label: locale.tr('routine_evening'),
                 time: evening?.time ?? '21:00',
                 onTap: onEvening,
               ),
@@ -565,34 +653,44 @@ class _RoutineStepTile extends StatelessWidget {
           _StepImage(step: step),
           const SizedBox(width: AppSpacing.sm),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  step.brand.trim().isEmpty ? step.category : step.brand,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: AppColors.primaryDark,
-                    fontWeight: FontWeight.w800,
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(AppRadius.small),
+                onTap: () => _showStepDetails(context, step),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        step.brand.trim().isEmpty ? step.category : step.brand,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: AppColors.primaryDark,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      Text(
+                        step.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        _subtitle(step, context),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.labelSmall,
+                      ),
+                    ],
                   ),
                 ),
-                Text(
-                  step.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w800),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  _subtitle(step),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.labelSmall,
-                ),
-              ],
+              ),
             ),
           ),
           const SizedBox(width: AppSpacing.sm),
@@ -606,7 +704,7 @@ class _RoutineStepTile extends StatelessWidget {
                 color: completed ? AppColors.primaryDark : AppColors.surface,
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: completed ? AppColors.primaryDark : AppColors.border,
+                  color: completed ? AppColors.primaryDark : Colors.white,
                   width: 1.5,
                 ),
               ),
@@ -622,7 +720,7 @@ class _RoutineStepTile extends StatelessWidget {
     );
   }
 
-  String _subtitle(RegimenStep step) {
+  String _subtitle(RegimenStep step, BuildContext context) {
     final instruction = step.instruction?.trim() ?? '';
     if (instruction.isNotEmpty) {
       return instruction;
@@ -633,7 +731,7 @@ class _RoutineStepTile extends StatelessWidget {
     }
     return step.purpose?.trim().isNotEmpty == true
         ? step.purpose!
-        : 'Apply in your routine.';
+        : AppLocale.of(context).tr('routine_step_apply_default');
   }
 }
 
@@ -644,29 +742,34 @@ class _StepImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final raw = step.imageUrl?.trim() ?? '';
-    final url = raw.isEmpty
-        ? ''
-        : raw.startsWith('http')
-        ? raw
-        : '${AppConfig.apiBaseUrl}$raw';
+    final url = _resolveStepImageUrl(step);
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(AppRadius.medium),
-      child: Container(
-        width: 72,
-        height: 72,
-        color: AppColors.surfaceStrong,
-        child: url.isEmpty
-            ? Icon(_categoryIcon(step.category), color: AppColors.primaryDark)
-            : Image.network(
-                url,
-                fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => Icon(
-                  _categoryIcon(step.category),
-                  color: AppColors.primaryDark,
-                ),
-              ),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppRadius.large),
+        onTap: url.isEmpty ? null : () => _showStepImage(context, url),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(AppRadius.large),
+          child: Container(
+            width: 72,
+            height: 72,
+            color: AppColors.surfaceStrong,
+            child: url.isEmpty
+                ? Icon(
+                    _categoryIcon(step.category),
+                    color: AppColors.primaryDark,
+                  )
+                : Image.network(
+                    url,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, _, _) => Icon(
+                      _categoryIcon(step.category),
+                      color: AppColors.primaryDark,
+                    ),
+                  ),
+          ),
+        ),
       ),
     );
   }
@@ -683,6 +786,244 @@ class _StepImage extends StatelessWidget {
   }
 }
 
+String _resolveStepImageUrl(RegimenStep step) {
+  final raw = step.imageUrl?.trim() ?? '';
+  if (raw.isEmpty || raw.startsWith('http')) {
+    return raw;
+  }
+  return '${AppConfig.apiBaseUrl}$raw';
+}
+
+Future<void> _showStepDetails(BuildContext context, RegimenStep step) {
+  final locale = AppLocale.of(context, listen: false);
+  final instruction = step.instruction?.trim() ?? '';
+  final purpose = step.purpose?.trim() ?? '';
+  final frequency = step.frequency?.trim() ?? '';
+  final caution = step.caution?.trim() ?? '';
+  final mainDescription = instruction.isNotEmpty
+      ? instruction
+      : purpose.isNotEmpty
+      ? purpose
+      : locale.tr('routine_step_apply_default');
+
+  return showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (sheetContext) => SafeArea(
+      top: false,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.sizeOf(sheetContext).height * 0.78,
+        ),
+        child: Container(
+          decoration: const BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.vertical(
+              top: Radius.circular(AppRadius.xl),
+            ),
+          ),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 42,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: AppColors.outline,
+                      borderRadius: BorderRadius.circular(AppRadius.pill),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            step.brand.trim().isEmpty
+                                ? step.category
+                                : step.brand,
+                            style: Theme.of(sheetContext).textTheme.labelMedium
+                                ?.copyWith(
+                                  color: AppColors.primaryDark,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            step.name,
+                            style: Theme.of(sheetContext).textTheme.titleLarge
+                                ?.copyWith(fontWeight: FontWeight.w800),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      tooltip: locale.tr('common_close'),
+                      onPressed: () => Navigator.pop(sheetContext),
+                      icon: const Icon(Icons.close_rounded),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                Wrap(
+                  spacing: AppSpacing.xs,
+                  runSpacing: AppSpacing.xs,
+                  children: [
+                    StatusChip(
+                      label: step.category,
+                      icon: Icons.category_outlined,
+                    ),
+                    if (frequency.isNotEmpty)
+                      StatusChip(
+                        label: frequency,
+                        icon: Icons.schedule_rounded,
+                        tone: StatusChipTone.accent,
+                      ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceMuted,
+                    borderRadius: BorderRadius.circular(AppRadius.large),
+                    border: Border.all(color: Colors.white),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(
+                        Icons.spa_outlined,
+                        size: 20,
+                        color: AppColors.primaryDark,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          mainDescription,
+                          style: Theme.of(
+                            sheetContext,
+                          ).textTheme.bodyMedium?.copyWith(height: 1.55),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (purpose.isNotEmpty && purpose != mainDescription) ...[
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(
+                    purpose,
+                    style: Theme.of(sheetContext).textTheme.bodyMedium
+                        ?.copyWith(color: AppColors.mutedText, height: 1.5),
+                  ),
+                ],
+                if (caution.isNotEmpty) ...[
+                  const SizedBox(height: AppSpacing.sm),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryFixed.withValues(alpha: 0.62),
+                      borderRadius: BorderRadius.circular(AppRadius.large),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(
+                          Icons.warning_amber_rounded,
+                          size: 20,
+                          color: AppColors.primaryDark,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            caution,
+                            style: Theme.of(
+                              sheetContext,
+                            ).textTheme.bodyMedium?.copyWith(height: 1.5),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+Future<void> _showStepImage(BuildContext context, String imageUrl) {
+  return showDialog<void>(
+    context: context,
+    barrierColor: Colors.black.withValues(alpha: 0.88),
+    builder: (dialogContext) => Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.all(18),
+      child: Stack(
+        children: [
+          ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: 560,
+              maxHeight: MediaQuery.sizeOf(dialogContext).height * 0.82,
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(AppRadius.large),
+              child: ColoredBox(
+                color: Colors.white,
+                child: InteractiveViewer(
+                  minScale: 0.8,
+                  maxScale: 4,
+                  child: Center(
+                    child: Image.network(
+                      imageUrl,
+                      fit: BoxFit.contain,
+                      errorBuilder: (_, _, _) => Padding(
+                        padding: const EdgeInsets.all(48),
+                        child: const Icon(
+                          Icons.image_not_supported_outlined,
+                          size: 72,
+                          color: AppColors.primaryDark,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            top: 10,
+            right: 10,
+            child: IconButton.filled(
+              tooltip: AppLocale.of(dialogContext).tr('common_close'),
+              style: IconButton.styleFrom(
+                backgroundColor: Colors.black.withValues(alpha: 0.62),
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () => Navigator.pop(dialogContext),
+              icon: const Icon(Icons.close_rounded),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
 class _ReminderSuggestionSheet extends StatelessWidget {
   const _ReminderSuggestionSheet({required this.result});
 
@@ -690,6 +1031,7 @@ class _ReminderSuggestionSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
     return SafeArea(
       top: false,
       child: Padding(
@@ -703,14 +1045,14 @@ class _ReminderSuggestionSheet extends StatelessWidget {
                 width: 44,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: AppColors.border,
+                  color: AppColors.outline,
                   borderRadius: BorderRadius.circular(AppRadius.pill),
                 ),
               ),
             ),
             const SizedBox(height: AppSpacing.lg),
             Text(
-              'SkinSync AI reminder plan',
+              locale.tr('routine_ai_plan_title'),
               style: Theme.of(
                 context,
               ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
@@ -718,7 +1060,7 @@ class _ReminderSuggestionSheet extends StatelessWidget {
             const SizedBox(height: AppSpacing.sm),
             Text(
               result.overallAdvice.isEmpty
-                  ? 'SkinSync did not return a summary yet.'
+                  ? locale.tr('routine_ai_no_summary')
                   : result.overallAdvice,
               style: Theme.of(
                 context,

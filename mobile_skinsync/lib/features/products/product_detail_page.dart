@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/l10n/app_locale.dart';
 import '../../core/models/app_models.dart';
 import '../../core/state/app_state.dart';
 import '../../core/theme/app_colors.dart';
@@ -44,6 +45,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
       return;
     }
 
+    final locale = AppLocale.of(context);
     setState(() {
       _isLoadingDetail = true;
       _errorMessage = null;
@@ -67,7 +69,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
       }
       setState(() {
         _errorMessage =
-            appState.errorMessage ?? 'Could not load this product right now.';
+            appState.errorMessage ?? locale.tr('products_load_error');
       });
     } finally {
       if (mounted) {
@@ -81,6 +83,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
       return;
     }
 
+    final locale = AppLocale.of(context);
     setState(() {
       _isAddingMorning = selection == 'Morning';
       _isAddingEvening = selection == 'Evening';
@@ -110,7 +113,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            appState.errorMessage ?? 'Could not add this product right now.',
+            appState.errorMessage ?? locale.tr('products_error_add_routine'),
           ),
         ),
       );
@@ -170,13 +173,10 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
 
   Future<void> _checkIngredients() async {
     final detail = _detail;
+    final locale = AppLocale.of(context);
     if (detail == null || !detail.hasIngredientData) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Ingredient data is not available for this product yet.',
-          ),
-        ),
+        SnackBar(content: Text(locale.tr('products_no_ingredient_data'))),
       );
       return;
     }
@@ -196,7 +196,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
         context: context,
         isScrollControlled: true,
         builder: (context) => _BottomSheetFrame(
-          title: 'Ingredient check',
+          title: locale.tr('products_ingredient_check_title'),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
@@ -278,9 +278,10 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
     return AppScaffold(
-      title: _recommendation?.name ?? 'Product details',
-      subtitle: 'Why this product fits your skin and how to use it.',
+      title: _recommendation?.name ?? locale.tr('products_detail'),
+      subtitle: locale.tr('products_based_on_ai'),
       compactHeader: true,
       body: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
@@ -298,7 +299,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Product detail could not load',
+                    locale.tr('products_load_error'),
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w700,
                     ),
@@ -306,7 +307,10 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                   const SizedBox(height: AppSpacing.sm),
                   Text(_errorMessage!),
                   const SizedBox(height: AppSpacing.md),
-                  AppButton(label: 'Try again', onPressed: _loadDetail),
+                  AppButton(
+                    label: locale.tr('common_retry'),
+                    onPressed: _loadDetail,
+                  ),
                 ],
               ),
             ),
@@ -318,6 +322,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
   }
 
   List<Widget> _buildContent(BuildContext context, ProductDetail product) {
+    final locale = AppLocale.of(context);
     final cautions = product.cautions;
     final conflicts = product.conflicts;
     final matchValue = product.matchPercent;
@@ -355,7 +360,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                       const SizedBox(height: AppSpacing.xs),
                       Text(
                         product.brand.trim().isEmpty
-                            ? 'Brand not provided'
+                            ? locale.tr('products_detail_brand_not_provided')
                             : product.brand,
                         style: Theme.of(context).textTheme.titleMedium
                             ?.copyWith(color: AppColors.mutedText),
@@ -371,13 +376,21 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                           ),
                           if (matchValue != null)
                             StatusChip(
-                              label: '$matchValue% match',
+                              label:
+                                  locale
+                                      .tr('product_match_percent')
+                                      .replaceAll('{percent}', '$matchValue')
+                                      .contains('{percent}')
+                                  ? '$matchValue% match'
+                                  : '$matchValue% ${locale.tr('product_match_percent')}',
                               icon: Icons.auto_awesome_rounded,
                               tone: StatusChipTone.accent,
                             ),
                           if (product.alreadyInRoutine)
-                            const StatusChip(
-                              label: 'Already in routine',
+                            StatusChip(
+                              label: locale.tr(
+                                'products_detail_already_in_routine',
+                              ),
                               icon: Icons.check_circle_outline_rounded,
                               tone: StatusChipTone.success,
                             ),
@@ -409,16 +422,16 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SectionHeader(
+            SectionHeader(
               icon: Icons.psychology_alt_outlined,
-              title: 'Why it fits your skin',
-              subtitle: 'Saved recommendation context for this product.',
+              title: locale.tr('products_detail_why_recommended'),
+              subtitle: locale.tr('products_detail_why_recommended_subtitle'),
             ),
             const SizedBox(height: AppSpacing.md),
             _DetailText(
               product.whyRecommended?.trim().isNotEmpty == true
                   ? product.whyRecommended!
-                  : 'AI explanation is not available for this product yet.',
+                  : locale.tr('products_detail_why_recommended_no_ai'),
               muted: product.whyRecommended?.trim().isNotEmpty != true,
             ),
           ],
@@ -429,16 +442,16 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SectionHeader(
+            SectionHeader(
               icon: Icons.warning_amber_rounded,
-              title: 'Cautions and conflicts',
-              subtitle: 'Only real warnings from current product data.',
+              title: locale.tr('products_detail_cautions_conflicts'),
+              subtitle: locale.tr(
+                'products_detail_cautions_conflicts_subtitle',
+              ),
             ),
             const SizedBox(height: AppSpacing.md),
             if (cautions.isEmpty && conflicts.isEmpty)
-              const _EmptyCopy(
-                'No caution or conflict notes are available yet.',
-              )
+              _EmptyCopy(locale.tr('products_detail_cautions_conflicts_none'))
             else ...[
               if (cautions.isNotEmpty)
                 _ChipGroup(tone: StatusChipTone.warning, items: cautions),
@@ -459,29 +472,29 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SectionHeader(
+            SectionHeader(
               icon: Icons.science_outlined,
-              title: 'Ingredients',
-              subtitle: 'Real ingredient data from the product catalog.',
+              title: locale.tr('products_ingredients'),
+              subtitle: locale.tr('products_detail_ingredients_subtitle'),
             ),
             const SizedBox(height: AppSpacing.md),
             if (!product.hasIngredientData)
-              const _EmptyCopy('Ingredient details are not available yet.')
+              _EmptyCopy(locale.tr('products_no_ingredient_data'))
             else ...[
               _ReasonGroup(
-                title: 'Ingredient list',
+                title: locale.tr('products_detail_ingredient_list'),
                 items: product.ingredients,
               ),
               if (product.keyIngredients.isNotEmpty) ...[
                 const SizedBox(height: AppSpacing.md),
                 _ReasonGroup(
-                  title: 'Key ingredients',
+                  title: locale.tr('products_detail_key_ingredients'),
                   items: product.keyIngredients,
                 ),
               ],
               const SizedBox(height: AppSpacing.md),
               AppButton(
-                label: 'Check ingredients',
+                label: locale.tr('products_ingredient_check_title'),
                 variant: AppButtonVariant.secondary,
                 isLoading: _isCheckingIngredients,
                 onPressed: _isCheckingIngredients ? null : _checkIngredients,
@@ -495,10 +508,10 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SectionHeader(
+            SectionHeader(
               icon: Icons.schedule_outlined,
-              title: 'How to use',
-              subtitle: 'Use-time guidance from the backend product catalog.',
+              title: locale.tr('products_how_to_use'),
+              subtitle: locale.tr('products_detail_how_to_use_subtitle'),
             ),
             const SizedBox(height: AppSpacing.md),
             if (product.usageTime?.trim().isNotEmpty == true)
@@ -512,16 +525,22 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
             _DetailText(
               product.howToUse?.trim().isNotEmpty == true
                   ? product.howToUse!
-                  : 'Usage guidance is not available yet.',
+                  : locale.tr('products_detail_how_to_use_none'),
               muted: product.howToUse?.trim().isNotEmpty != true,
             ),
             if (product.skinTypes.isNotEmpty) ...[
               const SizedBox(height: AppSpacing.md),
-              _ReasonGroup(title: 'Skin types', items: product.skinTypes),
+              _ReasonGroup(
+                title: locale.tr('products_detail_skin_types'),
+                items: product.skinTypes,
+              ),
             ],
             if (product.skinConcerns.isNotEmpty) ...[
               const SizedBox(height: AppSpacing.md),
-              _ReasonGroup(title: 'Skin concerns', items: product.skinConcerns),
+              _ReasonGroup(
+                title: locale.tr('products_detail_skin_concerns'),
+                items: product.skinConcerns,
+              ),
             ],
           ],
         ),
@@ -532,14 +551,16 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SectionHeader(
+            SectionHeader(
               icon: Icons.playlist_add_check_circle_outlined,
-              title: 'Add to routine',
-              subtitle: 'Choose exactly where this product should appear.',
+              title: locale.tr('products_add_to_routine'),
+              subtitle: locale.tr('products_detail_add_to_routine_subtitle'),
             ),
             const SizedBox(height: AppSpacing.md),
             AppButton(
-              label: product.alreadyInRoutine ? 'Added' : 'Add to Morning',
+              label: product.alreadyInRoutine
+                  ? locale.tr('products_detail_added_label')
+                  : locale.tr('products_detail_add_morning'),
               isLoading: _isAddingMorning,
               onPressed: _isBusy || product.alreadyInRoutine
                   ? null
@@ -547,7 +568,9 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
             ),
             const SizedBox(height: AppSpacing.sm),
             AppButton(
-              label: product.alreadyInRoutine ? 'Added' : 'Add to Evening',
+              label: product.alreadyInRoutine
+                  ? locale.tr('products_detail_added_label')
+                  : locale.tr('products_detail_add_evening'),
               variant: AppButtonVariant.secondary,
               isLoading: _isAddingEvening,
               onPressed: _isBusy || product.alreadyInRoutine
@@ -556,7 +579,9 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
             ),
             const SizedBox(height: AppSpacing.sm),
             AppButton(
-              label: product.alreadyInRoutine ? 'Added' : 'Add to Both',
+              label: product.alreadyInRoutine
+                  ? locale.tr('products_detail_added_label')
+                  : locale.tr('products_detail_add_both'),
               variant: AppButtonVariant.secondary,
               isLoading: _isAddingBoth,
               onPressed: _isBusy || product.alreadyInRoutine
@@ -745,7 +770,7 @@ class _BottomSheetFrame extends StatelessWidget {
                 width: 44,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: AppColors.border,
+                  color: AppColors.outline,
                   borderRadius: BorderRadius.circular(999),
                 ),
               ),
@@ -773,8 +798,9 @@ class _ConflictWarningSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
     return _BottomSheetFrame(
-      title: 'Check routine conflicts',
+      title: locale.tr('products_conflict_warning_title'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -807,7 +833,7 @@ class _ConflictWarningSheet extends StatelessWidget {
             ),
           ),
           AppButton(
-            label: 'Add anyway',
+            label: locale.tr('products_add_anyway_action'),
             onPressed: () => Navigator.pop(context, true),
           ),
         ],

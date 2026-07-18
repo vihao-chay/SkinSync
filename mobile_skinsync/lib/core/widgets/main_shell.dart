@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../l10n/app_locale.dart';
 import '../models/app_models.dart';
 import '../../features/dashboard/dashboard_page.dart';
 import '../../features/products/products_page.dart';
@@ -13,11 +14,7 @@ import '../theme/app_colors.dart';
 import 'app_bottom_navigation.dart';
 
 class MainShell extends StatefulWidget {
-  const MainShell({
-    super.key,
-    required this.initialRoute,
-    this.initialArgs,
-  });
+  const MainShell({super.key, required this.initialRoute, this.initialArgs});
 
   final String initialRoute;
   final Object? initialArgs;
@@ -48,25 +45,31 @@ class _MainShellState extends State<MainShell> {
     AppRoutes.profile,
   ];
 
-  static const _destinations = [
-    AppBottomNavigationDestination(
-      label: 'Home',
-      icon: Icons.home_rounded,
-    ),
-    AppBottomNavigationDestination(label: 'Routine', icon: Icons.spa_rounded),
-    AppBottomNavigationDestination(
-      label: 'Products',
-      icon: Icons.shopping_bag_rounded,
-    ),
-    AppBottomNavigationDestination(
-      label: 'Progress',
-      icon: Icons.insights_rounded,
-    ),
-    AppBottomNavigationDestination(
-      label: 'Profile',
-      icon: Icons.person_outline_rounded,
-    ),
-  ];
+  List<AppBottomNavigationDestination> _getDestinations(BuildContext context) {
+    final locale = AppLocale.of(context);
+    return [
+      AppBottomNavigationDestination(
+        label: locale.tr('nav_home'),
+        icon: Icons.home_rounded,
+      ),
+      AppBottomNavigationDestination(
+        label: locale.tr('nav_routine'),
+        icon: Icons.spa_rounded,
+      ),
+      AppBottomNavigationDestination(
+        label: locale.tr('nav_products'),
+        icon: Icons.shopping_bag_rounded,
+      ),
+      AppBottomNavigationDestination(
+        label: locale.tr('nav_progress'),
+        icon: Icons.insights_rounded,
+      ),
+      AppBottomNavigationDestination(
+        label: locale.tr('nav_profile'),
+        icon: Icons.person_outline_rounded,
+      ),
+    ];
+  }
 
   late int _selectedIndex = _routeToIndex(widget.initialRoute);
   late ProductsPageArgs _productsArgs;
@@ -80,6 +83,11 @@ class _MainShellState extends State<MainShell> {
     _routineArgs = const RoutinePageArgs();
     _progressArgs = const ProgressPageArgs();
     _applyInitialArgs(widget.initialRoute, widget.initialArgs);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        context.read<AppState>().refreshHome();
+      }
+    });
   }
 
   int _routeToIndex(String route) {
@@ -132,10 +140,24 @@ class _MainShellState extends State<MainShell> {
   }
 
   void _onTap(int index) {
+    final route = _navRoutes[index];
     if (index == _selectedIndex) {
+      _refreshProgressTabIfNeeded(route);
       return;
     }
-    selectRoute(_navRoutes[index]);
+    selectRoute(route);
+    _refreshProgressTabIfNeeded(route);
+  }
+
+  void _refreshProgressTabIfNeeded(String route) {
+    if (route != AppRoutes.progress) {
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        context.read<AppState>().refreshHome();
+      }
+    });
   }
 
   @override
@@ -156,6 +178,7 @@ class _MainShellState extends State<MainShell> {
 
     return Scaffold(
       backgroundColor: AppColors.pageBackground,
+      extendBody: true,
       body: IndexedStack(
         index: _selectedIndex,
         sizing: StackFit.expand,
@@ -180,7 +203,7 @@ class _MainShellState extends State<MainShell> {
         ],
       ),
       bottomNavigationBar: AppBottomNavigation(
-        destinations: _destinations,
+        destinations: _getDestinations(context),
         selectedIndex: _selectedIndex,
         onTap: _onTap,
       ),

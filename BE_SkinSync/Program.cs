@@ -37,9 +37,16 @@ if (string.IsNullOrWhiteSpace(jwtSigningKey))
     throw new InvalidOperationException("Missing Jwt:SigningKey configuration.");
 }
 
-if (!builder.Environment.IsDevelopment() && jwtSigningKey.Contains("ChangeMe", StringComparison.OrdinalIgnoreCase))
+if (!builder.Environment.IsDevelopment() &&
+    (jwtSigningKey.Contains("ChangeMe", StringComparison.OrdinalIgnoreCase) ||
+     jwtSigningKey.Contains("CHANGE_ME", StringComparison.OrdinalIgnoreCase)))
 {
     throw new InvalidOperationException("Jwt:SigningKey must be replaced with a secure value in non-development environments.");
+}
+
+if (Encoding.UTF8.GetByteCount(jwtSigningKey) < 32)
+{
+    throw new InvalidOperationException("Jwt:SigningKey must be at least 32 bytes for HMAC-SHA256.");
 }
 
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
