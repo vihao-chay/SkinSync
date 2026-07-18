@@ -2,57 +2,75 @@
 
 :root {
   --font-size: 16px;
-  --ss-bg-cream: #f8f1e8;
-  --ss-bg-warm: #f3e7d6;
+  --ss-bg-cream: #fbf7f0;
+  --ss-bg-warm: #f4ebdd;
   --ss-surface-milk: #fffdf8;
-  --ss-surface-cream: #faf4ea;
-  --ss-border-soft: #e7d8c5;
-  --ss-text-primary: #3e2e24;
-  --ss-text-secondary: #7a6658;
-  --ss-text-muted: #a18d7c;
-  --ss-gold: #c9a24d;
-  --ss-gold-soft: #f2dfac;
-  --ss-leaf: #6f8a61;
-  --ss-leaf-soft: #dde8d6;
-  --ss-sage: #a8b9a2;
-  --ss-rose-soft: #e9c9be;
-  --ss-success: #6f8a61;
-  --ss-warning: #c9953b;
-  --ss-danger: #b76e64;
-  --ss-info: #7e9eb2;
+  --ss-surface-cream: #f6f0e7;
+  --ss-border-soft: #e6d8c3;
+  --ss-border-medium: #d3be9f;
+  --ss-text-primary: #3a2a1a;
+  --ss-text-secondary: #6f5a3d;
+  --ss-text-muted: #9a8568;
+  --ss-text-disabled: #c8b69c;
+  --ss-text-on-primary: #2f2114;
+  --ss-gold: #c2a67d;
+  --ss-gold-hover: #b49362;
+  --ss-gold-pressed: #967445;
+  --ss-gold-soft: #e8dcc8;
+  --ss-gold-pale: #f6f0e7;
+  --ss-leaf: #5f8f68;
+  --ss-leaf-soft: #edf7ef;
+  --ss-sage: #8fae8b;
+  --ss-sage-soft: #edf4ea;
+  --ss-olive: #6f7f52;
+  --ss-premium: #d8b46a;
+  --ss-premium-bg: #fff7df;
+  --ss-peach: #e9bfa8;
+  --ss-rose-soft: #d9afa5;
+  --ss-success: #5f8f68;
+  --ss-success-bg: #edf7ef;
+  --ss-warning: #c99332;
+  --ss-warning-bg: #fff5de;
+  --ss-danger: #b85c50;
+  --ss-danger-bg: #fcecea;
+  --ss-info: #6c8ea4;
+  --ss-info-bg: #eaf3f7;
   --ss-shadow-soft: 0 18px 48px rgba(86, 59, 39, 0.08);
   --ss-shadow-card: 0 12px 28px rgba(91, 63, 40, 0.06);
-  --ss-cream-gradient: linear-gradient(135deg, #fffdf8 0%, #f8f1e8 50%, #f3e7d6 100%);
-  --ss-ai-gradient: linear-gradient(135deg, rgba(111, 138, 97, 0.16), rgba(201, 162, 77, 0.18));
+  --ss-cream-gradient: linear-gradient(135deg, #fbf7f0 0%, #f4ebdd 48%, #e8dcc8 100%);
+  --ss-primary-gradient: linear-gradient(135deg, #d8b46a 0%, #c2a67d 50%, #b49362 100%);
+  --ss-card-gradient: linear-gradient(180deg, #fffdf8 0%, #f6f0e7 100%);
+  --ss-sage-gradient: linear-gradient(135deg, #edf4ea 0%, #ddead9 100%);
+  --ss-ai-gradient: linear-gradient(135deg, rgba(108, 142, 164, 0.16), rgba(194, 166, 125, 0.18));
   --ss-hero-glow:
-    radial-gradient(circle at top left, rgba(201, 162, 77, 0.14), transparent 36%),
-    radial-gradient(circle at bottom right, rgba(111, 138, 97, 0.12), transparent 32%);
-  --skin-base: #f9f6f0;
-  --skin-surface: #ffffff;
+    radial-gradient(circle at top left, rgba(216, 180, 106, 0.14), transparent 36%),
+    radial-gradient(circle at bottom right, rgba(143, 174, 139, 0.12), transparent 32%);
+  --skin-base: #fbf7f0;
+  --skin-surface: #fffdf8;
   --skin-gold: #c2a67d;
-  --skin-gold-hover: #b0946b;
-  --skin-text-main: #2c2a28;
-  --skin-text-muted: #78716c;
-  --skin-border: #eae5d9;
+  --skin-gold-hover: #b49362;
+  --skin-text-main: #3a2a1a;
+  --skin-text-muted: #6f5a3d;
+  --skin-border: #e6d8c3;
   --background: var(--ss-bg-cream);
   --foreground: var(--ss-text-primary);
   --card: var(--ss-surface-milk);
   --card-foreground: var(--ss-text-primary);
-  --popover: var(--ss-surface-milk);
+  --popover: #ffffff;
   --popover-foreground: var(--ss-text-primary);
   --primary: var(--ss-gold);
-  --primary-foreground: #ffffff;
-  --secondary: var(--ss-surface-cream);
+  --primary-foreground: var(--ss-text-on-primary);
+  --secondary: var(--ss-gold-pale);
   --secondary-foreground: var(--ss-text-primary);
-  --muted: #f7efe5;
+  --muted: var(--ss-bg-warm);
   --muted-foreground: var(--ss-text-secondary);
-  --accent: var(--ss-leaf-soft);
+  --accent: var(--ss-gold-soft);
   --accent-foreground: var(--ss-text-primary);
   --destructive: var(--ss-danger);
-  --destructive-foreground: #ffffff;
+  --destructive-foreground: var(--ss-danger);
   --border: var(--ss-border-soft);
   --input: transparent;
-  --input-background: var(--ss-surface-cream);
+  --input-background: var(--ss-surface-milk);
   --switch-background: #e5e7eb;
   --font-weight-medium: 500;
   --font-weight-normal: 400;
@@ -63,13 +81,13 @@
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
   --radius: 1rem;
-  --sidebar: #f5ede2;
+  --sidebar: #f4ebdd;
   --sidebar-foreground: var(--ss-text-primary);
-  --sidebar-primary: var(--ss-text-primary);
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #f1e4d3;
+  --sidebar-primary: var(--ss-gold);
+  --sidebar-primary-foreground: var(--ss-text-on-primary);
+  --sidebar-accent: var(--ss-gold-pale);
   --sidebar-accent-foreground: var(--ss-text-primary);
-  --sidebar-border: #e8d9c4;
+  --sidebar-border: var(--ss-border-soft);
   --sidebar-ring: var(--ss-gold);
   
   /* Premium Skincare Color Palette */
@@ -88,15 +106,15 @@
   --popover: #26201b;
   --popover-foreground: #f8f4ed;
   --primary: var(--skin-gold);
-  --primary-foreground: #ffffff;
+  --primary-foreground: #1b140d;
   --secondary: #352d27;
   --secondary-foreground: #f8f4ed;
   --muted: #312a24;
   --muted-foreground: #b8aea4;
   --accent: #40362e;
   --accent-foreground: #f8f4ed;
-  --destructive: #ef4444;
-  --destructive-foreground: #ffffff;
+  --destructive: #d78e84;
+  --destructive-foreground: #2f2114;
   --border: #3b332c;
   --input: #3b332c;
   --ring: var(--skin-gold);
@@ -165,6 +183,24 @@
   --color-skin-textMain: var(--skin-text-main);
   --color-skin-textMuted: var(--skin-text-muted);
   --color-skin-border: var(--skin-border);
+  --color-skin-primarySoft: var(--ss-gold-soft);
+  --color-skin-primaryPale: var(--ss-gold-pale);
+  --color-skin-surfaceMuted: var(--ss-bg-warm);
+  --color-success: var(--ss-success);
+  --color-successBg: var(--ss-success-bg);
+  --color-warning: var(--ss-warning);
+  --color-warningBg: var(--ss-warning-bg);
+  --color-danger: var(--ss-danger);
+  --color-dangerBg: var(--ss-danger-bg);
+  --color-info: var(--ss-info);
+  --color-infoBg: var(--ss-info-bg);
+  --color-premium: var(--ss-premium);
+  --color-premiumBg: var(--ss-premium-bg);
+  --color-sage: var(--ss-sage);
+  --color-sageSoft: var(--ss-sage-soft);
+  --color-olive: var(--ss-olive);
+  --color-peach: var(--ss-peach);
+  --color-rose: var(--ss-rose-soft);
 }
 
 @layer base {
@@ -250,7 +286,7 @@
 
   .ss-highlight-card {
     background-image: var(--ss-ai-gradient);
-    border: 1px solid color-mix(in srgb, var(--ss-gold) 22%, var(--border));
+    border: 1px solid color-mix(in srgb, var(--ss-info) 24%, var(--border));
   }
 
   .ss-page-wrap {

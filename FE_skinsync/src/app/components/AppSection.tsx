@@ -7,15 +7,17 @@ export function AppSection({
   action,
   children,
   contentClassName = "",
+  tone = "default",
 }: {
   title: string;
   description?: string;
   action?: ReactNode;
   children: ReactNode;
   contentClassName?: string;
+  tone?: "default" | "highlight" | "muted";
 }) {
   return (
-    <Card className="app-surface rounded-[30px] overflow-hidden">
+    <Card className={`${tone === "highlight" ? "app-surface-highlight" : tone === "muted" ? "app-surface-muted" : "app-surface"} rounded-[30px] overflow-hidden`}>
       <CardHeader className="flex flex-col gap-4 border-b border-border/60 pb-5 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1">
           <CardTitle className="text-[1.35rem] text-foreground">{title}</CardTitle>

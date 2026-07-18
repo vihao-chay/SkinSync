@@ -3,8 +3,8 @@
     min-height: 100vh;
     width: 100%;
     background:
-      radial-gradient(circle at top left, rgba(201, 162, 77, 0.1), transparent 24%),
-      radial-gradient(circle at top right, rgba(111, 138, 97, 0.08), transparent 20%),
+      radial-gradient(circle at top left, rgba(216, 180, 106, 0.1), transparent 24%),
+      radial-gradient(circle at top right, rgba(143, 174, 139, 0.08), transparent 20%),
       var(--ss-cream-gradient);
     color: var(--foreground);
   }
@@ -18,15 +18,47 @@
   .app-sidebar {
     display: none;
     min-height: 100vh;
+    height: 100vh;
+    position: sticky;
+    top: 0;
     border-right: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
     background:
-      linear-gradient(180deg, rgba(255, 253, 248, 0.94), rgba(248, 241, 232, 0.9)),
+      linear-gradient(180deg, rgba(255, 253, 248, 0.96), rgba(244, 235, 221, 0.94)),
       color-mix(in srgb, var(--card) 95%, transparent);
     backdrop-filter: blur(18px);
+    overflow: hidden;
   }
 
   .app-main {
     min-width: 0;
+  }
+
+  .app-mobile-drawer {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    display: flex;
+  }
+
+  .app-mobile-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(47, 33, 20, 0.36);
+    backdrop-filter: blur(3px);
+  }
+
+  .app-mobile-panel {
+    position: relative;
+    z-index: 1;
+    width: min(20rem, calc(100vw - 2rem));
+    max-width: 100%;
+    height: 100vh;
+    border-right: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+    background:
+      linear-gradient(180deg, rgba(255, 253, 248, 0.99), rgba(244, 235, 221, 0.97)),
+      color-mix(in srgb, var(--card) 96%, transparent);
+    box-shadow: 0 18px 44px rgba(58, 42, 26, 0.14);
+    overflow: hidden;
   }
 
   .app-content {
@@ -37,15 +69,19 @@
 
   .app-surface {
     border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
-    background:
-      linear-gradient(180deg, rgba(255, 253, 248, 0.95), rgba(250, 244, 234, 0.9)),
-      color-mix(in srgb, var(--card) 95%, transparent);
+    background: var(--ss-card-gradient);
     box-shadow: var(--ss-shadow-card);
   }
 
   .app-surface-muted {
     border: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
     background: var(--muted);
+  }
+
+  .app-surface-highlight {
+    border: 1px solid color-mix(in srgb, var(--ss-gold) 25%, var(--border));
+    background: linear-gradient(180deg, rgba(255, 253, 248, 0.98), rgba(246, 240, 231, 0.98));
+    box-shadow: var(--ss-shadow-card);
   }
 
   .app-pill {
@@ -58,6 +94,65 @@
     padding: 0.35rem 0.8rem;
     font-size: 0.75rem;
     color: var(--ss-text-secondary);
+  }
+
+  .app-pill-premium {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    border-radius: 9999px;
+    border: 1px solid color-mix(in srgb, var(--ss-premium) 32%, transparent);
+    background: var(--ss-premium-bg);
+    padding: 0.35rem 0.8rem;
+    font-size: 0.75rem;
+    color: #8a641f;
+  }
+
+  .app-pill-success {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    border-radius: 9999px;
+    border: 1px solid color-mix(in srgb, var(--ss-success) 24%, transparent);
+    background: var(--ss-success-bg);
+    padding: 0.35rem 0.8rem;
+    font-size: 0.75rem;
+    color: var(--ss-success);
+  }
+
+  .app-pill-warning {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    border-radius: 9999px;
+    border: 1px solid color-mix(in srgb, var(--ss-warning) 24%, transparent);
+    background: var(--ss-warning-bg);
+    padding: 0.35rem 0.8rem;
+    font-size: 0.75rem;
+    color: var(--ss-warning);
+  }
+
+  .app-pill-danger {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    border-radius: 9999px;
+    border: 1px solid color-mix(in srgb, var(--ss-danger) 24%, transparent);
+    background: var(--ss-danger-bg);
+    padding: 0.35rem 0.8rem;
+    font-size: 0.75rem;
+    color: var(--ss-danger);
+  }
+
+  .app-icon-wrap {
+    display: inline-flex;
+    height: 2.75rem;
+    width: 2.75rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 1rem;
+    background: var(--ss-gold-pale);
+    color: var(--ss-gold-hover);
   }
 
   .app-input {
@@ -92,11 +187,27 @@
     background: color-mix(in srgb, var(--muted) 70%, transparent);
   }
 
+  .app-auth-shell {
+    min-height: 100vh;
+    background:
+      radial-gradient(circle at top left, rgba(216, 180, 106, 0.1), transparent 26%),
+      radial-gradient(circle at bottom right, rgba(143, 174, 139, 0.08), transparent 24%),
+      var(--ss-cream-gradient);
+  }
+
+  .app-auth-card {
+    border: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
+    border-radius: 32px;
+    background: rgba(255, 253, 248, 0.96);
+    box-shadow: var(--ss-shadow-soft);
+    padding: 2rem;
+  }
+
   .app-admin-shell {
     min-height: 100vh;
     background:
-      radial-gradient(circle at top left, rgba(201, 162, 77, 0.1), transparent 22%),
-      linear-gradient(180deg, #f8f1e8 0%, #fbf7f0 100%);
+      radial-gradient(circle at top left, rgba(216, 180, 106, 0.1), transparent 22%),
+      linear-gradient(180deg, #f4ebdd 0%, #fbf7f0 100%);
   }
 
   .app-admin-grid {
@@ -111,7 +222,7 @@
     height: 100vh;
     border-right: 1px solid color-mix(in srgb, var(--border) 90%, white);
     background:
-      linear-gradient(180deg, rgba(255, 252, 247, 0.98), rgba(245, 237, 226, 0.96)),
+      linear-gradient(180deg, rgba(255, 253, 248, 0.98), rgba(244, 235, 221, 0.96)),
       var(--card);
     backdrop-filter: blur(20px);
   }
@@ -125,7 +236,7 @@
     top: 0;
     z-index: 20;
     border-bottom: 1px solid color-mix(in srgb, var(--border) 88%, white);
-    background: rgba(255, 251, 246, 0.84);
+    background: rgba(255, 253, 248, 0.84);
     backdrop-filter: blur(18px);
   }
 
