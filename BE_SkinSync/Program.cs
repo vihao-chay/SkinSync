@@ -104,6 +104,7 @@ var payOsApiKey = builder.Configuration["PayOS:ApiKey"] ?? "YOUR_API_KEY";
 var payOsChecksumKey = builder.Configuration["PayOS:ChecksumKey"] ?? "YOUR_CHECKSUM_KEY";
 builder.Services.AddSingleton(new Net.payOS.PayOS(payOsClientId, payOsApiKey, payOsChecksumKey));
 builder.Services.AddScoped<IPayOsPaymentService, PayOsPaymentService>();
+builder.Services.AddHostedService<PayOsWebhookRegistrationService>();
 
 // AI Integration Registrations
 builder.Services.Configure<SkinSync.Services.AI.AiSettings>(builder.Configuration.GetSection("AiSettings"));
