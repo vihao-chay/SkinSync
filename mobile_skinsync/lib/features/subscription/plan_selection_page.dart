@@ -1,10 +1,12 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_web_auth_2/flutter_web_auth_2.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/config/app_config.dart';
 import '../../core/l10n/app_locale.dart';
 import '../../core/models/app_models.dart';
 import '../../core/state/app_state.dart';
@@ -172,36 +174,58 @@ class _PlanSelectionPageState extends State<PlanSelectionPage> {
     try {
       final appState = context.read<AppState>();
       final payment = await appState.createPaymentLink(plan.code);
-      final checkoutUri = Uri.tryParse(payment.checkoutUrl);
-      if (checkoutUri == null || payment.checkoutUrl.trim().isEmpty) {
+      if (Uri.tryParse(payment.checkoutUrl) == null ||
+          payment.checkoutUrl.trim().isEmpty) {
         throw StateError('Payment checkout link is unavailable.');
       }
 
-      final launched = await launchUrl(
-        checkoutUri,
-        mode: LaunchMode.externalApplication,
+      final callbackUrl = await FlutterWebAuth2.authenticate(
+        url: payment.checkoutUrl,
+        callbackUrlScheme: AppConfig.paymentCallbackScheme,
       );
-      if (!launched) {
-        throw StateError('Could not open the payment page.');
-      }
       if (!mounted) {
         return;
       }
 
-      final paid = await showDialog<bool>(
-        context: context,
-        barrierDismissible: false,
-        builder: (_) =>
-            _PaymentStatusDialog(plan: plan, orderCode: payment.orderCode),
+      if (_isPaymentCancelCallback(callbackUrl)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(AppLocale.of(context).tr('payment_cancelled'))),
+        );
+        return;
+      }
+
+      var paid = await _waitForPaymentConfirmation(
+        appState,
+        payment.orderCode,
       );
+      if (!paid && mounted) {
+        paid = await showDialog<bool>(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) =>
+              _PaymentStatusDialog(plan: plan, orderCode: payment.orderCode),
+        );
+      }
       if (paid == true && mounted) {
-        final currentSubscription = appState.subscription;
-        await Navigator.of(context).pushReplacement(
-          MaterialPageRoute<void>(
-            builder: (_) => SubscriptionSuccessPage(
-              plan: currentSubscription?.plan ?? plan,
-              orderCode: payment.orderCode,
-              renewalDate: currentSubscription?.subscription.currentPeriodEnd,
+        await _openPaymentSuccess(plan, payment.orderCode);
+      }
+    } on PlatformException catch (error) {
+      if (_isBrowserCancelError(error)) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(AppLocale.of(context).tr('payment_later'))),
+          );
+        }
+        return;
+      }
+      if (mounted) {
+        final message = context.read<AppState>().errorMessage;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              message?.trim().isNotEmpty == true
+                  ? message!
+                  : AppLocale.of(context).tr('payment_error'),
             ),
           ),
         );
@@ -224,6 +248,59 @@ class _PlanSelectionPageState extends State<PlanSelectionPage> {
         setState(() => _startingPayment = false);
       }
     }
+  }
+
+  bool _isPaymentCancelCallback(String callbackUrl) {
+    final uri = Uri.tryParse(callbackUrl);
+    if (uri == null) {
+      return false;
+    }
+    return uri.host.toLowerCase() == 'payment' &&
+        uri.path.toLowerCase().contains('cancel');
+  }
+
+  bool _isBrowserCancelError(PlatformException error) {
+    final code = error.code.toLowerCase();
+    final message = (error.message ?? '').toLowerCase();
+    return code.contains('cancel') ||
+        code.contains('dismiss') ||
+        message.contains('cancel') ||
+        message.contains('dismiss');
+  }
+
+  Future<bool> _waitForPaymentConfirmation(
+    AppState appState,
+    int orderCode,
+  ) async {
+    for (var attempt = 0; attempt < 8; attempt++) {
+      if (attempt > 0) {
+        await Future<void>.delayed(const Duration(milliseconds: 1500));
+      }
+
+      final result = await appState.verifyPayment(orderCode);
+      final status = result.status.trim().toLowerCase();
+      if (status == 'paid') {
+        return true;
+      }
+      if (status == 'cancelled') {
+        return false;
+      }
+    }
+    return false;
+  }
+
+  Future<void> _openPaymentSuccess(SubscriptionPlan plan, int orderCode) async {
+    final appState = context.read<AppState>();
+    final currentSubscription = appState.subscription;
+    await Navigator.of(context).pushReplacement(
+      MaterialPageRoute<void>(
+        builder: (_) => SubscriptionSuccessPage(
+          plan: currentSubscription?.plan ?? plan,
+          orderCode: orderCode,
+          renewalDate: currentSubscription?.subscription.currentPeriodEnd,
+        ),
+      ),
+    );
   }
 
   Future<void> _cancelMembership(AppState appState) async {

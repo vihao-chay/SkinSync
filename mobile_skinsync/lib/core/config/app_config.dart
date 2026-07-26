@@ -30,4 +30,5 @@ class AppConfig {
   static const authCallbackScheme = 'skinsync';
   static const authCallbackHost = 'auth';
   static const authCallbackUrl = '$authCallbackScheme://$authCallbackHost';
+  static const paymentCallbackScheme = authCallbackScheme;
 }
