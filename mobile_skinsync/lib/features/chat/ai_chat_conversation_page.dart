@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/models/app_models.dart';
+import '../../core/l10n/app_locale.dart';
 import '../../core/responsive/responsive.dart';
 import '../../core/routes/app_routes.dart';
 import '../../core/state/app_state.dart';
@@ -147,7 +148,7 @@ class _AiChatConversationPageState extends State<AiChatConversationPage> {
       }
       final message =
           context.read<AppState>().errorMessage ??
-          'Could not get a reply right now.';
+          AppLocale.of(context, listen: false).tr('ai_chat_error');
       setState(() {
         _messages = [
           ..._messages,
@@ -222,11 +223,8 @@ class _AiChatConversationPageState extends State<AiChatConversationPage> {
                           ),
                           child: Text(
                             _safetyWarning!,
-                            style: Theme.of(
-                              context,
-                            ).textTheme.bodySmall?.copyWith(
-                              color: const Color(0xFF8E4E18),
-                            ),
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(color: const Color(0xFF8E4E18)),
                           ),
                         ),
                       Expanded(
@@ -244,21 +242,31 @@ class _AiChatConversationPageState extends State<AiChatConversationPage> {
                           itemBuilder: (context, index) {
                             final message = _messages[index];
                             final isUser = message.isUser;
-                            final maxBubbleWidth = Responsive.responsiveValue<double>(
-                              context,
-                              mobileSmall: MediaQuery.sizeOf(context).width * 0.85,
-                              mobile: MediaQuery.sizeOf(context).width * 0.82,
-                              tablet: 520,
-                              desktop: 600,
-                            );
+                            final maxBubbleWidth =
+                                Responsive.responsiveValue<double>(
+                                  context,
+                                  mobileSmall:
+                                      MediaQuery.sizeOf(context).width * 0.85,
+                                  mobile:
+                                      MediaQuery.sizeOf(context).width * 0.82,
+                                  tablet: 520,
+                                  desktop: 600,
+                                );
                             return Align(
                               alignment: isUser
                                   ? Alignment.centerRight
                                   : Alignment.centerLeft,
                               child: Container(
-                                constraints: BoxConstraints(maxWidth: maxBubbleWidth),
+                                constraints: BoxConstraints(
+                                  maxWidth: maxBubbleWidth,
+                                ),
                                 margin: const EdgeInsets.only(bottom: 10),
-                                padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                                padding: const EdgeInsets.fromLTRB(
+                                  14,
+                                  12,
+                                  14,
+                                  12,
+                                ),
                                 decoration: BoxDecoration(
                                   color: isUser
                                       ? AppColors.primaryDark
@@ -286,7 +294,9 @@ class _AiChatConversationPageState extends State<AiChatConversationPage> {
                           child: ListView.separated(
                             padding: EdgeInsets.symmetric(
                               horizontal:
-                                  Responsive.responsiveHorizontalPadding(context),
+                                  Responsive.responsiveHorizontalPadding(
+                                    context,
+                                  ),
                             ),
                             scrollDirection: Axis.horizontal,
                             itemBuilder: (context, index) {
@@ -296,7 +306,8 @@ class _AiChatConversationPageState extends State<AiChatConversationPage> {
                                 onPressed: () => _handleAction(action),
                               );
                             },
-                            separatorBuilder: (_, _) => const SizedBox(width: 8),
+                            separatorBuilder: (_, _) =>
+                                const SizedBox(width: 8),
                             itemCount: _quickActions.length,
                           ),
                         ),

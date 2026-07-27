@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -127,6 +128,14 @@ public sealed class OpenAiService : IOpenAiService
 
     private async Task<OpenAiRawResult> ExecuteRawAsync(object payload, CancellationToken cancellationToken)
     {
+        if (IsMissingOrPlaceholderApiKey(_settings.OpenAi.ApiKey))
+        {
+            throw new AiFeatureException(
+                "AI_API_KEY_NOT_CONFIGURED",
+                "AI ch\u01b0a \u0111\u01b0\u1ee3c c\u1ea5u h\u00ecnh OpenAI API key tr\u00ean backend.",
+                503);
+        }
+
         var attempt = 0;
         while (true)
         {
@@ -149,6 +158,15 @@ public sealed class OpenAiService : IOpenAiService
                         "OpenAI request failed with status {StatusCode}. Error: {ErrorSummary}",
                         response.StatusCode,
                         errorSummary);
+
+                    if (IsInvalidApiKeyError(response.StatusCode, errorSummary))
+                    {
+                        throw new AiFeatureException(
+                            "AI_API_KEY_INVALID",
+                            "OpenAI API key tr\u00ean backend kh\u00f4ng h\u1ee3p l\u1ec7 ho\u1eb7c \u0111\u00e3 h\u1ebft h\u1ea1n. Vui l\u00f2ng c\u1eadp nh\u1eadt key r\u1ed3i deploy l\u1ea1i.",
+                            502);
+                    }
+
                     throw new AiFeatureException(
                         "AI_SERVICE_ERROR",
                         $"AI service request failed: {errorSummary}",
@@ -169,7 +187,7 @@ public sealed class OpenAiService : IOpenAiService
 
                 return new OpenAiRawResult(body, model, inputTokens, outputTokens);
             }
-            catch (AiFeatureException) when (attempt < Math.Max(1, _settings.RetryCount))
+            catch (AiFeatureException ex) when (attempt < Math.Max(1, _settings.RetryCount) && !IsNonRetryableAiError(ex))
             {
                 await Task.Delay(TimeSpan.FromSeconds(Math.Max(1, _settings.RetryDelaySeconds) * attempt), cancellationToken);
             }
@@ -243,6 +261,34 @@ public sealed class OpenAiService : IOpenAiService
     private static string ResolveModel(string? requested, string fallback)
     {
         return string.IsNullOrWhiteSpace(requested) ? fallback : requested.Trim();
+    }
+
+    private static bool IsMissingOrPlaceholderApiKey(string? apiKey)
+    {
+        if (string.IsNullOrWhiteSpace(apiKey))
+        {
+            return true;
+        }
+
+        var normalized = apiKey.Trim();
+        return normalized.Contains("changeme", StringComparison.OrdinalIgnoreCase) ||
+               normalized.Contains("your_openai", StringComparison.OrdinalIgnoreCase) ||
+               normalized.Contains("your-openai", StringComparison.OrdinalIgnoreCase) ||
+               normalized.Equals("sk-", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsInvalidApiKeyError(HttpStatusCode statusCode, string errorSummary)
+    {
+        var lower = errorSummary.ToLowerInvariant();
+        return statusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden ||
+               lower.Contains("invalid_api_key") ||
+               lower.Contains("incorrect api key") ||
+               lower.Contains("api key provided");
+    }
+
+    private static bool IsNonRetryableAiError(AiFeatureException exception)
+    {
+        return exception.Code is "AI_API_KEY_NOT_CONFIGURED" or "AI_API_KEY_INVALID";
     }
 
     private static string BuildContentPreview(string content)

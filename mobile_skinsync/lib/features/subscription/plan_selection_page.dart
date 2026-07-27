@@ -204,7 +204,7 @@ class _PlanSelectionPageState extends State<PlanSelectionPage> {
           barrierDismissible: false,
           builder: (_) =>
               _PaymentStatusDialog(plan: plan, orderCode: payment.orderCode),
-        );
+        ) == true;
       }
       if (paid == true && mounted) {
         await _openPaymentSuccess(plan, payment.orderCode);

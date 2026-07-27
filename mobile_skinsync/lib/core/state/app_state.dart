@@ -312,13 +312,16 @@ class AppState extends ChangeNotifier {
       await _runBusy(() async {
         await _loadProfile();
         await _loadLatestAnalysis();
+        await _loadSubscription();
+        await _syncOnboardingPendingFromProfile();
+        notifyListeners();
+
         await _loadRegimen();
+        notifyListeners();
         await _loadTracking();
         await _loadProgress();
         await _loadReminders();
         await _loadTodayLog();
-        await _loadSubscription();
-        await _syncOnboardingPendingFromProfile();
       }, showBusy: false);
     } finally {
       isRefreshingHome = false;
@@ -392,6 +395,7 @@ class AppState extends ChangeNotifier {
         '/api/skin-analysis',
         file: imageFile,
         fields: {'additionalNote': additionalNote, 'source': source},
+        timeout: const Duration(seconds: 240),
       );
       parsedResult = _analysisResultFromAiResponse(response);
       latestAnalysis = parsedResult;
@@ -412,22 +416,32 @@ class AppState extends ChangeNotifier {
     String? referenceId,
     String? prefillContext,
   }) async {
-    final response = await _apiClient.post(
-      '/api/ai/chat',
-      body: {
-        'message': message,
-        if (conversationId != null && conversationId.isNotEmpty)
-          'conversationId': conversationId,
-        if (entryPoint != null && entryPoint.isNotEmpty)
-          'entryPoint': entryPoint,
-        if (referenceId != null && referenceId.isNotEmpty)
-          'referenceId': referenceId,
-        if (prefillContext != null && prefillContext.isNotEmpty)
-          'prefillContext': prefillContext,
-      },
-    );
-    final data = _readAiData(response);
-    return AiChatReply.fromJson(data);
+    try {
+      final response = await _apiClient.post(
+        '/api/ai/chat',
+        body: {
+          'message': message,
+          if (conversationId != null && conversationId.isNotEmpty)
+            'conversationId': conversationId,
+          if (entryPoint != null && entryPoint.isNotEmpty)
+            'entryPoint': entryPoint,
+          if (referenceId != null && referenceId.isNotEmpty)
+            'referenceId': referenceId,
+          if (prefillContext != null && prefillContext.isNotEmpty)
+            'prefillContext': prefillContext,
+        },
+      );
+      final data = _readAiData(response);
+      return AiChatReply.fromJson(data);
+    } on ApiException catch (error) {
+      _setError(error.message, statusCode: error.statusCode);
+      notifyListeners();
+      rethrow;
+    } catch (_) {
+      _setError('Could not get a reply right now.');
+      notifyListeners();
+      rethrow;
+    }
   }
 
   Future<List<AiChatConversationSummary>> fetchAiChatConversations() async {

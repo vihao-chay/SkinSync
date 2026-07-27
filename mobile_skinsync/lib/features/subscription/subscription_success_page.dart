@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../../core/l10n/app_locale.dart';
 import '../../core/models/app_models.dart';
 import '../../core/routes/app_routes.dart';
 import '../../core/theme/app_colors.dart';
@@ -23,6 +24,8 @@ class SubscriptionSuccessPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
+    final planName = _brandedPlanName(plan);
     final enabledFeatures = plan.features
         .where(
           (feature) =>
@@ -56,14 +59,16 @@ class SubscriptionSuccessPage extends StatelessWidget {
                           const _SuccessSeal(),
                           const SizedBox(height: 14),
                           Text(
-                            'Thank You',
+                            locale.tr('sub_success_thank_you'),
                             textAlign: TextAlign.center,
                             style: Theme.of(context).textTheme.headlineMedium
                                 ?.copyWith(fontWeight: FontWeight.w800),
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            'Your ${_brandedPlanName(plan)} subscription is now active.',
+                            locale
+                                .tr('sub_success_active_message')
+                                .replaceAll('{plan}', planName),
                             textAlign: TextAlign.center,
                             style: Theme.of(context).textTheme.bodySmall,
                           ),
@@ -72,32 +77,43 @@ class SubscriptionSuccessPage extends StatelessWidget {
                             plan: plan,
                             orderCode: orderCode,
                             features: enabledFeatures,
+                            locale: locale,
                           ),
                           const SizedBox(height: AppSpacing.sm),
                           Row(
                             children: [
-                              const Expanded(
+                              Expanded(
                                 child: _StatusTile(
                                   icon: Icons.event_available_rounded,
-                                  label: 'NEXT SCAN',
-                                  value: 'Available now',
+                                  label: locale.tr('sub_success_next_scan'),
+                                  value: locale.tr('sub_success_available_now'),
                                 ),
                               ),
                               const SizedBox(width: AppSpacing.sm),
                               Expanded(
                                 child: _StatusTile(
                                   icon: Icons.verified_user_outlined,
-                                  label: 'ACCOUNT STATUS',
+                                  label: locale.tr(
+                                    'sub_success_account_status',
+                                  ),
                                   value: renewalDate == null
-                                      ? 'Verified Pro'
-                                      : 'Renews ${DateFormat('MMM d').format(renewalDate!)}',
+                                      ? locale.tr('sub_success_verified_pro')
+                                      : locale
+                                            .tr('sub_success_renews_format')
+                                            .replaceAll(
+                                              '{date}',
+                                              _formatRenewalDate(
+                                                renewalDate!,
+                                                locale,
+                                              ),
+                                            ),
                                 ),
                               ),
                             ],
                           ),
                           const SizedBox(height: AppSpacing.lg),
                           Text(
-                            '"Your journey to radiant, healthy skin begins now. A confirmation has been sent to your inbox."',
+                            locale.tr('sub_success_quote'),
                             textAlign: TextAlign.center,
                             style: Theme.of(context).textTheme.bodySmall
                                 ?.copyWith(
@@ -124,7 +140,7 @@ class SubscriptionSuccessPage extends StatelessWidget {
                         ),
                         iconAlignment: IconAlignment.end,
                         icon: const Icon(Icons.arrow_forward_rounded, size: 18),
-                        label: const Text('Go to Dashboard'),
+                        label: Text(locale.tr('sub_success_go_dashboard')),
                       ),
                     ),
                   ],
@@ -197,11 +213,13 @@ class _SubscriptionSummaryCard extends StatelessWidget {
     required this.plan,
     required this.orderCode,
     required this.features,
+    required this.locale,
   });
 
   final SubscriptionPlan plan;
   final int orderCode;
   final List<SubscriptionPlanFeature> features;
+  final AppLocale locale;
 
   @override
   Widget build(BuildContext context) {
@@ -220,13 +238,13 @@ class _SubscriptionSummaryCard extends StatelessWidget {
             children: [
               Expanded(
                 child: _SummaryValue(
-                  label: 'PLAN SELECTED',
+                  label: locale.tr('sub_success_plan_selected'),
                   value: _brandedPlanName(plan),
                 ),
               ),
               const SizedBox(width: 12),
               _SummaryValue(
-                label: 'TRANSACTION ID',
+                label: locale.tr('sub_success_transaction_id'),
                 value: _shortOrderCode(orderCode),
                 alignEnd: true,
               ),
@@ -234,7 +252,7 @@ class _SubscriptionSummaryCard extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           Text(
-            'BENEFITS NOW ACTIVE',
+            locale.tr('sub_success_benefits_active'),
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
               color: AppColors.primary,
               fontSize: 9,
@@ -243,12 +261,12 @@ class _SubscriptionSummaryCard extends StatelessWidget {
           ),
           const SizedBox(height: 9),
           if (features.isEmpty)
-            const _BenefitRow(label: 'Premium membership benefits')
+            _BenefitRow(label: locale.tr('sub_success_default_benefit'))
           else
             ...features.map(
               (feature) => Padding(
                 padding: const EdgeInsets.only(bottom: 8),
-                child: _BenefitRow(label: _featureLabel(feature)),
+                child: _BenefitRow(label: _featureLabel(feature, locale)),
               ),
             ),
         ],
@@ -523,16 +541,60 @@ String _shortOrderCode(int orderCode) {
   return '#SS-$suffix';
 }
 
-String _featureLabel(SubscriptionPlanFeature feature) {
-  final name = feature.displayName.trim().isEmpty
-      ? feature.featureKey.replaceAll('_', ' ')
-      : feature.displayName.trim();
-  if (feature.isUnlimited) {
-    return 'Unlimited $name';
+String _formatRenewalDate(DateTime date, AppLocale locale) {
+  if (locale.isVietnamese) {
+    return '${date.day}/${date.month}';
   }
+
+  return DateFormat('MMM d').format(date);
+}
+
+String _featureLabel(SubscriptionPlanFeature feature, AppLocale locale) {
+  final name = _featureName(feature, locale);
+  if (feature.isUnlimited) {
+    return locale
+        .tr('sub_success_unlimited_feature')
+        .replaceAll('{feature}', name);
+  }
+
   final limit = feature.monthlyLimit;
   if (limit != null && limit > 0) {
-    return '$limit $name each month';
+    return locale
+        .tr('sub_success_limited_feature_monthly')
+        .replaceAll('{limit}', limit.toString())
+        .replaceAll('{feature}', name);
   }
+
   return name;
+}
+
+String _featureName(SubscriptionPlanFeature feature, AppLocale locale) {
+  final key = feature.featureKey.trim().toLowerCase();
+  return switch (key) {
+    'skin_analysis' ||
+    'skin_analyses' ||
+    'analysis' => locale.tr('plan_feature_skin_analysis'),
+    'ai_chat' || 'chat' => locale.tr('plan_feature_ai_chat'),
+    'routine_generation' ||
+    'routine_generator' ||
+    'routine' => locale.tr('plan_feature_routine'),
+    'ingredient_check' ||
+    'ingredients_check' => locale.tr('plan_feature_ingredient'),
+    'conflict_check' ||
+    'routine_conflict_check' => locale.tr('plan_feature_conflict'),
+    _ =>
+      feature.displayName.trim().isEmpty
+          ? _capitalize(feature.featureKey.replaceAll('_', ' '))
+          : feature.displayName.trim(),
+  };
+}
+
+String _capitalize(String value) {
+  final words = value
+      .trim()
+      .split(RegExp(r'\s+'))
+      .where((word) => word.isNotEmpty);
+  return words
+      .map((word) => word[0].toUpperCase() + word.substring(1).toLowerCase())
+      .join(' ');
 }

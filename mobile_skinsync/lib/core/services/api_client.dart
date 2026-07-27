@@ -113,7 +113,7 @@ class ApiClient {
     );
     if (response.statusCode >= 400) {
       throw ApiException(
-        _extractMessage(_responseBody(response)),
+        _extractMessage(_responseBody(response), response.statusCode),
         response.statusCode,
       );
     }
@@ -124,20 +124,24 @@ class ApiClient {
     required Map<String, String> fields,
     File? file,
     String fileField = 'image',
+    Duration? timeout,
   }) async {
-    final response = await _sendWithRefresh(() async {
-      final request = http.MultipartRequest('POST', _uri(path));
-      request.headers.addAll(_headers(isJson: false));
-      request.fields.addAll(fields);
-      if (file != null) {
-        request.files.add(
-          await http.MultipartFile.fromPath(fileField, file.path),
-        );
-      }
+    final response = await _sendWithRefresh(
+      () async {
+        final request = http.MultipartRequest('POST', _uri(path));
+        request.headers.addAll(_headers(isJson: false));
+        request.fields.addAll(fields);
+        if (file != null) {
+          request.files.add(
+            await http.MultipartFile.fromPath(fileField, file.path),
+          );
+        }
 
-      final streamed = await request.send();
-      return http.Response.fromStream(streamed);
-    });
+        final streamed = await request.send();
+        return http.Response.fromStream(streamed);
+      },
+      timeout: timeout,
+    );
     return _decodeResponse(response);
   }
 
@@ -223,7 +227,10 @@ class ApiClient {
   Map<String, dynamic> _decodeResponse(http.Response response) {
     final body = _responseBody(response);
     if (response.statusCode >= 400) {
-      throw ApiException(_extractMessage(body), response.statusCode);
+      throw ApiException(
+        _extractMessage(body, response.statusCode),
+        response.statusCode,
+      );
     }
 
     dynamic decoded;
@@ -261,28 +268,108 @@ class ApiClient {
     return utf8.decode(response.bodyBytes, allowMalformed: true);
   }
 
-  String _extractMessage(String body) {
+  String _extractMessage(String body, int statusCode) {
     try {
       final decoded = jsonDecode(body);
       if (decoded is Map<String, dynamic>) {
-        return _sanitizeServerMessage(
-          (decoded['message'] ?? decoded['title'] ?? 'Request failed')
-              .toString(),
-        );
+        final message = _findMessage(decoded);
+        if (message != null && message.trim().isNotEmpty) {
+          return _sanitizeServerMessage(message);
+        }
       }
     } catch (_) {}
 
     final normalized = body.trim();
     if (normalized.isEmpty) {
-      return 'Request failed';
+      return _fallbackMessageForStatus(statusCode);
     }
 
-    if (normalized.startsWith('<!DOCTYPE html') ||
-        normalized.startsWith('<html')) {
-      return 'Backend returned an HTML error page instead of JSON. Please check the backend logs.';
+    final lower = normalized.toLowerCase();
+    if (lower.startsWith('<!doctype html') ||
+        lower.startsWith('<html') ||
+        lower.contains('<html') ||
+        lower.contains('<body')) {
+      return 'Backend ch\u01b0a ph\u1ee5c v\u1ee5 API \u0111\u00fang t\u1ea1i $baseUrl. Vui l\u00f2ng ki\u1ec3m tra b\u1ea3n deploy Somee.';
     }
 
-    return _sanitizeServerMessage(normalized);
+    final sanitized = _sanitizeServerMessage(normalized);
+    if (sanitized.trim().isEmpty || sanitized.trim() == '{}') {
+      return _fallbackMessageForStatus(statusCode);
+    }
+    return sanitized;
+  }
+
+  String? _findMessage(Map<String, dynamic> decoded) {
+    for (final key in const [
+      'message',
+      'title',
+      'error_description',
+      'error',
+      'detail',
+    ]) {
+      final value = decoded[key];
+      final text = _messageFromValue(value);
+      if (text != null && text.trim().isNotEmpty) {
+        return text;
+      }
+    }
+
+    final content = decoded['content'];
+    if (content is Map<String, dynamic>) {
+      final text = _findMessage(content);
+      if (text != null && text.trim().isNotEmpty) {
+        return text;
+      }
+    }
+
+    final errors = decoded['errors'];
+    final errorText = _messageFromValue(errors);
+    if (errorText != null && errorText.trim().isNotEmpty) {
+      return errorText;
+    }
+
+    return null;
+  }
+
+  String? _messageFromValue(Object? value) {
+    if (value == null) {
+      return null;
+    }
+    if (value is String) {
+      return value;
+    }
+    if (value is List) {
+      return value
+          .map(_messageFromValue)
+          .whereType<String>()
+          .where((item) => item.trim().isNotEmpty)
+          .join('\n');
+    }
+    if (value is Map<String, dynamic>) {
+      final nested = _findMessage(value);
+      if (nested != null && nested.trim().isNotEmpty) {
+        return nested;
+      }
+      return value.values
+          .map(_messageFromValue)
+          .whereType<String>()
+          .where((item) => item.trim().isNotEmpty)
+          .join('\n');
+    }
+    return value.toString();
+  }
+
+  String _fallbackMessageForStatus(int statusCode) {
+    return switch (statusCode) {
+      400 => 'Y\u00eau c\u1ea7u kh\u00f4ng h\u1ee3p l\u1ec7. Vui l\u00f2ng ki\u1ec3m tra l\u1ea1i th\u00f4ng tin.',
+      401 => 'Phi\u00ean \u0111\u0103ng nh\u1eadp \u0111\u00e3 h\u1ebft h\u1ea1n. Vui l\u00f2ng \u0111\u0103ng nh\u1eadp l\u1ea1i.',
+      403 => 'T\u00e0i kho\u1ea3n hi\u1ec7n t\u1ea1i ch\u01b0a c\u00f3 quy\u1ec1n d\u00f9ng t\u00ednh n\u0103ng n\u00e0y.',
+      404 => 'Kh\u00f4ng t\u00ecm th\u1ea5y API tr\u00ean backend. Vui l\u00f2ng ki\u1ec3m tra b\u1ea3n deploy.',
+      413 => '\u1ea2nh qu\u00e1 l\u1edbn. Vui l\u00f2ng ch\u1ecdn \u1ea3nh nh\u1ecf h\u01a1n.',
+      500 => 'Backend \u0111ang l\u1ed7i n\u1ed9i b\u1ed9. Vui l\u00f2ng ki\u1ec3m tra log server.',
+      502 || 503 => 'D\u1ecbch v\u1ee5 AI ch\u01b0a s\u1eb5n s\u00e0ng. Vui l\u00f2ng ki\u1ec3m tra OpenAI API key tr\u00ean backend.',
+      _ => 'Y\u00eau c\u1ea7u th\u1ea5t b\u1ea1i (HTTP $statusCode). Vui l\u00f2ng th\u1eed l\u1ea1i.',
+    };
   }
 
   String _sanitizeServerMessage(String message) {
@@ -294,6 +381,13 @@ class ApiClient {
         lower.contains('remaining connection slots') ||
         lower.contains('npgsql.postgresexception')) {
       return 'D\u1eef li\u1ec7u \u0111ang qu\u00e1 t\u1ea3i. Vui l\u00f2ng th\u1eed l\u1ea1i sau gi\u00e2y l\u00e1t.';
+    }
+
+    if (lower.contains('invalid_api_key') ||
+        lower.contains('incorrect api key') ||
+        lower.contains('api key provided') ||
+        lower.contains('openai api key')) {
+      return 'AI ch\u01b0a \u0111\u01b0\u1ee3c c\u1ea5u h\u00ecnh OpenAI API key h\u1ee3p l\u1ec7 tr\u00ean backend.';
     }
 
     if (lower.contains(' at npgsql.') ||
