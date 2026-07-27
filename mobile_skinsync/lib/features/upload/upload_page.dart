@@ -161,7 +161,12 @@ class _UploadPageState extends State<UploadPage> {
   }
 
   Future<void> _pickImage(ImageSource source) async {
-    final picked = await _picker.pickImage(source: source, imageQuality: 90);
+    final picked = await _picker.pickImage(
+      source: source,
+      maxWidth: 1600,
+      maxHeight: 1600,
+      imageQuality: 82,
+    );
     if (picked == null) {
       return;
     }

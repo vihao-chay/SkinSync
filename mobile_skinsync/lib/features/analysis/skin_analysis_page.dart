@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/l10n/app_locale.dart';
 import '../../core/models/app_models.dart';
 import '../../core/responsive/responsive.dart';
 import '../../core/routes/app_routes.dart';
@@ -13,8 +14,6 @@ import '../../core/theme/app_spacing.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/main_shell.dart';
-import 'product_ingredient_analysis_page.dart';
-import 'widgets/analysis_mode_tabs.dart';
 
 class SkinAnalysisPage extends StatefulWidget {
   const SkinAnalysisPage({super.key});
@@ -24,24 +23,14 @@ class SkinAnalysisPage extends StatefulWidget {
 }
 
 class _SkinAnalysisPageState extends State<SkinAnalysisPage> {
-  AnalysisMode _selectedMode = AnalysisMode.skin;
-
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
     final appState = context.watch<AppState>();
     final result = appState.latestAnalysis;
 
-    if (_selectedMode == AnalysisMode.product) {
-      return ProductIngredientAnalysisPage(
-        selectedMode: _selectedMode,
-        onModeChanged: (mode) => setState(() => _selectedMode = mode),
-      );
-    }
-
     if (result == null) {
       return _EmptyAnalysis(
-        selectedMode: _selectedMode,
-        onModeChanged: (mode) => setState(() => _selectedMode = mode),
         onStart: () => Navigator.pushNamed(context, AppRoutes.quiz),
       );
     }
@@ -63,6 +52,7 @@ class _SkinAnalysisPageState extends State<SkinAnalysisPage> {
             child: Column(
               children: [
                 _AnalysisTopBar(
+                  locale: locale,
                   onBack: () =>
                       MainShell.navigateToTab(context, AppRoutes.dashboard),
                   onShare: () => Navigator.pushNamed(
@@ -71,8 +61,7 @@ class _SkinAnalysisPageState extends State<SkinAnalysisPage> {
                     arguments: AiChatLaunchArgs(
                       entryPoint: 'analysis_result',
                       referenceId: result.progressEntryId ?? result.id,
-                      prefillMessage:
-                          'Can you explain this analysis and what I should do next?',
+                      prefillMessage: locale.tr('analysis_ai_prefill'),
                     ),
                   ),
                 ),
@@ -84,47 +73,47 @@ class _SkinAnalysisPageState extends State<SkinAnalysisPage> {
                       physics: const AlwaysScrollableScrollPhysics(),
                       padding: EdgeInsets.fromLTRB(
                         Responsive.responsiveHorizontalPadding(context),
-                        4,
+                        8,
                         Responsive.responsiveHorizontalPadding(context),
                         82,
                       ),
                       children: [
                         Text(
-                          'Analysis Results',
-                          style: Theme.of(context).textTheme.titleLarge
-                              ?.copyWith(fontWeight: FontWeight.w800),
-                        ),
-                        const SizedBox(height: 1),
-                        Text(
-                          result.source?.trim().isNotEmpty == true
-                              ? 'Saved from ${result.source}'
-                              : 'Saved from your latest skin scan.',
-                          style: Theme.of(context).textTheme.labelSmall
+                          locale.tr('analysis_results_title'),
+                          style: Theme.of(context).textTheme.headlineSmall
                               ?.copyWith(
+                                fontFamily: 'PlayfairDisplay',
                                 color: AppColors.heading,
-                                fontSize: 9,
-                                height: 1.2,
+                                fontWeight: FontWeight.w800,
+                                height: 1.05,
                               ),
                         ),
-                        const SizedBox(height: 8),
-                        AnalysisModeTabs(
-                          selectedMode: _selectedMode,
-                          onChanged: (mode) =>
-                              setState(() => _selectedMode = mode),
+                        const SizedBox(height: 5),
+                        Text(
+                          _savedFromLabel(result, locale),
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(
+                                color: AppColors.mutedText,
+                                height: 1.35,
+                              ),
                         ),
-                        const SizedBox(height: 10),
-                        _ScoreHero(result: result),
-                        const SizedBox(height: 10),
-                        _OverviewCard(result: result),
-                        const SizedBox(height: 10),
-                        _DetectedAreas(issues: result.issues),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 18),
+                        _ScoreHero(result: result, locale: locale),
+                        const SizedBox(height: 14),
+                        _OverviewCard(result: result, locale: locale),
+                        const SizedBox(height: 14),
+                        _DetectedAreas(issues: result.issues, locale: locale),
+                        const SizedBox(height: 14),
                         _RecommendationList(
                           recommendations: result.recommendations,
+                          locale: locale,
                         ),
                         if (result.warnings.isNotEmpty) ...[
-                          const SizedBox(height: 10),
-                          _SafetyWarning(warnings: result.warnings),
+                          const SizedBox(height: 14),
+                          _SafetyWarning(
+                            warnings: result.warnings,
+                            locale: locale,
+                          ),
                         ],
                       ],
                     ),
@@ -135,8 +124,8 @@ class _SkinAnalysisPageState extends State<SkinAnalysisPage> {
                   child: Container(
                     padding: Responsive.responsivePadding(
                       context,
-                      top: 8,
-                      bottom: 8,
+                      top: 10,
+                      bottom: 10,
                     ),
                     decoration: BoxDecoration(
                       color: AppColors.surface.withValues(alpha: 0.96),
@@ -148,56 +137,58 @@ class _SkinAnalysisPageState extends State<SkinAnalysisPage> {
                     ),
                     child: LayoutBuilder(
                       builder: (context, constraints) {
-                        final stack = constraints.maxWidth < 420;
-                        final buttons = [
-                          _CompactActionButton(
-                            label: 'Ask AI',
-                            icon: Icons.auto_awesome_rounded,
-                            onPressed: () => Navigator.pushNamed(
-                              context,
-                              AppRoutes.aiChatConversation,
-                              arguments: AiChatLaunchArgs(
-                                entryPoint: 'analysis_result',
-                                referenceId:
-                                    result.progressEntryId ?? result.id,
-                                prefillMessage:
-                                    'Can you explain this analysis and what I should do next?',
-                              ),
+                        final askAiButton = AppButton(
+                          label: locale.tr('floating_ai_ask'),
+                          icon: const Icon(
+                            Icons.auto_awesome_rounded,
+                            size: 18,
+                          ),
+                          variant: AppButtonVariant.ai,
+                          onPressed: () => Navigator.pushNamed(
+                            context,
+                            AppRoutes.aiChatConversation,
+                            arguments: AiChatLaunchArgs(
+                              entryPoint: 'analysis_result',
+                              referenceId: result.progressEntryId ?? result.id,
+                              prefillMessage: locale.tr('analysis_ai_prefill'),
                             ),
                           ),
-                          _CompactActionButton(
-                            label: 'View Products',
-                            secondary: true,
-                            onPressed: () => MainShell.navigateToTab(
-                              context,
-                              AppRoutes.products,
-                              arguments: ProductsPageArgs(
-                                initialConcern: result.issues.isNotEmpty
-                                    ? result.issues.first.issueType
-                                    : 'any',
-                                referenceId:
-                                    result.progressEntryId ?? result.id,
-                                entryPoint: ProductsEntryPoint.analysisResult,
-                              ),
+                        );
+                        final viewProductsButton = AppButton(
+                          label: locale.tr('analysis_view_products'),
+                          icon: const Icon(
+                            Icons.shopping_bag_outlined,
+                            size: 18,
+                          ),
+                          variant: AppButtonVariant.secondary,
+                          onPressed: () => MainShell.navigateToTab(
+                            context,
+                            AppRoutes.products,
+                            arguments: ProductsPageArgs(
+                              initialConcern: result.issues.isNotEmpty
+                                  ? result.issues.first.issueType
+                                  : 'any',
+                              referenceId: result.progressEntryId ?? result.id,
+                              entryPoint: ProductsEntryPoint.analysisResult,
                             ),
                           ),
-                        ];
+                        );
 
-                        if (stack) {
+                        if (constraints.maxWidth < 360) {
                           return Column(
                             children: [
-                              SizedBox(width: double.infinity, child: buttons[0]),
+                              askAiButton,
                               const SizedBox(height: 8),
-                              SizedBox(width: double.infinity, child: buttons[1]),
+                              viewProductsButton,
                             ],
                           );
                         }
 
                         return Row(
                           children: [
-                            Expanded(child: buttons[0]),
-                            const SizedBox(width: 8),
-                            Expanded(child: buttons[1]),
+                            Expanded(child: askAiButton),
+                            const SizedBox(width: 10),
+                            Expanded(child: viewProductsButton),
                           ],
                         );
                       },
@@ -214,8 +205,13 @@ class _SkinAnalysisPageState extends State<SkinAnalysisPage> {
 }
 
 class _AnalysisTopBar extends StatelessWidget {
-  const _AnalysisTopBar({required this.onBack, this.onShare});
+  const _AnalysisTopBar({
+    required this.locale,
+    required this.onBack,
+    this.onShare,
+  });
 
+  final AppLocale locale;
   final VoidCallback onBack;
   final VoidCallback? onShare;
 
@@ -228,7 +224,7 @@ class _AnalysisTopBar extends StatelessWidget {
         child: Row(
           children: [
             IconButton(
-              tooltip: 'Back',
+              tooltip: locale.tr('common_back'),
               icon: const Icon(Icons.arrow_back_rounded),
               color: AppColors.heading,
               iconSize: 20,
@@ -239,7 +235,7 @@ class _AnalysisTopBar extends StatelessWidget {
             const Spacer(),
             if (onShare != null)
               IconButton(
-                tooltip: 'Share',
+                tooltip: locale.tr('floating_ai_ask'),
                 icon: const Icon(Icons.ios_share_rounded),
                 color: AppColors.heading,
                 iconSize: 18,
@@ -258,18 +254,13 @@ class _AnalysisTopBar extends StatelessWidget {
 }
 
 class _EmptyAnalysis extends StatelessWidget {
-  const _EmptyAnalysis({
-    required this.selectedMode,
-    required this.onModeChanged,
-    required this.onStart,
-  });
+  const _EmptyAnalysis({required this.onStart});
 
-  final AnalysisMode selectedMode;
-  final ValueChanged<AnalysisMode> onModeChanged;
   final VoidCallback onStart;
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
     return ColoredBox(
       color: AppColors.pageBackground,
       child: SafeArea(
@@ -283,14 +274,13 @@ class _EmptyAnalysis extends StatelessWidget {
             Responsive.contentBottomSpacing(context, extra: 20),
           ),
           children: [
-            _AnalysisTopBar(onBack: () => Navigator.maybePop(context)),
-            const SizedBox(height: AppSpacing.md),
-            AnalysisModeTabs(
-              selectedMode: selectedMode,
-              onChanged: onModeChanged,
+            _AnalysisTopBar(
+              locale: locale,
+              onBack: () => Navigator.maybePop(context),
             ),
             const SizedBox(height: AppSpacing.md),
             AppCard(
+              variant: AppCardVariant.metric,
               child: Column(
                 children: [
                   const Icon(
@@ -300,19 +290,24 @@ class _EmptyAnalysis extends StatelessWidget {
                   ),
                   const SizedBox(height: AppSpacing.md),
                   Text(
-                    'No analysis yet',
+                    locale.tr('analysis_empty_title'),
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontFamily: 'PlayfairDisplay',
                       fontWeight: FontWeight.w800,
                     ),
                   ),
                   const SizedBox(height: AppSpacing.sm),
                   Text(
-                    'Complete the skin quiz and upload a clear photo to generate your first AI report.',
+                    locale.tr('analysis_empty_desc'),
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                   const SizedBox(height: AppSpacing.md),
-                  AppButton(label: 'Start Quiz', onPressed: onStart),
+                  AppButton(
+                    label: locale.tr('analysis_start_scan'),
+                    icon: const Icon(Icons.camera_alt_outlined, size: 18),
+                    onPressed: onStart,
+                  ),
                 ],
               ),
             ),
@@ -324,48 +319,64 @@ class _EmptyAnalysis extends StatelessWidget {
 }
 
 class _ScoreHero extends StatelessWidget {
-  const _ScoreHero({required this.result});
+  const _ScoreHero({required this.result, required this.locale});
 
   final AnalysisResult result;
+  final AppLocale locale;
 
   @override
   Widget build(BuildContext context) {
     final score = result.overallScore ?? result.displaySkinHealthScore ?? 0;
     return AppCard(
       variant: AppCardVariant.metric,
-      radius: AppRadius.small,
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
       child: Column(
         children: [
+          Row(
+            children: [
+              _TinyPill(
+                label: result.skinType.trim().isEmpty
+                    ? locale.tr('analysis_skin_type_unknown')
+                    : result.skinType,
+                icon: Icons.spa_outlined,
+              ),
+              const Spacer(),
+              _TinyPill(
+                label: locale
+                    .tr('analysis_confidence_format')
+                    .replaceAll(
+                      '{percent}',
+                      result.displayConfidencePercent.toString(),
+                    ),
+                icon: Icons.verified_outlined,
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
           _AnalysisScoreDial(score: score),
-          const SizedBox(height: 6),
+          const SizedBox(height: 10),
           Text(
-            _balanceTitle(score),
+            _balanceTitle(score, locale),
             textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
               color: AppColors.heading,
               fontFamily: 'PlayfairDisplay',
               fontWeight: FontWeight.w800,
             ),
-          ),
-          const SizedBox(height: 3),
-          _TinyPill(
-            label: '${result.confidenceScore}% confidence',
-            icon: Icons.verified_outlined,
           ),
         ],
       ),
     );
   }
 
-  String _balanceTitle(int score) {
+  String _balanceTitle(int score, AppLocale locale) {
     if (score >= 80) {
-      return 'Excellent Balance';
+      return locale.tr('analysis_score_excellent');
     }
     if (score >= 60) {
-      return 'Stable Balance';
+      return locale.tr('analysis_score_stable');
     }
-    return 'Needs Attention';
+    return locale.tr('analysis_score_attention');
   }
 }
 
@@ -378,7 +389,7 @@ class _AnalysisScoreDial extends StatelessWidget {
   Widget build(BuildContext context) {
     final clamped = score.clamp(0, 100).toInt();
     return SizedBox.square(
-      dimension: 104,
+      dimension: 132,
       child: TweenAnimationBuilder<double>(
         tween: Tween<double>(begin: 0, end: clamped / 100),
         duration: const Duration(milliseconds: 650),
@@ -398,7 +409,7 @@ class _AnalysisScoreDial extends StatelessWidget {
                     style: const TextStyle(
                       fontFamily: 'PlayfairDisplay',
                       color: AppColors.heading,
-                      fontSize: 28,
+                      fontSize: 38,
                       fontWeight: FontWeight.w800,
                       height: 1,
                     ),
@@ -406,8 +417,8 @@ class _AnalysisScoreDial extends StatelessWidget {
                   Text(
                     '/100',
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: AppColors.heading,
-                      fontSize: 9,
+                      color: AppColors.mutedText,
+                      fontSize: 10,
                       fontWeight: FontWeight.w700,
                       height: 1.1,
                     ),
@@ -435,12 +446,12 @@ class _AnalysisScorePainter extends CustomPainter {
     final radius = (size.width - stroke) / 2;
     final rect = Rect.fromCircle(center: center, radius: radius);
     final track = Paint()
-      ..color = AppColors.surfaceContainerHigh
+      ..color = AppColors.primaryFixed.withValues(alpha: 0.72)
       ..style = PaintingStyle.stroke
       ..strokeWidth = stroke
       ..strokeCap = StrokeCap.round;
     final arc = Paint()
-      ..color = color
+      ..color = AppColors.primaryDark
       ..style = PaintingStyle.stroke
       ..strokeWidth = stroke
       ..strokeCap = StrokeCap.round;
@@ -492,29 +503,38 @@ class _TinyPill extends StatelessWidget {
 }
 
 class _OverviewCard extends StatelessWidget {
-  const _OverviewCard({required this.result});
+  const _OverviewCard({required this.result, required this.locale});
 
   final AnalysisResult result;
+  final AppLocale locale;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _SmallSectionLabel('AI Overview'),
-        const SizedBox(height: 6),
+        _SmallSectionLabel(locale.tr('analysis_ai_overview')),
+        const SizedBox(height: 8),
         AppCard(
           variant: AppCardVariant.metric,
-          radius: AppRadius.small,
-          padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
-          child: Text(
-            result.overview?.trim().isNotEmpty == true
-                ? result.overview!
-                : 'Your latest analysis is ready. Keep tracking routine consistency and product fit over time.',
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: AppColors.heading,
-              height: 1.38,
-            ),
+          padding: const EdgeInsets.fromLTRB(14, 13, 14, 13),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _SoftIcon(icon: Icons.auto_awesome_rounded),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  result.overview?.trim().isNotEmpty == true
+                      ? result.overview!
+                      : locale.tr('analysis_overview_fallback'),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppColors.heading,
+                    height: 1.45,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ],
@@ -523,9 +543,10 @@ class _OverviewCard extends StatelessWidget {
 }
 
 class _DetectedAreas extends StatelessWidget {
-  const _DetectedAreas({required this.issues});
+  const _DetectedAreas({required this.issues, required this.locale});
 
   final List<AnalysisIssue> issues;
+  final AppLocale locale;
 
   @override
   Widget build(BuildContext context) {
@@ -533,25 +554,23 @@ class _DetectedAreas extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _SmallSectionLabel('Detected Areas'),
-        const SizedBox(height: 6),
+        _SmallSectionLabel(locale.tr('analysis_detected_areas')),
+        const SizedBox(height: 8),
         if (issues.isEmpty)
-          const _CompactEmptyCard(
+          _CompactEmptyCard(
             icon: Icons.check_circle_outline_rounded,
-            title: 'No detected concerns',
-            body: 'Your latest scan did not return specific concern areas.',
+            title: locale.tr('analysis_no_detected_concerns'),
+            body: locale.tr('analysis_no_detected_concerns_desc'),
           )
         else
-          Row(
+          Column(
             children: List.generate(visibleIssues.length, (index) {
               final issue = visibleIssues[index];
-              return Expanded(
-                child: Padding(
-                  padding: EdgeInsets.only(
-                    right: index == visibleIssues.length - 1 ? 0 : 8,
-                  ),
-                  child: _IssueCard(issue: issue),
+              return Padding(
+                padding: EdgeInsets.only(
+                  bottom: index == visibleIssues.length - 1 ? 0 : 8,
                 ),
+                child: _IssueCard(issue: issue, locale: locale),
               );
             }),
           ),
@@ -561,9 +580,10 @@ class _DetectedAreas extends StatelessWidget {
 }
 
 class _IssueCard extends StatelessWidget {
-  const _IssueCard({required this.issue});
+  const _IssueCard({required this.issue, required this.locale});
 
   final AnalysisIssue issue;
+  final AppLocale locale;
 
   @override
   Widget build(BuildContext context) {
@@ -571,51 +591,59 @@ class _IssueCard extends StatelessWidget {
     final medium = issue.severityScore >= 40;
     return AppCard(
       variant: AppCardVariant.metric,
-      radius: AppRadius.small,
-      padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Row(
-            children: [
-              _IssueIcon(
-                icon: high
-                    ? Icons.priority_high_rounded
-                    : medium
-                    ? Icons.wb_sunny_outlined
-                    : Icons.check_rounded,
-                danger: high,
-              ),
-              const Spacer(),
-              _SeverityPill(
-                label: high
-                    ? 'High'
-                    : medium
-                    ? 'Mild'
-                    : 'Good',
-                danger: high,
-              ),
-            ],
+          _IssueIcon(
+            icon: high
+                ? Icons.priority_high_rounded
+                : medium
+                ? Icons.wb_sunny_outlined
+                : Icons.check_rounded,
+            danger: high,
           ),
-          const SizedBox(height: 7),
-          Text(
-            issue.issueType,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: AppColors.heading,
-              fontWeight: FontWeight.w900,
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  issue.issueType,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    color: AppColors.heading,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  issue.description?.trim().isNotEmpty == true
+                      ? issue.description!
+                      : locale
+                            .tr('analysis_score_out_of_100')
+                            .replaceAll(
+                              '{score}',
+                              issue.severityScore.toString(),
+                            ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.labelSmall?.copyWith(height: 1.25),
+                ),
+              ],
             ),
           ),
-          Text(
-            issue.description?.trim().isNotEmpty == true
-                ? issue.description!
-                : '${issue.severityScore}/100',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(
-              context,
-            ).textTheme.labelSmall?.copyWith(fontSize: 9, height: 1.2),
+          const SizedBox(width: 10),
+          _SeverityPill(
+            label: high
+                ? locale.tr('metric_severity_high')
+                : medium
+                ? locale.tr('metric_severity_mild')
+                : locale.tr('analysis_status_good'),
+            danger: high,
           ),
         ],
       ),
@@ -632,8 +660,8 @@ class _IssueIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 24,
-      height: 24,
+      width: 34,
+      height: 34,
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: danger
@@ -643,7 +671,7 @@ class _IssueIcon extends StatelessWidget {
       ),
       child: Icon(
         icon,
-        size: 13,
+        size: 17,
         color: danger ? AppColors.error : AppColors.primary,
       ),
     );
@@ -681,51 +709,41 @@ class _SeverityPill extends StatelessWidget {
 }
 
 class _RecommendationList extends StatelessWidget {
-  const _RecommendationList({required this.recommendations});
+  const _RecommendationList({
+    required this.recommendations,
+    required this.locale,
+  });
 
   final List<AnalysisRecommendation> recommendations;
+  final AppLocale locale;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _SmallSectionLabel('Recommendations'),
-        const SizedBox(height: 6),
+        _SmallSectionLabel(locale.tr('analysis_recommendations')),
+        const SizedBox(height: 8),
         if (recommendations.isEmpty)
-          const _CompactEmptyCard(
+          _CompactEmptyCard(
             icon: Icons.spa_outlined,
-            title: 'No recommendations yet',
-            body:
-                'Recommendations will appear when the analysis includes them.',
+            title: locale.tr('analysis_no_recommendations'),
+            body: locale.tr('analysis_no_recommendations_desc'),
           )
         else
           ...recommendations
               .take(4)
               .map(
                 (item) => Padding(
-                  padding: const EdgeInsets.only(bottom: 6),
+                  padding: const EdgeInsets.only(bottom: 8),
                   child: AppCard(
                     variant: AppCardVariant.metric,
-                    radius: AppRadius.small,
-                    padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+                    padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
                     child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Container(
-                          width: 24,
-                          height: 24,
-                          alignment: Alignment.center,
-                          decoration: const BoxDecoration(
-                            color: AppColors.secondary,
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.eco_outlined,
-                            size: 13,
-                            color: AppColors.primaryDark,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
+                        _SoftIcon(icon: Icons.eco_outlined),
+                        const SizedBox(width: 10),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -734,9 +752,9 @@ class _RecommendationList extends StatelessWidget {
                                 item.title.trim().isEmpty
                                     ? item.content
                                     : item.title,
-                                maxLines: 1,
+                                maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
-                                style: Theme.of(context).textTheme.labelSmall
+                                style: Theme.of(context).textTheme.labelLarge
                                     ?.copyWith(
                                       color: AppColors.heading,
                                       fontWeight: FontWeight.w900,
@@ -745,18 +763,13 @@ class _RecommendationList extends StatelessWidget {
                               if (item.title.trim().isNotEmpty)
                                 Text(
                                   item.content,
-                                  maxLines: 1,
+                                  maxLines: 3,
                                   overflow: TextOverflow.ellipsis,
                                   style: Theme.of(context).textTheme.labelSmall
-                                      ?.copyWith(fontSize: 9, height: 1.2),
+                                      ?.copyWith(height: 1.25),
                                 ),
                             ],
                           ),
-                        ),
-                        const Icon(
-                          Icons.expand_more_rounded,
-                          size: 16,
-                          color: AppColors.mutedText,
                         ),
                       ],
                     ),
@@ -783,28 +796,18 @@ class _CompactEmptyCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return AppCard(
       variant: AppCardVariant.metric,
-      radius: AppRadius.small,
-      padding: const EdgeInsets.fromLTRB(10, 9, 10, 9),
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
       child: Row(
         children: [
-          Container(
-            width: 26,
-            height: 26,
-            alignment: Alignment.center,
-            decoration: const BoxDecoration(
-              color: AppColors.secondary,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, size: 14, color: AppColors.primary),
-          ),
-          const SizedBox(width: 8),
+          _SoftIcon(icon: icon),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   title,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
                     color: AppColors.heading,
                     fontWeight: FontWeight.w900,
                   ),
@@ -816,7 +819,7 @@ class _CompactEmptyCard extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(
                     context,
-                  ).textTheme.labelSmall?.copyWith(fontSize: 9, height: 1.2),
+                  ).textTheme.labelSmall?.copyWith(height: 1.25),
                 ),
               ],
             ),
@@ -828,9 +831,10 @@ class _CompactEmptyCard extends StatelessWidget {
 }
 
 class _SafetyWarning extends StatelessWidget {
-  const _SafetyWarning({required this.warnings});
+  const _SafetyWarning({required this.warnings, required this.locale});
 
   final List<String> warnings;
+  final AppLocale locale;
 
   @override
   Widget build(BuildContext context) {
@@ -855,7 +859,7 @@ class _SafetyWarning extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Sensitivity Warning',
+                  locale.tr('analysis_sensitivity_warning'),
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
                     color: AppColors.error,
                     fontWeight: FontWeight.w900,
@@ -879,61 +883,6 @@ class _SafetyWarning extends StatelessWidget {
   }
 }
 
-class _CompactActionButton extends StatelessWidget {
-  const _CompactActionButton({
-    required this.label,
-    required this.onPressed,
-    this.icon,
-    this.secondary = false,
-  });
-
-  final String label;
-  final VoidCallback onPressed;
-  final IconData? icon;
-  final bool secondary;
-
-  @override
-  Widget build(BuildContext context) {
-    final textStyle = Theme.of(context).textTheme.labelSmall?.copyWith(
-      fontWeight: FontWeight.w900,
-      fontSize: 10,
-      height: 1,
-    );
-    final shape = RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(AppRadius.pill),
-    );
-
-    if (secondary) {
-      return OutlinedButton(
-        onPressed: onPressed,
-        style: OutlinedButton.styleFrom(
-          minimumSize: const Size(0, 36),
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-          foregroundColor: AppColors.primary,
-          side: BorderSide(color: AppColors.primary.withValues(alpha: 0.62)),
-          textStyle: textStyle,
-          shape: shape,
-        ),
-        child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
-      );
-    }
-
-    return FilledButton.icon(
-      onPressed: onPressed,
-      icon: icon == null ? const SizedBox.shrink() : Icon(icon, size: 13),
-      label: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
-      style: FilledButton.styleFrom(
-        minimumSize: const Size(0, 36),
-        padding: const EdgeInsets.symmetric(horizontal: 8),
-        backgroundColor: AppColors.primary,
-        foregroundColor: AppColors.onPrimary,
-        textStyle: textStyle,
-        shape: shape,
-      ),
-    );
-  }
-}
-
 class _SmallSectionLabel extends StatelessWidget {
   const _SmallSectionLabel(this.text);
 
@@ -949,4 +898,49 @@ class _SmallSectionLabel extends StatelessWidget {
       ),
     );
   }
+}
+
+class _SoftIcon extends StatelessWidget {
+  const _SoftIcon({required this.icon});
+
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 34,
+      height: 34,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: AppColors.primaryFixed.withValues(alpha: 0.72),
+        shape: BoxShape.circle,
+      ),
+      child: Icon(icon, size: 17, color: AppColors.primaryDark),
+    );
+  }
+}
+
+String _savedFromLabel(AnalysisResult result, AppLocale locale) {
+  final source = result.source?.trim();
+  if (source != null &&
+      source.isNotEmpty &&
+      source.toLowerCase() != 'unknown') {
+    return locale
+        .tr('analysis_saved_from_source')
+        .replaceAll('{source}', _friendlyAnalysisSource(source, locale));
+  }
+
+  return locale.tr('analysis_saved_latest_scan');
+}
+
+String _friendlyAnalysisSource(String source, AppLocale locale) {
+  return switch (source.trim().toLowerCase()) {
+    'manual' => locale.tr('analysis_source_manual'),
+    'upload' || 'uploaded' => locale.tr('analysis_source_upload'),
+    'camera' || 'photo' => locale.tr('analysis_source_camera'),
+    'skin_scan' ||
+    'skin-analysis' ||
+    'skin_analysis' => locale.tr('analysis_source_skin_scan'),
+    _ => source,
+  };
 }

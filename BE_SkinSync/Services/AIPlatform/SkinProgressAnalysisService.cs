@@ -192,9 +192,9 @@ public class SkinProgressAnalysisService : ISkinProgressAnalysisService
     private static SkinProgressAnalyzeAiModel NormalizeAiResult(SkinProgressAnalyzeAiModel input)
     {
         NormalizeLegacyCompatibility(input);
-        input.SkinTypeEstimate = NormalizeValue(input.SkinTypeEstimate, "unknown");
-        input.HydrationLevel = NormalizeValue(input.HydrationLevel, "unknown");
-        input.OilinessLevel = NormalizeValue(input.OilinessLevel, "unknown");
+        input.SkinTypeEstimate = NormalizeSkinType(input.SkinTypeEstimate);
+        input.HydrationLevel = NormalizeHydrationLevel(input.HydrationLevel);
+        input.OilinessLevel = NormalizeOilinessLevel(input.OilinessLevel);
         input.Metrics.Acne = ClampScore(input.Metrics.Acne);
         input.Metrics.Redness = ClampScore(input.Metrics.Redness);
         input.Metrics.Oiliness = ClampScore(input.Metrics.Oiliness);
@@ -439,6 +439,136 @@ public class SkinProgressAnalysisService : ISkinProgressAnalysisService
         var normalized = NormalizeValue(priority, "medium");
         return normalized is "low" or "medium" or "high" ? normalized : "medium";
     }
+
+    private static string NormalizeSkinType(string? value)
+    {
+        var normalized = NormalizeValue(value, "unknown");
+        var searchable = ToSearchableLabel(normalized);
+
+        if (normalized is "oily" or "dry" or "combination" or "normal" or "sensitive" or "unknown")
+        {
+            return normalized;
+        }
+
+        if (searchable.Contains("combination") || searchable.Contains("mixed") || searchable.Contains("t_zone"))
+        {
+            return "combination";
+        }
+
+        if (searchable.Contains("sensitive"))
+        {
+            return "sensitive";
+        }
+
+        if (searchable.Contains("oily") || searchable.Contains("oil_prone") || searchable.Contains("greasy"))
+        {
+            return "oily";
+        }
+
+        if (searchable.Contains("dry") || searchable.Contains("dehydrated"))
+        {
+            return "dry";
+        }
+
+        if (searchable.Contains("normal") || searchable.Contains("balanced"))
+        {
+            return "normal";
+        }
+
+        return "unknown";
+    }
+
+    private static string NormalizeHydrationLevel(string? value)
+    {
+        var normalized = NormalizeValue(value, "unknown");
+        var searchable = ToSearchableLabel(normalized);
+
+        if (normalized is "low" or "balanced" or "high" or "unknown")
+        {
+            return normalized;
+        }
+
+        if (searchable.Contains("dehydrat") ||
+            searchable.Contains("dry") ||
+            searchable.Contains("low") ||
+            searchable.Contains("poor") ||
+            searchable.Contains("reduced"))
+        {
+            return "low";
+        }
+
+        if (searchable.Contains("moderate") ||
+            searchable.Contains("medium") ||
+            searchable.Contains("normal") ||
+            searchable.Contains("average") ||
+            searchable.Contains("adequate") ||
+            searchable.Contains("balanced"))
+        {
+            return "balanced";
+        }
+
+        if (searchable.Contains("hydrated") ||
+            searchable.Contains("moisturized") ||
+            searchable.Contains("well_hydrated") ||
+            searchable.Contains("high") ||
+            searchable.Contains("good"))
+        {
+            return "high";
+        }
+
+        return "unknown";
+    }
+
+    private static string NormalizeOilinessLevel(string? value)
+    {
+        var normalized = NormalizeValue(value, "unknown");
+        var searchable = ToSearchableLabel(normalized);
+
+        if (normalized is "low" or "medium" or "high" or "only_t_zone" or "unknown")
+        {
+            return normalized;
+        }
+
+        if (searchable.Contains("t_zone") ||
+            searchable.Contains("tzone") ||
+            searchable.Contains("combination") ||
+            searchable.Contains("localized"))
+        {
+            return "only_t_zone";
+        }
+
+        if (searchable.Contains("oily") ||
+            searchable.Contains("greasy") ||
+            searchable.Contains("excess") ||
+            searchable.Contains("high"))
+        {
+            return "high";
+        }
+
+        if (searchable.Contains("moderate") ||
+            searchable.Contains("balanced") ||
+            searchable.Contains("normal") ||
+            searchable.Contains("average"))
+        {
+            return "medium";
+        }
+
+        if (searchable.Contains("low") ||
+            searchable.Contains("minimal") ||
+            searchable.Contains("matte") ||
+            searchable.Contains("dry"))
+        {
+            return "low";
+        }
+
+        return "unknown";
+    }
+
+    private static string ToSearchableLabel(string value) =>
+        value.Replace('-', '_')
+            .Replace(' ', '_')
+            .Replace('/', '_')
+            .Replace('.', '_');
 
     private static string NormalizeValue(string? value, string fallback)
     {

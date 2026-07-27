@@ -402,6 +402,38 @@ class AppStrings {
     'analysis_ingredient_list': 'Danh sách thành phần',
     'analysis_safety': 'Độ an toàn',
     'analysis_compatibility': 'Tương thích',
+    'analysis_results_title': 'Kết quả phân tích',
+    'analysis_saved_from_source': 'Đã lưu từ {source}.',
+    'analysis_saved_latest_scan': 'Đã lưu từ lần quét da gần nhất của bạn.',
+    'analysis_source_manual': 'ảnh bạn tải lên',
+    'analysis_source_upload': 'ảnh tải lên',
+    'analysis_source_camera': 'ảnh chụp',
+    'analysis_source_skin_scan': 'lần quét da',
+    'analysis_ai_prefill':
+        'Bạn có thể giải thích kết quả phân tích này và tôi nên làm gì tiếp theo không?',
+    'analysis_empty_title': 'Chưa có phân tích',
+    'analysis_empty_desc':
+        'Hãy tải lên một ảnh da rõ nét để SkinSync tạo báo cáo AI đầu tiên cho bạn.',
+    'analysis_start_scan': 'Bắt đầu quét da',
+    'analysis_skin_type_unknown': 'Chưa xác định',
+    'analysis_confidence_format': '{percent}% độ tin cậy',
+    'analysis_score_excellent': 'Cân bằng rất tốt',
+    'analysis_score_stable': 'Da đang ổn định',
+    'analysis_score_attention': 'Cần chú ý thêm',
+    'analysis_ai_overview': 'Tổng quan AI',
+    'analysis_overview_fallback':
+        'Kết quả phân tích mới nhất đã sẵn sàng. Hãy tiếp tục theo dõi da và duy trì lộ trình chăm sóc đều đặn.',
+    'analysis_detected_areas': 'Vùng phát hiện',
+    'analysis_no_detected_concerns': 'Không phát hiện vấn đề rõ ràng',
+    'analysis_no_detected_concerns_desc':
+        'Lần quét mới nhất không trả về vùng da cần chú ý cụ thể.',
+    'analysis_score_out_of_100': '{score}/100',
+    'analysis_status_good': 'Tốt',
+    'analysis_no_recommendations': 'Chưa có khuyến nghị',
+    'analysis_no_recommendations_desc':
+        'Khuyến nghị sẽ xuất hiện khi kết quả phân tích có đủ dữ liệu.',
+    'analysis_sensitivity_warning': 'Cảnh báo nhạy cảm',
+    'analysis_view_products': 'Xem sản phẩm',
 
     // ── Upload ──
     'upload_instructions': 'Chụp ảnh khuôn mặt rõ ràng, đủ ánh sáng',
@@ -453,6 +485,22 @@ class AppStrings {
     'sub_success_message':
         'Bạn đã nâng cấp thành công. Tận hưởng các tính năng mới!',
     'sub_success_continue': 'Tiếp tục',
+    'sub_success_thank_you': 'Cảm ơn bạn',
+    'sub_success_active_message': 'Gói {plan} của bạn hiện đã được kích hoạt.',
+    'sub_success_plan_selected': 'GÓI ĐÃ CHỌN',
+    'sub_success_transaction_id': 'MÃ GIAO DỊCH',
+    'sub_success_benefits_active': 'QUYỀN LỢI ĐANG HOẠT ĐỘNG',
+    'sub_success_default_benefit': 'Quyền lợi thành viên Premium',
+    'sub_success_unlimited_feature': 'Không giới hạn {feature}',
+    'sub_success_limited_feature_monthly': '{limit} {feature} mỗi tháng',
+    'sub_success_next_scan': 'LẦN QUÉT TIẾP THEO',
+    'sub_success_available_now': 'Có thể dùng ngay',
+    'sub_success_account_status': 'TRẠNG THÁI TÀI KHOẢN',
+    'sub_success_verified_pro': 'Đã xác nhận Pro',
+    'sub_success_renews_format': 'Gia hạn {date}',
+    'sub_success_quote':
+        '"Hành trình đến làn da rạng rỡ, khỏe mạnh bắt đầu từ hôm nay. Email xác nhận đã được gửi đến hộp thư của bạn."',
+    'sub_success_go_dashboard': 'Về trang chủ',
 
     // ── Payment ──
     'payment_complete': 'Hoàn tất thanh toán',
@@ -1056,6 +1104,38 @@ class AppStrings {
     'analysis_ingredient_list': 'Ingredient List',
     'analysis_safety': 'Safety',
     'analysis_compatibility': 'Compatibility',
+    'analysis_results_title': 'Analysis Results',
+    'analysis_saved_from_source': 'Saved from {source}.',
+    'analysis_saved_latest_scan': 'Saved from your latest skin scan.',
+    'analysis_source_manual': 'your uploaded photo',
+    'analysis_source_upload': 'uploaded photo',
+    'analysis_source_camera': 'camera photo',
+    'analysis_source_skin_scan': 'skin scan',
+    'analysis_ai_prefill':
+        'Can you explain this analysis and what I should do next?',
+    'analysis_empty_title': 'No analysis yet',
+    'analysis_empty_desc':
+        'Upload a clear skin photo so SkinSync can create your first AI report.',
+    'analysis_start_scan': 'Start skin scan',
+    'analysis_skin_type_unknown': 'Unknown',
+    'analysis_confidence_format': '{percent}% confidence',
+    'analysis_score_excellent': 'Excellent Balance',
+    'analysis_score_stable': 'Stable Balance',
+    'analysis_score_attention': 'Needs Attention',
+    'analysis_ai_overview': 'AI Overview',
+    'analysis_overview_fallback':
+        'Your latest analysis is ready. Keep tracking your skin and maintaining a consistent routine.',
+    'analysis_detected_areas': 'Detected Areas',
+    'analysis_no_detected_concerns': 'No detected concerns',
+    'analysis_no_detected_concerns_desc':
+        'Your latest scan did not return specific concern areas.',
+    'analysis_score_out_of_100': '{score}/100',
+    'analysis_status_good': 'Good',
+    'analysis_no_recommendations': 'No recommendations yet',
+    'analysis_no_recommendations_desc':
+        'Recommendations will appear when the analysis includes enough data.',
+    'analysis_sensitivity_warning': 'Sensitivity Warning',
+    'analysis_view_products': 'View Products',
 
     // ── Upload ──
     'upload_instructions': 'Take a clear photo of your face with good lighting',
@@ -1107,6 +1187,22 @@ class AppStrings {
     'sub_success_message':
         'You have successfully upgraded. Enjoy the new features!',
     'sub_success_continue': 'Continue',
+    'sub_success_thank_you': 'Thank You',
+    'sub_success_active_message': 'Your {plan} subscription is now active.',
+    'sub_success_plan_selected': 'PLAN SELECTED',
+    'sub_success_transaction_id': 'TRANSACTION ID',
+    'sub_success_benefits_active': 'BENEFITS NOW ACTIVE',
+    'sub_success_default_benefit': 'Premium membership benefits',
+    'sub_success_unlimited_feature': 'Unlimited {feature}',
+    'sub_success_limited_feature_monthly': '{limit} {feature} each month',
+    'sub_success_next_scan': 'NEXT SCAN',
+    'sub_success_available_now': 'Available now',
+    'sub_success_account_status': 'ACCOUNT STATUS',
+    'sub_success_verified_pro': 'Verified Pro',
+    'sub_success_renews_format': 'Renews {date}',
+    'sub_success_quote':
+        '"Your journey to radiant, healthy skin begins now. A confirmation has been sent to your inbox."',
+    'sub_success_go_dashboard': 'Go to Dashboard',
 
     // ── Payment ──
     'payment_complete': 'Complete Payment',
