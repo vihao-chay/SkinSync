@@ -2,22 +2,22 @@
 
 :root {
   --font-size: 16px;
-  --ss-bg-cream: #fbf7f0;
-  --ss-bg-warm: #f4ebdd;
-  --ss-surface-milk: #fffdf8;
-  --ss-surface-cream: #f6f0e7;
-  --ss-border-soft: #e6d8c3;
-  --ss-border-medium: #d3be9f;
-  --ss-text-primary: #3a2a1a;
-  --ss-text-secondary: #6f5a3d;
-  --ss-text-muted: #9a8568;
-  --ss-text-disabled: #c8b69c;
-  --ss-text-on-primary: #2f2114;
-  --ss-gold: #c2a67d;
-  --ss-gold-hover: #b49362;
-  --ss-gold-pressed: #967445;
-  --ss-gold-soft: #e8dcc8;
-  --ss-gold-pale: #f6f0e7;
+  --ss-bg-cream: #f6f3ee;
+  --ss-bg-warm: #ece7df;
+  --ss-surface-milk: #ffffff;
+  --ss-surface-cream: #f8f5ef;
+  --ss-border-soft: #d8d1c7;
+  --ss-border-medium: #b9aa97;
+  --ss-text-primary: #1f2933;
+  --ss-text-secondary: #4b5563;
+  --ss-text-muted: #6b7280;
+  --ss-text-disabled: #a8adb3;
+  --ss-text-on-primary: #fffaf2;
+  --ss-gold: #a87532;
+  --ss-gold-hover: #8d6026;
+  --ss-gold-pressed: #70481d;
+  --ss-gold-soft: #e8d4b2;
+  --ss-gold-pale: #f7ead4;
   --ss-leaf: #5f8f68;
   --ss-leaf-soft: #edf7ef;
   --ss-sage: #8fae8b;
@@ -37,9 +37,9 @@
   --ss-info-bg: #eaf3f7;
   --ss-shadow-soft: 0 18px 48px rgba(86, 59, 39, 0.08);
   --ss-shadow-card: 0 12px 28px rgba(91, 63, 40, 0.06);
-  --ss-cream-gradient: linear-gradient(135deg, #fbf7f0 0%, #f4ebdd 48%, #e8dcc8 100%);
-  --ss-primary-gradient: linear-gradient(135deg, #d8b46a 0%, #c2a67d 50%, #b49362 100%);
-  --ss-card-gradient: linear-gradient(180deg, #fffdf8 0%, #f6f0e7 100%);
+  --ss-cream-gradient: linear-gradient(135deg, #f9f7f3 0%, #f1ece4 52%, #e7dfd3 100%);
+  --ss-primary-gradient: linear-gradient(135deg, #c18b43 0%, #a87532 52%, #8d6026 100%);
+  --ss-card-gradient: linear-gradient(180deg, #ffffff 0%, #f8f5ef 100%);
   --ss-sage-gradient: linear-gradient(135deg, #edf4ea 0%, #ddead9 100%);
   --ss-ai-gradient: linear-gradient(135deg, rgba(108, 142, 164, 0.16), rgba(194, 166, 125, 0.18));
   --ss-hero-glow:
@@ -81,7 +81,7 @@
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
   --radius: 1rem;
-  --sidebar: #f4ebdd;
+  --sidebar: #ece7df;
   --sidebar-foreground: var(--ss-text-primary);
   --sidebar-primary: var(--ss-gold);
   --sidebar-primary-foreground: var(--ss-text-on-primary);
@@ -231,17 +231,27 @@
   h4,
   h5,
   h6 {
-    @apply font-serif;
+    @apply font-sans;
+    color: var(--ss-text-primary);
+    letter-spacing: -0.02em;
+  }
+
+  p {
+    color: var(--ss-text-secondary);
+  }
+
+  strong {
+    color: var(--ss-text-primary);
   }
 
   h1 {
-    font-size: clamp(2.6rem, 4vw, 4.75rem);
+    font-size: clamp(2.25rem, 4vw, 2.75rem);
     font-weight: 700;
     line-height: 1.06;
   }
 
   h2 {
-    font-size: clamp(1.8rem, 2.5vw, 3rem);
+    font-size: clamp(1.5rem, 2.5vw, 2rem);
     font-weight: 650;
     line-height: 1.12;
   }
@@ -307,6 +317,6 @@
     font-weight: 600;
     letter-spacing: 0.22em;
     text-transform: uppercase;
-    color: var(--ss-text-secondary);
+    color: var(--ss-gold-pressed);
   }
 }

@@ -31,8 +31,8 @@ export function AppSettingsPage() {
     <div className="space-y-6">
       <AppPageHeader
         eyebrow="Settings"
-        title="Profile, security, and account preferences"
-        description="The settings area is broken into clear sections so it behaves like a real user account center, not a loose collection of forms."
+        title="Settings"
+        description="Manage your profile, privacy, security, and personal preferences."
       />
 
       <div className="grid gap-4 xl:grid-cols-[1fr_0.95fr]">

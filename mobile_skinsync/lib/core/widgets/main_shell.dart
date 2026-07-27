@@ -162,7 +162,17 @@ class _MainShellState extends State<MainShell> {
 
   @override
   Widget build(BuildContext context) {
-    final isAuthenticated = context.watch<AppState>().isAuthenticated;
+    final appState = context.watch<AppState>();
+    final isAuthenticated = appState.isAuthenticated;
+    if (appState.isBootstrapping) {
+      return const Scaffold(
+        backgroundColor: AppColors.pageBackground,
+        body: Center(
+          child: CircularProgressIndicator(color: AppColors.primaryDark),
+        ),
+      );
+    }
+
     if (!isAuthenticated) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
@@ -170,9 +180,27 @@ class _MainShellState extends State<MainShell> {
         }
       });
 
-      return const Scaffold(
+      return Scaffold(
         backgroundColor: AppColors.pageBackground,
-        body: SizedBox.expand(),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const CircularProgressIndicator(color: AppColors.primaryDark),
+                const SizedBox(height: 16),
+                Text(
+                  'Redirecting to login...',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: AppColors.heading,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       );
     }
 

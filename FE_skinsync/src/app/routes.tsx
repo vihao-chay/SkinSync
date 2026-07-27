@@ -26,6 +26,7 @@ import { AppDashboardPage } from "./pages/app/AppDashboardPage";
 import { AppOnboardingPage } from "./pages/app/AppOnboardingPage";
 import { AppProductDetailPage } from "./pages/app/AppProductDetailPage";
 import { AppProductsPage } from "./pages/app/AppProductsPage";
+import { AppRecommendationsPage } from "./pages/app/AppRecommendationsPage";
 import { AppProgressPage } from "./pages/app/AppProgressPage";
 import { AppRoutinePage } from "./pages/app/AppRoutinePage";
 import { AppSettingsPage } from "./pages/app/AppSettingsPage";
@@ -145,6 +146,7 @@ export const router = createBrowserRouter([
       { path: "routine", element: <AppRoutinePage /> },
       { path: "products", element: <AppProductsPage /> },
       { path: "products/:id", element: <AppProductDetailPage /> },
+      { path: "recommendations", element: <AppRecommendationsPage /> },
       { path: "progress", element: <AppProgressPage /> },
       { path: "check-up", element: <AppCheckUpPage /> },
       { path: "subscription", element: <AppSubscriptionPage /> },

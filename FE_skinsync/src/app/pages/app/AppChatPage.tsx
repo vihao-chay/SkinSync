@@ -53,11 +53,11 @@ export function AppChatPage() {
       <AppPageHeader
         eyebrow="AI Assistant"
         title="Ask your skincare assistant"
-        description="Send raw user messages to the backend chat service. The frontend does not build OpenAI prompts or call providers directly."
+        description="Get clear, thoughtful guidance for your routine, ingredients, and next best step."
       />
 
       <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
-        <AppSection title="Conversation" description="A real chat layout with sticky-feeling composer, clear role separation, and explicit error bubbles.">
+        <AppSection title="Conversation" description="A calm space to ask questions and build better daily habits.">
           <div className="flex min-h-[620px] flex-col">
             <div className="flex-1 space-y-4 overflow-y-auto pb-4">
               {messages.length ? (

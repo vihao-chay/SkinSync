@@ -56,11 +56,11 @@ export function AppProgressPage() {
     <div className="space-y-6">
       <AppPageHeader
         eyebrow="Progress"
-        title="Visual timeline"
-        description="Track changes over time with real uploaded photos and backend timeline entries, never fake before-and-after content."
+        title="Skin Journey"
+        description="Track your improvements over time with real check-ins and skin signals."
       />
 
-      <AppSection title="Upload progress photo" description="Add a new progress photo to extend your timeline.">
+          <AppSection title="Add a progress check-in" description="Keep your timeline meaningful with a consistent photo and score.">
         <div className="space-y-4">
           <AppUploadZone
             title="Upload a progress photo"

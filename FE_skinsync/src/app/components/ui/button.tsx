@@ -9,8 +9,8 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-[var(--ss-gold-hover)] active:bg-[var(--ss-gold-pressed)]",
-        premium: "bg-[var(--ss-primary-gradient)] text-primary-foreground shadow-[0_18px_30px_rgba(194,166,125,0.22)] hover:brightness-[0.99] active:brightness-95",
+        default: "bg-primary text-primary-foreground shadow-[0_8px_18px_rgba(141,96,38,0.2)] hover:bg-[var(--ss-gold-hover)] active:bg-[var(--ss-gold-pressed)]",
+        premium: "bg-[var(--ss-primary-gradient)] text-primary-foreground shadow-[0_18px_30px_rgba(141,96,38,0.25)] hover:brightness-[1.03] active:brightness-95",
         destructive:
           "border border-[color:rgba(184,92,80,0.22)] bg-[var(--ss-danger-bg)] text-[var(--ss-danger)] hover:bg-[color:rgba(252,236,234,0.8)] focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40",
         outline:

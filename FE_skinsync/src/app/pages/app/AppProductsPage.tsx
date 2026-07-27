@@ -1,4 +1,5 @@
-import { Filter, Search } from "lucide-react";
+import { ArrowRight, Filter, Search, Sparkles } from "lucide-react";
+import { Link } from "react-router";
 import { useEffect, useMemo, useState } from "react";
 import { AppEmptyState } from "../../components/AppEmptyState";
 import { AppField } from "../../components/AppField";
@@ -70,11 +71,16 @@ export function AppProductsPage() {
     <div className="space-y-6">
       <AppPageHeader
         eyebrow="Catalog"
-        title="Products"
-        description="Browse the backend product catalog. Products are only described as recommendations if recommendation data is actually returned."
+        title="Explore Products"
+        description="Discover considered skincare essentials and learn which ingredients support your skin goals."
       />
 
-      <AppSection title="Search and filter" description="Filter by current backend product fields without inventing personalization.">
+      <section className="rounded-[28px] border border-[#ded3c3] bg-[linear-gradient(120deg,#222,#4a4034_58%,#9a7b55)] p-6 text-white shadow-[0_18px_40px_rgba(70,55,39,0.16)] sm:p-8">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between"><div><p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-[#e8d5b7]"><Sparkles className="h-4 w-4" />Curated for your journey</p><h2 className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-white">Recommended For You</h2><p className="mt-2 max-w-xl text-sm leading-6 text-white/70">Start with a few essentials selected from the SkinSync catalog. Explore, compare, and build a routine that feels effortless.</p></div><Link to="/app/recommendations" className="inline-flex items-center gap-2 text-sm font-semibold text-[#f1d49f]">See AI recommendations<ArrowRight className="h-4 w-4" /></Link></div>
+        {products.length ? <div className="mt-6 grid gap-3 md:grid-cols-3">{products.slice(0, 3).map((product) => <Link key={product.id} to={`/app/products/${product.id}`} className="group flex items-center gap-3 rounded-2xl border border-white/15 bg-white/10 p-3 backdrop-blur-sm transition hover:-translate-y-1 hover:bg-white/15"><div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-white/15">{product.imageUrl ? <img src={product.imageUrl} alt={product.name} className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center"><Sparkles className="h-5 w-5 text-[#e8d5b7]" /></div>}</div><div className="min-w-0"><p className="truncate text-sm font-semibold text-white">{product.name}</p><p className="mt-1 text-xs text-white/60">{product.brand || product.category}</p></div></Link>)}</div> : null}
+      </section>
+
+      <AppSection title="Find your next essential" description="Search by product name, brand, or skin concern.">
         <div className="grid gap-4 lg:grid-cols-5">
           <AppField label="Search">
             <div className="relative">

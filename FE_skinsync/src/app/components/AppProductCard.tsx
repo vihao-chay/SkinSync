@@ -1,4 +1,4 @@
-import { ImageIcon } from "lucide-react";
+import { Heart, ImageIcon, Star } from "lucide-react";
 import { Link } from "react-router";
 import { Button } from "./ui/button";
 import { Card, CardContent } from "./ui/card";
@@ -29,7 +29,7 @@ export function AppProductCard({
   return (
     <Card className="app-surface rounded-[28px] overflow-hidden">
       <CardContent className="space-y-4 pt-6">
-        <AppProductVisual product={product} />
+        <div className="relative"><AppProductVisual product={product} /><button type="button" aria-label={`Save ${product.name}`} className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full border border-white/70 bg-white/85 text-[#977b56] shadow-sm transition hover:scale-105"><Heart className="h-4 w-4" /></button></div>
         <div className="space-y-2">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
@@ -38,7 +38,7 @@ export function AppProductCard({
             </div>
             <span className="app-pill">{product.status?.toLowerCase() === "active" ? "Verified catalog" : "Limited"}</span>
           </div>
-          <p className="text-sm font-medium text-foreground">{product.category || "Category unavailable"}</p>
+              <div className="flex items-center gap-2"><p className="text-sm font-medium text-foreground">{product.category || "Category unavailable"}</p>{product.rating ? <span className="inline-flex items-center gap-1 text-xs text-[#977b56]"><Star className="h-3 w-3 fill-current" />{product.rating}</span> : null}</div>
           {!compact ? (
             <p className="line-clamp-3 text-sm leading-6 text-muted-foreground">
               {product.description || "Description unavailable."}
@@ -58,8 +58,8 @@ export function AppProductCard({
             {product.usageTime ? <span className="app-pill">{product.usageTime}</span> : null}
           </div>
         </div>
-        <Button asChild className="w-full bg-primary text-primary-foreground hover:bg-primary/90">
-          <Link to={`/app/products/${product.id}`}>View details</Link>
+          <Button asChild className="w-full bg-primary text-primary-foreground hover:bg-primary/90">
+          <Link to={`/app/products/${product.id}`}>Quick view</Link>
         </Button>
       </CardContent>
     </Card>

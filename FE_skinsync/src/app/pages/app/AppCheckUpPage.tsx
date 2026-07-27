@@ -1,3 +1,4 @@
+import { Check, Droplets, Flame, Moon, ShieldCheck, Smile, Sun } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { AppEmptyState } from "../../components/AppEmptyState";
@@ -61,29 +62,15 @@ export function AppCheckUpPage() {
       <AppPageHeader
         eyebrow="Daily diary"
         title="Daily Check-up"
-        description="Capture routine completion and how your skin feels today without inventing backend fields that do not exist."
+        description="A quick, thoughtful log of how your skin feels today."
       />
 
       <div className="grid gap-4 xl:grid-cols-[1fr_0.9fr]">
-        <AppSection title="Today's routine checklist" description="Keep daily log state aligned with backend routine completion when available.">
+        <AppSection title="Today's skin" description="A few seconds now helps your future self spot patterns.">
           {hasRoutine ? (
             <div className="grid gap-4">
-              <label className="flex items-center justify-between rounded-2xl border border-border/60 bg-muted/70 px-4 py-4">
-                <span className="text-sm text-foreground">Morning routine completed</span>
-                <input
-                  type="checkbox"
-                  checked={form.morningCompleted}
-                  onChange={(event) => setForm((prev) => ({ ...prev, morningCompleted: event.target.checked }))}
-                />
-              </label>
-              <label className="flex items-center justify-between rounded-2xl border border-border/60 bg-muted/70 px-4 py-4">
-                <span className="text-sm text-foreground">Evening routine completed</span>
-                <input
-                  type="checkbox"
-                  checked={form.eveningCompleted}
-                  onChange={(event) => setForm((prev) => ({ ...prev, eveningCompleted: event.target.checked }))}
-                />
-              </label>
+              <CheckRow label="Morning routine completed" icon={Sun} checked={form.morningCompleted} onChange={(value) => setForm((prev) => ({ ...prev, morningCompleted: value }))} />
+              <CheckRow label="Evening routine completed" icon={Moon} checked={form.eveningCompleted} onChange={(value) => setForm((prev) => ({ ...prev, eveningCompleted: value }))} />
             </div>
           ) : (
             <AppEmptyState
@@ -98,30 +85,10 @@ export function AppCheckUpPage() {
           )}
         </AppSection>
 
-        <AppSection title="Skin condition log" description="Only the fields already supported by the current backend contract are shown.">
+        <AppSection title="How does your skin feel?" description="Choose the closest feeling, then add a note if something stands out.">
           <div className="grid gap-4">
-            <AppField label="Skin feeling">
-              <select
-                className="app-input"
-                value={form.skinFeeling}
-                onChange={(event) => setForm((prev) => ({ ...prev, skinFeeling: event.target.value }))}
-              >
-                <option value="">Select today's feeling</option>
-                <option value="Balanced">Balanced</option>
-                <option value="Dry">Dry</option>
-                <option value="Oily">Oily</option>
-                <option value="Sensitive">Sensitive</option>
-                <option value="Breakout-prone">Breakout-prone</option>
-              </select>
-            </AppField>
-            <label className="flex items-center gap-3 rounded-2xl border border-border/60 bg-muted/70 px-4 py-4 text-sm text-foreground">
-              <input
-                type="checkbox"
-                checked={form.isIrritated}
-                onChange={(event) => setForm((prev) => ({ ...prev, isIrritated: event.target.checked }))}
-              />
-              I feel irritation today
-            </label>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">{["Balanced", "Dry", "Oily", "Sensitive"].map((feeling) => <button key={feeling} type="button" onClick={() => setForm((prev) => ({ ...prev, skinFeeling: feeling }))} className={`rounded-2xl border p-4 text-left transition hover:-translate-y-1 ${form.skinFeeling === feeling ? "border-[#c2a67d] bg-[#fbf6ed]" : "border-border/60 bg-[#fbfaf8]"}`}><Smile className={`h-5 w-5 ${form.skinFeeling === feeling ? "text-[#977b56]" : "text-[#aaa]"}`} /><p className="mt-3 text-sm font-semibold text-[#333]">{feeling}</p></button>)}</div>
+            <CheckRow label="I feel irritation today" icon={ShieldCheck} checked={form.isIrritated} onChange={(value) => setForm((prev) => ({ ...prev, isIrritated: value }))} />
             <AppField label="Notes">
               <textarea
                 className="app-textarea"
@@ -131,7 +98,7 @@ export function AppCheckUpPage() {
               />
             </AppField>
             <Button
-              className="bg-primary text-primary-foreground hover:bg-primary/90"
+              className="h-12 w-full bg-[#222] text-white hover:bg-[#3d3a36]"
               disabled={saving}
               onClick={async () => {
                 setSaving(true);
@@ -140,7 +107,7 @@ export function AppCheckUpPage() {
                 setFeedback(result.message || (result.success ? "Daily log saved." : "Unable to save daily log."));
               }}
             >
-              {saving ? "Saving..." : "Save daily log"}
+              {saving ? "Saving..." : "Save Today's Check-in"}
             </Button>
             {feedback ? <p className="text-sm text-muted-foreground">{feedback}</p> : null}
           </div>
@@ -148,4 +115,8 @@ export function AppCheckUpPage() {
       </div>
     </div>
   );
+}
+
+function CheckRow({ label, icon: Icon, checked, onChange }: { label: string; icon: typeof Sun; checked: boolean; onChange: (value: boolean) => void }) {
+  return <button type="button" onClick={() => onChange(!checked)} className={`flex w-full items-center justify-between rounded-2xl border px-4 py-4 text-left transition hover:-translate-y-0.5 ${checked ? "border-[#7bae7f] bg-[#f0f6ef]" : "border-border/60 bg-[#fbfaf8]"}`}><span className="flex items-center gap-3"><Icon className={`h-5 w-5 ${checked ? "text-[#6f9b73]" : "text-[#a68a63]"}`} /><span className="text-sm font-medium text-[#333]">{label}</span></span><span className={`flex h-6 w-6 items-center justify-center rounded-full border ${checked ? "border-[#7bae7f] bg-[#7bae7f] text-white" : "border-[#d8d0c3] text-transparent"}`}><Check className="h-3.5 w-3.5" /></span></button>;
 }

@@ -1,4 +1,4 @@
-import { CheckCircle2, PencilLine, RotateCcw, Sparkles } from "lucide-react";
+import { CheckCircle2, PencilLine, RotateCcw, Sparkles, UserRound } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { AppField } from "../../components/AppField";
@@ -9,6 +9,7 @@ import { SelectableChip } from "../../components/SelectableChip";
 import { Button } from "../../components/ui/button";
 import { LoadingState } from "../../components/LoadingState";
 import { getSurveyApi, saveSurveyApi, type SurveyResponse } from "../../services/surveyService";
+import { getLatestAnalysisApi } from "../../services/analysisService";
 
 const SKIN_TYPES = [
   { value: "normal", label: "Normal" },
@@ -83,13 +84,14 @@ export function AppSkinProfileForm({
   const [feedback, setFeedback] = useState("");
   const [errors, setErrors] = useState<{ skinType?: string; concerns?: string; age?: string }>({});
   const [profile, setProfile] = useState<SurveyResponse | null>(null);
+  const [skinScore, setSkinScore] = useState<number | null>(null);
   const [initialForm, setInitialForm] = useState<ProfileFormState>(makeEmptyForm);
   const [form, setForm] = useState<ProfileFormState>(makeEmptyForm);
   const [isEditing, setIsEditing] = useState(saveBehavior === "redirect");
 
   useEffect(() => {
     let active = true;
-    void getSurveyApi().then((result) => {
+    void Promise.all([getSurveyApi(), getLatestAnalysisApi()]).then(([result, analysisResult]) => {
       if (!active) return;
 
       if (result.success && result.content) {
@@ -101,6 +103,7 @@ export function AppSkinProfileForm({
       } else {
         setIsEditing(true);
       }
+      setSkinScore(analysisResult.content?.overallScore ?? null);
 
       setLoading(false);
     });
@@ -164,7 +167,7 @@ export function AppSkinProfileForm({
 
   return (
     <div className="space-y-6">
-      <AppPageHeader title={title} description={description} eyebrow="PROFILE SETUP" />
+      <AppPageHeader title={title} description={description} eyebrow="YOUR SKIN PROFILE" />
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
         {profile && !isEditing ? (
@@ -173,15 +176,16 @@ export function AppSkinProfileForm({
             description="This is the profile SkinSync is currently using for analysis, routine logic, and product context."
             tone="highlight"
           >
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="mb-6 grid gap-4 rounded-[24px] bg-[linear-gradient(135deg,#fffdf8,#f3e7d5)] p-5 sm:grid-cols-[auto_1fr_auto] sm:items-center">
+              <div className="flex h-20 w-20 items-center justify-center rounded-[22px] bg-white text-[#977b56] shadow-sm"><UserRound className="h-8 w-8" /></div>
+              <div><div className="flex flex-wrap items-center gap-2"><p className="text-xl font-semibold text-[#222]">Your skin profile</p><span className="app-pill">{profile.skinType || "Skin type pending"}</span></div><p className="mt-1 text-sm text-[#777]">{profile.skinConcerns.length ? `${profile.skinConcerns.length} concerns tracked` : "Add concerns to personalize your care plan."}</p><div className="mt-3 h-2 max-w-xs overflow-hidden rounded-full bg-white"><div className="h-full rounded-full bg-[#c2a67d]" style={{ width: `${profileCompletion(profile)}%` }} /></div></div>
+              <div className="text-left sm:text-right"><p className="text-xs uppercase tracking-[0.16em] text-[#977b56]">Skin score</p><p className="mt-1 text-4xl font-semibold text-[#222]">{skinScore ?? "--"}</p></div>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <ProfileInfoCard label="Age" value={profile.age ? `${profile.age} years` : "Not set yet"} />
               <ProfileInfoCard label="Skin type" value={profile.skinType || "Not set yet"} />
-              <ProfileInfoCard label="Monthly budget" value={profile.monthlyBudget || "Not set yet"} />
-              <ProfileInfoCard label="Age" value={profile.age ? `${profile.age}` : "Not set yet"} />
-              <ProfileInfoCard
-                label="Concerns"
-                value={profile.skinConcerns.length ? profile.skinConcerns.join(", ") : "Not set yet"}
-                className="md:col-span-2"
-              />
+              <ProfileInfoCard label="Budget" value={profile.monthlyBudget || "No preference"} />
+              <div className="rounded-3xl border border-border/70 bg-[#f9f6f0] px-5 py-4 sm:col-span-2"><p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Current concerns</p><div className="mt-3 flex flex-wrap gap-2">{profile.skinConcerns.length ? profile.skinConcerns.map((concern) => <span key={concern} className="app-pill-success">{concern}</span>) : <span className="text-sm text-muted-foreground">No concerns added yet</span>}</div></div>
             </div>
 
             <div className="flex flex-wrap gap-3 border-t border-border/70 pt-6">
@@ -370,8 +374,8 @@ export function AppSkinProfileForm({
 
         <div className="space-y-4">
           <AppGuidanceCard
-            title="Why this matters"
-            description="A clean skin profile helps SkinSync interpret analysis results and prioritize the right care steps for you."
+            title="AI Tip"
+            description="Your profile is the context SkinSync uses to make every scan, product, and routine more relevant."
             icon={Sparkles}
           >
             <div className="space-y-2">
@@ -391,6 +395,10 @@ export function AppSkinProfileForm({
       </div>
     </div>
   );
+}
+
+function profileCompletion(profile: SurveyResponse) {
+  return Math.round(([profile.skinType, profile.skinConcernValues?.length, profile.age, profile.budgetLevel].filter(Boolean).length / 4) * 100);
 }
 
 function FieldError({ message }: { message: string }) {

@@ -12,19 +12,15 @@ export function AppPageHeader({
   actions?: ReactNode;
 }) {
   return (
-    <div className="overflow-hidden rounded-[32px] border border-border/70 bg-card/85 p-6 shadow-[0_18px_40px_rgba(91,63,40,0.06)] backdrop-blur-xl lg:p-8">
-      <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+    <header className="app-page-header">
+      <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
         <div className="max-w-3xl space-y-3">
-        {eyebrow ? (
-          <p className="ss-title-eyebrow">{eyebrow}</p>
-        ) : null}
-          <div className="space-y-2">
-            <h1 className="text-[2rem] text-foreground md:text-[2.6rem]">{title}</h1>
-            <p className="max-w-2xl text-sm leading-7 text-muted-foreground md:text-base">{description}</p>
-          </div>
+          {eyebrow ? <p className="ss-title-eyebrow">{eyebrow}</p> : null}
+          <h1 className="text-[2.25rem] font-semibold leading-[1.05] tracking-[-0.045em] text-[#222] md:text-[2.75rem]">{title}</h1>
+          <p className="max-w-2xl text-[15px] leading-7 text-[#777] md:text-base">{description}</p>
         </div>
         {actions ? <div className="flex flex-wrap gap-3">{actions}</div> : null}
       </div>
-    </div>
+    </header>
   );
 }
