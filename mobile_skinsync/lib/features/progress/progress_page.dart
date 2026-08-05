@@ -78,6 +78,10 @@ class _ProgressPageState extends State<ProgressPage> {
         progress?.progressInsight ??
         progress?.dailyTip ??
         latestAnalysis?.overview;
+    final latestProgressImageUrl = _firstNonEmpty([
+      todayLog?.dailyImageUrl,
+      latestAnalysis?.imageUrl,
+    ]);
     final hasProgressContent = !_hasNoProgressData(appState);
     final progressError = appState.isRefreshingHome
         ? null
@@ -203,14 +207,17 @@ class _ProgressPageState extends State<ProgressPage> {
                             locale.tr('progress_score_trend'),
                           ),
                           const SizedBox(height: AppSpacing.xs),
-                          const _ScoreTrendCard(),
+                          _ScoreTrendCard(
+                            currentScore: currentScore,
+                            improvementPercent: progress?.improvementPercent,
+                          ),
                           const SizedBox(height: AppSpacing.sm),
                           _ProgressSectionTitle(
                             locale.tr('progress_visual_journey'),
                           ),
                           const SizedBox(height: AppSpacing.xs),
                           _VisualJourneyCard(
-                            imageUrl: todayLog?.dailyImageUrl,
+                            imageUrl: latestProgressImageUrl,
                             onAddPhoto: _openProgressUpload,
                           ),
                           const SizedBox(height: AppSpacing.sm),
@@ -222,9 +229,7 @@ class _ProgressPageState extends State<ProgressPage> {
                             latestAnalysis: latestAnalysis,
                             completedSteps: completedSteps,
                             totalSteps: totalSteps,
-                            hasPhoto:
-                                todayLog?.dailyImageUrl?.trim().isNotEmpty ==
-                                true,
+                            hasPhoto: latestProgressImageUrl != null,
                           ),
                         ],
                       ],
@@ -275,6 +280,16 @@ class _ProgressPageState extends State<ProgressPage> {
       return 0.0;
     }
     return (completed / total).clamp(0.0, 1.0);
+  }
+
+  String? _firstNonEmpty(List<String?> values) {
+    for (final value in values) {
+      final trimmed = value?.trim() ?? '';
+      if (trimmed.isNotEmpty) {
+        return trimmed;
+      }
+    }
+    return null;
   }
 
   void _openUpload() {
@@ -420,7 +435,7 @@ class _MetricsGrid extends StatelessWidget {
       _MetricData(
         label: locale.tr('progress_improvement'),
         value: improvementPercent == null
-            ? '0%'
+            ? locale.tr('progress_not_enough_data')
             : '${improvementPercent!.toStringAsFixed(1)}%',
         icon: Icons.trending_up_rounded,
       ),
@@ -600,11 +615,29 @@ class _RoutineCompletionCard extends StatelessWidget {
 }
 
 class _ScoreTrendCard extends StatelessWidget {
-  const _ScoreTrendCard();
+  const _ScoreTrendCard({
+    required this.currentScore,
+    required this.improvementPercent,
+  });
+
+  final int? currentScore;
+  final double? improvementPercent;
 
   @override
   Widget build(BuildContext context) {
     final locale = AppLocale.of(context);
+    final hasScore = currentScore != null;
+    final hasTrend = improvementPercent != null;
+    final message = hasTrend
+        ? locale
+              .tr('progress_improve_format')
+              .replaceAll('{percent}', improvementPercent!.toStringAsFixed(1))
+        : hasScore
+        ? locale
+              .tr('progress_latest_score_format')
+              .replaceAll('{score}', '$currentScore')
+        : locale.tr('progress_not_enough_trend_data');
+
     return AppCard(
       radius: _progressCardRadius,
       borderColor: _progressCardBorder,
@@ -626,8 +659,21 @@ class _ScoreTrendCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: AppSpacing.sm),
+          if (hasScore) ...[
+            Text(
+              '$currentScore',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                fontFamily: 'PlayfairDisplay',
+                color: AppColors.heading,
+                fontWeight: FontWeight.w800,
+                height: 1,
+              ),
+            ),
+            const SizedBox(height: 2),
+          ],
           Text(
-            locale.tr('progress_not_enough_trend_data'),
+            message,
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
               color: AppColors.mutedText,
@@ -898,7 +944,7 @@ class _RecentActivityCard extends StatelessWidget {
             title: locale.tr('progress_activity_latest_analysis'),
             value: latestAnalysis == null
                 ? locale.tr('progress_activity_no_analysis_yet')
-                : '${latestAnalysis!.overallScore}/100',
+                : '${latestAnalysis!.displaySkinHealthScore ?? latestAnalysis!.overallScore ?? 0}/100',
           ),
           const SizedBox(height: AppSpacing.sm),
           _ActivityRow(

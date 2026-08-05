@@ -585,15 +585,53 @@ class CurrentRegimen {
   factory CurrentRegimen.fromJson(Map<String, dynamic> json) => CurrentRegimen(
     regimenId: json['regimenId'].toString(),
     name: (json['name'] ?? '') as String,
-    morning: ((json['morning'] as List?) ?? const [])
-        .whereType<Map<String, dynamic>>()
-        .map(RegimenStep.fromJson)
-        .toList(),
-    evening: ((json['evening'] as List?) ?? const [])
-        .whereType<Map<String, dynamic>>()
-        .map(RegimenStep.fromJson)
-        .toList(),
+    morning: _parseUniqueSteps(json['morning']),
+    evening: _parseUniqueSteps(json['evening']),
   );
+
+  static List<RegimenStep> _parseUniqueSteps(Object? value) {
+    final steps =
+        ((value as List?) ?? const [])
+            .whereType<Map<String, dynamic>>()
+            .map(RegimenStep.fromJson)
+            .toList()
+          ..sort((a, b) => a.stepOrder.compareTo(b.stepOrder));
+    final seenStepIds = <String>{};
+    final seenProductIds = <String>{};
+    final seenProductSignatures = <String>{};
+    final uniqueSteps = <RegimenStep>[];
+
+    for (final step in steps) {
+      final stepKey = step.stepId.trim().toLowerCase();
+      final productKey = step.productId.trim().toLowerCase();
+      final signatureParts = [
+        step.brand,
+        step.name,
+        step.category,
+      ].map(_normalizeRoutineStepKeyPart).toList();
+      final signature = signatureParts.every((part) => part.isEmpty)
+          ? ''
+          : signatureParts.join('|');
+
+      if (stepKey.isNotEmpty && !seenStepIds.add(stepKey)) {
+        continue;
+      }
+      if (productKey.isNotEmpty && !seenProductIds.add(productKey)) {
+        continue;
+      }
+      if (signature.trim().isNotEmpty &&
+          !seenProductSignatures.add(signature)) {
+        continue;
+      }
+      uniqueSteps.add(step);
+    }
+
+    return uniqueSteps;
+  }
+
+  static String _normalizeRoutineStepKeyPart(String value) {
+    return value.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
+  }
 }
 
 class RoutineTrackingToday {

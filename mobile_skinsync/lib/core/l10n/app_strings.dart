@@ -287,6 +287,7 @@ class AppStrings {
     'progress_routine_complete_today_format': 'Hoàn thành {percent}% hôm nay.',
     'progress_score_trend': 'Xu hướng điểm số',
     'progress_not_enough_trend_data': 'Chưa đủ dữ liệu xu hướng',
+    'progress_latest_score_format': 'Điểm gần nhất {score}/100',
     'progress_visual_journey': 'Hành trình trực quan',
     'progress_no_comparison_photo': 'Chưa có ảnh so sánh.',
     'progress_take_photo_action': 'Chụp ảnh tiến trình',
@@ -434,6 +435,46 @@ class AppStrings {
         'Khuyến nghị sẽ xuất hiện khi kết quả phân tích có đủ dữ liệu.',
     'analysis_sensitivity_warning': 'Cảnh báo nhạy cảm',
     'analysis_view_products': 'Xem sản phẩm',
+    'analysis_skin_type_oily': 'Da dầu',
+    'analysis_skin_type_dry': 'Da khô',
+    'analysis_skin_type_combination': 'Da hỗn hợp',
+    'analysis_skin_type_normal': 'Da thường',
+    'analysis_skin_type_sensitive': 'Da nhạy cảm',
+    'analysis_concern_acne': 'Mụn',
+    'analysis_concern_blemishes': 'Khuyết điểm',
+    'analysis_concern_blackheads': 'Mụn đầu đen',
+    'analysis_concern_dark_spots': 'Đốm nâu',
+    'analysis_concern_dryness': 'Khô da',
+    'analysis_concern_dehydration': 'Thiếu ẩm',
+    'analysis_concern_oiliness': 'Dầu thừa',
+    'analysis_concern_large_pores': 'Lỗ chân lông to',
+    'analysis_concern_redness': 'Đỏ da',
+    'analysis_concern_texture': 'Bề mặt da',
+    'analysis_concern_uneven_tone': 'Da không đều màu',
+    'analysis_concern_sensitivity': 'Nhạy cảm',
+    'analysis_concern_wrinkles': 'Nếp nhăn',
+    'analysis_concern_unknown': 'Chưa xác định',
+    'analysis_overview_generated':
+        'Da có một số dấu hiệu cần chú ý như {concerns}. Loại da ước tính: {skinType}. Hãy duy trì lộ trình dịu nhẹ và theo dõi thêm trong vài ngày tới.',
+    'analysis_recommendation_number': 'Khuyến nghị {number}',
+    'analysis_recommendation_default':
+        'Duy trì lộ trình chăm sóc dịu nhẹ, theo dõi phản ứng của da và điều chỉnh từng bước nếu cần.',
+    'analysis_recommendation_cleanser':
+        'Dùng sữa rửa mặt dịu nhẹ, tránh làm sạch quá mức để không khiến da bị khô căng hoặc kích ứng.',
+    'analysis_recommendation_oiliness':
+        'Ưu tiên sản phẩm mỏng nhẹ, không gây bít tắc để hỗ trợ kiểm soát dầu thừa.',
+    'analysis_recommendation_redness':
+        'Tập trung làm dịu da, hạn chế hoạt chất mạnh và theo dõi nếu tình trạng đỏ kéo dài.',
+    'analysis_recommendation_moisturizer':
+        'Bổ sung kem dưỡng không gây bít tắc để hỗ trợ hàng rào bảo vệ da và giữ ẩm ổn định.',
+    'analysis_recommendation_sunscreen':
+        'Dùng kem chống nắng mỗi sáng để bảo vệ da và hạn chế thâm, đỏ hoặc xỉn màu nặng hơn.',
+    'analysis_warning_poor_image_quality':
+        'Ảnh chưa đủ rõ, kết quả có thể kém chính xác.',
+    'analysis_warning_possible_irritation':
+        'Có dấu hiệu kích ứng nhẹ, hãy theo dõi thêm.',
+    'analysis_warning_need_dermatologist':
+        'Nếu triệu chứng nghiêm trọng hoặc kéo dài, bạn nên gặp bác sĩ da liễu.',
 
     // ── Upload ──
     'upload_instructions': 'Chụp ảnh khuôn mặt rõ ràng, đủ ánh sáng',
@@ -990,6 +1031,7 @@ class AppStrings {
     'progress_routine_complete_today_format': '{percent}% complete today.',
     'progress_score_trend': 'Score Trend',
     'progress_not_enough_trend_data': 'Not enough trend data yet',
+    'progress_latest_score_format': 'Latest score {score}/100',
     'progress_visual_journey': 'Visual Journey',
     'progress_no_comparison_photo': 'No comparison photo yet.',
     'progress_take_photo_action': 'Take Progress Photo',
@@ -1136,6 +1178,46 @@ class AppStrings {
         'Recommendations will appear when the analysis includes enough data.',
     'analysis_sensitivity_warning': 'Sensitivity Warning',
     'analysis_view_products': 'View Products',
+    'analysis_skin_type_oily': 'Oily skin',
+    'analysis_skin_type_dry': 'Dry skin',
+    'analysis_skin_type_combination': 'Combination skin',
+    'analysis_skin_type_normal': 'Normal skin',
+    'analysis_skin_type_sensitive': 'Sensitive skin',
+    'analysis_concern_acne': 'Acne',
+    'analysis_concern_blemishes': 'Blemishes',
+    'analysis_concern_blackheads': 'Blackheads',
+    'analysis_concern_dark_spots': 'Dark spots',
+    'analysis_concern_dryness': 'Dryness',
+    'analysis_concern_dehydration': 'Dehydration',
+    'analysis_concern_oiliness': 'Oiliness',
+    'analysis_concern_large_pores': 'Large pores',
+    'analysis_concern_redness': 'Redness',
+    'analysis_concern_texture': 'Texture',
+    'analysis_concern_uneven_tone': 'Uneven tone',
+    'analysis_concern_sensitivity': 'Sensitivity',
+    'analysis_concern_wrinkles': 'Fine lines',
+    'analysis_concern_unknown': 'Unknown',
+    'analysis_overview_generated':
+        'Your skin shows visible areas to watch, including {concerns}. Estimated skin type: {skinType}. Keep a gentle routine and monitor changes over the next few days.',
+    'analysis_recommendation_number': 'Recommendation {number}',
+    'analysis_recommendation_default':
+        'Keep your routine gentle, monitor how your skin responds, and adjust one step at a time.',
+    'analysis_recommendation_cleanser':
+        'Use a gentle cleanser and avoid over-cleansing so your skin does not feel tight or irritated.',
+    'analysis_recommendation_oiliness':
+        'Choose lightweight, non-comedogenic products to help manage excess oil.',
+    'analysis_recommendation_redness':
+        'Focus on calming care, avoid strong actives, and monitor redness if it persists.',
+    'analysis_recommendation_moisturizer':
+        'Add a non-comedogenic moisturizer to support the skin barrier and steady hydration.',
+    'analysis_recommendation_sunscreen':
+        'Apply sunscreen every morning to protect your skin and reduce worsening redness or dark spots.',
+    'analysis_warning_poor_image_quality':
+        'The image is not clear enough, so the result may be less accurate.',
+    'analysis_warning_possible_irritation':
+        'Possible mild irritation detected. Keep monitoring your skin.',
+    'analysis_warning_need_dermatologist':
+        'If symptoms are severe or persistent, consider seeing a dermatologist.',
 
     // ── Upload ──
     'upload_instructions': 'Take a clear photo of your face with good lighting',

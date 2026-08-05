@@ -574,8 +574,12 @@ public class AdminController : ControllerBase
             .Take(2)
             .ToListAsync(cancellationToken);
 
-        var currentScore = latestAnalyses.FirstOrDefault()?.OverallScore;
-        var startScore = latestAnalyses.Count > 1 ? latestAnalyses.Last().OverallScore : currentScore;
+        var currentScore = latestAnalyses.FirstOrDefault() is { } currentAnalysis
+            ? ResolveProgressSkinHealthScore(currentAnalysis)
+            : (int?)null;
+        var startScore = latestAnalyses.Count > 1
+            ? ResolveProgressSkinHealthScore(latestAnalyses.Last())
+            : (int?)null;
         var completedDays = await _dbContext.DailyLogs.CountAsync(x => x.UserId == userId && (x.MorningCompleted || x.EveningCompleted), cancellationToken);
 
         return new ProgressOverviewResponseDto
@@ -584,13 +588,19 @@ public class AdminController : ControllerBase
             CurrentScore = currentScore,
             ImprovementPercent = startScore.HasValue && currentScore.HasValue && startScore.Value > 0
                 ? Math.Round(((decimal)(currentScore.Value - startScore.Value) / startScore.Value) * 100, 2)
-                : 0,
+                : null,
             CompletedDaysLast28 = completedDays,
             CompletionRateLast28 = completedDays > 0 ? Math.Round((decimal)completedDays / 28 * 100, 2) : 0,
             CurrentStreak = 0,
             DailyTip = null,
             ProgressInsight = latestAnalyses.FirstOrDefault()?.AiSummary
         };
+    }
+
+    private static int ResolveProgressSkinHealthScore(SkinSync.Models.Entities.SkinProgressAnalysis analysis)
+    {
+        var severity = analysis.OverallConcernSeverity ?? analysis.OverallScore;
+        return analysis.SkinHealthScore ?? Math.Clamp(100 - severity, 0, 100);
     }
 
     private async Task<IReadOnlyCollection<AdminUserActivityItemDto>> BuildRecentActivitiesAsync(Guid userId, CancellationToken cancellationToken)

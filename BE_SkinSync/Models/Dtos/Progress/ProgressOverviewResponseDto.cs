@@ -4,7 +4,7 @@ public class ProgressOverviewResponseDto
 {
     public int? StartScore { get; set; }
     public int? CurrentScore { get; set; }
-    public decimal ImprovementPercent { get; set; }
+    public decimal? ImprovementPercent { get; set; }
     public int CompletedDaysLast28 { get; set; }
     public decimal CompletionRateLast28 { get; set; }
     public int CurrentStreak { get; set; }

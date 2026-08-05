@@ -102,7 +102,9 @@ public class ProductRoutineService : IProductRoutineService
         }
 
         var duplicateTargets = routineTargets
-            .Where(target => regimen.Items.Any(x => x.ProductId == productId && x.RoutineTime == target))
+            .Where(target => regimen.Items.Any(x =>
+                Helpers.RoutineScheduleHelper.NormalizeRoutineValue(x.RoutineTime) == target &&
+                (x.ProductId == productId || SameProductSignature(x.Product, product))))
             .ToList();
 
         if (duplicateTargets.Count > 0)
@@ -259,5 +261,40 @@ public class ProductRoutineService : IProductRoutineService
 
         var normalized = Helpers.RoutineScheduleHelper.NormalizeRoutineValue(routineType);
         return normalized is null ? Array.Empty<string>() : [normalized];
+    }
+
+    private static bool SameProductSignature(Product? first, Product? second)
+    {
+        var firstSignature = BuildProductSignature(first);
+        var secondSignature = BuildProductSignature(second);
+        return !string.IsNullOrWhiteSpace(firstSignature) &&
+            string.Equals(firstSignature, secondSignature, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string BuildProductSignature(Product? product)
+    {
+        if (product is null)
+        {
+            return string.Empty;
+        }
+
+        var parts = new[]
+        {
+            NormalizeProductKeyPart(product.Brand),
+            NormalizeProductKeyPart(product.Name),
+            NormalizeProductKeyPart(product.Category)
+        };
+
+        return parts.All(string.IsNullOrWhiteSpace)
+            ? string.Empty
+            : string.Join('|', parts);
+    }
+
+    private static string NormalizeProductKeyPart(string? value)
+    {
+        return string.Join(' ', (value ?? string.Empty)
+            .Trim()
+            .ToLowerInvariant()
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries));
     }
 }

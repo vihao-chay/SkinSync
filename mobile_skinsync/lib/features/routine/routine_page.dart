@@ -159,12 +159,21 @@ class _RoutinePageState extends State<RoutinePage> {
     final reminders = appState.reminders;
     _seedDraftCompletedIds(tracking);
 
-    final morningSteps = regimen?.morning ?? const <RegimenStep>[];
-    final eveningSteps = regimen?.evening ?? const <RegimenStep>[];
+    final morningSteps = _uniqueRoutineSteps(
+      regimen?.morning ?? const <RegimenStep>[],
+    );
+    final eveningSteps = _uniqueRoutineSteps(
+      regimen?.evening ?? const <RegimenStep>[],
+    );
     final activeSteps = _showMorning ? morningSteps : eveningSteps;
-    final totalSteps =
-        tracking?.totalSteps ?? (morningSteps.length + eveningSteps.length);
-    final completedSteps = _draftCompletedStepIds.length;
+    final visibleStepIds = {
+      ...morningSteps.map((step) => step.stepId),
+      ...eveningSteps.map((step) => step.stepId),
+    };
+    final totalSteps = visibleStepIds.length;
+    final completedSteps = _draftCompletedStepIds
+        .where(visibleStepIds.contains)
+        .length;
     final progress = totalSteps == 0 ? 0.0 : completedSteps / totalSteps;
 
     return ColoredBox(
@@ -312,6 +321,47 @@ class _RoutinePageState extends State<RoutinePage> {
       }
     }
     return null;
+  }
+
+  List<RegimenStep> _uniqueRoutineSteps(List<RegimenStep> steps) {
+    final sortedSteps = [...steps]
+      ..sort((a, b) => a.stepOrder.compareTo(b.stepOrder));
+    final seenStepIds = <String>{};
+    final seenProductIds = <String>{};
+    final seenProductSignatures = <String>{};
+    final uniqueSteps = <RegimenStep>[];
+
+    for (final step in sortedSteps) {
+      final stepId = step.stepId.trim().toLowerCase();
+      final productId = step.productId.trim().toLowerCase();
+      final signatureParts = [
+        step.brand,
+        step.name,
+        step.category,
+      ].map(_normalizeRoutineKeyPart).toList();
+      final signature = signatureParts.every((part) => part.isEmpty)
+          ? ''
+          : signatureParts.join('|');
+
+      if (stepId.isNotEmpty && !seenStepIds.add(stepId)) {
+        continue;
+      }
+      if (productId.isNotEmpty && !seenProductIds.add(productId)) {
+        continue;
+      }
+      if (signature.trim().isNotEmpty &&
+          !seenProductSignatures.add(signature)) {
+        continue;
+      }
+
+      uniqueSteps.add(step);
+    }
+
+    return uniqueSteps;
+  }
+
+  String _normalizeRoutineKeyPart(String value) {
+    return value.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
   }
 }
 

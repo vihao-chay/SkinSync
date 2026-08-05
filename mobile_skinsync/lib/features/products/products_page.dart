@@ -37,6 +37,7 @@ class _ProductsPageState extends State<ProductsPage> {
   bool _didForwardToRoutine = false;
   int _recommendationRevision = 0;
   String? _errorMessage;
+  String? _autoRefreshedAnalysisId;
   late String _selectedCategory;
 
   static const _tabs = <_CategoryTab>[
@@ -77,14 +78,19 @@ class _ProductsPageState extends State<ProductsPage> {
     });
 
     try {
-      final result = await context.read<AppState>().getLatestRecommendations();
+      final appState = context.read<AppState>();
+      final result = await appState.getLatestRecommendations();
       if (!mounted) {
         return;
       }
+      final normalized = _normalizeResponse(result);
       setState(() {
-        _recommendation = _normalizeResponse(result);
+        _recommendation = normalized;
         _recommendationRevision += 1;
       });
+      if (_shouldRefreshForLatestAnalysis(normalized, appState)) {
+        await _refreshForLatestAnalysis(appState);
+      }
     } catch (_) {
       if (!mounted) {
         return;
@@ -189,6 +195,10 @@ class _ProductsPageState extends State<ProductsPage> {
         fallback.sessionId?.trim().isNotEmpty == true ||
         fallback.sourceAnalysisId?.trim().isNotEmpty == true ||
         fallback.generatedAt != null;
+    if (!hasGenerationMarker) {
+      return fallback;
+    }
+
     for (var attempt = 0; attempt < 5; attempt += 1) {
       if (attempt > 0) {
         await Future<void>.delayed(const Duration(milliseconds: 500));
@@ -251,6 +261,99 @@ class _ProductsPageState extends State<ProductsPage> {
       return true;
     }
     return value.categories.any((category) => category.items.isNotEmpty);
+  }
+
+  bool _shouldRefreshForLatestAnalysis(
+    AiProductRecommendResponse recommendation,
+    AppState appState,
+  ) {
+    final analysis = appState.latestAnalysis;
+    if (analysis == null) {
+      return false;
+    }
+
+    final analysisIds = _analysisIds(analysis);
+    if (analysisIds.isEmpty) {
+      return false;
+    }
+
+    final primaryAnalysisId = analysis.id.trim();
+    if (_autoRefreshedAnalysisId == primaryAnalysisId) {
+      return false;
+    }
+
+    final sourceAnalysisId = recommendation.sourceAnalysisId
+        ?.trim()
+        .toLowerCase();
+    return sourceAnalysisId == null || !analysisIds.contains(sourceAnalysisId);
+  }
+
+  Set<String> _analysisIds(AnalysisResult analysis) {
+    return {
+          analysis.id,
+          analysis.analysisSessionId,
+          analysis.progressEntryId,
+          analysis.photoId,
+        }
+        .whereType<String>()
+        .map((value) => value.trim().toLowerCase())
+        .where((value) => value.isNotEmpty)
+        .toSet();
+  }
+
+  Future<void> _refreshForLatestAnalysis(AppState appState) async {
+    final analysis = appState.latestAnalysis;
+    final analysisId = analysis?.id.trim();
+    if (analysis == null || analysisId == null || analysisId.isEmpty) {
+      return;
+    }
+
+    _autoRefreshedAnalysisId = analysisId;
+    if (mounted) {
+      setState(() {
+        _isGenerating = true;
+        _loading = _recommendation == null;
+        _selectedCategory = _tabs.first.key;
+        _errorMessage = null;
+      });
+    }
+
+    try {
+      final generated = await appState.refreshRecommendationsForLatestAnalysis(
+        category: widget.args.initialCategory,
+        concern:
+            widget.args.initialConcern ??
+            (analysis.issues.isNotEmpty
+                ? analysis.issues.first.issueType
+                : null),
+        budgetMax: widget.args.initialBudget,
+        limitPerCategory: 5,
+        silent: true,
+      );
+      if (!mounted || generated == null) {
+        return;
+      }
+
+      final normalized = _normalizeResponse(generated);
+      final latest = await _fetchLatestAfterGeneration(
+        fallback: normalized,
+        appState: appState,
+      );
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _recommendation = latest;
+        _recommendationRevision += 1;
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isGenerating = false;
+          _loading = false;
+        });
+      }
+    }
   }
 
   AiProductRecommendResponse _normalizeResponse(
@@ -575,6 +678,19 @@ class _ProductsPageState extends State<ProductsPage> {
                               setState(() => _selectedCategory = tab.key),
                         ),
                         const SizedBox(height: AppSpacing.md),
+                        Center(
+                          child: AppButton(
+                            label: locale.tr('products_refresh_all_action'),
+                            expand: false,
+                            variant: AppButtonVariant.secondary,
+                            icon: const Icon(Icons.refresh_rounded),
+                            isLoading: _isGenerating,
+                            onPressed: _isGenerating
+                                ? null
+                                : _generateRecommendations,
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.md),
                         if (_isGenerating)
                           _InlineNotice(
                             message: locale.tr('products_ranking_notice'),
@@ -708,19 +824,6 @@ class _ProductsPageState extends State<ProductsPage> {
                               onCta: _generateRecommendations,
                             ),
                         ],
-                        const SizedBox(height: AppSpacing.sm),
-                        Center(
-                          child: AppButton(
-                            label: locale.tr('products_refresh_all_action'),
-                            expand: false,
-                            variant: AppButtonVariant.secondary,
-                            icon: const Icon(Icons.refresh_rounded),
-                            isLoading: _isGenerating,
-                            onPressed: _isGenerating
-                                ? null
-                                : _generateRecommendations,
-                          ),
-                        ),
                       ],
                     ),
                   ),

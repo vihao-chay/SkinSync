@@ -29,7 +29,7 @@ public class RoutineTrackingController : ControllerBase
             return ResponseEntity<RoutineTrackingTodayDto>.Fail("Missing authenticated user.", 401);
         }
 
-        var response = await BuildDayResponseAsync(userId, DateOnly.FromDateTime(DateTime.UtcNow.Date), cancellationToken);
+        var response = await BuildDayResponseAsync(userId, AppClock.Today, cancellationToken);
         return ResponseEntity<RoutineTrackingTodayDto>.Ok(response, "Fetched today's routine tracking successfully.");
     }
 
@@ -48,7 +48,7 @@ public class RoutineTrackingController : ControllerBase
             return ResponseEntity<IEnumerable<RoutineStepTrackingDto>>.Fail("days must be between 1 and 365.");
         }
 
-        var fromDate = DateOnly.FromDateTime(DateTime.UtcNow.Date.AddDays(-(days - 1)));
+        var fromDate = AppClock.Today.AddDays(-(days - 1));
         var history = await _dbContext.RoutineTrackings
             .AsNoTracking()
             .Include(x => x.Step)
@@ -94,7 +94,7 @@ public class RoutineTrackingController : ControllerBase
             return ResponseEntity<RoutineTrackingTodayDto>.Fail("Routine step not found.", 404);
         }
 
-        var today = DateOnly.FromDateTime(DateTime.UtcNow.Date);
+        var today = AppClock.Today;
         var tracking = await _dbContext.RoutineTrackings
             .FirstOrDefaultAsync(x => x.UserId == userId && x.StepId == stepId && x.TrackingDate == today, cancellationToken);
 
@@ -134,8 +134,8 @@ public class RoutineTrackingController : ControllerBase
             return ResponseEntity<RoutineTrackingTodayDto>.Fail("No active routine found.", 404);
         }
 
-        var today = DateOnly.FromDateTime(DateTime.UtcNow.Date);
-        var steps = regimen.Items
+        var today = AppClock.Today;
+        var steps = UniqueRegimenItems(regimen.Items)
             .Where(x => x.RoutineTime.Equals(normalizedType, StringComparison.OrdinalIgnoreCase))
             .ToList();
 
@@ -184,7 +184,7 @@ public class RoutineTrackingController : ControllerBase
             return ResponseEntity<RoutineTrackingTodayDto>.Fail("Routine step not found.", 404);
         }
 
-        var today = DateOnly.FromDateTime(DateTime.UtcNow.Date);
+        var today = AppClock.Today;
         var tracking = await _dbContext.RoutineTrackings
             .FirstOrDefaultAsync(x => x.UserId == userId && x.StepId == stepId && x.TrackingDate == today, cancellationToken);
 
@@ -238,7 +238,7 @@ public class RoutineTrackingController : ControllerBase
             .ToListAsync(cancellationToken);
 
         var trackingByStep = trackings.ToDictionary(x => x.StepId, x => x);
-        var steps = regimen.Items
+        var steps = UniqueRegimenItems(regimen.Items)
             .OrderBy(x => x.RoutineTime)
             .ThenBy(x => x.StepOrder)
             .Select(x =>
@@ -273,6 +273,59 @@ public class RoutineTrackingController : ControllerBase
             EveningCompleted = eveningSteps.Count > 0 && eveningSteps.All(x => x.Status == "completed"),
             Steps = steps
         };
+    }
+
+    private static List<RegimenItem> UniqueRegimenItems(IEnumerable<RegimenItem> items)
+    {
+        var seenKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var unique = new List<RegimenItem>();
+
+        foreach (var item in items.OrderBy(x => x.RoutineTime).ThenBy(x => x.StepOrder).ThenBy(x => x.CreatedAt))
+        {
+            var routineTime = RoutineScheduleHelper.NormalizeRoutineValue(item.RoutineTime) ?? item.RoutineTime;
+            var productSignature = BuildProductSignature(item);
+            var productKey = $"{routineTime}|id:{item.ProductId}";
+            var signatureKey = string.IsNullOrWhiteSpace(productSignature)
+                ? string.Empty
+                : $"{routineTime}|sig:{productSignature}";
+
+            if (!seenKeys.Add(productKey) ||
+                (!string.IsNullOrWhiteSpace(signatureKey) && !seenKeys.Add(signatureKey)))
+            {
+                continue;
+            }
+
+            unique.Add(item);
+        }
+
+        return unique;
+    }
+
+    private static string BuildProductSignature(RegimenItem item)
+    {
+        if (item.Product is null)
+        {
+            return string.Empty;
+        }
+
+        var parts = new[]
+        {
+            NormalizeProductKeyPart(item.Product.Brand),
+            NormalizeProductKeyPart(item.Product.Name),
+            NormalizeProductKeyPart(item.Product.Category)
+        };
+
+        return parts.All(string.IsNullOrWhiteSpace)
+            ? string.Empty
+            : string.Join('|', parts);
+    }
+
+    private static string NormalizeProductKeyPart(string? value)
+    {
+        return string.Join(' ', (value ?? string.Empty)
+            .Trim()
+            .ToLowerInvariant()
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries));
     }
 
     private async Task SyncDailyLogAsync(Guid userId, DateOnly date, CancellationToken cancellationToken)

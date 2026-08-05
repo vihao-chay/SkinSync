@@ -34,7 +34,7 @@ public class ProgressController : ControllerBase
             .OrderBy(x => x.CompletedAt ?? x.CreatedAt)
             .ToListAsync(cancellationToken);
 
-        var nowDate = DateOnly.FromDateTime(DateTime.UtcNow.Date);
+        var nowDate = AppClock.Today;
         var fromDate = nowDate.AddDays(-27);
 
         var logs = await _dbContext.DailyLogs
@@ -42,18 +42,27 @@ public class ProgressController : ControllerBase
             .Where(x => x.UserId == userId && x.Date >= fromDate && x.Date <= nowDate)
             .ToListAsync(cancellationToken);
 
+        var scoreEntries = analyses
+            .Select(x => new
+            {
+                Analysis = x,
+                HealthScore = ResolveSkinHealthScore(x)
+            })
+            .ToList();
+        var startScore = scoreEntries.Count > 1 ? scoreEntries.First().HealthScore : (int?)null;
+        var currentScore = scoreEntries.LastOrDefault()?.HealthScore;
         var completedDays = logs.Count(x => x.MorningCompleted || x.EveningCompleted);
 
         var overview = new ProgressOverviewResponseDto
         {
-            StartScore = analyses.FirstOrDefault()?.OverallScore,
-            CurrentScore = analyses.LastOrDefault()?.OverallScore,
-            ImprovementPercent = CalculateImprovementPercent(analyses.FirstOrDefault()?.OverallScore, analyses.LastOrDefault()?.OverallScore),
+            StartScore = startScore,
+            CurrentScore = currentScore,
+            ImprovementPercent = CalculateImprovementPercent(startScore, currentScore),
             CompletedDaysLast28 = completedDays,
             CompletionRateLast28 = Math.Round((decimal)completedDays / 28m * 100m, 2),
             CurrentStreak = await CalculateCurrentStreakAsync(userId, cancellationToken),
-            DailyTip = BuildDailyTip(analyses.LastOrDefault()?.OverallScore, completedDays),
-            ProgressInsight = BuildProgressInsight(analyses.FirstOrDefault()?.OverallScore, analyses.LastOrDefault()?.OverallScore, completedDays)
+            DailyTip = BuildDailyTip(currentScore, completedDays),
+            ProgressInsight = BuildProgressInsight(startScore, currentScore, completedDays)
         };
 
         return ResponseEntity<ProgressOverviewResponseDto>.Ok(overview, "Láº¥y tá»•ng quan tiáº¿n Ä‘á»™ thÃ nh cÃ´ng.");
@@ -74,18 +83,19 @@ public class ProgressController : ControllerBase
             return ResponseEntity<IEnumerable<ProgressChartPointDto>>.Fail("days pháº£i náº±m trong khoáº£ng 1 Ä‘áº¿n 365.");
         }
 
-        var fromUtc = DateTime.UtcNow.Date.AddDays(-(days - 1));
+        var fromDate = AppClock.Today.AddDays(-(days - 1));
         var analyses = await _dbContext.SkinProgressAnalyses
             .AsNoTracking()
-            .Where(x => x.UserId == userId && x.DiscardedAt == null && x.Status != "discarded" && (x.CompletedAt ?? x.CreatedAt) >= fromUtc)
+            .Where(x => x.UserId == userId && x.DiscardedAt == null && x.Status != "discarded")
             .OrderBy(x => x.CompletedAt ?? x.CreatedAt)
             .ToListAsync(cancellationToken);
 
         var chart = analyses
+            .Where(x => DateOnly.FromDateTime((x.CompletedAt ?? x.CreatedAt).AddHours(7).Date) >= fromDate)
             .Select(x => new ProgressChartPointDto
             {
-                Date = DateOnly.FromDateTime((x.CompletedAt ?? x.CreatedAt).Date),
-                OverallScore = x.OverallScore,
+                Date = DateOnly.FromDateTime((x.CompletedAt ?? x.CreatedAt).AddHours(7).Date),
+                OverallScore = ResolveSkinHealthScore(x),
                 HydrationScore = x.DrynessScore == 0 ? null : Math.Max(0, 100 - x.DrynessScore)
             })
             .ToList();
@@ -108,7 +118,7 @@ public class ProgressController : ControllerBase
             return ResponseEntity<ProgressStreakResponseDto>.Fail("days pháº£i náº±m trong khoáº£ng 1 Ä‘áº¿n 90.");
         }
 
-        var nowDate = DateOnly.FromDateTime(DateTime.UtcNow.Date);
+        var nowDate = AppClock.Today;
         var fromDate = nowDate.AddDays(-(days - 1));
 
         var logs = await _dbContext.DailyLogs
@@ -146,7 +156,7 @@ public class ProgressController : ControllerBase
             return ResponseEntity<WeeklyCompletionResponseDto>.Fail("Thiáº¿u thÃ´ng tin ngÆ°á»i dÃ¹ng.", 401);
         }
 
-        var today = DateOnly.FromDateTime(DateTime.UtcNow.Date);
+        var today = AppClock.Today;
         var offset = ((int)today.DayOfWeek + 6) % 7;
         var weekStart = today.AddDays(-offset);
         var weekEnd = weekStart.AddDays(6);
@@ -180,7 +190,7 @@ public class ProgressController : ControllerBase
             return ResponseEntity<MonthlyReportResponseDto>.Fail("Thiáº¿u thÃ´ng tin ngÆ°á»i dÃ¹ng.", 401);
         }
 
-        var now = DateTime.UtcNow;
+        var now = AppClock.LocalNow;
         var selectedYear = year ?? now.Year;
         var selectedMonth = month ?? now.Month;
 
@@ -238,7 +248,7 @@ public class ProgressController : ControllerBase
             .Select(x => x.Date)
             .ToHashSet();
 
-        var currentDate = DateOnly.FromDateTime(DateTime.UtcNow.Date);
+        var currentDate = AppClock.Today;
 
         if (!completedDates.Contains(currentDate))
         {
@@ -276,52 +286,58 @@ public class ProgressController : ControllerBase
         return best;
     }
 
-    private static decimal CalculateImprovementPercent(int? startScore, int? currentScore)
+    private static decimal? CalculateImprovementPercent(int? startScore, int? currentScore)
     {
         if (!startScore.HasValue || !currentScore.HasValue || startScore.Value <= 0)
         {
-            return 0;
+            return null;
         }
 
         var improvement = (currentScore.Value - startScore.Value) / (decimal)startScore.Value * 100m;
         return Math.Round(improvement, 2);
     }
 
+    private static int ResolveSkinHealthScore(SkinSync.Models.Entities.SkinProgressAnalysis analysis)
+    {
+        var severity = analysis.OverallConcernSeverity ?? analysis.OverallScore;
+        return analysis.SkinHealthScore ?? Math.Clamp(100 - severity, 0, 100);
+    }
+
     private static string BuildDailyTip(int? currentScore, int completedDays)
     {
         if (!currentScore.HasValue)
         {
-            return "Start with a simple cleanse, moisturizer, and sunscreen routine to build consistency.";
+            return "Bắt đầu với lộ trình đơn giản gồm làm sạch, dưỡng ẩm và chống nắng để tạo thói quen ổn định.";
         }
 
         if (currentScore.Value < 65)
         {
-            return "Keep today's routine gentle, prioritize hydration, and avoid layering too many strong actives.";
+            return "Hôm nay hãy giữ lộ trình dịu nhẹ, ưu tiên dưỡng ẩm và tránh dùng quá nhiều hoạt chất mạnh cùng lúc.";
         }
 
         if (completedDays < 10)
         {
-            return "Your skin often improves with consistency; try completing both morning and evening steps today.";
+            return "Da thường cải thiện nhờ sự đều đặn; hôm nay hãy cố gắng hoàn thành cả bước sáng và tối.";
         }
 
-        return "Your routine is trending well. Maintain sunscreen every morning and keep evening hydration steady.";
+        return "Lộ trình của bạn đang duy trì tốt. Tiếp tục chống nắng mỗi sáng và dưỡng ẩm đều vào buổi tối.";
     }
 
     private static string BuildProgressInsight(int? startScore, int? currentScore, int completedDays)
     {
         if (!startScore.HasValue || !currentScore.HasValue)
         {
-            return "Complete more analyses and daily logs to unlock stronger progress insights.";
+            return "Cần thêm ít nhất 2 lần phân tích và nhật ký hằng ngày để đánh giá xu hướng rõ hơn.";
         }
 
         var delta = currentScore.Value - startScore.Value;
         var trend = delta switch
         {
-            > 0 => $"improved by {delta} points",
-            < 0 => $"dropped by {Math.Abs(delta)} points",
-            _ => "stayed stable"
+            > 0 => $"cải thiện {delta} điểm",
+            < 0 => $"giảm {Math.Abs(delta)} điểm",
+            _ => "ổn định"
         };
 
-        return $"Over your tracked period, your skin score has {trend}. You completed routine tracking on {completedDays} of the last 28 days.";
+        return $"Trong giai đoạn theo dõi, điểm da của bạn {trend}. Bạn đã hoàn thành lộ trình trong {completedDays}/28 ngày gần đây.";
     }
 }

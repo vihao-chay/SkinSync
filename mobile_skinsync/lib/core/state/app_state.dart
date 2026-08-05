@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -37,6 +38,7 @@ class AppState extends ChangeNotifier {
   bool isBusy = false;
   bool isBootstrapping = true;
   bool isRefreshingHome = false;
+  bool isRefreshingProductRecommendations = false;
   bool hasPendingOnboarding = false;
   bool hasResolvedProfileState = false;
   String? errorMessage;
@@ -50,6 +52,8 @@ class AppState extends ChangeNotifier {
   String? subscriptionPlansLoadErrorMessage;
   String? subscriptionStatusLoadErrorMessage;
   int _messageVersion = 0;
+  Future<AiProductRecommendResponse?>? _productRecommendationRefreshTask;
+  String? _productRecommendationRefreshAnalysisId;
   Future<void>? _refreshHomeFuture;
 
   bool get isAuthenticated => session != null;
@@ -402,6 +406,15 @@ class AppState extends ChangeNotifier {
 
       await _loadProgress();
     });
+    final primaryConcern = parsedResult.issues.isNotEmpty
+        ? parsedResult.issues.first.issueType
+        : null;
+    unawaited(
+      refreshRecommendationsForLatestAnalysis(
+        concern: primaryConcern,
+        silent: true,
+      ),
+    );
     return parsedResult;
   }
 
@@ -534,6 +547,85 @@ class AppState extends ChangeNotifier {
     );
     final data = _readAiData(response);
     return AiProductRecommendResponse.fromJson(data);
+  }
+
+  Future<AiProductRecommendResponse?> refreshRecommendationsForLatestAnalysis({
+    String? category,
+    String? concern,
+    double? budgetMax,
+    int limitPerCategory = 5,
+    bool silent = true,
+  }) {
+    final analysis = latestAnalysis;
+    final analysisId = analysis?.id.trim();
+    if (analysis == null || analysisId == null || analysisId.isEmpty) {
+      return Future.value(null);
+    }
+
+    final activeTask = _productRecommendationRefreshTask;
+    if (activeTask != null &&
+        _productRecommendationRefreshAnalysisId == analysisId) {
+      return activeTask;
+    }
+
+    late final Future<AiProductRecommendResponse?> task;
+    task =
+        _generateRecommendationsForLatestAnalysis(
+          category: category,
+          concern: concern,
+          budgetMax: budgetMax,
+          limitPerCategory: limitPerCategory,
+          silent: silent,
+        ).whenComplete(() {
+          if (_productRecommendationRefreshTask == task) {
+            _productRecommendationRefreshTask = null;
+            _productRecommendationRefreshAnalysisId = null;
+            isRefreshingProductRecommendations = false;
+            notifyListeners();
+          }
+        });
+
+    _productRecommendationRefreshTask = task;
+    _productRecommendationRefreshAnalysisId = analysisId;
+    isRefreshingProductRecommendations = true;
+    notifyListeners();
+    return task;
+  }
+
+  Future<AiProductRecommendResponse?>
+  _generateRecommendationsForLatestAnalysis({
+    String? category,
+    String? concern,
+    double? budgetMax,
+    int limitPerCategory = 5,
+    bool silent = true,
+  }) async {
+    try {
+      return await generateRecommendations(
+        category: category,
+        concern: concern,
+        budgetMax: budgetMax,
+        limitPerCategory: limitPerCategory,
+      );
+    } on ApiException catch (error) {
+      if (!silent) {
+        _setError(error.message, statusCode: error.statusCode);
+        notifyListeners();
+        rethrow;
+      }
+      debugPrint(
+        '[SkinSync] product recommendation refresh skipped: ${error.message}',
+      );
+      return null;
+    } catch (error) {
+      if (!silent) {
+        _setError('Could not refresh product recommendations right now.');
+        notifyListeners();
+        rethrow;
+      }
+      debugPrint('[SkinSync] product recommendation refresh skipped: $error');
+      return null;
+    }
   }
 
   Future<ProductDetail> getProductDetail(String productId) async {

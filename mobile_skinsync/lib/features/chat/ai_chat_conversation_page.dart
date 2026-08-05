@@ -184,6 +184,7 @@ class _AiChatConversationPageState extends State<AiChatConversationPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: true,
       backgroundColor: AppColors.pageBackground,
       appBar: AppBar(
         title: Text(_title),
@@ -311,87 +312,80 @@ class _AiChatConversationPageState extends State<AiChatConversationPage> {
                             itemCount: _quickActions.length,
                           ),
                         ),
-                      AnimatedPadding(
-                        duration: const Duration(milliseconds: 180),
-                        curve: Curves.easeOut,
-                        padding: EdgeInsets.only(
-                          bottom: MediaQuery.viewInsetsOf(context).bottom,
+                      Container(
+                        padding: EdgeInsets.fromLTRB(
+                          Responsive.responsiveHorizontalPadding(context),
+                          10,
+                          Responsive.responsiveHorizontalPadding(context),
+                          16,
                         ),
-                        child: Container(
-                          padding: EdgeInsets.fromLTRB(
-                            Responsive.responsiveHorizontalPadding(context),
-                            10,
-                            Responsive.responsiveHorizontalPadding(context),
-                            16,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.94),
-                            border: Border(
-                              top: BorderSide(
-                                color: AppColors.border.withValues(alpha: 0.35),
-                              ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.94),
+                          border: Border(
+                            top: BorderSide(
+                              color: AppColors.border.withValues(alpha: 0.35),
                             ),
                           ),
-                          child: LayoutBuilder(
-                            builder: (context, constraints) {
-                              final stack = constraints.maxWidth < 360;
-                              final field = TextField(
-                                controller: _controller,
-                                minLines: 1,
-                                maxLines: 4,
-                                textInputAction: TextInputAction.send,
-                                onSubmitted: (_) => _sendMessage(),
-                                decoration: InputDecoration(
-                                  hintText:
-                                      'Ask about your skin, routine, or products...',
-                                  filled: true,
-                                  fillColor: AppColors.secondary,
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(18),
-                                    borderSide: BorderSide.none,
-                                  ),
+                        ),
+                        child: LayoutBuilder(
+                          builder: (context, constraints) {
+                            final stack = constraints.maxWidth < 360;
+                            final field = TextField(
+                              controller: _controller,
+                              minLines: 1,
+                              maxLines: 4,
+                              textInputAction: TextInputAction.send,
+                              onSubmitted: (_) => _sendMessage(),
+                              decoration: InputDecoration(
+                                hintText:
+                                    'Ask about your skin, routine, or products...',
+                                filled: true,
+                                fillColor: AppColors.secondary,
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(18),
+                                  borderSide: BorderSide.none,
                                 ),
-                              );
-                              final sendButton = FilledButton(
-                                onPressed: _sending ? null : _sendMessage,
-                                style: FilledButton.styleFrom(
-                                  backgroundColor: AppColors.primaryDark,
-                                  minimumSize: const Size(52, 52),
-                                ),
-                                child: _sending
-                                    ? const SizedBox(
-                                        width: 18,
-                                        height: 18,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          color: Colors.white,
-                                        ),
-                                      )
-                                    : const Icon(Icons.send_rounded),
-                              );
+                              ),
+                            );
+                            final sendButton = FilledButton(
+                              onPressed: _sending ? null : _sendMessage,
+                              style: FilledButton.styleFrom(
+                                backgroundColor: AppColors.primaryDark,
+                                minimumSize: const Size(52, 52),
+                              ),
+                              child: _sending
+                                  ? const SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : const Icon(Icons.send_rounded),
+                            );
 
-                              if (stack) {
-                                return Column(
-                                  children: [
-                                    field,
-                                    const SizedBox(height: 10),
-                                    SizedBox(
-                                      width: double.infinity,
-                                      child: sendButton,
-                                    ),
-                                  ],
-                                );
-                              }
-
-                              return Row(
+                            if (stack) {
+                              return Column(
                                 children: [
-                                  Expanded(child: field),
-                                  const SizedBox(width: 10),
-                                  sendButton,
+                                  field,
+                                  const SizedBox(height: 10),
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: sendButton,
+                                  ),
                                 ],
                               );
-                            },
-                          ),
+                            }
+
+                            return Row(
+                              children: [
+                                Expanded(child: field),
+                                const SizedBox(width: 10),
+                                sendButton,
+                              ],
+                            );
+                          },
                         ),
                       ),
                     ],
