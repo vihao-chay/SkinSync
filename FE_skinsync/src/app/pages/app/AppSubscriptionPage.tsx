@@ -40,8 +40,8 @@ export function AppSubscriptionPage() {
     <div className="space-y-6">
       <AppPageHeader
         eyebrow="Subscription"
-        title="Manage your SkinSync plan"
-        description="Review plan status, feature access, and quota usage. Payment actions stay explicit and disabled if the current flow is not ready."
+        title="Premium Benefits"
+        description="Choose the level of AI skincare support that fits your journey."
       />
 
       {isImpersonating ? (

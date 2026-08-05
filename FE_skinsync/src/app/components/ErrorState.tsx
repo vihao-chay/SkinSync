@@ -8,9 +8,9 @@ export function ErrorState({
   action?: React.ReactNode;
 }) {
   return (
-    <div className="rounded-3xl border border-red-100 bg-red-50/80 p-6">
-      <h2 className="text-lg text-red-700">{title}</h2>
-      <p className="mt-2 text-sm text-red-600">{message}</p>
+    <div className="rounded-[30px] border border-[color:rgba(184,92,80,0.22)] bg-[var(--ss-danger-bg)] p-6 shadow-[0_18px_44px_rgba(184,92,80,0.08)]">
+      <h2 className="text-lg text-[var(--ss-danger)]">{title}</h2>
+      <p className="mt-2 text-sm leading-6 text-[var(--ss-text-secondary)]">{message}</p>
       {action ? <div className="mt-4">{action}</div> : null}
     </div>
   );

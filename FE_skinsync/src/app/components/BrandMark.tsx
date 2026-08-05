@@ -12,7 +12,7 @@ export function BrandMark({
   alt = "SkinSync",
 }: BrandMarkProps) {
   return (
-    <span className={`inline-flex overflow-hidden bg-[#f7f1ea] shadow-sm ${className}`}>
+    <span className={`inline-flex overflow-hidden bg-skin-surface shadow-sm ${className}`}>
       <img
         src={logoImage}
         alt={alt}

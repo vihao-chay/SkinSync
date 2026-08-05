@@ -7,6 +7,8 @@
     <AssemblyName>SkinSync</AssemblyName>
     <RootNamespace>SkinSync</RootNamespace>
     <Product>SkinSync</Product>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
   </PropertyGroup>
 
   <ItemGroup>
@@ -23,6 +25,7 @@
 
   <ItemGroup>
     <Compile Remove="tmp_db_schema.cs" />
+    <Compile Remove="SkinSync.Tests\**\*.cs" />
   </ItemGroup>
 
 </Project>

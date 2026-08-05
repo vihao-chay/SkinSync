@@ -10,12 +10,15 @@ using SkinSync.Helpers;
 using SkinSync.Repositories;
 using SkinSync.Services;
 using SkinSync.Services.AIPlatform;
+using SkinSync.Models.Configurations;
+using SkinSync.Services.Recommendations;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
 builder.Services.AddControllers();
+builder.Services.AddMemoryCache();
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(
         builder.Configuration.GetConnectionString("DefaultConnection"),
@@ -88,6 +91,7 @@ builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IRegimenRepository, RegimenRepository>();
 builder.Services.AddScoped<IDiaryRepository, DiaryRepository>();
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
+builder.Services.Configure<RecommendationScoringOptions>(builder.Configuration.GetSection(RecommendationScoringOptions.SectionName));
 builder.Services.Configure<ProductImportOptions>(builder.Configuration.GetSection("SeedData"));
 builder.Services.AddScoped<IProductImportService, ProductImportService>();
 builder.Services.AddScoped<IImpersonationService, ImpersonationService>();
@@ -97,6 +101,14 @@ builder.Services.AddScoped<IIngredientConflictService, IngredientConflictService
 builder.Services.AddScoped<ISubscriptionPlanService, SubscriptionPlanService>();
 builder.Services.AddScoped<IReportPdfService, ReportPdfService>();
 builder.Services.AddHttpClient<ISupabaseAuthService, SupabaseAuthService>();
+builder.Services.AddScoped<IRecommendationCatalogService, RecommendationCatalogService>();
+builder.Services.AddScoped<IIngredientScoringService, IngredientScoringService>();
+builder.Services.AddScoped<IProductScoringService, ProductScoringService>();
+builder.Services.AddScoped<ICategorySelectionService, CategorySelectionService>();
+builder.Services.AddScoped<IRecommendationIngredientConflictService, RecommendationIngredientConflictService>();
+builder.Services.AddScoped<IRecommendationReasonService, RecommendationReasonService>();
+builder.Services.AddScoped<IRoutineBuilderService, RoutineBuilderService>();
+builder.Services.AddScoped<IRecommendationService, RecommendationService>();
 
 // PayOS registrations
 var payOsClientId = builder.Configuration["PayOS:ClientId"] ?? "YOUR_CLIENT_ID";

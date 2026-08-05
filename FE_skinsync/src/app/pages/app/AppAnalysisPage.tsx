@@ -1,4 +1,4 @@
-import { AlertCircle, ArrowRight, Loader2, RefreshCw, Sparkles } from "lucide-react";
+import { AlertCircle, ArrowRight, CircleCheck, Droplets, Loader2, RefreshCw, Sparkles, SunMedium } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
 import { AppEmptyState } from "../../components/AppEmptyState";
@@ -92,15 +92,15 @@ export function AppAnalysisPage() {
     <div className="space-y-6">
       <AppPageHeader
         eyebrow="Analysis"
-        title="Skin analysis workflow"
-        description="Upload a clear skin photo, review the latest result, and keep a readable history of your backend analysis."
+        title="Skin Analysis"
+        description="Analyze your current skin condition and receive personalized AI insights."
       />
 
       <div className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
         <div className="space-y-4">
           <AppSection
-            title="Upload and analyze"
-            description="Use a bright, front-facing image. Browser-native file inputs stay hidden so the experience feels like a real product workflow."
+            title="Upload Image"
+            description="Use a clear, front-facing photo in soft natural light for the most useful reading."
           >
             <div className="space-y-4">
               <AppUploadZone
@@ -169,8 +169,8 @@ export function AppAnalysisPage() {
           </AppSection>
 
           <AppSection
-            title="Latest result"
-            description="Backend-driven result only. If there is no result yet, the page falls back to a guided empty state instead of fake metrics."
+            title="Your latest reading"
+            description="A concise view of the signals SkinSync found in your latest scan."
             action={
               latest ? (
                 <Button asChild variant="ghost" className="px-0 text-primary hover:bg-transparent hover:text-primary/80">
@@ -183,24 +183,13 @@ export function AppAnalysisPage() {
             }
           >
             {latest ? (
-              <div className="grid gap-3">
-                <ResultTile label="Status" value={latest.status || "Available"} />
-                <ResultTile label="Overall score" value={latest.overallScore ? `${latest.overallScore}/100` : "Unavailable"} />
-                <ResultTile label="Skin type" value={latest.skinType || "Unavailable"} />
-                <ResultTile
-                  label="Concerns"
-                  value={latest.issues?.length ? latest.issues.map((issue) => issue.issueType).join(", ") : "No concerns returned"}
-                />
-                <ResultTile label="Summary" value={latest.overview || latest.rootCauses || "No summary available"} />
-                <ResultTile
-                  label="Recommendations"
-                  value={
-                    latest.recommendations?.length
-                      ? latest.recommendations.map((item) => item.title).join(", ")
-                      : "Recommendations unavailable"
-                  }
-                />
+              <>
+              <div className="grid gap-5 lg:grid-cols-[190px_1fr] lg:items-center">
+                <div className="mx-auto flex h-40 w-40 items-center justify-center rounded-full border-[12px] border-[#c2a67d]/25 bg-[#fbf6ed] text-center"><div><p className="text-5xl font-semibold tracking-[-0.06em] text-[#222]">{latest.overallScore || "--"}</p><p className="text-xs uppercase tracking-[0.16em] text-[#977b56]">Skin score</p></div></div>
+                <div className="space-y-4"><div className="flex flex-wrap gap-2"><span className="app-pill-success"><CircleCheck className="h-3.5 w-3.5" />{latest.status || "Available"}</span><span className="app-pill">{latest.skinType || "Skin type unavailable"}</span><span className="app-pill">Confidence {latest.confidenceScore || "--"}%</span></div><div className="space-y-3"><MetricBar icon={Droplets} label="Hydration" value={latest.recoveryCapacity} tone="bg-[#7ba7a0]" /><MetricBar icon={SunMedium} label="Oil balance" value={latest.uvDamage} tone="bg-[#c2a67d]" /><MetricBar icon={Sparkles} label="Skin resilience" value={latest.confidenceScore} tone="bg-[#9a8db5]" /></div></div>
               </div>
+              <div className="mt-6 border-t border-border/60 pt-5"><p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#977b56]">Detected concerns</p><div className="mt-3 flex flex-wrap gap-2">{latest.issues?.length ? latest.issues.map((issue) => <span key={issue.id} className="app-pill-warning">{issue.issueType}</span>) : <span className="text-sm text-muted-foreground">No concerns returned</span>}</div><p className="mt-5 text-sm leading-7 text-[#777]">{latest.overview || latest.rootCauses || "No summary available."}</p></div>
+              </>
             ) : (
               <AppEmptyState
                 title="No skin analysis yet"
@@ -248,9 +237,9 @@ export function AppAnalysisPage() {
             }
           >
             {history.length ? (
-              <div className="space-y-3">
-                {history.map((item) => (
-                  <div key={item.id} className="rounded-2xl border border-border/60 bg-muted/70 px-4 py-3">
+                <div className="relative space-y-3 pl-6 before:absolute before:bottom-2 before:left-2 before:top-2 before:w-px before:bg-[#ded3c3]">
+                  {history.map((item) => (
+                  <div key={item.id} className="relative rounded-2xl border border-border/60 bg-[#fbfaf8] px-4 py-3 before:absolute before:-left-[1.65rem] before:top-5 before:h-3 before:w-3 before:rounded-full before:border-2 before:border-[#c2a67d] before:bg-white">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="app-pill">{formatDate(item.createdAt)}</span>
                       {item.overallScore ? <span className="app-pill">Score {item.overallScore}</span> : null}
@@ -279,4 +268,9 @@ function ResultTile({ label, value }: { label: string; value: string }) {
       <p className="mt-1 text-sm leading-6 text-foreground">{value}</p>
     </div>
   );
+}
+
+function MetricBar({ icon: Icon, label, value, tone }: { icon: typeof Droplets; label: string; value?: number | null; tone: string }) {
+  const safeValue = typeof value === "number" ? Math.max(0, Math.min(100, value)) : 0;
+  return <div><div className="mb-1.5 flex items-center justify-between text-xs text-[#777]"><span className="flex items-center gap-2"><Icon className="h-3.5 w-3.5 text-[#977b56]" />{label}</span><span>{typeof value === "number" ? `${Math.round(value)}/100` : "Pending"}</span></div><div className="h-2 overflow-hidden rounded-full bg-[#eee9e1]"><div className={`h-full rounded-full ${tone} transition-all duration-700`} style={{ width: `${safeValue}%` }} /></div></div>;
 }

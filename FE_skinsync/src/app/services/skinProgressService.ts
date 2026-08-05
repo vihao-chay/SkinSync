@@ -19,6 +19,7 @@ export interface SkinProgressOverview {
     darkSpotLevel?: number | null;
     textureLevel?: number | null;
     hydrationLevel?: number | null;
+    oilLevel?: number | null;
   }>;
 }
 

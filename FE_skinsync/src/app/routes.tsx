@@ -1,5 +1,6 @@
 import { createBrowserRouter, Navigate, Outlet, useRouteError } from "react-router";
 import { AppLayout } from "./layouts/AppLayout";
+import { AdminLayout } from "./layouts/AdminLayout";
 import { PublicLayout } from "./layouts/PublicLayout";
 import { LandingPage } from "./pages/LandingPage";
 import { LoginPage } from "./pages/LoginPage";
@@ -10,11 +11,6 @@ import { BlogPage } from "./pages/BlogPage";
 import { TroGiupPage } from "./pages/TroGiupPage";
 import { ChinhSachBaoMatPage } from "./pages/ChinhSachBaoMatPage";
 import { DieuKhoanSuDungPage } from "./pages/DieuKhoanSuDungPage";
-import { AdminDashboardPage } from "./pages/admin/AdminDashboardPage";
-import { AdminProductsPage } from "./pages/admin/AdminProductsPage";
-import { AdminAIConfigPage } from "./pages/admin/AdminAIConfigPage";
-import { AdminUsersPage } from "./pages/admin/AdminUsersPage";
-import { AdminProfilePage } from "./pages/admin/AdminProfilePage";
 import { useAuth } from "./contexts/AuthContext";
 import {
   ContactPage,
@@ -30,11 +26,21 @@ import { AppDashboardPage } from "./pages/app/AppDashboardPage";
 import { AppOnboardingPage } from "./pages/app/AppOnboardingPage";
 import { AppProductDetailPage } from "./pages/app/AppProductDetailPage";
 import { AppProductsPage } from "./pages/app/AppProductsPage";
+import { AppRecommendationsPage } from "./pages/app/AppRecommendationsPage";
 import { AppProgressPage } from "./pages/app/AppProgressPage";
 import { AppRoutinePage } from "./pages/app/AppRoutinePage";
 import { AppSettingsPage } from "./pages/app/AppSettingsPage";
 import { AppSkinProfilePage } from "./pages/app/AppSkinProfilePage";
 import { AppSubscriptionPage } from "./pages/app/AppSubscriptionPage";
+import {
+  AdminAiLogsWebPage,
+  AdminDashboardWebPage,
+  AdminProductDetailWebPage,
+  AdminProductsWebPage,
+  AdminSubscriptionsWebPage,
+  AdminUserDetailWebPage,
+  AdminUsersWebPage,
+} from "./pages/web/AdminAppPages";
 
 function FullPageLoader() {
   return (
@@ -140,6 +146,7 @@ export const router = createBrowserRouter([
       { path: "routine", element: <AppRoutinePage /> },
       { path: "products", element: <AppProductsPage /> },
       { path: "products/:id", element: <AppProductDetailPage /> },
+      { path: "recommendations", element: <AppRecommendationsPage /> },
       { path: "progress", element: <AppProgressPage /> },
       { path: "check-up", element: <AppCheckUpPage /> },
       { path: "subscription", element: <AppSubscriptionPage /> },
@@ -148,15 +155,17 @@ export const router = createBrowserRouter([
   },
   {
     path: "/admin",
-    element: <AdminRoute><LayoutOutlet /></AdminRoute>,
+    element: <AdminRoute><AdminLayout /></AdminRoute>,
     errorElement: <ErrorBoundary />,
     children: [
       { index: true, element: <Navigate to="/admin/dashboard" replace /> },
-      { path: "dashboard", element: <AdminDashboardPage /> },
-      { path: "users", element: <AdminUsersPage /> },
-      { path: "products", element: <AdminProductsPage /> },
-      { path: "ai-config", element: <AdminAIConfigPage /> },
-      { path: "profile", element: <AdminProfilePage /> },
+      { path: "dashboard", element: <AdminDashboardWebPage /> },
+      { path: "users", element: <AdminUsersWebPage /> },
+      { path: "users/:id", element: <AdminUserDetailWebPage /> },
+      { path: "products", element: <AdminProductsWebPage /> },
+      { path: "products/:id", element: <AdminProductDetailWebPage /> },
+      { path: "ai-logs", element: <AdminAiLogsWebPage /> },
+      { path: "subscriptions", element: <AdminSubscriptionsWebPage /> },
     ],
   },
   { path: "/403", element: <ForbiddenPage /> },

@@ -6,7 +6,6 @@ import { AppGuidanceCard } from "../../components/AppGuidanceCard";
 import { AppPageHeader } from "../../components/AppPageHeader";
 import { AppRoutineStepCard } from "../../components/AppRoutineStepCard";
 import { AppSection } from "../../components/AppSection";
-import { AppStatCard } from "../../components/AppStatCard";
 import { Button } from "../../components/ui/button";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
@@ -19,7 +18,6 @@ import {
   type RoutineTrackingToday,
 } from "../../services/routineTrackingService";
 import { getSurveyApi } from "../../services/surveyService";
-import { formatDate } from "../../utils/appFormat";
 
 export function AppRoutinePage() {
   const [loading, setLoading] = useState(true);
@@ -75,8 +73,8 @@ export function AppRoutinePage() {
     <div className="space-y-6">
       <AppPageHeader
         eyebrow="Routine"
-        title="Daily care planner"
-        description="A morning and evening plan that stays connected to backend routine tracking instead of local-only UI state."
+        title="Today's Routine"
+        description="A focused morning and evening ritual designed around your skin profile."
         actions={
           <>
             <Button asChild className="bg-primary text-primary-foreground hover:bg-primary/90">
@@ -91,14 +89,13 @@ export function AppRoutinePage() {
 
       {regimen && tracking ? (
         <>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <AppStatCard label="Routine name" value={regimen.name} helper={`Updated ${formatDate(regimen.startDate)}`} />
-            <AppStatCard label="Today completion" value={`${tracking.completedSteps}/${tracking.totalSteps}`} helper="Completed steps today" />
-            <AppStatCard label="Morning" value={`${morningCompleted}/${regimen.morning.length}`} helper="Morning steps completed" />
-            <AppStatCard label="Evening" value={`${eveningCompleted}/${regimen.evening.length}`} helper="Evening steps completed" />
+          <div className="grid gap-5 rounded-[24px] border border-[#ded3c3] bg-[linear-gradient(135deg,#fffdf8,#f2e7d6)] p-6 lg:grid-cols-[auto_1fr_auto] lg:items-center">
+            <div className="flex h-28 w-28 items-center justify-center rounded-full border-[10px] border-[#c2a67d]/25 bg-white text-center"><div><p className="text-3xl font-semibold text-[#222]">{tracking.completionPercent}%</p><p className="text-[10px] uppercase tracking-[0.14em] text-[#977b56]">Complete</p></div></div>
+            <div><p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#977b56]">{regimen.name}</p><h2 className="mt-1 text-2xl font-semibold text-[#222]">Your care rhythm is taking shape.</h2><p className="mt-2 text-sm leading-6 text-[#777]">{tracking.completedSteps} of {tracking.totalSteps} steps completed today.</p></div>
+            <div className="grid grid-cols-2 gap-3 text-center"><div className="rounded-2xl bg-white/70 px-4 py-3"><p className="text-2xl font-semibold text-[#222]">{morningCompleted}</p><p className="text-xs text-[#777]">Morning</p></div><div className="rounded-2xl bg-white/70 px-4 py-3"><p className="text-2xl font-semibold text-[#222]">{eveningCompleted}</p><p className="text-xs text-[#777]">Evening</p></div></div>
           </div>
 
-          <AppSection title="Routine progress" description="How far you are through today's morning and evening care plan.">
+        <AppSection title="Today's progress" description="Move through each step in sequence and keep the rhythm gentle. ">
             <div className="space-y-4">
               <div>
                 <div className="mb-2 flex items-center justify-between text-sm text-muted-foreground">
@@ -124,7 +121,7 @@ export function AppRoutinePage() {
 
           <div className="grid gap-4 xl:grid-cols-2">
             <AppSection title="Morning routine" description="Start-of-day steps powered by the current regimen.">
-              <div className="space-y-3">
+              <div className="relative space-y-3 pl-5 before:absolute before:bottom-4 before:left-2 before:top-4 before:w-px before:bg-[#ded3c3]">
                 {regimen.morning.length ? (
                   regimen.morning.map((step) => (
                     <AppRoutineStepCard
@@ -147,7 +144,7 @@ export function AppRoutinePage() {
             </AppSection>
 
             <AppSection title="Evening routine" description="End-of-day steps, tracked separately from morning completion.">
-              <div className="space-y-3">
+              <div className="relative space-y-3 pl-5 before:absolute before:bottom-4 before:left-2 before:top-4 before:w-px before:bg-[#ded3c3]">
                 {regimen.evening.length ? (
                   regimen.evening.map((step) => (
                     <AppRoutineStepCard

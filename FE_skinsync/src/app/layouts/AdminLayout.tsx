@@ -1,50 +1,103 @@
-import { Bot, LayoutDashboard, Package, Shield, Users } from "lucide-react";
+import { Bot, ChevronRight, LayoutDashboard, Package, Shield, Users } from "lucide-react";
 import { Link, NavLink, Outlet } from "react-router";
 import { BrandMark } from "../components/BrandMark";
+import { Button } from "../components/ui/button";
 import { useAuth } from "../contexts/AuthContext";
+import "../styles/app-shell.css";
 
 const links = [
   { to: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/admin/users", label: "Users", icon: Users },
   { to: "/admin/products", label: "Products", icon: Package },
-  { to: "/admin/ai-logs", label: "AI Logs", icon: Bot },
+  { to: "/admin/ai-logs", label: "AI logs", icon: Bot },
   { to: "/admin/subscriptions", label: "Subscriptions", icon: Shield },
 ];
 
 export function AdminLayout() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
 
   return (
-    <div className="min-h-screen bg-[#f7f3ed]">
-      <div className="mx-auto flex min-h-screen max-w-7xl flex-col md:flex-row">
-        <aside className="border-b border-[#e8d5b7]/60 bg-[#1f1b17] text-white md:min-h-screen md:w-72 md:border-b-0 md:border-r md:border-r-white/10">
-          <div className="flex items-center gap-3 border-b border-white/10 px-5 py-5">
-            <BrandMark className="h-10 w-10 rounded-xl" />
-            <div>
-              <Link to="/admin/dashboard" className="text-base text-white">SkinSync Admin</Link>
-              <p className="text-xs text-white/60">{user?.email}</p>
+    <div className="app-admin-shell">
+      <div className="app-admin-grid">
+        <aside className="app-admin-sidebar">
+          <div className="flex h-full flex-col">
+            <div className="border-b border-border/80 px-6 py-6">
+              <Link to="/admin/dashboard" className="flex items-center gap-3">
+                <BrandMark className="h-12 w-12 rounded-2xl" />
+                <div className="min-w-0">
+                  <p className="truncate text-base font-semibold text-foreground">SkinSync Admin</p>
+                  <p className="truncate text-xs tracking-[0.18em] text-muted-foreground uppercase">Control Center</p>
+                </div>
+              </Link>
+            </div>
+
+            <div className="px-5 pt-5">
+              <div className="rounded-[28px] border border-border/70 bg-card/90 p-4 shadow-sm">
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Signed in</p>
+                <p className="mt-3 truncate text-sm font-medium text-foreground">{user?.fullName || "Admin"}</p>
+                <p className="truncate text-xs text-muted-foreground">{user?.email || "admin@skinsync.app"}</p>
+              </div>
+            </div>
+
+            <nav className="flex-1 px-5 py-6">
+              <p className="px-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                Workspace
+              </p>
+              <div className="mt-3 space-y-1.5">
+                {links.map(({ to, label, icon: Icon }) => (
+                  <NavLink
+                    key={to}
+                    to={to}
+                    className={({ isActive }) =>
+                      `flex items-center gap-3 rounded-2xl px-4 py-3 text-sm transition ${
+                        isActive
+                          ? "bg-primary text-primary-foreground shadow-sm"
+                          : "text-foreground hover:bg-muted hover:text-foreground"
+                      }`
+                    }
+                  >
+                    {({ isActive }) => (
+                      <>
+                        <Icon className="h-4 w-4 shrink-0" />
+                        <span className="flex-1">{label}</span>
+                        {isActive ? <ChevronRight className="h-4 w-4 opacity-80" /> : null}
+                      </>
+                    )}
+                  </NavLink>
+                ))}
+              </div>
+            </nav>
+
+            <div className="border-t border-border/80 p-5">
+              <Button
+                variant="outline"
+                className="w-full justify-start border-border bg-card text-foreground hover:bg-muted"
+                onClick={async () => {
+                  await logout();
+                }}
+              >
+                Sign out
+              </Button>
             </div>
           </div>
-          <nav className="grid gap-1 p-4">
-            {links.map(({ to, label, icon: Icon }) => (
-              <NavLink
-                key={to}
-                to={to}
-                className={({ isActive }) =>
-                  `flex items-center gap-3 rounded-2xl px-4 py-3 text-sm transition ${
-                    isActive ? "bg-[#c2a67d] text-white" : "text-white/75 hover:bg-white/10 hover:text-white"
-                  }`
-                }
-              >
-                <Icon className="h-4 w-4" />
-                <span>{label}</span>
-              </NavLink>
-            ))}
-          </nav>
         </aside>
-        <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
-          <Outlet />
-        </main>
+
+        <div className="app-admin-main">
+          <div className="app-admin-topbar">
+            <div className="flex items-center justify-between px-6 py-4 lg:px-8">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">Admin</p>
+                <p className="text-sm text-foreground">Operations, catalog quality, AI usage, and subscriptions</p>
+              </div>
+            </div>
+          </div>
+
+          <main className="px-4 py-6 sm:px-6 lg:px-8">
+            <div className="ss-page-wrap-app">
+              <Outlet />
+            </div>
+          </main>
+        </div>
       </div>
     </div>
   );

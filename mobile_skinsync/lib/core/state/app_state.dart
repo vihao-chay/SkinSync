@@ -126,6 +126,19 @@ class AppState extends ChangeNotifier {
     notifyListeners();
 
     try {
+      profile = null;
+      latestAnalysis = null;
+      regimen = null;
+      trackingToday = null;
+      progress = null;
+      todayLog = null;
+      reminders = const [];
+      subscriptionPlans = const [];
+      subscription = null;
+      hasPendingOnboarding = false;
+      hasResolvedProfileState = false;
+      _resetLoadErrors();
+
       final savedSession = await _sessionStore.read();
       if (savedSession != null) {
         final restoredSession = await _withSelectedAvatar(savedSession);
@@ -515,11 +528,7 @@ class AppState extends ChangeNotifier {
 
   Future<AiProductRecommendResponse> getLatestRecommendations() async {
     debugPrint('[SkinSync] latest recommendation read');
-    final response = await _apiClient.get(
-      '/api/ai/products/recommendations/latest',
-    );
-    final data = _readAiData(response);
-    return AiProductRecommendResponse.fromJson(data);
+    return _fetchCatalogRecommendations();
   }
 
   Future<AiProductRecommendResponse> generateRecommendations({
@@ -529,24 +538,35 @@ class AppState extends ChangeNotifier {
     int limitPerCategory = 5,
   }) async {
     debugPrint('[SkinSync] manual recommendation generate');
-    final response = await _apiClient.post(
-      '/api/ai/products/recommendations/generate',
-      timeout: const Duration(seconds: 240),
-      body: {
-        if (category != null && category.trim().isNotEmpty)
-          'category': category,
-        if (concern != null && concern.trim().isNotEmpty) 'concern': concern,
-        if (budgetMax != null)
-          'budgetRange': {
-            'min': 0,
-            'max': budgetMax.round(),
-            'currency': 'VND',
-          },
-        'limitPerCategory': limitPerCategory,
-      },
+    return _fetchCatalogRecommendations(
+      concernOverride: concern,
+      categoryOverride: category,
     );
-    final data = _readAiData(response);
-    return AiProductRecommendResponse.fromJson(data);
+  }
+
+  Future<AiProductRecommendResponse> _fetchCatalogRecommendations({
+    String? concernOverride,
+    String? categoryOverride,
+  }) async {
+    final request = _buildRecommendationRequest(
+      concernOverride: concernOverride,
+    );
+    if (request == null) {
+      return _emptyRecommendationResponse(
+        message:
+            'Complete your skin profile first so SkinSync can generate recommendations from the product catalog.',
+      );
+    }
+
+    final response = await _apiClient.post(
+      '/api/recommendations',
+      timeout: const Duration(seconds: 240),
+      body: request,
+    );
+    return _mapRecommendationEngineResponse(
+      response,
+      categoryOverride: categoryOverride,
+    );
   }
 
   Future<AiProductRecommendResponse?> refreshRecommendationsForLatestAnalysis({
@@ -1345,6 +1365,244 @@ class AppState extends ChangeNotifier {
       refreshToken: source.refreshToken,
       user: source.user.copyWith(avatarUrl: selectedAvatar),
     );
+  }
+
+  Map<String, dynamic>? _buildRecommendationRequest({
+    String? concernOverride,
+  }) {
+    final skinType =
+        profile?.skinType?.trim().isNotEmpty == true
+            ? profile!.skinType!.trim()
+            : latestAnalysis?.skinType.trim();
+    if (skinType == null || skinType.isEmpty) {
+      return null;
+    }
+
+    final concerns = <String>{
+      ...?profile?.concerns.where((item) => item.trim().isNotEmpty),
+      ...?latestAnalysis?.issues
+          .map((item) => item.issueType.trim())
+          .where((item) => item.isNotEmpty),
+    };
+    final normalizedConcern = concernOverride?.trim();
+    if (normalizedConcern?.isNotEmpty == true) {
+      concerns.add(normalizedConcern!);
+    }
+
+    final goals = <String>{
+      ...?profile?.goals.where((item) => item.trim().isNotEmpty),
+      ...?profile?.skinGoals.where((item) => item.trim().isNotEmpty),
+    };
+
+    return {
+      'skinType': skinType,
+      'concerns': concerns.toList(),
+      'sensitivity': _mapSensitivityLevel(profile?.sensitivityLevel),
+      'goals': goals.toList(),
+    };
+  }
+
+  AiProductRecommendResponse _mapRecommendationEngineResponse(
+    Map<String, dynamic> json, {
+    String? categoryOverride,
+  }) {
+    final generatedAt = DateTime.tryParse(json['generatedAt']?.toString() ?? '');
+    final compatibility = (json['overallCompatibilityScore'] as num?)?.round() ?? 0;
+    final skinSummary =
+        json['skinSummary'] is Map<String, dynamic>
+            ? json['skinSummary'] as Map<String, dynamic>
+            : const <String, dynamic>{};
+
+    final morning = ((json['morningRoutine'] as List?) ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map(_mapRecommendationProduct)
+        .toList();
+    final night = ((json['nightRoutine'] as List?) ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map(_mapRecommendationProduct)
+        .toList();
+    final selectedProducts = [...morning, ...night];
+
+    final categories = <AiProductRecommendationCategory>[
+      ..._buildCategoriesFromProducts(selectedProducts),
+      ...((json['alternatives'] as List?) ?? const [])
+          .whereType<Map<String, dynamic>>()
+          .map(_mapAlternativeCategory),
+    ];
+
+    final normalizedCategory = categoryOverride?.trim().toLowerCase();
+    final visibleCategories =
+        normalizedCategory == null || normalizedCategory.isEmpty
+            ? categories
+            : categories.where((category) {
+                final key = category.key.trim().toLowerCase();
+                final label = category.label.trim().toLowerCase();
+                return key == normalizedCategory || label == normalizedCategory;
+              }).toList();
+
+    final products = visibleCategories.expand((category) => category.items).toList();
+    final warnings = ((json['warnings'] as List?) ?? const [])
+        .map((item) => item.toString().trim())
+        .where((item) => item.isNotEmpty)
+        .toList();
+
+    return AiProductRecommendResponse(
+      hasRecommendation: products.isNotEmpty,
+      status: products.isNotEmpty ? 'completed' : 'missing',
+      summary: products.isEmpty
+          ? null
+          : 'Overall compatibility: $compatibility%. Recommendations were built from the live product catalog.',
+      products: products,
+      categories: [
+        if (products.isNotEmpty)
+          AiProductRecommendationCategory(
+            key: 'all',
+            label: 'All',
+            reason: 'Combined morning, night, and alternative product suggestions.',
+            items: products,
+          ),
+        ...visibleCategories,
+      ],
+      profileSummary: AiProductRecommendationProfileSummary(
+        skinType: (skinSummary['skinType'] ?? profile?.skinType ?? 'Not provided yet').toString(),
+        concerns: ((skinSummary['concerns'] as List?) ?? profile?.concerns ?? const <String>[])
+            .map((item) => item.toString())
+            .toList(),
+        budget: profile?.budgetLabel?.trim().isNotEmpty == true
+            ? profile!.budgetLabel!.trim()
+            : profile?.monthlyBudget != null
+            ? '${profile!.monthlyBudget!.round()} VND'
+            : 'Not provided yet',
+      ),
+      message: products.isNotEmpty
+          ? (warnings.isEmpty ? null : warnings.first)
+          : 'No compatible recommendations were available from the current product catalog.',
+      note: warnings.skip(1).join('\n').trim().isEmpty ? null : warnings.skip(1).join('\n').trim(),
+      generatedAt: generatedAt,
+    );
+  }
+
+  AiRecommendedProduct _mapRecommendationProduct(Map<String, dynamic> json) {
+    final reasons = ((json['reasons'] as List?) ?? const [])
+        .map((item) => item.toString().trim())
+        .where((item) => item.isNotEmpty)
+        .toList();
+    final reason = (json['reason'] ?? '').toString().trim();
+    final cautions = ((json['cautions'] as List?) ?? const [])
+        .map((item) => item.toString().trim())
+        .where((item) => item.isNotEmpty)
+        .toList();
+    final ingredients = ((json['keyIngredients'] as List?) ?? const [])
+        .map((item) => item.toString().trim())
+        .where((item) => item.isNotEmpty)
+        .toList();
+
+    return AiRecommendedProduct(
+      productId: json['productId'].toString(),
+      name: (json['name'] ?? '') as String,
+      brand: (json['brand'] ?? '') as String,
+      category: (json['category'] ?? '') as String,
+      price: (json['price'] as num?)?.toDouble() ?? 0,
+      currency: (json['currency'] ?? 'VND') as String,
+      matchScore: (json['score'] as num?)?.round() ?? 0,
+      matchPercent: (json['score'] as num?)?.round(),
+      aiReason: reasons.isNotEmpty ? reasons.join(' ') : reason,
+      whyRecommended: reason.isNotEmpty ? reason : (reasons.isEmpty ? null : reasons.join(' ')),
+      warnings: cautions,
+      cautions: cautions,
+      imageUrl: json['imageUrl'] as String?,
+      description: (json['reasons'] as List?) != null && reasons.isNotEmpty ? reasons.join(' ') : null,
+      ingredientsText: ingredients.join(', '),
+      usageGuide: null,
+    );
+  }
+
+  AiProductRecommendationCategory _mapAlternativeCategory(
+    Map<String, dynamic> json,
+  ) {
+    final products = ((json['products'] as List?) ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map(_mapRecommendationProduct)
+        .toList();
+    return AiProductRecommendationCategory(
+      key: _normalizeRecommendationCategoryKey(
+        (json['categoryKey'] ?? json['categoryName'] ?? '').toString(),
+      ),
+      label: (json['categoryName'] ?? json['categoryKey'] ?? 'Alternatives')
+          .toString(),
+      reason:
+          'Alternative options for the ${(json['routineTime'] ?? '').toString().toLowerCase()} routine.',
+      items: products,
+    );
+  }
+
+  List<AiProductRecommendationCategory> _buildCategoriesFromProducts(
+    List<AiRecommendedProduct> products,
+  ) {
+    final byCategory = <String, List<AiRecommendedProduct>>{};
+    for (final product in products) {
+      final key = _normalizeRecommendationCategoryKey(product.category);
+      byCategory.putIfAbsent(key, () => <AiRecommendedProduct>[]).add(product);
+    }
+
+    return byCategory.entries
+        .map(
+          (entry) => AiProductRecommendationCategory(
+            key: entry.key,
+            label: _titleCase(entry.key),
+            reason: 'Recommended products for ${_titleCase(entry.key).toLowerCase()}.',
+            items: entry.value,
+          ),
+        )
+        .toList();
+  }
+
+  AiProductRecommendResponse _emptyRecommendationResponse({
+    required String message,
+  }) {
+    return AiProductRecommendResponse(
+      hasRecommendation: false,
+      status: 'missing',
+      message: message,
+      generatedAt: DateTime.now(),
+      profileSummary: AiProductRecommendationProfileSummary(
+        skinType: profile?.skinType ?? 'Not provided yet',
+        concerns: profile?.concerns ?? const <String>[],
+        budget: profile?.budgetLabel ?? 'Not provided yet',
+      ),
+    );
+  }
+
+  String _mapSensitivityLevel(int? level) {
+    if (level == null) {
+      return 'Medium';
+    }
+    if (level <= 2) {
+      return 'Low';
+    }
+    if (level >= 4) {
+      return 'High';
+    }
+    return 'Medium';
+  }
+
+  String _normalizeRecommendationCategoryKey(String value) {
+    final normalized = value.trim().toLowerCase();
+    return normalized
+        .replaceAll('&', 'and')
+        .replaceAll(RegExp(r'[^a-z0-9]+'), '_')
+        .replaceAll(RegExp(r'_+'), '_')
+        .replaceAll(RegExp(r'^_|_$'), '');
+  }
+
+  String _titleCase(String value) {
+    return value
+        .split(RegExp(r'[_\s]+'))
+        .where((part) => part.isNotEmpty)
+        .map(
+          (part) => part[0].toUpperCase() + part.substring(1).toLowerCase(),
+        )
+        .join(' ');
   }
 
   Future<void> _replaceCurrentUserFullName(String? fullName) async {

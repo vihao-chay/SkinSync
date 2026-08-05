@@ -50,20 +50,28 @@ export function AppLayout() {
             onToggle={() => setMobileOpen((value) => !value)}
           />
           {mobileOpen ? (
-            <div className="border-b border-border/70 bg-card px-4 py-4 shadow-sm md:hidden">
-              <AppSidebar
-                userName={user?.fullName || "User"}
-                userEmail={user?.email || "user@skinsync.app"}
-                planName={planName}
-                isImpersonating={isImpersonating}
-                onNavigate={() => setMobileOpen(false)}
-                onLogout={logout}
-                compact
+            <div className="app-mobile-drawer md:hidden">
+              <button
+                type="button"
+                aria-label="Close sidebar"
+                className="app-mobile-overlay"
+                onClick={() => setMobileOpen(false)}
               />
+              <div className="app-mobile-panel">
+                <AppSidebar
+                  userName={user?.fullName || "User"}
+                  userEmail={user?.email || "user@skinsync.app"}
+                  planName={planName}
+                  isImpersonating={isImpersonating}
+                  onNavigate={() => setMobileOpen(false)}
+                  onLogout={logout}
+                  compact
+                />
+              </div>
             </div>
           ) : null}
 
-          <main className="min-w-0 px-4 py-6 sm:px-6 lg:px-10">
+          <main className="min-w-0 px-4 py-6 sm:px-6 lg:px-8 xl:px-10">
             <div className="app-content">
               <Outlet />
             </div>

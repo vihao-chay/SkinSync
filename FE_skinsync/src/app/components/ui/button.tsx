@@ -9,16 +9,18 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-skin-gold text-white hover:bg-skin-goldHover",
+        default: "bg-primary text-primary-foreground shadow-[0_8px_18px_rgba(141,96,38,0.2)] hover:bg-[var(--ss-gold-hover)] active:bg-[var(--ss-gold-pressed)]",
+        premium: "bg-[var(--ss-primary-gradient)] text-primary-foreground shadow-[0_18px_30px_rgba(141,96,38,0.25)] hover:brightness-[1.03] active:brightness-95",
         destructive:
-          "bg-destructive text-white hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60",
+          "border border-[color:rgba(184,92,80,0.22)] bg-[var(--ss-danger-bg)] text-[var(--ss-danger)] hover:bg-[color:rgba(252,236,234,0.8)] focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40",
         outline:
-          "border border-skin-border bg-skin-surface text-skin-textMain hover:bg-stone-100",
+          "border border-border bg-card text-foreground hover:bg-[var(--ss-gold-pale)] hover:border-[var(--ss-border-medium)]",
         secondary:
-          "bg-stone-100 text-skin-textMain hover:bg-stone-200",
+          "border border-border bg-secondary text-secondary-foreground hover:bg-accent",
         ghost:
-          "hover:bg-stone-100 hover:text-skin-textMain",
-        link: "text-skin-gold underline-offset-4 hover:underline",
+          "text-muted-foreground hover:bg-[var(--ss-gold-pale)] hover:text-foreground",
+        link: "text-primary underline-offset-4 hover:underline",
+        iconButton: "border border-border bg-card text-muted-foreground hover:bg-[var(--ss-gold-pale)] hover:text-foreground",
       },
       size: {
         default: "h-9 px-4 py-2 has-[>svg]:px-3",
