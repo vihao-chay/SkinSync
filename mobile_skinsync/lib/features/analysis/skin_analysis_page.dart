@@ -128,12 +128,14 @@ class _SkinAnalysisPageState extends State<SkinAnalysisPage> {
                       bottom: 10,
                     ),
                     decoration: BoxDecoration(
-                      color: AppColors.surface.withValues(alpha: 0.96),
-                      border: Border(
-                        top: BorderSide(
-                          color: AppColors.border.withValues(alpha: 0.7),
+                      color: AppColors.surface,
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.foreground.withValues(alpha: 0.06),
+                          blurRadius: 18,
+                          offset: const Offset(0, -4),
                         ),
-                      ),
+                      ],
                     ),
                     child: LayoutBuilder(
                       builder: (context, constraints) {
@@ -337,7 +339,7 @@ class _ScoreHero extends StatelessWidget {
               _TinyPill(
                 label: result.skinType.trim().isEmpty
                     ? locale.tr('analysis_skin_type_unknown')
-                    : result.skinType,
+                    : _localizedSkinType(result.skinType, locale),
                 icon: Icons.spa_outlined,
               ),
               const Spacer(),
@@ -525,9 +527,7 @@ class _OverviewCard extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  result.overview?.trim().isNotEmpty == true
-                      ? result.overview!
-                      : locale.tr('analysis_overview_fallback'),
+                  _overviewText(result, locale),
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: AppColors.heading,
                     height: 1.45,
@@ -609,7 +609,7 @@ class _IssueCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  issue.issueType,
+                  _localizedConcernLabel(issue.issueType, locale),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.labelLarge?.copyWith(
@@ -619,14 +619,7 @@ class _IssueCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  issue.description?.trim().isNotEmpty == true
-                      ? issue.description!
-                      : locale
-                            .tr('analysis_score_out_of_100')
-                            .replaceAll(
-                              '{score}',
-                              issue.severityScore.toString(),
-                            ),
+                  _issueDescription(issue, locale),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(
@@ -731,51 +724,52 @@ class _RecommendationList extends StatelessWidget {
             body: locale.tr('analysis_no_recommendations_desc'),
           )
         else
-          ...recommendations
-              .take(4)
-              .map(
-                (item) => Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: AppCard(
-                    variant: AppCardVariant.metric,
-                    padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _SoftIcon(icon: Icons.eco_outlined),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                item.title.trim().isEmpty
-                                    ? item.content
-                                    : item.title,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: Theme.of(context).textTheme.labelLarge
-                                    ?.copyWith(
-                                      color: AppColors.heading,
-                                      fontWeight: FontWeight.w900,
-                                    ),
-                              ),
-                              if (item.title.trim().isNotEmpty)
-                                Text(
-                                  item.content,
-                                  maxLines: 3,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: Theme.of(context).textTheme.labelSmall
-                                      ?.copyWith(height: 1.25),
+          ...List.generate(math.min(recommendations.length, 4), (index) {
+            final item = recommendations[index];
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: AppCard(
+                variant: AppCardVariant.metric,
+                padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _SoftIcon(icon: Icons.eco_outlined),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _recommendationTitle(item, index, locale),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.labelLarge
+                                ?.copyWith(
+                                  color: AppColors.heading,
+                                  fontWeight: FontWeight.w900,
                                 ),
-                            ],
                           ),
-                        ),
-                      ],
+                          if (_recommendationContent(item, locale).isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 2),
+                              child: Text(
+                                _recommendationContent(item, locale),
+                                maxLines: 3,
+                                overflow: TextOverflow.ellipsis,
+                                style: Theme.of(
+                                  context,
+                                ).textTheme.labelSmall?.copyWith(height: 1.25),
+                              ),
+                            ),
+                        ],
+                      ),
                     ),
-                  ),
+                  ],
                 ),
               ),
+            );
+          }),
       ],
     );
   }
@@ -867,7 +861,10 @@ class _SafetyWarning extends StatelessWidget {
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  warnings.take(2).join('\n'),
+                  warnings
+                      .take(2)
+                      .map((warning) => _localizedWarning(warning, locale))
+                      .join('\n'),
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
                     color: AppColors.error,
                     fontSize: 9,
@@ -918,6 +915,204 @@ class _SoftIcon extends StatelessWidget {
       child: Icon(icon, size: 17, color: AppColors.primaryDark),
     );
   }
+}
+
+String _overviewText(AnalysisResult result, AppLocale locale) {
+  final raw = result.overview?.trim() ?? '';
+  if (raw.isNotEmpty && !_shouldReplaceEnglishText(raw, locale)) {
+    return raw;
+  }
+
+  if (!locale.isVietnamese && raw.isNotEmpty) {
+    return raw;
+  }
+
+  final concerns = result.issues
+      .take(3)
+      .map((issue) => _localizedConcernLabel(issue.issueType, locale))
+      .where((label) => label.trim().isNotEmpty)
+      .join(', ');
+  final skinType = _localizedSkinType(result.skinType, locale);
+
+  if (concerns.isNotEmpty) {
+    return locale
+        .tr('analysis_overview_generated')
+        .replaceAll('{concerns}', concerns)
+        .replaceAll('{skinType}', skinType);
+  }
+
+  return locale.tr('analysis_overview_fallback');
+}
+
+String _localizedSkinType(String value, AppLocale locale) {
+  final normalized = _normalizeToken(value);
+  return switch (normalized) {
+    'oily' || 'oily_skin' => locale.tr('analysis_skin_type_oily'),
+    'dry' || 'dry_skin' => locale.tr('analysis_skin_type_dry'),
+    'combination' ||
+    'combination_skin' => locale.tr('analysis_skin_type_combination'),
+    'normal' || 'normal_skin' => locale.tr('analysis_skin_type_normal'),
+    'sensitive' ||
+    'sensitive_skin' => locale.tr('analysis_skin_type_sensitive'),
+    'unknown' || '' => locale.tr('analysis_skin_type_unknown'),
+    _ => value,
+  };
+}
+
+String _localizedConcernLabel(String value, AppLocale locale) {
+  final normalized = _normalizeToken(value);
+  return switch (normalized) {
+    'acne' => locale.tr('analysis_concern_acne'),
+    'blemish' || 'blemishes' => locale.tr('analysis_concern_blemishes'),
+    'blackhead' || 'blackheads' => locale.tr('analysis_concern_blackheads'),
+    'dark_spot' ||
+    'dark_spots' ||
+    'hyperpigmentation' => locale.tr('analysis_concern_dark_spots'),
+    'dry' || 'dryness' => locale.tr('analysis_concern_dryness'),
+    'dehydration' || 'dehydrated' => locale.tr('analysis_concern_dehydration'),
+    'oil' || 'oily' || 'oiliness' => locale.tr('analysis_concern_oiliness'),
+    'large_pore' ||
+    'large_pores' ||
+    'pores' => locale.tr('analysis_concern_large_pores'),
+    'red' || 'redness' => locale.tr('analysis_concern_redness'),
+    'texture' || 'rough_texture' => locale.tr('analysis_concern_texture'),
+    'uneven_tone' ||
+    'uneven_skin_tone' => locale.tr('analysis_concern_uneven_tone'),
+    'sensitive' || 'sensitivity' => locale.tr('analysis_concern_sensitivity'),
+    'wrinkle' ||
+    'wrinkles' ||
+    'fine_lines' => locale.tr('analysis_concern_wrinkles'),
+    'unknown' || '' => locale.tr('analysis_concern_unknown'),
+    _ => value,
+  };
+}
+
+String _issueDescription(AnalysisIssue issue, AppLocale locale) {
+  final raw = issue.description?.trim() ?? '';
+  if (raw.isNotEmpty && !_shouldReplaceEnglishText(raw, locale)) {
+    return raw;
+  }
+
+  return locale
+      .tr('analysis_score_out_of_100')
+      .replaceAll('{score}', issue.severityScore.toString());
+}
+
+String _recommendationTitle(
+  AnalysisRecommendation item,
+  int index,
+  AppLocale locale,
+) {
+  final raw = item.title.trim();
+  final recommendationNumber = RegExp(
+    r'^recommendation\s+(\d+)$',
+    caseSensitive: false,
+  ).firstMatch(raw);
+  if (recommendationNumber != null) {
+    return locale
+        .tr('analysis_recommendation_number')
+        .replaceAll('{number}', recommendationNumber.group(1)!);
+  }
+
+  if (raw.isEmpty || _shouldReplaceEnglishText(raw, locale)) {
+    return locale
+        .tr('analysis_recommendation_number')
+        .replaceAll('{number}', '${index + 1}');
+  }
+
+  return raw;
+}
+
+String _recommendationContent(AnalysisRecommendation item, AppLocale locale) {
+  final raw = item.content.trim();
+  if (raw.isEmpty) {
+    return '';
+  }
+  if (!_shouldReplaceEnglishText(raw, locale)) {
+    return raw;
+  }
+
+  final normalized = '${item.title} $raw'.toLowerCase();
+  if (normalized.contains('cleanser') || normalized.contains('cleanse')) {
+    return locale.tr('analysis_recommendation_cleanser');
+  }
+  if (normalized.contains('redness') ||
+      normalized.contains('irritation') ||
+      normalized.contains('irritated')) {
+    return locale.tr('analysis_recommendation_redness');
+  }
+  if (normalized.contains('oily') ||
+      normalized.contains('oiliness') ||
+      normalized.contains('sebum')) {
+    return locale.tr('analysis_recommendation_oiliness');
+  }
+  if (normalized.contains('moistur') ||
+      normalized.contains('hydration') ||
+      normalized.contains('dehydration')) {
+    return locale.tr('analysis_recommendation_moisturizer');
+  }
+  if (normalized.contains('sunscreen') || normalized.contains('spf')) {
+    return locale.tr('analysis_recommendation_sunscreen');
+  }
+
+  return locale.tr('analysis_recommendation_default');
+}
+
+String _localizedWarning(String value, AppLocale locale) {
+  final normalized = _normalizeToken(value);
+  return switch (normalized) {
+    'poor_image_quality' => locale.tr('analysis_warning_poor_image_quality'),
+    'possible_irritation' => locale.tr('analysis_warning_possible_irritation'),
+    'need_dermatologist' ||
+    'severe_acne' => locale.tr('analysis_warning_need_dermatologist'),
+    _ => value,
+  };
+}
+
+bool _shouldReplaceEnglishText(String value, AppLocale locale) {
+  if (!locale.isVietnamese) {
+    return false;
+  }
+
+  final trimmed = value.trim();
+  if (trimmed.isEmpty || _looksVietnamese(trimmed)) {
+    return false;
+  }
+
+  final lower = trimmed.toLowerCase();
+  return [
+    'skin',
+    'appears',
+    'visible',
+    'concern',
+    'redness',
+    'blemish',
+    'acne',
+    'irritation',
+    'oily',
+    'cleanser',
+    'moistur',
+    'sunscreen',
+    'continue',
+    'consider',
+    'recommendation',
+  ].any(lower.contains);
+}
+
+bool _looksVietnamese(String value) {
+  return RegExp(
+    r'[ăâđêôơưàáảãạằắẳẵặầấẩẫậèéẻẽẹềếểễệìíỉĩịòóỏõọồốổỗộờớởỡợùúủũụừứửữựỳýỷỹỵ]',
+    caseSensitive: false,
+  ).hasMatch(value);
+}
+
+String _normalizeToken(String value) {
+  return value
+      .trim()
+      .toLowerCase()
+      .replaceAll(RegExp(r'[^a-z0-9]+'), '_')
+      .replaceAll(RegExp(r'_+'), '_')
+      .replaceAll(RegExp(r'^_|_$'), '');
 }
 
 String _savedFromLabel(AnalysisResult result, AppLocale locale) {

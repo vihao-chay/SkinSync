@@ -102,14 +102,17 @@ public class RoutineGenerationService : IRoutineGenerationService
 
         var allowedProductIds = scoredCandidates.Select(x => x.Product.Id).ToHashSet();
         ValidateRoutineProducts(aiResult.Value, allowedProductIds);
+        var productsById = scoredCandidates.Select(x => x.Product).ToDictionary(x => x.Id);
+        var morningSteps = UniqueRoutineSteps(aiResult.Value.Morning, productsById);
+        var nightSteps = UniqueRoutineSteps(aiResult.Value.Night, productsById);
 
-        var regimen = BuildRegimen(userId, latestAnalysis.Id, aiResult.Value, scoredCandidates.Select(x => x.Product).ToDictionary(x => x.Id));
+        var regimen = BuildRegimen(userId, latestAnalysis.Id, aiResult.Value, morningSteps, nightSteps, productsById);
         await DeactivateCurrentRegimens(userId, cancellationToken);
         _dbContext.UserRegimens.Add(regimen);
         await _dbContext.SaveChangesAsync(cancellationToken);
         await _aiUsageService.LogUsageAsync(userId, "routine_generation", aiResult.Model, aiResult.InputTokens, aiResult.OutputTokens, cancellationToken);
 
-        var warnings = aiResult.Value.Morning.Concat(aiResult.Value.Night)
+        var warnings = morningSteps.Concat(nightSteps)
             .Select(x => x.Warning)
             .Where(x => !string.IsNullOrWhiteSpace(x))
             .Select(x => x!)
@@ -120,8 +123,8 @@ public class RoutineGenerationService : IRoutineGenerationService
         {
             RoutineId = regimen.Id,
             RoutineName = regimen.Name,
-            Morning = MapSteps(aiResult.Value.Morning, scoredCandidates),
-            Night = MapSteps(aiResult.Value.Night, scoredCandidates),
+            Morning = MapSteps(morningSteps, scoredCandidates),
+            Night = MapSteps(nightSteps, scoredCandidates),
             Warnings = warnings,
             MissingCategories = aiResult.Value.MissingCategories,
             OverallAdvice = aiResult.Value.OverallAdvice
@@ -213,7 +216,13 @@ public class RoutineGenerationService : IRoutineGenerationService
         }
     }
 
-    private static UserRegimen BuildRegimen(Guid userId, Guid analysisId, AiRoutineAiModel model, Dictionary<Guid, Product> products)
+    private static UserRegimen BuildRegimen(
+        Guid userId,
+        Guid analysisId,
+        AiRoutineAiModel model,
+        IEnumerable<AiRoutineStepAiModel> morningSteps,
+        IEnumerable<AiRoutineStepAiModel> nightSteps,
+        Dictionary<Guid, Product> products)
     {
         var regimenId = Guid.NewGuid();
         var today = DateOnly.FromDateTime(DateTime.UtcNow.Date);
@@ -230,12 +239,65 @@ public class RoutineGenerationService : IRoutineGenerationService
             Source = "ai"
         };
 
-        regimen.Items = model.Morning
+        regimen.Items = morningSteps
             .Select(step => BuildRegimenItem(regimenId, RoutineScheduleHelper.Morning, step, products[step.ProductId]))
-            .Concat(model.Night.Select(step => BuildRegimenItem(regimenId, RoutineScheduleHelper.Evening, step, products[step.ProductId])))
+            .Concat(nightSteps.Select(step => BuildRegimenItem(regimenId, RoutineScheduleHelper.Evening, step, products[step.ProductId])))
             .ToList();
 
         return regimen;
+    }
+
+    private static List<AiRoutineStepAiModel> UniqueRoutineSteps(
+        IEnumerable<AiRoutineStepAiModel> steps,
+        IReadOnlyDictionary<Guid, Product> products)
+    {
+        var seenProductIds = new HashSet<Guid>();
+        var seenProductSignatures = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var uniqueSteps = new List<AiRoutineStepAiModel>();
+
+        foreach (var step in steps.Where(step => step.ProductId != Guid.Empty).OrderBy(step => step.StepOrder))
+        {
+            var productSignature = products.TryGetValue(step.ProductId, out var product)
+                ? BuildProductSignature(product)
+                : string.Empty;
+
+            if (!seenProductIds.Add(step.ProductId) ||
+                (!string.IsNullOrWhiteSpace(productSignature) && !seenProductSignatures.Add(productSignature)))
+            {
+                continue;
+            }
+
+            uniqueSteps.Add(step);
+        }
+
+        for (var index = 0; index < uniqueSteps.Count; index++)
+        {
+            uniqueSteps[index].StepOrder = index + 1;
+        }
+
+        return uniqueSteps;
+    }
+
+    private static string BuildProductSignature(Product product)
+    {
+        var parts = new[]
+        {
+            NormalizeProductKeyPart(product.Brand),
+            NormalizeProductKeyPart(product.Name),
+            NormalizeProductKeyPart(product.Category)
+        };
+
+        return parts.All(string.IsNullOrWhiteSpace)
+            ? string.Empty
+            : string.Join('|', parts);
+    }
+
+    private static string NormalizeProductKeyPart(string? value)
+    {
+        return string.Join(' ', (value ?? string.Empty)
+            .Trim()
+            .ToLowerInvariant()
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries));
     }
 
     private static RegimenItem BuildRegimenItem(Guid regimenId, string routineTime, AiRoutineStepAiModel step, Product product)

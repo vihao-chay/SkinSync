@@ -19,6 +19,10 @@ public static class AiPromptLibrary
     {
         return $@"Analyze the user's facial skin image and skincare profile.
 
+Language:
+- Write every user-facing string in Vietnamese, including skinSummary, detectedConcerns.description, recommendations, disclaimer.
+- Keep enum/code values in English exactly as listed in the JSON schema.
+
 User profile:
 {userProfileJson}
 
@@ -287,6 +291,10 @@ Return JSON:
 
 Analyze the user's facial skin photo for skincare tracking purposes only.
 
+Language:
+- Write every user-facing string in Vietnamese, including summary, concern labels when free text is needed, descriptions, recommendations, safetyNote, disclaimer.
+- Keep enum/code values in English exactly as listed in the JSON schema, such as skinTypeEstimate, hydrationLevel, oilinessLevel, riskFlags, severity, priority, and metric keys.
+
 User profile:
 {userProfileJson}
 
@@ -341,9 +349,25 @@ Return valid JSON only:
   ""hydrationLevel"": ""unknown"",
   ""oilinessLevel"": ""unknown"",
   ""summary"": ""string"",
-  ""concerns"": [],
+  ""concerns"": [
+    {{
+      ""key"": ""acne | dark_spots | dryness | oiliness | large_pores | redness | uneven_tone | sensitivity | blemishes | unknown"",
+      ""label"": ""Vietnamese user-facing label"",
+      ""severity"": 0,
+      ""confidence"": 0,
+      ""evidence"": ""Vietnamese user-facing evidence"",
+      ""recommendationPriority"": ""low | medium | high""
+    }}
+  ],
   ""metrics"": {{}},
-  ""recommendations"": [],
+  ""recommendations"": [
+    {{
+      ""type"": ""routine | product | lifestyle | safety"",
+      ""title"": ""Vietnamese user-facing title"",
+      ""description"": ""Vietnamese user-facing recommendation"",
+      ""priority"": ""low | medium | high""
+    }}
+  ],
   ""riskFlags"": [""poor_image_quality | possible_irritation | need_dermatologist""],
   ""safetyNote"": ""string"",
   ""disclaimer"": ""string""

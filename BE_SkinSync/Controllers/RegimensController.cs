@@ -63,7 +63,7 @@ public class RegimensController : ControllerBase
 
         await _regimenRepository.DeactivateAllByUserIdAsync(userId, cancellationToken);
 
-        var today = DateOnly.FromDateTime(DateTime.UtcNow.Date);
+        var today = AppClock.Today;
         var regimen = new UserRegimen
         {
             Id = regimenId,
