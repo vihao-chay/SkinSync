@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/models/app_models.dart';
+import '../../core/responsive/responsive.dart';
 import '../../core/routes/app_routes.dart';
 import '../../core/state/app_state.dart';
 import '../../core/theme/app_colors.dart';
@@ -111,7 +112,12 @@ class _ProductIngredientAnalysisPageState
 
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(16, 6, 16, 106),
+      padding: EdgeInsets.fromLTRB(
+        Responsive.responsiveHorizontalPadding(context),
+        6,
+        Responsive.responsiveHorizontalPadding(context),
+        Responsive.contentBottomSpacing(context, extra: 20),
+      ),
       children: [
         const _MiniTopBar(),
         const SizedBox(height: 14),
@@ -120,39 +126,37 @@ class _ProductIngredientAnalysisPageState
           onChanged: widget.onModeChanged,
         ),
         const SizedBox(height: 18),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Product Recommendation',
-                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'Latest saved recommendations from your profile, analysis, routine, and recent check-ins. Generate manually when you want a new AI run.',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: AppColors.mutedText,
-                      height: 1.5,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            AppButton(
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final stack = constraints.maxWidth < 420;
+            final generateButton = AppButton(
               label: result?.hasRecommendation == true
                   ? 'Generate New'
                   : 'Generate',
               isLoading: _isGenerating,
               onPressed: _isGenerating ? null : _generateRecommendations,
-            ),
-          ],
+            );
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (!stack)
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(child: _RecommendationIntro()),
+                      const SizedBox(width: 8),
+                      generateButton,
+                    ],
+                  )
+                else ...[
+                  const _RecommendationIntro(),
+                  const SizedBox(height: 12),
+                  SizedBox(width: double.infinity, child: generateButton),
+                ],
+              ],
+            );
+          },
         ),
         const SizedBox(height: 14),
         _SummaryStrip(
@@ -216,6 +220,35 @@ class _ProductIngredientAnalysisPageState
             ),
           ),
         ],
+      ],
+    );
+  }
+}
+
+class _RecommendationIntro extends StatelessWidget {
+  const _RecommendationIntro();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Product Recommendation',
+          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'Latest saved recommendations from your profile, analysis, routine, and recent check-ins. Generate manually when you want a new AI run.',
+          style: Theme.of(
+            context,
+          ).textTheme.bodyMedium?.copyWith(
+            color: AppColors.mutedText,
+            height: 1.5,
+          ),
+        ),
       ],
     );
   }
@@ -469,7 +502,13 @@ class _InfoCard extends StatelessWidget {
             ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 8),
-          Text(body),
+          Text(
+            body,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: AppColors.mutedText,
+                  height: 1.5,
+                ),
+          ),
         ],
       ),
     );

@@ -50,6 +50,11 @@ public class SubscriptionsController : ControllerBase
     [HttpPost("cancel")]
     public async Task<ResponseEntity<CurrentSubscriptionDto>> Cancel(CancellationToken cancellationToken)
     {
+        if (HttpContext.TryGetImpersonationContext(out var impersonationContext) && impersonationContext is not null)
+        {
+            return ResponseEntity<CurrentSubscriptionDto>.Fail("This action is disabled while viewing as user.", 403);
+        }
+
         if (!HttpContext.TryGetUserId(out var userId))
         {
             return ResponseEntity<CurrentSubscriptionDto>.Fail("Missing authenticated user.", 401);
@@ -68,6 +73,11 @@ public class SubscriptionsController : ControllerBase
 
     private async Task<ResponseEntity<CurrentSubscriptionDto>> SubscribeCore(SubscribeRequestDto request, CancellationToken cancellationToken)
     {
+        if (HttpContext.TryGetImpersonationContext(out var impersonationContext) && impersonationContext is not null)
+        {
+            return ResponseEntity<CurrentSubscriptionDto>.Fail("This action is disabled while viewing as user.", 403);
+        }
+
         if (!HttpContext.TryGetUserId(out var userId))
         {
             return ResponseEntity<CurrentSubscriptionDto>.Fail("Missing authenticated user.", 401);

@@ -17,7 +17,7 @@ class AppConfig {
 
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
-        return 'http://192.168.1.110:5199';
+        return 'http://skinsync.somee.com';
       case TargetPlatform.iOS:
       case TargetPlatform.macOS:
       case TargetPlatform.windows:
@@ -30,4 +30,5 @@ class AppConfig {
   static const authCallbackScheme = 'skinsync';
   static const authCallbackHost = 'auth';
   static const authCallbackUrl = '$authCallbackScheme://$authCallbackHost';
+  static const paymentCallbackScheme = authCallbackScheme;
 }

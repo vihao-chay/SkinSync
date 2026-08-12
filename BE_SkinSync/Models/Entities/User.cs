@@ -27,4 +27,5 @@ public class User
     public ICollection<SkinProgressReport> SkinProgressReports { get; set; } = new List<SkinProgressReport>();
     public ICollection<ProductRecommendationSession> ProductRecommendationSessions { get; set; } = new List<ProductRecommendationSession>();
     public ICollection<UserSubscription> Subscriptions { get; set; } = new List<UserSubscription>();
+    public ICollection<PaymentOrder> PaymentOrders { get; set; } = new List<PaymentOrder>();
 }

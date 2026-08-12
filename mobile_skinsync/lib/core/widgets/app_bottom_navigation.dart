@@ -1,11 +1,8 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 
+import '../responsive/responsive.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_radius.dart';
-import '../theme/app_shadows.dart';
-import '../theme/app_spacing.dart';
 
 class AppBottomNavigation extends StatelessWidget {
   const AppBottomNavigation({
@@ -21,102 +18,85 @@ class AppBottomNavigation extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final maxWidth = Responsive.maxContentWidth(
+      context,
+      mobile: 520,
+      tablet: 560,
+      desktop: 620,
+    );
+
     return SafeArea(
       top: false,
-      minimum: const EdgeInsets.fromLTRB(0, 0, 0, 0),
+      minimum: const EdgeInsets.fromLTRB(10, 4, 10, 8),
       child: Center(
+        heightFactor: 1,
         child: ConstrainedBox(
-          constraints: const BoxConstraints(
-            maxWidth: AppSpacing.maxContentWidth,
-          ),
-          child: ClipRRect(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: AppColors.surface.withValues(alpha: 0.92),
-                  border: Border(
-                    top: BorderSide(
-                      color: AppColors.border.withValues(alpha: 0.44),
-                    ),
-                  ),
-                  boxShadow: AppShadows.soft,
+          constraints: BoxConstraints(maxWidth: maxWidth),
+          child: Container(
+            height: 64,
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(AppRadius.pill),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.foreground.withValues(alpha: 0.1),
+                  blurRadius: 20,
+                  offset: const Offset(0, 6),
                 ),
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(8, 8, 8, 7),
-                  child: Row(
-                    children: List.generate(destinations.length, (index) {
-                      final destination = destinations[index];
-                      final selected = selectedIndex == index;
-                      return Expanded(
-                        child: Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(AppRadius.pill),
-                            onTap: () => onTap(index),
-                            child: SizedBox(
-                              height: 62,
-                              child: Stack(
-                                alignment: Alignment.center,
-                                children: [
-                                  AnimatedContainer(
-                                    duration: const Duration(milliseconds: 180),
-                                    curve: Curves.easeOut,
-                                    width: selected ? 66 : 48,
-                                    height: selected ? 58 : 48,
-                                    decoration: BoxDecoration(
-                                      color: selected
-                                          ? AppColors.primaryFixed.withValues(
-                                              alpha: 0.55,
-                                            )
-                                          : Colors.transparent,
-                                      borderRadius: BorderRadius.circular(
-                                        AppRadius.pill,
-                                      ),
-                                    ),
-                                  ),
-                                  Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        destination.icon,
-                                        size: 24,
-                                        color: selected
-                                            ? AppColors.primary
-                                            : AppColors.onSurfaceVariant,
-                                      ),
-                                      const SizedBox(height: 3),
-                                      Text(
-                                        destination.label,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        softWrap: false,
-                                        textAlign: TextAlign.center,
-                                        style: theme.textTheme.labelSmall
-                                            ?.copyWith(
-                                              color: selected
-                                                  ? AppColors.primary
-                                                  : AppColors.onSurfaceVariant,
-                                              fontSize: 12,
-                                              fontWeight: selected
-                                                  ? FontWeight.w700
-                                                  : FontWeight.w600,
-                                            ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
+              ],
+            ),
+            child: Row(
+              children: List.generate(destinations.length, (index) {
+                final destination = destinations[index];
+                final selected = selectedIndex == index;
+                return Expanded(
+                  child: Semantics(
+                    button: true,
+                    selected: selected,
+                    label: destination.label,
+                    child: Tooltip(
+                      message: destination.label,
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(AppRadius.pill),
+                          splashColor: AppColors.primaryFixed.withValues(
+                            alpha: 0.35,
+                          ),
+                          highlightColor: Colors.transparent,
+                          hoverColor: Colors.transparent,
+                          focusColor: Colors.transparent,
+                          onTap: () => onTap(index),
+                          child: SizedBox.expand(
+                            child: Center(
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 180),
+                                curve: Curves.easeOutCubic,
+                                width: 44,
+                                height: 44,
+                                decoration: BoxDecoration(
+                                  color: selected
+                                      ? AppColors.primaryFixed
+                                      : Colors.transparent,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  destination.icon,
+                                  size: 23,
+                                  color: selected
+                                      ? AppColors.primaryDark
+                                      : AppColors.onSurfaceVariant,
+                                ),
                               ),
                             ),
                           ),
                         ),
-                      );
-                    }),
+                      ),
+                    ),
                   ),
-                ),
-              ),
+                );
+              }),
             ),
           ),
         ),

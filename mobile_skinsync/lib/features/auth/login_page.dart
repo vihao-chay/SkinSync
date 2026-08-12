@@ -3,10 +3,15 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/l10n/app_locale.dart';
+import '../../core/responsive/responsive.dart';
 import '../../core/routes/app_routes.dart';
 import '../../core/state/app_state.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/brand_logo.dart';
+
+const double _authCornerRadius = 16;
+const Color _authBorderColor = Colors.white;
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -44,24 +49,36 @@ class _LoginPageState extends State<LoginPage> {
     if (appState.isAuthenticated && !_isSubmittingAuth && !_isRegisterMode) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
-          Navigator.pushReplacementNamed(
-            context,
-            appState.shouldShowOnboarding
-                ? AppRoutes.onboarding
-                : AppRoutes.dashboard,
-          );
+          Navigator.pushReplacementNamed(context, _postAuthRoute(appState));
         }
       });
     }
 
+    if (_isSubmittingAuth) {
+      return const _AuthProcessingView();
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8F3EC),
+      resizeToAvoidBottomInset: true,
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 390),
+            constraints: BoxConstraints(
+              maxWidth: Responsive.maxContentWidth(
+                context,
+                mobile: 520,
+                tablet: 520,
+                desktop: 520,
+              ),
+            ),
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(10, 10, 10, 24),
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+              padding: Responsive.responsivePadding(
+                context,
+                top: 10,
+                bottom: 24,
+              ),
               children: [
                 const _BrandHeader(),
                 const SizedBox(height: 16),
@@ -71,7 +88,6 @@ class _LoginPageState extends State<LoginPage> {
                   child: _AuthCard(
                     isRegisterMode: _isRegisterMode,
                     isBusy: appState.isBusy,
-                    errorMessage: appState.errorMessage,
                     nameController: _nameController,
                     emailController: _emailController,
                     phoneController: _phoneController,
@@ -144,14 +160,13 @@ class _LoginPageState extends State<LoginPage> {
 
       Navigator.pushNamedAndRemoveUntil(
         context,
-        appState.shouldShowOnboarding
-            ? AppRoutes.onboarding
-            : AppRoutes.dashboard,
+        _postAuthRoute(appState, newlyRegistered: _isRegisterMode),
         (route) => false,
       );
     } catch (_) {
       if (mounted) {
         setState(() => _isSubmittingAuth = false);
+        _showAppStateError(appState);
       }
     }
   }
@@ -169,50 +184,57 @@ class _LoginPageState extends State<LoginPage> {
 
       Navigator.pushNamedAndRemoveUntil(
         context,
-        appState.shouldShowOnboarding
-            ? AppRoutes.onboarding
-            : AppRoutes.dashboard,
+        _postAuthRoute(appState, newlyRegistered: _isRegisterMode),
         (route) => false,
       );
     } catch (_) {
       if (mounted) {
         setState(() => _isSubmittingAuth = false);
+        _showAppStateError(appState);
       }
     }
   }
 
+  String _postAuthRoute(AppState appState, {bool newlyRegistered = false}) {
+    if (newlyRegistered || appState.shouldShowOnboarding) {
+      return AppRoutes.onboardingIntro;
+    }
+    return AppRoutes.dashboard;
+  }
+
   bool _validateInput() {
+    final locale = AppLocale.of(context);
     final email = _emailController.text.trim();
     final password = _passwordController.text;
 
     if (_isRegisterMode && _nameController.text.trim().isEmpty) {
-      _showMessage('Please enter your full name.');
+      _showMessage(locale.tr('validate_name_empty'));
       return false;
     }
 
     if (email.isEmpty ||
         !RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(email)) {
-      _showMessage('Please enter a valid email.');
+      _showMessage(locale.tr('validate_email_invalid'));
       return false;
     }
 
     if (password.isEmpty) {
-      _showMessage('Please enter your password.');
+      _showMessage(locale.tr('validate_password_empty'));
       return false;
     }
 
     if (_isRegisterMode && password.length < 8) {
-      _showMessage('Password must be at least 8 characters.');
+      _showMessage(locale.tr('validate_password_short'));
       return false;
     }
 
     if (_isRegisterMode && password != _confirmPasswordController.text) {
-      _showMessage('Confirm password does not match.');
+      _showMessage(locale.tr('validate_password_mismatch'));
       return false;
     }
 
     if (_isRegisterMode && !_acceptedTerms) {
-      _showMessage('Please agree to the terms of service.');
+      _showMessage(locale.tr('validate_terms'));
       return false;
     }
 
@@ -223,7 +245,53 @@ class _LoginPageState extends State<LoginPage> {
     context.read<AppState>().clearError();
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(message)));
+      ..showSnackBar(
+        SnackBar(backgroundColor: Colors.black87, content: Text(message)),
+      );
+  }
+
+  void _showAppStateError(AppState appState) {
+    final message = appState.errorMessage?.trim();
+    if (message == null || message.isEmpty) {
+      return;
+    }
+    _showMessage(_authErrorMessage(message));
+  }
+
+  String _authErrorMessage(String message) {
+    final locale = AppLocale.of(context, listen: false);
+    final lower = message.toLowerCase();
+
+    if (lower.contains('password must include') ||
+        lower.contains('password should contain') ||
+        lower.contains('password must contain') ||
+        lower.contains('at least one character of each') ||
+        lower.contains('uppercase') && lower.contains('special')) {
+      return locale.isVietnamese
+          ? 'Mật khẩu phải có chữ thường, chữ hoa, số và ký tự đặc biệt.'
+          : 'Password must include lowercase, uppercase, number, and special character.';
+    }
+
+    if (lower.contains('email or password') ||
+        lower.contains('incorrect') && lower.contains('password')) {
+      return locale.isVietnamese
+          ? 'Email hoặc mật khẩu không đúng.'
+          : 'Email or password is incorrect.';
+    }
+
+    if (lower.startsWith('email') &&
+        (lower.contains('already') ||
+            lower.contains('registered') ||
+            lower.contains('đăng') ||
+            lower.contains('tồn tại') ||
+            lower.contains('ã') ||
+            lower.contains('ä'))) {
+      return locale.isVietnamese
+          ? 'Email này đã được đăng ký.'
+          : 'This email is already registered.';
+    }
+
+    return message;
   }
 }
 
@@ -232,10 +300,11 @@ class _BrandHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return Wrap(
+      spacing: 8,
+      crossAxisAlignment: WrapCrossAlignment.center,
       children: [
         const BrandLogo(size: 26, radius: 13, showShadow: false),
-        const SizedBox(width: 8),
         Text(
           'SkinSync',
           style: Theme.of(context).textTheme.titleSmall?.copyWith(
@@ -251,6 +320,84 @@ class _BrandHeader extends StatelessWidget {
   }
 }
 
+class _AuthProcessingView extends StatelessWidget {
+  const _AuthProcessingView();
+
+  @override
+  Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
+    final isVietnamese = locale.isVietnamese;
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8F3EC),
+      body: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 360),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(_authCornerRadius),
+                  border: Border.all(color: _authBorderColor),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.08),
+                      blurRadius: 24,
+                      offset: const Offset(0, 14),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const BrandLogo(size: 42, radius: 14),
+                    const SizedBox(height: 18),
+                    const SizedBox(
+                      width: 26,
+                      height: 26,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.4,
+                        color: AppColors.primaryDark,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Text(
+                      isVietnamese
+                          ? '\u0110ang ho\u00e0n t\u1ea5t \u0111\u0103ng nh\u1eadp'
+                          : 'Completing sign in',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: AppColors.foreground,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      isVietnamese
+                          ? 'SkinSync \u0111ang x\u00e1c th\u1ef1c tai kho\u1ea3n c\u1ee7a b\u1ea1n.'
+                          : 'SkinSync is verifying your account.',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AppColors.mutedText,
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _HeroCard extends StatelessWidget {
   const _HeroCard({required this.isRegisterMode});
 
@@ -258,8 +405,9 @@ class _HeroCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
     return ClipRRect(
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(_authCornerRadius),
       child: SizedBox(
         height: 168,
         child: Stack(
@@ -290,12 +438,12 @@ class _HeroCard extends StatelessWidget {
                 children: [
                   _HeroBadge(
                     label: isRegisterMode
-                        ? 'AI Skin Analyze'
-                        : 'Future · Science · AI Fusion',
+                        ? locale.tr('hero_badge_register')
+                        : locale.tr('hero_badge_login'),
                   ),
                   const Spacer(),
                   Text(
-                    'Perfect skin\nstarts here',
+                    locale.tr('hero_title'),
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                       color: Colors.white,
                       fontSize: 24,
@@ -305,7 +453,7 @@ class _HeroCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 9),
                   Text(
-                    'Your personalized skincare journey\ncalibrated just for you.',
+                    locale.tr('hero_subtitle'),
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(
                       color: Colors.white.withValues(alpha: 0.92),
                       fontSize: 11,
@@ -362,7 +510,6 @@ class _AuthCard extends StatelessWidget {
   const _AuthCard({
     required this.isRegisterMode,
     required this.isBusy,
-    required this.errorMessage,
     required this.nameController,
     required this.emailController,
     required this.phoneController,
@@ -382,7 +529,6 @@ class _AuthCard extends StatelessWidget {
 
   final bool isRegisterMode;
   final bool isBusy;
-  final String? errorMessage;
   final TextEditingController nameController;
   final TextEditingController emailController;
   final TextEditingController phoneController;
@@ -401,11 +547,13 @@ class _AuthCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.97),
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(_authCornerRadius),
+        border: Border.all(color: _authBorderColor),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.10),
@@ -423,7 +571,9 @@ class _AuthCard extends StatelessWidget {
           ),
           const SizedBox(height: 19),
           Text(
-            isRegisterMode ? 'Create new account' : 'Welcome Back',
+            isRegisterMode
+                ? locale.tr('create_new_account')
+                : locale.tr('welcome_back'),
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
               color: AppColors.foreground,
               fontSize: 22,
@@ -433,21 +583,17 @@ class _AuthCard extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             isRegisterMode
-                ? 'Start your personalized skincare journey with AI.'
-                : 'Log in to continue your personalized skincare journey.',
+                ? locale.tr('register_subtitle')
+                : locale.tr('login_subtitle'),
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
               color: AppColors.foreground,
               height: 1.35,
             ),
           ),
           const SizedBox(height: 19),
-          if (errorMessage != null) ...[
-            _ErrorBanner(message: errorMessage!),
-            const SizedBox(height: 12),
-          ],
           if (isRegisterMode) ...[
             _AuthTextField(
-              label: 'Full Name',
+              label: locale.tr('full_name'),
               hint: 'John Doe',
               icon: Icons.person_outline_rounded,
               controller: nameController,
@@ -456,7 +602,7 @@ class _AuthCard extends StatelessWidget {
             const SizedBox(height: 12),
           ],
           _AuthTextField(
-            label: 'Email',
+            label: locale.tr('email'),
             hint: 'hello@example.com',
             icon: Icons.mail_outline_rounded,
             keyboardType: TextInputType.emailAddress,
@@ -466,7 +612,7 @@ class _AuthCard extends StatelessWidget {
           const SizedBox(height: 12),
           if (isRegisterMode) ...[
             _AuthTextField(
-              label: 'Phone Number',
+              label: locale.tr('phone_number'),
               hint: '+ 0901234567',
               icon: Icons.phone_outlined,
               keyboardType: TextInputType.phone,
@@ -476,7 +622,7 @@ class _AuthCard extends StatelessWidget {
             const SizedBox(height: 12),
           ],
           _AuthTextField(
-            label: 'Password',
+            label: locale.tr('password'),
             hint: '••••••',
             icon: Icons.lock_outline_rounded,
             obscureText: !showPassword,
@@ -491,12 +637,17 @@ class _AuthCard extends StatelessWidget {
             const SizedBox(height: 7),
             Align(
               alignment: Alignment.centerRight,
-              child: Text(
-                'Forgot Password?',
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: AppColors.primaryDark,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w800,
+              child: GestureDetector(
+                onTap: () {
+                  // Forgot password action
+                },
+                child: Text(
+                  locale.tr('forgot_password'),
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: AppColors.primaryDark,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
             ),
@@ -504,7 +655,7 @@ class _AuthCard extends StatelessWidget {
           if (isRegisterMode) ...[
             const SizedBox(height: 12),
             _AuthTextField(
-              label: 'Confirm Password',
+              label: locale.tr('confirm_password'),
               hint: '••••••',
               icon: Icons.lock_outline_rounded,
               obscureText: !showConfirmPassword,
@@ -520,7 +671,9 @@ class _AuthCard extends StatelessWidget {
           ],
           const SizedBox(height: 14),
           _PrimaryButton(
-            label: isRegisterMode ? 'Create Account' : 'Login',
+            label: isRegisterMode
+                ? locale.tr('create_account')
+                : locale.tr('login'),
             isLoading: isBusy,
             onPressed: isBusy ? null : onSubmit,
           ),
@@ -538,11 +691,13 @@ class _AuthCard extends StatelessWidget {
               child: Text.rich(
                 TextSpan(
                   text: isRegisterMode
-                      ? 'Already have an account? '
-                      : "Don't have an account? ",
+                      ? locale.tr('already_have_account')
+                      : locale.tr('dont_have_account'),
                   children: [
                     TextSpan(
-                      text: isRegisterMode ? 'Login' : 'Sign up now',
+                      text: isRegisterMode
+                          ? locale.tr('login')
+                          : locale.tr('sign_up_now'),
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
                         fontWeight: FontWeight.w800,
                         color: AppColors.foreground,
@@ -571,25 +726,27 @@ class _ModeTabs extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
     return Container(
       height: 48,
       padding: const EdgeInsets.all(5),
       decoration: BoxDecoration(
         color: const Color(0xFFF4EFE8),
-        borderRadius: BorderRadius.circular(15),
+        borderRadius: BorderRadius.circular(_authCornerRadius),
+        border: Border.all(color: _authBorderColor),
       ),
       child: Row(
         children: [
           Expanded(
             child: _ModeTab(
-              label: 'Login',
+              label: locale.tr('login'),
               selected: !isRegisterMode,
               onTap: () => onModeChanged(false),
             ),
           ),
           Expanded(
             child: _ModeTab(
-              label: 'Register',
+              label: locale.tr('register'),
               selected: isRegisterMode,
               onTap: () => onModeChanged(true),
             ),
@@ -616,14 +773,14 @@ class _ModeTab extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(_authCornerRadius),
         onTap: onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: selected ? Colors.white : Colors.transparent,
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(_authCornerRadius),
             boxShadow: selected
                 ? [
                     BoxShadow(
@@ -702,22 +859,18 @@ class _AuthTextField extends StatelessWidget {
               prefixIcon: Icon(icon, size: 16, color: AppColors.mutedText),
               suffixIcon: trailing,
               filled: true,
-              fillColor: const Color(0xFFFEFCF9),
+              fillColor: const Color(0xFFF5F0E8),
               contentPadding: const EdgeInsets.symmetric(horizontal: 14),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(11),
-                borderSide: BorderSide(
-                  color: AppColors.border.withValues(alpha: 0.86),
-                ),
+                borderRadius: BorderRadius.circular(_authCornerRadius),
+                borderSide: const BorderSide(color: _authBorderColor),
               ),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(11),
-                borderSide: BorderSide(
-                  color: AppColors.border.withValues(alpha: 0.86),
-                ),
+                borderRadius: BorderRadius.circular(_authCornerRadius),
+                borderSide: const BorderSide(color: _authBorderColor),
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(11),
+                borderRadius: BorderRadius.circular(_authCornerRadius),
                 borderSide: const BorderSide(
                   color: AppColors.primaryDark,
                   width: 1.1,
@@ -739,8 +892,11 @@ class _EyeButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
     return IconButton(
-      tooltip: showing ? 'Hide password' : 'Show password',
+      tooltip: showing
+          ? locale.tr('hide_password')
+          : locale.tr('show_password'),
       icon: Icon(
         showing ? Icons.visibility_off_outlined : Icons.visibility_outlined,
         color: AppColors.primaryDark,
@@ -759,34 +915,54 @@ class _TermsRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: 18,
-          height: 18,
-          child: Checkbox(
-            value: value,
-            activeColor: AppColors.primaryDark,
-            side: BorderSide(color: AppColors.border.withValues(alpha: 0.9)),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(3),
-            ),
-            onChanged: onChanged,
-          ),
-        ),
-        const SizedBox(width: 9),
-        Expanded(
-          child: Text(
-            'I agree to the Terms of Service and Privacy Policy.',
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: AppColors.foreground,
-              fontSize: 10,
-              height: 1.25,
+    final locale = AppLocale.of(context);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF5F0E8),
+        borderRadius: BorderRadius.circular(_authCornerRadius),
+        border: Border.all(color: _authBorderColor),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          _spacerColorFixCheck(value, onChanged),
+          const SizedBox(width: 9),
+          Expanded(
+            child: Text(
+              locale.tr('agree_terms'),
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: AppColors.foreground,
+                fontSize: 10,
+                height: 1.25,
+              ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _spacerColorFixCheck(bool value, ValueChanged<bool?> onChanged) {
+    return SizedBox(
+      width: 18,
+      height: 18,
+      child: Checkbox(
+        value: value,
+        activeColor: AppColors.primaryDark,
+        checkColor: Colors.white,
+        fillColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.selected)
+              ? AppColors.primaryDark
+              : Colors.white,
         ),
-      ],
+        side: const BorderSide(color: Color(0xFF9D7550), width: 1.4),
+        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        visualDensity: VisualDensity.compact,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(3)),
+        onChanged: onChanged,
+      ),
     );
   }
 }
@@ -804,39 +980,57 @@ class _PrimaryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      height: 45,
-      child: FilledButton(
-        style: FilledButton.styleFrom(
-          backgroundColor: const Color(0xFF9D7550),
-          foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(11),
+    final enabled = onPressed != null && !isLoading;
+    final labelStyle = Theme.of(context).textTheme.labelLarge?.copyWith(
+      color: Colors.white,
+      fontSize: 14,
+      fontWeight: FontWeight.w800,
+      height: 1.45,
+    );
+
+    return Material(
+      color: const Color(0xFF9D7550).withValues(alpha: enabled ? 1 : 0.65),
+      borderRadius: BorderRadius.circular(_authCornerRadius),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: enabled ? onPressed : null,
+        child: SizedBox(
+          width: double.infinity,
+          height: 48,
+          child: Center(
+            child: isLoading
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        label,
+                        maxLines: 1,
+                        overflow: TextOverflow.visible,
+                        softWrap: false,
+                        strutStyle: const StrutStyle(
+                          fontSize: 14,
+                          height: 1.45,
+                        ),
+                        style: labelStyle,
+                      ),
+                      const SizedBox(width: 8),
+                      const Icon(
+                        Icons.arrow_forward_rounded,
+                        size: 17,
+                        color: Colors.white,
+                      ),
+                    ],
+                  ),
           ),
-          textStyle: Theme.of(
-            context,
-          ).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w800),
         ),
-        onPressed: onPressed,
-        child: isLoading
-            ? const SizedBox(
-                width: 18,
-                height: 18,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: Colors.white,
-                ),
-              )
-            : Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(label),
-                  const SizedBox(width: 8),
-                  const Icon(Icons.arrow_forward_rounded, size: 15),
-                ],
-              ),
       ),
     );
   }
@@ -847,15 +1041,16 @@ class _DividerLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
     return Row(
       children: [
         Expanded(
-          child: Divider(color: AppColors.border.withValues(alpha: 0.65)),
+          child: Divider(color: _authBorderColor.withValues(alpha: 0.9)),
         ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 13),
           child: Text(
-            'Or',
+            locale.tr('or'),
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
               color: AppColors.foreground,
               fontSize: 10,
@@ -863,7 +1058,7 @@ class _DividerLabel extends StatelessWidget {
           ),
         ),
         Expanded(
-          child: Divider(color: AppColors.border.withValues(alpha: 0.65)),
+          child: Divider(color: _authBorderColor.withValues(alpha: 0.9)),
         ),
       ],
     );
@@ -878,49 +1073,62 @@ class _GoogleButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      height: 48,
-      child: OutlinedButton(
-        onPressed: isLoading ? null : onPressed,
-        style: OutlinedButton.styleFrom(
-          backgroundColor: const Color(0xFFFFFCF8),
-          foregroundColor: AppColors.foreground,
-          side: BorderSide(color: AppColors.border.withValues(alpha: 0.88)),
-          minimumSize: const Size.fromHeight(48),
-          padding: const EdgeInsets.symmetric(horizontal: 14),
-          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          visualDensity: VisualDensity.compact,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(11),
+    final locale = AppLocale.of(context);
+    final enabled = onPressed != null && !isLoading;
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(_authCornerRadius),
+        border: Border.all(color: const Color(0xFFE7D9C8)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 14,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(_authCornerRadius),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: enabled ? onPressed : null,
+          child: SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: Center(
+              child: isLoading
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: AppColors.primaryDark,
+                      ),
+                    )
+                  : Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const _GoogleMark(size: 15),
+                        const SizedBox(width: 10),
+                        Text(
+                          locale.tr('continue_with_google'),
+                          style: Theme.of(context).textTheme.labelMedium
+                              ?.copyWith(
+                                color: AppColors.foreground,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w800,
+                                height: 1.2,
+                              ),
+                        ),
+                      ],
+                    ),
+            ),
           ),
         ),
-        child: isLoading
-            ? const SizedBox(
-                width: 18,
-                height: 18,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: AppColors.primaryDark,
-                ),
-              )
-            : Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const _GoogleMark(size: 15),
-                  const SizedBox(width: 10),
-                  Text(
-                    'Continue with Google',
-                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                      color: AppColors.foreground,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w800,
-                      height: 1,
-                    ),
-                  ),
-                ],
-              ),
       ),
     );
   }
@@ -977,29 +1185,4 @@ class _GoogleMarkPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-class _ErrorBanner extends StatelessWidget {
-  const _ErrorBanner({required this.message});
-
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: AppColors.error.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.error.withValues(alpha: 0.20)),
-      ),
-      child: Text(
-        message,
-        style: Theme.of(
-          context,
-        ).textTheme.labelSmall?.copyWith(color: AppColors.error),
-      ),
-    );
-  }
 }

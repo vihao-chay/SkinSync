@@ -30,7 +30,7 @@ class _SplashPageState extends State<SplashPage> {
         final nextRoute = !appState.isAuthenticated
             ? AppRoutes.login
             : appState.shouldShowOnboarding
-            ? AppRoutes.onboarding
+            ? AppRoutes.onboardingIntro
             : AppRoutes.dashboard;
 
         Navigator.pushNamedAndRemoveUntil(context, nextRoute, (route) => false);

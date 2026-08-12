@@ -82,9 +82,9 @@ export function LoginPage({ initialMode = "login" }: { initialMode?: AuthMode })
 
         setTimeout(() => {
           if (result.user?.role === "admin") {
-            navigate("/admin", { replace: true });
+            navigate("/admin/dashboard", { replace: true });
           } else {
-            navigate("/", { replace: true });
+            navigate("/app/dashboard", { replace: true });
           }
         }, 800);
       } else {

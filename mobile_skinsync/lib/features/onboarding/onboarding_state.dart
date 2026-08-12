@@ -167,7 +167,7 @@ class OnboardingState extends ChangeNotifier {
 
   bool get canContinue => switch (currentStep) {
     0 => displayName.trim().isNotEmpty && dateOfBirth != null && gender != null,
-    1 => skinType != null && skinType!.trim().isNotEmpty,
+    1 => skinType != null && skinType!.trim().isNotEmpty && concerns.isNotEmpty,
     2 => routineLevel != null && routineLevel!.trim().isNotEmpty,
     3 => budgetLabel != null && goals.isNotEmpty,
     4 => true,
@@ -175,20 +175,30 @@ class OnboardingState extends ChangeNotifier {
   };
 
   String? get validationMessage => switch (currentStep) {
-    0 => displayName.trim().isEmpty
-        ? 'Please enter your display name.'
-        : dateOfBirth == null
-        ? 'Please select your date of birth.'
-        : gender == null
-        ? 'Please choose your gender.'
-        : null,
-    1 => skinType == null ? 'Please choose your skin type.' : null,
-    2 => routineLevel == null ? 'Please tell SkinSync your current routine level.' : null,
-    3 => budgetLabel == null
-        ? 'Please choose your skincare budget.'
-        : goals.isEmpty
-        ? 'Please select at least one skincare goal.'
-        : null,
+    0 =>
+      displayName.trim().isEmpty
+          ? 'Please enter your display name.'
+          : dateOfBirth == null
+          ? 'Please select your date of birth.'
+          : gender == null
+          ? 'Please choose your gender.'
+          : null,
+    1 =>
+      skinType == null
+          ? 'Please choose your skin type.'
+          : concerns.isEmpty
+          ? 'Please select at least one skin concern.'
+          : null,
+    2 =>
+      routineLevel == null
+          ? 'Please tell SkinSync your current routine level.'
+          : null,
+    3 =>
+      budgetLabel == null
+          ? 'Please choose your skincare budget.'
+          : goals.isEmpty
+          ? 'Please select at least one skincare goal.'
+          : null,
     _ => null,
   };
 
@@ -221,6 +231,7 @@ class OnboardingState extends ChangeNotifier {
       'skinType': skinType?.toLowerCase(),
       'monthlyBudget': selectedBudget?.round(),
       'budgetLabel': budgetLabel,
+      'budgetLevel': budgetLabel,
       'concerns': concerns,
       'currentRoutineLevel': routineLevel,
       'goals': goals,

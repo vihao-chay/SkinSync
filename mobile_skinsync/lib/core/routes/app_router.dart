@@ -14,10 +14,12 @@ import '../../features/chat/ai_chat_page.dart';
 import '../../features/chat/ai_chat_conversation_page.dart';
 import '../../features/checkup/today_checkup_page.dart';
 import '../../features/landing/landing_page.dart';
+import '../../features/onboarding/onboarding_intro_page.dart';
 import '../../features/onboarding/onboarding_page.dart';
 import '../../features/products/product_detail_page.dart';
 import '../../features/products/products_page.dart';
 import '../../features/profile/edit_skin_profile_page.dart';
+import '../../features/subscription/plan_selection_page.dart';
 import '../../features/quiz/quiz_page.dart';
 import '../../features/splash/splash_page.dart';
 import '../../features/upload/upload_page.dart';
@@ -37,6 +39,9 @@ class AppRouter {
         break;
       case AppRoutes.onboarding:
         page = const OnboardingPage();
+        break;
+      case AppRoutes.onboardingIntro:
+        page = const OnboardingIntroPage();
         break;
       case AppRoutes.login:
         page = const LoginPage();
@@ -84,6 +89,9 @@ class AppRouter {
         break;
       case AppRoutes.editProfile:
         page = const EditSkinProfilePage();
+        break;
+      case AppRoutes.membershipPlans:
+        page = const PlanSelectionPage();
         break;
       case AppRoutes.dashboard:
       case AppRoutes.routine:

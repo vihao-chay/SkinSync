@@ -26,7 +26,7 @@ public class RegimenProductDto
     public string? Purpose { get; set; }
     public string? Frequency { get; set; }
     public string? Caution { get; set; }
-    public decimal Price { get; set; }
+    public decimal? Price { get; set; }
     public string? ImageUrl { get; set; }
     public int StepOrder { get; set; }
 }

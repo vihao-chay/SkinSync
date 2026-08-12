@@ -10,14 +10,26 @@ using SkinSync.Helpers;
 using SkinSync.Repositories;
 using SkinSync.Services;
 using SkinSync.Services.AIPlatform;
+using SkinSync.Models.Configurations;
+using SkinSync.Services.Recommendations;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
 builder.Services.AddControllers();
+builder.Services.AddMemoryCache();
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(
+        builder.Configuration.GetConnectionString("DefaultConnection"),
+        npgsqlOptions =>
+        {
+            npgsqlOptions.EnableRetryOnFailure(
+                maxRetryCount: 5,
+                maxRetryDelay: TimeSpan.FromSeconds(10),
+                errorCodesToAdd: null);
+            npgsqlOptions.CommandTimeout(30);
+        }));
 
 var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "SkinSync";
 var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "SkinSync.Client";
@@ -28,9 +40,16 @@ if (string.IsNullOrWhiteSpace(jwtSigningKey))
     throw new InvalidOperationException("Missing Jwt:SigningKey configuration.");
 }
 
-if (!builder.Environment.IsDevelopment() && jwtSigningKey.Contains("ChangeMe", StringComparison.OrdinalIgnoreCase))
+if (!builder.Environment.IsDevelopment() &&
+    (jwtSigningKey.Contains("ChangeMe", StringComparison.OrdinalIgnoreCase) ||
+     jwtSigningKey.Contains("CHANGE_ME", StringComparison.OrdinalIgnoreCase)))
 {
     throw new InvalidOperationException("Jwt:SigningKey must be replaced with a secure value in non-development environments.");
+}
+
+if (Encoding.UTF8.GetByteCount(jwtSigningKey) < 32)
+{
+    throw new InvalidOperationException("Jwt:SigningKey must be at least 32 bytes for HMAC-SHA256.");
 }
 
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
@@ -72,12 +91,32 @@ builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IRegimenRepository, RegimenRepository>();
 builder.Services.AddScoped<IDiaryRepository, DiaryRepository>();
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
+builder.Services.Configure<RecommendationScoringOptions>(builder.Configuration.GetSection(RecommendationScoringOptions.SectionName));
+builder.Services.Configure<ProductImportOptions>(builder.Configuration.GetSection("SeedData"));
+builder.Services.AddScoped<IProductImportService, ProductImportService>();
+builder.Services.AddScoped<IImpersonationService, ImpersonationService>();
 
 builder.Services.AddScoped<IRegimenBuilderService, RegimenBuilderService>();
 builder.Services.AddScoped<IIngredientConflictService, IngredientConflictService>();
 builder.Services.AddScoped<ISubscriptionPlanService, SubscriptionPlanService>();
 builder.Services.AddScoped<IReportPdfService, ReportPdfService>();
 builder.Services.AddHttpClient<ISupabaseAuthService, SupabaseAuthService>();
+builder.Services.AddScoped<IRecommendationCatalogService, RecommendationCatalogService>();
+builder.Services.AddScoped<IIngredientScoringService, IngredientScoringService>();
+builder.Services.AddScoped<IProductScoringService, ProductScoringService>();
+builder.Services.AddScoped<ICategorySelectionService, CategorySelectionService>();
+builder.Services.AddScoped<IRecommendationIngredientConflictService, RecommendationIngredientConflictService>();
+builder.Services.AddScoped<IRecommendationReasonService, RecommendationReasonService>();
+builder.Services.AddScoped<IRoutineBuilderService, RoutineBuilderService>();
+builder.Services.AddScoped<IRecommendationService, RecommendationService>();
+
+// PayOS registrations
+var payOsClientId = builder.Configuration["PayOS:ClientId"] ?? "YOUR_CLIENT_ID";
+var payOsApiKey = builder.Configuration["PayOS:ApiKey"] ?? "YOUR_API_KEY";
+var payOsChecksumKey = builder.Configuration["PayOS:ChecksumKey"] ?? "YOUR_CHECKSUM_KEY";
+builder.Services.AddSingleton(new Net.payOS.PayOS(payOsClientId, payOsApiKey, payOsChecksumKey));
+builder.Services.AddScoped<IPayOsPaymentService, PayOsPaymentService>();
+builder.Services.AddHostedService<PayOsWebhookRegistrationService>();
 
 // AI Integration Registrations
 builder.Services.Configure<SkinSync.Services.AI.AiSettings>(builder.Configuration.GetSection("AiSettings"));
@@ -122,6 +161,25 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
+        if (builder.Environment.IsDevelopment())
+        {
+            policy.SetIsOriginAllowed(origin =>
+                  {
+                      if (!Uri.TryCreate(origin, UriKind.Absolute, out var uri))
+                      {
+                          return false;
+                      }
+
+                      return uri.Scheme is "http" or "https"
+                          && (string.Equals(uri.Host, "localhost", StringComparison.OrdinalIgnoreCase)
+                              || string.Equals(uri.Host, "127.0.0.1", StringComparison.OrdinalIgnoreCase));
+                  })
+                  .AllowAnyHeader()
+                  .AllowAnyMethod()
+                  .AllowCredentials();
+            return;
+        }
+
         policy.WithOrigins(allowedOrigins)
               .AllowAnyHeader()
               .AllowAnyMethod()
@@ -168,9 +226,11 @@ builder.Services.AddSwaggerGen(options =>
 
 var app = builder.Build();
 
+var shouldApplyMigrationsOnStartup = builder.Configuration.GetValue<bool>("Startup:ApplyMigrationsOnStartup");
 var shouldSeedOnStartup = builder.Configuration.GetValue<bool>("Startup:SeedOnStartup");
 var shouldSeedDemoData = builder.Configuration.GetValue<bool>("Startup:SeedDemoData");
 var shouldEnableSwagger = builder.Configuration.GetValue<bool>("Swagger:Enabled");
+var shouldImportProductsOnStartup = builder.Configuration.GetValue<bool>("SeedData:ImportProductsOnStartup");
 var aspNetCoreUrls = builder.Configuration["ASPNETCORE_URLS"] ?? Environment.GetEnvironmentVariable("ASPNETCORE_URLS") ?? string.Empty;
 var shouldUseHttpsRedirection = aspNetCoreUrls
     .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
@@ -179,10 +239,21 @@ if (app.Environment.IsDevelopment() || shouldSeedOnStartup)
 {
     using var scope = app.Services.CreateScope();
     var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    await DbSeeder.EnsureDatabaseAsync(dbContext);
+    if (shouldApplyMigrationsOnStartup || shouldSeedOnStartup || shouldSeedDemoData || shouldImportProductsOnStartup)
+    {
+        await DbSeeder.EnsureDatabaseAsync(dbContext);
+    }
+
     if (shouldSeedDemoData)
     {
         await DbSeeder.SeedDemoDataAsync(dbContext);
+    }
+
+    if (shouldImportProductsOnStartup)
+    {
+        var productImportOptions = scope.ServiceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<ProductImportOptions>>().Value;
+        var productImportService = scope.ServiceProvider.GetRequiredService<IProductImportService>();
+        await productImportService.ImportFromCsvAsync(productImportOptions.ProductCsvPath, CancellationToken.None);
     }
 }
 
@@ -202,6 +273,7 @@ if (shouldUseHttpsRedirection)
 app.UseStaticFiles();
 
 app.UseAuthentication();
+app.UseMiddleware<ImpersonationMiddleware>();
 app.UseAuthorization();
 
 app.MapControllers();

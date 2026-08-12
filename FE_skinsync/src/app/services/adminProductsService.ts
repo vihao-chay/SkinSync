@@ -1,39 +1,53 @@
 import type { ApiResponse } from "./authService";
 import { apiRequest } from "./apiClient";
 
-export type AdminProductStatus = "active" | "inactive" | "out_of_stock";
-
 export interface AdminProductItem {
   id: string;
   name: string;
   brand: string;
   category: string;
   description?: string | null;
-  ingredient?: string | null;
-  ingredients: string[];
-  usageGuide?: string | null;
-  howToUse?: string | null;
-  usageTime?: string | null;
-  price: number;
-  currency: string;
-  suitableSkinTypes: string[];
-  skinConcerns: string[];
-  keyIngredients: string[];
-  cautions: string[];
-  conflicts: string[];
   imageUrl?: string | null;
-  rating?: number | null;
-  status: AdminProductStatus;
+  price?: number | null;
+  currency: string;
+  skinTypes: string[];
+  skinConcerns: string[];
+  usageTime?: string | null;
+  howToUse?: string | null;
+  ingredientsText: string;
+  ingredients: string[];
+  isVerified: boolean;
+  isActive: boolean;
+  source: string;
+  sourceUrl?: string | null;
   createdAt: string;
   updatedAt?: string | null;
 }
 
+export interface AdminProductsSummary {
+  totalProducts: number;
+  activeProducts: number;
+  verifiedProducts: number;
+  productsMissingImage: number;
+  productsMissingIngredients: number;
+}
+
 export interface AdminProductsPagedData {
   items: AdminProductItem[];
-  pageIndex: number;
+  page: number;
   pageSize: number;
-  totalRow: number;
+  totalItems: number;
   totalPages: number;
+}
+
+export interface ProductImportResult {
+  totalRows: number;
+  inserted: number;
+  updated: number;
+  skipped: number;
+  duplicates: number;
+  invalidRows: number;
+  errors: string[];
 }
 
 export interface AdminProductUpsertInput {
@@ -41,28 +55,30 @@ export interface AdminProductUpsertInput {
   brand: string;
   category: string;
   description?: string;
-  ingredient?: string;
-  usageGuide?: string;
-  price: number;
-  currency: string;
-  suitableSkinTypes: string[];
-  skinConcerns: string[];
-  keyIngredients: string[];
   imageUrl?: string;
-  rating?: number | null;
-  status: AdminProductStatus;
+  price?: number | null;
+  currency: string;
+  skinTypes: string[];
+  skinConcerns: string[];
+  usageTime?: string;
+  howToUse?: string;
+  ingredients: string;
+  isVerified: boolean;
+  isActive: boolean;
+  source: string;
+  sourceUrl?: string;
 }
+
+type ProductApiShape = Partial<AdminProductItem> & {
+  ingredientsText?: string;
+};
 
 type PagedResponse<T> = {
   items?: T[];
-  pageIndex?: number;
+  page?: number;
   pageSize?: number;
-  totalRow?: number;
+  totalItems?: number;
   totalPages?: number;
-};
-
-type ProductApiShape = Partial<AdminProductItem> & {
-  suitableFor?: string[];
 };
 
 function buildFailureResponse<T>(message: string, statusCode = 500): ApiResponse<T> {
@@ -72,15 +88,6 @@ function buildFailureResponse<T>(message: string, statusCode = 500): ApiResponse
     message,
     content: null,
   };
-}
-
-function normalizeStatus(value: string | null | undefined): AdminProductStatus {
-  const normalized = value?.trim().toLowerCase();
-  if (normalized === "inactive" || normalized === "out_of_stock") {
-    return normalized;
-  }
-
-  return "active";
 }
 
 function normalizeStringArray(values: unknown): string[] {
@@ -93,28 +100,40 @@ function normalizeStringArray(values: unknown): string[] {
     .filter(Boolean);
 }
 
+function splitIngredients(text: string | null | undefined): string[] {
+  if (!text) {
+    return [];
+  }
+
+  return text
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
 function mapProduct(item: ProductApiShape): AdminProductItem {
+  const ingredientsText = String(item.ingredientsText ?? "");
   return {
     id: String(item.id ?? ""),
     name: String(item.name ?? ""),
     brand: String(item.brand ?? ""),
     category: String(item.category ?? ""),
     description: item.description ?? null,
-    ingredient: item.ingredient ?? null,
-    ingredients: normalizeStringArray(item.ingredients),
-    usageGuide: item.usageGuide ?? null,
-    howToUse: item.howToUse ?? null,
-    usageTime: item.usageTime ?? null,
-    price: typeof item.price === "number" ? item.price : Number(item.price ?? 0),
-    currency: String(item.currency ?? "VND"),
-    suitableSkinTypes: normalizeStringArray(item.suitableSkinTypes ?? item.suitableFor),
-    skinConcerns: normalizeStringArray(item.skinConcerns),
-    keyIngredients: normalizeStringArray(item.keyIngredients),
-    cautions: normalizeStringArray(item.cautions),
-    conflicts: normalizeStringArray(item.conflicts),
     imageUrl: item.imageUrl ?? null,
-    rating: typeof item.rating === "number" ? item.rating : null,
-    status: normalizeStatus(item.status),
+    price: typeof item.price === "number" ? item.price : item.price ? Number(item.price) : null,
+    currency: String(item.currency ?? ""),
+    skinTypes: normalizeStringArray(item.skinTypes),
+    skinConcerns: normalizeStringArray(item.skinConcerns),
+    usageTime: item.usageTime ?? null,
+    howToUse: item.howToUse ?? null,
+    ingredientsText,
+    ingredients: normalizeStringArray(item.ingredients).length > 0
+      ? normalizeStringArray(item.ingredients)
+      : splitIngredients(ingredientsText),
+    isVerified: Boolean(item.isVerified),
+    isActive: Boolean(item.isActive),
+    source: String(item.source ?? ""),
+    sourceUrl: item.sourceUrl ?? null,
     createdAt: String(item.createdAt ?? ""),
     updatedAt: item.updatedAt ?? null,
   };
@@ -126,50 +145,60 @@ function toPayload(input: AdminProductUpsertInput) {
     brand: input.brand.trim(),
     category: input.category.trim(),
     description: input.description?.trim() ?? "",
-    ingredient: input.ingredient?.trim() ?? "",
-    usageGuide: input.usageGuide?.trim() ?? "",
-    price: input.price,
-    currency: input.currency.trim().toUpperCase(),
-    suitableSkinTypes: input.suitableSkinTypes,
-    skinConcerns: input.skinConcerns,
-    keyIngredients: input.keyIngredients,
     imageUrl: input.imageUrl?.trim() ?? "",
-    rating: input.rating,
-    status: input.status,
+    price: input.price ?? null,
+    currency: input.currency.trim().toUpperCase(),
+    skinTypes: input.skinTypes,
+    skinConcerns: input.skinConcerns,
+    usageTime: input.usageTime?.trim() ?? "",
+    howToUse: input.howToUse?.trim() ?? "",
+    ingredients: input.ingredients.trim(),
+    isVerified: input.isVerified,
+    isActive: input.isActive,
+    source: input.source.trim(),
+    sourceUrl: input.sourceUrl?.trim() ?? "",
   };
 }
 
 export async function getAdminProducts(
-  pageIndex = 1,
-  pageSize = 8,
+  page = 1,
+  pageSize = 20,
   options?: {
     search?: string;
     category?: string;
-    status?: "all" | AdminProductStatus;
+    brand?: string;
+    usageTime?: string;
+    isActive?: "all" | "true" | "false";
+    isVerified?: "all" | "true" | "false";
+    source?: string;
+    hasImage?: "all" | "true" | "false";
+    hasIngredients?: "all" | "true" | "false";
     sortBy?: string;
     sortDirection?: "asc" | "desc";
   }
 ): Promise<ApiResponse<AdminProductsPagedData>> {
   const params = new URLSearchParams({
-    pageIndex: String(pageIndex),
+    pageIndex: String(page),
     pageSize: String(pageSize),
-    sortBy: options?.sortBy ?? "createdAt",
+    sortBy: options?.sortBy ?? "updatedAt",
     sortDirection: options?.sortDirection ?? "desc",
   });
 
-  const trimmedSearch = options?.search?.trim();
-  if (trimmedSearch) {
-    params.set("search", trimmedSearch);
-  }
+  const appendIfPresent = (key: string, value?: string) => {
+    if (value && value.trim() && value !== "all") {
+      params.set(key, value.trim());
+    }
+  };
 
-  const trimmedCategory = options?.category?.trim();
-  if (trimmedCategory && trimmedCategory.toLowerCase() !== "all") {
-    params.set("category", trimmedCategory);
-  }
-
-  if (options?.status && options.status !== "all") {
-    params.set("status", options.status);
-  }
+  appendIfPresent("search", options?.search);
+  appendIfPresent("category", options?.category);
+  appendIfPresent("brand", options?.brand);
+  appendIfPresent("usageTime", options?.usageTime);
+  appendIfPresent("source", options?.source);
+  appendIfPresent("isActive", options?.isActive);
+  appendIfPresent("isVerified", options?.isVerified);
+  appendIfPresent("hasImage", options?.hasImage);
+  appendIfPresent("hasIngredients", options?.hasIngredients);
 
   const response = await apiRequest<PagedResponse<ProductApiShape>>(
     `/admin/products?${params.toString()}`,
@@ -188,12 +217,16 @@ export async function getAdminProducts(
     message: response.message,
     content: {
       items,
-      pageIndex: response.content.pageIndex ?? pageIndex,
+      page: response.content.page ?? page,
       pageSize: response.content.pageSize ?? pageSize,
-      totalRow: response.content.totalRow ?? items.length,
+      totalItems: response.content.totalItems ?? items.length,
       totalPages: response.content.totalPages ?? 1,
     },
   };
+}
+
+export async function getAdminProductsSummary(): Promise<ApiResponse<AdminProductsSummary>> {
+  return apiRequest<AdminProductsSummary>("/admin/products/summary", { method: "GET" }, { requiresAuth: true });
 }
 
 export async function getAdminProductDetail(productId: string): Promise<ApiResponse<AdminProductItem>> {
@@ -238,10 +271,7 @@ export async function createAdminProduct(input: AdminProductUpsertInput): Promis
   };
 }
 
-export async function updateAdminProduct(
-  productId: string,
-  input: AdminProductUpsertInput
-): Promise<ApiResponse<AdminProductItem>> {
+export async function updateAdminProduct(productId: string, input: AdminProductUpsertInput): Promise<ApiResponse<AdminProductItem>> {
   const response = await apiRequest<ProductApiShape>(
     `/admin/products/${productId}`,
     {
@@ -249,6 +279,25 @@ export async function updateAdminProduct(
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(toPayload(input)),
     },
+    { requiresAuth: true }
+  );
+
+  if (!response.success || !response.content) {
+    return buildFailureResponse<AdminProductItem>(response.message, response.statusCode);
+  }
+
+  return {
+    success: true,
+    statusCode: response.statusCode,
+    message: response.message,
+    content: mapProduct(response.content),
+  };
+}
+
+export async function toggleAdminProductActive(productId: string): Promise<ApiResponse<AdminProductItem>> {
+  const response = await apiRequest<ProductApiShape>(
+    `/admin/products/${productId}/toggle-active`,
+    { method: "PATCH" },
     { requiresAuth: true }
   );
 
@@ -281,4 +330,12 @@ export async function deleteAdminProduct(productId: string): Promise<ApiResponse
     message: response.message,
     content: null,
   };
+}
+
+export async function importAdminProductsCsv(): Promise<ApiResponse<ProductImportResult>> {
+  return apiRequest<ProductImportResult>(
+    "/admin/products/import-csv",
+    { method: "POST" },
+    { requiresAuth: true }
+  );
 }

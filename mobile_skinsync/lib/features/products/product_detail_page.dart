@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../core/config/app_config.dart';
+import '../../core/l10n/app_locale.dart';
 import '../../core/models/app_models.dart';
 import '../../core/state/app_state.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_card.dart';
+import '../../core/widgets/product_image.dart';
 import '../../core/widgets/app_scaffold.dart';
+import '../../core/widgets/loading_skeleton.dart';
 import '../../core/widgets/section_header.dart';
 import '../../core/widgets/status_chip.dart';
 
@@ -22,18 +24,66 @@ class ProductDetailPage extends StatefulWidget {
 }
 
 class _ProductDetailPageState extends State<ProductDetailPage> {
+  ProductDetail? _detail;
+  bool _isLoadingDetail = true;
   bool _isAddingMorning = false;
   bool _isAddingEvening = false;
   bool _isAddingBoth = false;
   bool _isCheckingIngredients = false;
+  String? _errorMessage;
 
-  AiRecommendedProduct get _product => widget.args.product;
+  AiRecommendedProduct? get _recommendation => widget.args.recommendationItem;
 
-  Future<void> _addToRoutine(String selection) async {
+  @override
+  void initState() {
+    super.initState();
+    _loadDetail();
+  }
+
+  Future<void> _loadDetail() async {
     if (!mounted) {
       return;
     }
 
+    final locale = AppLocale.of(context);
+    setState(() {
+      _isLoadingDetail = true;
+      _errorMessage = null;
+    });
+
+    final appState = context.read<AppState>();
+    try {
+      final detail = await appState.getProductDetail(widget.args.productId);
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _detail = detail.mergeRecommendation(
+          _recommendation,
+          alreadyInRoutineOverride: widget.args.alreadyInRoutine,
+        );
+      });
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _errorMessage =
+            appState.errorMessage ?? locale.tr('products_load_error');
+      });
+    } finally {
+      if (mounted) {
+        setState(() => _isLoadingDetail = false);
+      }
+    }
+  }
+
+  Future<void> _addToRoutine(String selection) async {
+    if (!mounted || _detail == null) {
+      return;
+    }
+
+    final locale = AppLocale.of(context);
     setState(() {
       _isAddingMorning = selection == 'Morning';
       _isAddingEvening = selection == 'Evening';
@@ -63,7 +113,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            appState.errorMessage ?? 'Could not add this product right now.',
+            appState.errorMessage ?? locale.tr('products_error_add_routine'),
           ),
         ),
       );
@@ -83,13 +133,18 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
     required String selection,
     required bool allowConflicts,
   }) async {
+    final detail = _detail;
+    if (detail == null) {
+      return;
+    }
+
     final targets = selection == 'Both'
         ? const ['Morning', 'Evening']
         : [selection];
 
     for (final target in targets) {
       final result = await appState.addProductToRoutine(
-        productId: _product.productId,
+        productId: detail.id,
         routineType: target,
         allowConflicts: allowConflicts,
       );
@@ -104,23 +159,24 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
               _ConflictWarningSheet(warnings: result.warnings),
         );
         if (confirmed == true && mounted) {
-          await _submitAddToRoutine(
-            appState: appState,
-            selection: target,
+          await appState.addProductToRoutine(
+            productId: detail.id,
+            routineType: target,
             allowConflicts: true,
           );
+          continue;
         }
+        return;
       }
     }
   }
 
   Future<void> _checkIngredients() async {
-    final ingredientsText = _product.ingredientsText?.trim() ?? '';
-    if (ingredientsText.isEmpty) {
+    final detail = _detail;
+    final locale = AppLocale.of(context);
+    if (detail == null || !detail.hasIngredientData) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('This product does not have ingredient data yet.'),
-        ),
+        SnackBar(content: Text(locale.tr('products_no_ingredient_data'))),
       );
       return;
     }
@@ -130,8 +186,8 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
 
     try {
       final result = await appState.checkIngredients(
-        productName: _product.name,
-        ingredientsText: ingredientsText,
+        productName: detail.name,
+        ingredientsText: detail.ingredients.join(', '),
       );
       if (!mounted) {
         return;
@@ -140,7 +196,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
         context: context,
         isScrollControlled: true,
         builder: (context) => _BottomSheetFrame(
-          title: 'Ingredient check',
+          title: locale.tr('products_ingredient_check_title'),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
@@ -156,6 +212,24 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                   context,
                 ).textTheme.bodySmall?.copyWith(color: AppColors.mutedText),
               ),
+              if (result.beneficialIngredients.isNotEmpty) ...[
+                const SizedBox(height: AppSpacing.md),
+                _ReasonGroup(
+                  title: 'Beneficial ingredients',
+                  items: result.beneficialIngredients
+                      .map((item) => '${item.ingredient}: ${item.reason}')
+                      .toList(),
+                ),
+              ],
+              if (result.cautionIngredients.isNotEmpty) ...[
+                const SizedBox(height: AppSpacing.md),
+                _ReasonGroup(
+                  title: 'Caution ingredients',
+                  items: result.cautionIngredients
+                      .map((item) => '${item.ingredient}: ${item.reason}')
+                      .toList(),
+                ),
+              ],
               if (result.warnings.isNotEmpty) ...[
                 const SizedBox(height: AppSpacing.md),
                 Wrap(
@@ -170,6 +244,13 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                         ),
                       )
                       .toList(),
+                ),
+              ],
+              if (result.usageSuggestion.trim().isNotEmpty) ...[
+                const SizedBox(height: AppSpacing.md),
+                _DetailBlock(
+                  title: 'Recommendation note',
+                  body: result.usageSuggestion,
                 ),
               ],
             ],
@@ -197,10 +278,10 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    final product = _product;
+    final locale = AppLocale.of(context);
     return AppScaffold(
-      title: product.name,
-      subtitle: 'Why this product fits your skin and how to use it.',
+      title: _recommendation?.name ?? locale.tr('products_detail'),
+      subtitle: locale.tr('products_based_on_ai'),
       compactHeader: true,
       body: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
@@ -211,223 +292,306 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
           AppSpacing.pageBottomPaddingWithActions,
         ),
         children: [
-          AppCard(
-            variant: AppCardVariant.hero,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _ProductImage(product: product),
-                    const SizedBox(width: AppSpacing.md),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Wrap(
-                            spacing: AppSpacing.xs,
-                            runSpacing: AppSpacing.xs,
-                            children: [
-                              StatusChip(
-                                label: product.category,
-                                icon: Icons.inventory_2_outlined,
-                              ),
-                              StatusChip(
-                                label:
-                                    '${product.matchPercent ?? product.matchScore}% match',
-                                icon: Icons.auto_awesome_rounded,
-                                tone: StatusChipTone.accent,
-                              ),
-                              if (product.alreadyInRoutine)
-                                const StatusChip(
-                                  label: 'Already in routine',
-                                  icon: Icons.check_circle_outline_rounded,
-                                  tone: StatusChipTone.success,
-                                ),
-                            ],
-                          ),
-                          const SizedBox(height: AppSpacing.sm),
-                          Text(
-                            product.brand.trim().isEmpty
-                                ? 'Brand not provided'
-                                : product.brand,
-                            style: Theme.of(context).textTheme.titleMedium
-                                ?.copyWith(fontWeight: FontWeight.w700),
-                          ),
-                          const SizedBox(height: AppSpacing.xs),
-                          Text(
-                            '${product.price.toStringAsFixed(0)} ${product.currency}',
-                            style: Theme.of(context).textTheme.titleLarge
-                                ?.copyWith(
-                                  fontFamily: 'PlusJakartaSans',
-                                  fontWeight: FontWeight.w800,
-                                  fontFeatures: const [
-                                    FontFeature.tabularFigures(),
-                                  ],
-                                ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                if (product.description?.trim().isNotEmpty == true) ...[
-                  const SizedBox(height: AppSpacing.md),
+          if (_isLoadingDetail) const _DetailLoadingState(),
+          if (!_isLoadingDetail && _errorMessage != null)
+            AppCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   Text(
-                    product.description!,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: AppColors.mutedText,
+                    locale.tr('products_load_error'),
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
-                ],
-              ],
-            ),
-          ),
-          const SizedBox(height: AppSpacing.sectionGap),
-          AppCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SectionHeader(
-                  icon: Icons.psychology_alt_outlined,
-                  title: 'AI explanation',
-                  subtitle:
-                      'Real recommendation context from the saved session.',
-                ),
-                const SizedBox(height: AppSpacing.md),
-                _DetailText(
-                  product.whyRecommended?.trim().isNotEmpty == true
-                      ? product.whyRecommended!
-                      : product.aiReason,
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: AppSpacing.sectionGap),
-          AppCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SectionHeader(
-                  icon: Icons.warning_amber_rounded,
-                  title: 'Cautions',
-                  subtitle: 'Only show warnings that exist for this product.',
-                ),
-                const SizedBox(height: AppSpacing.md),
-                if (product.cautions.isEmpty && product.warnings.isEmpty)
-                  const _EmptyCopy(
-                    'No caution or conflict notes were provided yet.',
-                  )
-                else
-                  Wrap(
-                    spacing: AppSpacing.xs,
-                    runSpacing: AppSpacing.xs,
-                    children:
-                        (product.cautions.isNotEmpty
-                                ? product.cautions
-                                : product.warnings)
-                            .map(
-                              (warning) => StatusChip(
-                                label: warning,
-                                icon: Icons.warning_amber_rounded,
-                                tone: StatusChipTone.warning,
-                              ),
-                            )
-                            .toList(),
-                  ),
-              ],
-            ),
-          ),
-          const SizedBox(height: AppSpacing.sectionGap),
-          AppCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SectionHeader(
-                  icon: Icons.science_outlined,
-                  title: 'Ingredients',
-                  subtitle:
-                      'Use the real product ingredient list when available.',
-                ),
-                const SizedBox(height: AppSpacing.md),
-                if (product.ingredientsText?.trim().isNotEmpty != true)
-                  const _EmptyCopy(
-                    'Ingredient details are not available for this product yet.',
-                  )
-                else ...[
-                  _DetailText(product.ingredientsText!),
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(_errorMessage!),
                   const SizedBox(height: AppSpacing.md),
                   AppButton(
-                    label: 'Check ingredients',
-                    variant: AppButtonVariant.secondary,
-                    isLoading: _isCheckingIngredients,
-                    onPressed: _isCheckingIngredients
-                        ? null
-                        : _checkIngredients,
+                    label: locale.tr('common_retry'),
+                    onPressed: _loadDetail,
                   ),
                 ],
-              ],
+              ),
             ),
-          ),
-          const SizedBox(height: AppSpacing.sectionGap),
-          AppCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SectionHeader(
-                  icon: Icons.schedule_outlined,
-                  title: 'How to use',
-                  subtitle:
-                      'Backend-provided guidance for cadence and routine placement.',
-                ),
-                const SizedBox(height: AppSpacing.md),
-                _DetailText(
-                  product.usageGuide?.trim().isNotEmpty == true
-                      ? product.usageGuide!
-                      : 'Usage guidance has not been provided yet.',
-                  muted: product.usageGuide?.trim().isNotEmpty != true,
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: AppSpacing.sectionGap),
-          AppCard(
-            variant: AppCardVariant.accent,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SectionHeader(
-                  icon: Icons.playlist_add_check_circle_outlined,
-                  title: 'Add to routine',
-                  subtitle: 'Choose exactly where this product should appear.',
-                ),
-                const SizedBox(height: AppSpacing.md),
-                AppButton(
-                  label: 'Add to Morning',
-                  isLoading: _isAddingMorning,
-                  onPressed: _isBusy ? null : () => _addToRoutine('Morning'),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                AppButton(
-                  label: 'Add to Evening',
-                  variant: AppButtonVariant.secondary,
-                  isLoading: _isAddingEvening,
-                  onPressed: _isBusy ? null : () => _addToRoutine('Evening'),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                AppButton(
-                  label: 'Add to Both',
-                  variant: AppButtonVariant.secondary,
-                  isLoading: _isAddingBoth,
-                  onPressed: _isBusy ? null : () => _addToRoutine('Both'),
-                ),
-              ],
-            ),
-          ),
+          if (!_isLoadingDetail && _errorMessage == null && _detail != null)
+            ..._buildContent(context, _detail!),
         ],
       ),
     );
+  }
+
+  List<Widget> _buildContent(BuildContext context, ProductDetail product) {
+    final locale = AppLocale.of(context);
+    final cautions = product.cautions;
+    final conflicts = product.conflicts;
+    final matchValue = product.matchPercent;
+
+    return [
+      AppCard(
+        variant: AppCardVariant.hero,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ProductImage(
+                  imageUrl: product.imageUrl,
+                  width: 118,
+                  height: 118,
+                  radius: 26,
+                  iconSize: 36,
+                  placeholderTitle: product.brand.trim().isEmpty
+                      ? product.name
+                      : product.brand,
+                  placeholderSubtitle: product.category,
+                ),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        product.name,
+                        style: Theme.of(context).textTheme.headlineSmall
+                            ?.copyWith(fontWeight: FontWeight.w700),
+                      ),
+                      const SizedBox(height: AppSpacing.xs),
+                      Text(
+                        product.brand.trim().isEmpty
+                            ? locale.tr('products_detail_brand_not_provided')
+                            : product.brand,
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(color: AppColors.mutedText),
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      Wrap(
+                        spacing: AppSpacing.xs,
+                        runSpacing: AppSpacing.xs,
+                        children: [
+                          StatusChip(
+                            label: product.category,
+                            icon: Icons.inventory_2_outlined,
+                          ),
+                          if (matchValue != null)
+                            StatusChip(
+                              label:
+                                  locale
+                                      .tr('product_match_percent')
+                                      .replaceAll('{percent}', '$matchValue')
+                                      .contains('{percent}')
+                                  ? '$matchValue% match'
+                                  : '$matchValue% ${locale.tr('product_match_percent')}',
+                              icon: Icons.auto_awesome_rounded,
+                              tone: StatusChipTone.accent,
+                            ),
+                          if (product.alreadyInRoutine)
+                            StatusChip(
+                              label: locale.tr(
+                                'products_detail_already_in_routine',
+                              ),
+                              icon: Icons.check_circle_outline_rounded,
+                              tone: StatusChipTone.success,
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Text(
+              '${product.price.toStringAsFixed(0)} ${product.currency}',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w800,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
+            ),
+            if (product.description?.trim().isNotEmpty == true) ...[
+              const SizedBox(height: AppSpacing.md),
+              _DetailText(product.description!),
+            ],
+          ],
+        ),
+      ),
+      const SizedBox(height: AppSpacing.sectionGap),
+      AppCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SectionHeader(
+              icon: Icons.psychology_alt_outlined,
+              title: locale.tr('products_detail_why_recommended'),
+              subtitle: locale.tr('products_detail_why_recommended_subtitle'),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            _DetailText(
+              product.whyRecommended?.trim().isNotEmpty == true
+                  ? product.whyRecommended!
+                  : locale.tr('products_detail_why_recommended_no_ai'),
+              muted: product.whyRecommended?.trim().isNotEmpty != true,
+            ),
+          ],
+        ),
+      ),
+      const SizedBox(height: AppSpacing.sectionGap),
+      AppCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SectionHeader(
+              icon: Icons.warning_amber_rounded,
+              title: locale.tr('products_detail_cautions_conflicts'),
+              subtitle: locale.tr(
+                'products_detail_cautions_conflicts_subtitle',
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            if (cautions.isEmpty && conflicts.isEmpty)
+              _EmptyCopy(locale.tr('products_detail_cautions_conflicts_none'))
+            else ...[
+              if (cautions.isNotEmpty)
+                _ChipGroup(tone: StatusChipTone.warning, items: cautions),
+              if (cautions.isNotEmpty && conflicts.isNotEmpty)
+                const SizedBox(height: AppSpacing.sm),
+              if (conflicts.isNotEmpty)
+                _ChipGroup(
+                  tone: StatusChipTone.danger,
+                  icon: Icons.error_outline_rounded,
+                  items: conflicts,
+                ),
+            ],
+          ],
+        ),
+      ),
+      const SizedBox(height: AppSpacing.sectionGap),
+      AppCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SectionHeader(
+              icon: Icons.science_outlined,
+              title: locale.tr('products_ingredients'),
+              subtitle: locale.tr('products_detail_ingredients_subtitle'),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            if (!product.hasIngredientData)
+              _EmptyCopy(locale.tr('products_no_ingredient_data'))
+            else ...[
+              _ReasonGroup(
+                title: locale.tr('products_detail_ingredient_list'),
+                items: product.ingredients,
+              ),
+              if (product.keyIngredients.isNotEmpty) ...[
+                const SizedBox(height: AppSpacing.md),
+                _ReasonGroup(
+                  title: locale.tr('products_detail_key_ingredients'),
+                  items: product.keyIngredients,
+                ),
+              ],
+              const SizedBox(height: AppSpacing.md),
+              AppButton(
+                label: locale.tr('products_ingredient_check_title'),
+                variant: AppButtonVariant.secondary,
+                isLoading: _isCheckingIngredients,
+                onPressed: _isCheckingIngredients ? null : _checkIngredients,
+              ),
+            ],
+          ],
+        ),
+      ),
+      const SizedBox(height: AppSpacing.sectionGap),
+      AppCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SectionHeader(
+              icon: Icons.schedule_outlined,
+              title: locale.tr('products_how_to_use'),
+              subtitle: locale.tr('products_detail_how_to_use_subtitle'),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            if (product.usageTime?.trim().isNotEmpty == true)
+              StatusChip(
+                label: product.usageTime!,
+                icon: Icons.wb_twilight_outlined,
+                tone: StatusChipTone.accent,
+              ),
+            if (product.usageTime?.trim().isNotEmpty == true)
+              const SizedBox(height: AppSpacing.sm),
+            _DetailText(
+              product.howToUse?.trim().isNotEmpty == true
+                  ? product.howToUse!
+                  : locale.tr('products_detail_how_to_use_none'),
+              muted: product.howToUse?.trim().isNotEmpty != true,
+            ),
+            if (product.skinTypes.isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.md),
+              _ReasonGroup(
+                title: locale.tr('products_detail_skin_types'),
+                items: product.skinTypes,
+              ),
+            ],
+            if (product.skinConcerns.isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.md),
+              _ReasonGroup(
+                title: locale.tr('products_detail_skin_concerns'),
+                items: product.skinConcerns,
+              ),
+            ],
+          ],
+        ),
+      ),
+      const SizedBox(height: AppSpacing.sectionGap),
+      AppCard(
+        variant: AppCardVariant.accent,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SectionHeader(
+              icon: Icons.playlist_add_check_circle_outlined,
+              title: locale.tr('products_add_to_routine'),
+              subtitle: locale.tr('products_detail_add_to_routine_subtitle'),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            AppButton(
+              label: product.alreadyInRoutine
+                  ? locale.tr('products_detail_added_label')
+                  : locale.tr('products_detail_add_morning'),
+              isLoading: _isAddingMorning,
+              onPressed: _isBusy || product.alreadyInRoutine
+                  ? null
+                  : () => _addToRoutine('Morning'),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            AppButton(
+              label: product.alreadyInRoutine
+                  ? locale.tr('products_detail_added_label')
+                  : locale.tr('products_detail_add_evening'),
+              variant: AppButtonVariant.secondary,
+              isLoading: _isAddingEvening,
+              onPressed: _isBusy || product.alreadyInRoutine
+                  ? null
+                  : () => _addToRoutine('Evening'),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            AppButton(
+              label: product.alreadyInRoutine
+                  ? locale.tr('products_detail_added_label')
+                  : locale.tr('products_detail_add_both'),
+              variant: AppButtonVariant.secondary,
+              isLoading: _isAddingBoth,
+              onPressed: _isBusy || product.alreadyInRoutine
+                  ? null
+                  : () => _addToRoutine('Both'),
+            ),
+          ],
+        ),
+      ),
+    ];
   }
 
   bool get _isBusy =>
@@ -437,40 +601,37 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
       _isCheckingIngredients;
 }
 
-class _ProductImage extends StatelessWidget {
-  const _ProductImage({required this.product});
-
-  final AiRecommendedProduct product;
+class _DetailLoadingState extends StatelessWidget {
+  const _DetailLoadingState();
 
   @override
   Widget build(BuildContext context) {
-    final raw = product.imageUrl?.trim() ?? '';
-    final url = raw.isEmpty
-        ? ''
-        : (raw.startsWith('http') ? raw : '${AppConfig.apiBaseUrl}$raw');
-
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(24),
-      child: Container(
-        width: 112,
-        height: 112,
-        color: AppColors.surfaceStrong,
-        child: url.isEmpty
-            ? const Icon(
-                Icons.shopping_bag_outlined,
-                color: AppColors.primaryDark,
-                size: 34,
-              )
-            : Image.network(
-                url,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => const Icon(
-                  Icons.image_not_supported_outlined,
-                  color: AppColors.primaryDark,
-                  size: 34,
-                ),
-              ),
-      ),
+    return Column(
+      children: const [
+        AppCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              LoadingSkeleton(height: 132, radius: 28),
+              SizedBox(height: AppSpacing.md),
+              LoadingSkeleton(width: 220, height: 18),
+              SizedBox(height: AppSpacing.sm),
+              LoadingSkeleton(width: 160, height: 14),
+            ],
+          ),
+        ),
+        SizedBox(height: AppSpacing.sectionGap),
+        AppCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              LoadingSkeleton(width: 180, height: 18),
+              SizedBox(height: AppSpacing.md),
+              LoadingSkeleton(height: 84, radius: 22),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
@@ -509,6 +670,85 @@ class _EmptyCopy extends StatelessWidget {
   }
 }
 
+class _ReasonGroup extends StatelessWidget {
+  const _ReasonGroup({required this.title, required this.items});
+
+  final String title;
+  final List<String> items;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        ...items.map(
+          (item) => Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Text(
+              '- $item',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ChipGroup extends StatelessWidget {
+  const _ChipGroup({
+    required this.items,
+    required this.tone,
+    this.icon = Icons.warning_amber_rounded,
+  });
+
+  final List<String> items;
+  final StatusChipTone tone;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: AppSpacing.xs,
+      runSpacing: AppSpacing.xs,
+      children: items
+          .map((item) => StatusChip(label: item, icon: icon, tone: tone))
+          .toList(),
+    );
+  }
+}
+
+class _DetailBlock extends StatelessWidget {
+  const _DetailBlock({required this.title, required this.body});
+
+  final String title;
+  final String body;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        Text(body, style: Theme.of(context).textTheme.bodyMedium),
+      ],
+    );
+  }
+}
+
 class _BottomSheetFrame extends StatelessWidget {
   const _BottomSheetFrame({required this.title, required this.child});
 
@@ -530,7 +770,7 @@ class _BottomSheetFrame extends StatelessWidget {
                 width: 44,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: AppColors.border,
+                  color: AppColors.outline,
                   borderRadius: BorderRadius.circular(999),
                 ),
               ),
@@ -558,8 +798,9 @@ class _ConflictWarningSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
     return _BottomSheetFrame(
-      title: 'Check routine conflicts',
+      title: locale.tr('products_conflict_warning_title'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -592,7 +833,7 @@ class _ConflictWarningSheet extends StatelessWidget {
             ),
           ),
           AppButton(
-            label: 'Add anyway',
+            label: locale.tr('products_add_anyway_action'),
             onPressed: () => Navigator.pop(context, true),
           ),
         ],

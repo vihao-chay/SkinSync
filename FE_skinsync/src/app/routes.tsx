@@ -1,265 +1,182 @@
-import { createBrowserRouter, Navigate, Outlet, useLocation, useRouteError } from "react-router";
+import { createBrowserRouter, Navigate, Outlet, useRouteError } from "react-router";
+import { AppLayout } from "./layouts/AppLayout";
+import { AdminLayout } from "./layouts/AdminLayout";
+import { PublicLayout } from "./layouts/PublicLayout";
 import { LandingPage } from "./pages/LandingPage";
-import { QuizPage } from "./pages/QuizPage";
-import { UploadPage } from "./pages/UploadPage";
-import { SkinAnalysisPage } from "./pages/SkinAnalysisPage";
-import { RoutinePage } from "./pages/RoutinePage";
-import { ProgressPage } from "./pages/ProgressPage";
-import { CheckInPage } from "./pages/CheckInPage";
 import { LoginPage } from "./pages/LoginPage";
-import { ProfilePage } from "./pages/ProfilePage";
-import { AdminDashboardPage } from "./pages/admin/AdminDashboardPage";
-import { AdminProductsPage } from "./pages/admin/AdminProductsPage";
-import { AdminAIConfigPage } from "./pages/admin/AdminAIConfigPage";
-import { AdminUsersPage } from "./pages/admin/AdminUsersPage";
-import { AdminProfilePage } from "./pages/admin/AdminProfilePage";
 import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
 import { ResetPasswordPage } from "./pages/ResetPasswordPage";
-import { SecuritySettingsPage } from "./pages/SecuritySettingsPage";
-import { Navigation } from "./components/Navigation";
 import { AuthCallbackPage } from "./pages/AuthCallbackPage";
 import { BlogPage } from "./pages/BlogPage";
 import { TroGiupPage } from "./pages/TroGiupPage";
 import { ChinhSachBaoMatPage } from "./pages/ChinhSachBaoMatPage";
 import { DieuKhoanSuDungPage } from "./pages/DieuKhoanSuDungPage";
-import { SubscriptionPage } from "./pages/SubscriptionPage";
 import { useAuth } from "./contexts/AuthContext";
-
-function MainLayout() {
-  return (
-    <>
-      <Navigation />
-      <Outlet />
-    </>
-  );
-}
-
-function AdminLayout() {
-  return <Outlet />;
-}
+import {
+  ContactPage,
+  FeaturesPage,
+  PricingPage,
+  AboutPage,
+  FaqPage,
+} from "./pages/web/PublicPages";
+import { AppAnalysisPage } from "./pages/app/AppAnalysisPage";
+import { AppChatPage } from "./pages/app/AppChatPage";
+import { AppCheckUpPage } from "./pages/app/AppCheckUpPage";
+import { AppDashboardPage } from "./pages/app/AppDashboardPage";
+import { AppOnboardingPage } from "./pages/app/AppOnboardingPage";
+import { AppProductDetailPage } from "./pages/app/AppProductDetailPage";
+import { AppProductsPage } from "./pages/app/AppProductsPage";
+import { AppRecommendationsPage } from "./pages/app/AppRecommendationsPage";
+import { AppProgressPage } from "./pages/app/AppProgressPage";
+import { AppRoutinePage } from "./pages/app/AppRoutinePage";
+import { AppSettingsPage } from "./pages/app/AppSettingsPage";
+import { AppSkinProfilePage } from "./pages/app/AppSkinProfilePage";
+import { AppSubscriptionPage } from "./pages/app/AppSubscriptionPage";
+import {
+  AdminAiLogsWebPage,
+  AdminDashboardWebPage,
+  AdminProductDetailWebPage,
+  AdminProductsWebPage,
+  AdminSubscriptionsWebPage,
+  AdminUserDetailWebPage,
+  AdminUsersWebPage,
+} from "./pages/web/AdminAppPages";
 
 function FullPageLoader() {
   return (
-    <div className="min-h-screen bg-[#f5f5f0] flex items-center justify-center">
-      <div className="w-8 h-8 border-2 border-[#c4a882]/30 border-t-[#c4a882] rounded-full animate-spin" />
+    <div className="flex min-h-screen items-center justify-center bg-[#f9f6f0]">
+      <div className="h-10 w-10 animate-spin rounded-full border-2 border-[#c2a67d]/20 border-t-[#c2a67d]" />
     </div>
   );
 }
 
-function getRecoveryHash() {
-  const hash = window.location.hash;
-  if (!hash) {
-    return null;
-  }
-
-  const hashParams = new URLSearchParams(hash.replace(/^#/, ""));
-  const recoveryType = hashParams.get("type");
-  const accessToken = hashParams.get("access_token");
-
-  if (recoveryType === "recovery" && accessToken) {
-    return hash;
-  }
-
-  return null;
+function UserRoute({ children }: { children: React.ReactNode }) {
+  const { user, isAuthenticated, isInitializing } = useAuth();
+  if (isInitializing) return <FullPageLoader />;
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (user?.role !== "user" && user?.role !== "admin") return <Navigate to="/403" replace />;
+  return <>{children}</>;
 }
 
-function RequireAuth({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isInitializing } = useAuth();
-  const recoveryHash = getRecoveryHash();
-
-  if (recoveryHash) {
-    return <Navigate to={{ pathname: "/reset-password", hash: recoveryHash }} replace />;
-  }
-
-  if (isInitializing) {
-    return <FullPageLoader />;
-  }
-
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
-
+function AdminRoute({ children }: { children: React.ReactNode }) {
+  const { user, isAuthenticated, isInitializing } = useAuth();
+  if (isInitializing) return <FullPageLoader />;
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (user?.role !== "admin") return <Navigate to="/403" replace />;
   return <>{children}</>;
 }
 
 function GuestOnly({ children }: { children: React.ReactNode }) {
-  const location = useLocation();
-  const { isAuthenticated, isInitializing, user } = useAuth();
-  const recoveryHash = getRecoveryHash();
-
-  if (recoveryHash && location.pathname !== "/reset-password") {
-    return <Navigate to={{ pathname: "/reset-password", hash: recoveryHash }} replace />;
-  }
-
-  if (isInitializing) {
-    return <FullPageLoader />;
-  }
-
-  if (isAuthenticated) {
-    if (user?.role === "admin") {
-      return <Navigate to="/admin" replace />;
-    }
-
-    return <Navigate to="/" replace />;
-  }
-
-  return <>{children}</>;
+  const { user, isAuthenticated, isInitializing } = useAuth();
+  if (isInitializing) return <FullPageLoader />;
+  if (!isAuthenticated) return <>{children}</>;
+  return <Navigate to={user?.role === "admin" ? "/admin/dashboard" : "/app/dashboard"} replace />;
 }
 
-function AdminOnly({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isInitializing, user } = useAuth();
-
-  if (isInitializing) {
-    return <FullPageLoader />;
-  }
-
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
-
-  if (user?.role !== "admin") {
-    return <Navigate to="/" replace />;
-  }
-
-  return <>{children}</>;
-}
-
-function ErrorBoundary() {
-  const error = useRouteError() as any;
-  const is404 =
-    error?.status === 404 ||
-    (typeof error?.message === "string" && error.message.includes("No route matches"));
-
+function ForbiddenPage() {
   return (
-    <div className="min-h-screen bg-[#f5f5f0] flex items-center justify-center px-6">
-      <div className="text-center max-w-md">
-        <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-[#6366f1]/10 to-[#a855f7]/10 border border-[#6366f1]/15 flex items-center justify-center mx-auto mb-6 text-4xl">
-          {is404 ? "🔍" : "⚠️"}
-        </div>
-        <h1 className="text-3xl text-[#1a1a2e] mb-2" style={{ fontWeight: 700 }}>
-          {is404 ? "404" : "Có Lỗi Xảy Ra"}
-        </h1>
-        <p className="text-[#6b7280] mb-6">
-          {is404
-            ? "Trang bạn tìm kiếm không tồn tại."
-            : "Đã xảy ra lỗi không mong muốn. Vui lòng thử lại."}
-        </p>
-        <a
-          href="/"
-          className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-[#6366f1] to-[#a855f7] text-white text-sm shadow-lg shadow-[#6366f1]/25 hover:shadow-[#6366f1]/40 transition-all"
-        >
-          ← Về Trang Chủ
-        </a>
+    <div className="flex min-h-screen items-center justify-center bg-[#f9f6f0] px-6">
+      <div className="max-w-md rounded-3xl border border-[#e8d5b7] bg-white/90 p-8 text-center shadow-sm">
+        <h1 className="text-3xl text-[#2c2a28]">403</h1>
+        <p className="mt-2 text-sm text-[#78716c]">You do not have permission to access this area.</p>
       </div>
     </div>
   );
 }
 
+function ErrorBoundary() {
+  const error = useRouteError() as { status?: number };
+  if (error?.status === 403) {
+    return <ForbiddenPage />;
+  }
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-[#f9f6f0] px-6">
+      <div className="max-w-md rounded-3xl border border-[#e8d5b7] bg-white/90 p-8 text-center shadow-sm">
+        <h1 className="text-3xl text-[#2c2a28]">Something went wrong</h1>
+        <p className="mt-2 text-sm text-[#78716c]">Please try again or return to the homepage.</p>
+      </div>
+    </div>
+  );
+}
+
+function LayoutOutlet() {
+  return <Outlet />;
+}
+
 export const router = createBrowserRouter([
   {
-    path: "/",
-    element: <LandingPage />,
-    errorElement: <ErrorBoundary />,
-  },
-  {
-    // Main app layout with Navigation
-    element: (
-      <RequireAuth>
-        <MainLayout />
-      </RequireAuth>
-    ),
+    element: <PublicLayout />,
     errorElement: <ErrorBoundary />,
     children: [
-      { path: "quiz", element: <QuizPage /> },
-      { path: "upload", element: <UploadPage /> },
-      { path: "analysis", element: <SkinAnalysisPage /> },
-      { path: "routine", element: <RoutinePage /> },
-      { path: "progress", element: <ProgressPage /> },
-      { path: "checkin", element: <CheckInPage /> },
-      { path: "profile", element: <ProfilePage /> },
-      { path: "settings/security", element: <SecuritySettingsPage /> },
-      { path: "dashboard", element: <Navigate to="/analysis" replace /> },
+      { path: "/", element: <LandingPage /> },
+      { path: "/features", element: <FeaturesPage /> },
+      { path: "/pricing", element: <PricingPage /> },
+      { path: "/about", element: <AboutPage /> },
+      { path: "/faq", element: <FaqPage /> },
+      { path: "/contact", element: <ContactPage /> },
+      { path: "/blog", element: <BlogPage /> },
+      { path: "/tro-giup", element: <TroGiupPage /> },
+      { path: "/chinh-sach-bao-mat", element: <ChinhSachBaoMatPage /> },
+      { path: "/dieu-khoan-su-dung", element: <DieuKhoanSuDungPage /> },
     ],
   },
   {
-    // Standalone pages (no nav)
-    path: "/login",
-    element: (
-      <GuestOnly>
-        <LoginPage />
-      </GuestOnly>
-    ),
+    element: <GuestOnly><LayoutOutlet /></GuestOnly>,
     errorElement: <ErrorBoundary />,
+    children: [
+      { path: "/login", element: <LoginPage /> },
+      { path: "/register", element: <LoginPage initialMode="register" /> },
+      { path: "/forgot-password", element: <ForgotPasswordPage /> },
+      { path: "/reset-password", element: <ResetPasswordPage /> },
+    ],
+  },
+  { path: "/auth/callback", element: <AuthCallbackPage />, errorElement: <ErrorBoundary /> },
+  {
+    path: "/app",
+    element: <UserRoute><AppLayout /></UserRoute>,
+    errorElement: <ErrorBoundary />,
+    children: [
+      { index: true, element: <Navigate to="/app/dashboard" replace /> },
+      { path: "dashboard", element: <AppDashboardPage /> },
+      { path: "onboarding", element: <AppOnboardingPage /> },
+      { path: "skin-profile", element: <AppSkinProfilePage /> },
+      { path: "analysis", element: <AppAnalysisPage /> },
+      { path: "chat", element: <AppChatPage /> },
+      { path: "routine", element: <AppRoutinePage /> },
+      { path: "products", element: <AppProductsPage /> },
+      { path: "products/:id", element: <AppProductDetailPage /> },
+      { path: "recommendations", element: <AppRecommendationsPage /> },
+      { path: "progress", element: <AppProgressPage /> },
+      { path: "check-up", element: <AppCheckUpPage /> },
+      { path: "subscription", element: <AppSubscriptionPage /> },
+      { path: "settings", element: <AppSettingsPage /> },
+    ],
   },
   {
-    path: "/auth/callback",
-    element: <AuthCallbackPage />,
-    errorElement: <ErrorBoundary />,
-  },
-  {
-    path: "/register",
-    element: (
-      <GuestOnly>
-        <LoginPage initialMode="register" />
-      </GuestOnly>
-    ),
-    errorElement: <ErrorBoundary />,
-  },
-  {
-    path: "/forgot-password",
-    element: <ForgotPasswordPage />,
-    errorElement: <ErrorBoundary />,
-  },
-  {
-    path: "/reset-password",
-    element: <ResetPasswordPage />,
-    errorElement: <ErrorBoundary />,
-  },
-  {
-    // Public content pages
-    path: "/blog",
-    element: <BlogPage />,
-    errorElement: <ErrorBoundary />,
-  },
-  {
-    path: "/tro-giup",
-    element: <TroGiupPage />,
-    errorElement: <ErrorBoundary />,
-  },
-  {
-    path: "/chinh-sach-bao-mat",
-    element: <ChinhSachBaoMatPage />,
-    errorElement: <ErrorBoundary />,
-  },
-  {
-    path: "/dieu-khoan-su-dung",
-    element: <DieuKhoanSuDungPage />,
-    errorElement: <ErrorBoundary />,
-  },
-  {
-    path: "/subscription",
-    element: <SubscriptionPage />,
-    errorElement: <ErrorBoundary />,
-  },
-  {
-    // Admin section
     path: "/admin",
-    element: (
-      <AdminOnly>
-        <AdminLayout />
-      </AdminOnly>
-    ),
+    element: <AdminRoute><AdminLayout /></AdminRoute>,
     errorElement: <ErrorBoundary />,
     children: [
-      { index: true, element: <AdminDashboardPage /> },
-      { path: "users", element: <AdminUsersPage /> },
-      { path: "products", element: <AdminProductsPage /> },
-      { path: "ai-config", element: <AdminAIConfigPage /> },
-      { path: "profile", element: <AdminProfilePage /> },
+      { index: true, element: <Navigate to="/admin/dashboard" replace /> },
+      { path: "dashboard", element: <AdminDashboardWebPage /> },
+      { path: "users", element: <AdminUsersWebPage /> },
+      { path: "users/:id", element: <AdminUserDetailWebPage /> },
+      { path: "products", element: <AdminProductsWebPage /> },
+      { path: "products/:id", element: <AdminProductDetailWebPage /> },
+      { path: "ai-logs", element: <AdminAiLogsWebPage /> },
+      { path: "subscriptions", element: <AdminSubscriptionsWebPage /> },
     ],
   },
-  {
-    path: "*",
-    element: <ErrorBoundary />,
-  },
+  { path: "/403", element: <ForbiddenPage /> },
+
+  { path: "/dashboard", element: <Navigate to="/app/dashboard" replace /> },
+  { path: "/analysis", element: <Navigate to="/app/analysis" replace /> },
+  { path: "/routine", element: <Navigate to="/app/routine" replace /> },
+  { path: "/progress", element: <Navigate to="/app/progress" replace /> },
+  { path: "/checkin", element: <Navigate to="/app/check-up" replace /> },
+  { path: "/profile", element: <Navigate to="/app/settings" replace /> },
+  { path: "/quiz", element: <Navigate to="/app/skin-profile" replace /> },
+  { path: "/subscription", element: <Navigate to="/pricing" replace /> },
+  { path: "*", element: <Navigate to="/" replace /> },
 ]);

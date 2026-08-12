@@ -108,7 +108,7 @@ public class ProductRecommendationService : IProductRecommendationService
         var products = await _dbContext.Products
             .AsNoTracking()
             .Include(x => x.ProductIngredients)
-            .Where(x => x.Status == "active")
+            .Where(x => x.IsActive)
             .ToListAsync(cancellationToken);
 
         if (products.Count == 0)
@@ -155,7 +155,7 @@ public class ProductRecommendationService : IProductRecommendationService
                     recentLogs,
                     conflictRules)
                 .OrderByDescending(x => x.Score)
-                .ThenBy(x => x.Product.Price)
+                .ThenBy(x => x.Product.Price ?? decimal.MaxValue)
                 .ToList();
 
             var ranked = await RankCategoryAsync(

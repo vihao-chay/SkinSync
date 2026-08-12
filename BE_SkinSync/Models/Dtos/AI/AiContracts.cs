@@ -145,7 +145,7 @@ public class AiRecommendedProductDto
     public string Name { get; set; } = string.Empty;
     public string Brand { get; set; } = string.Empty;
     public string Category { get; set; } = string.Empty;
-    public decimal Price { get; set; }
+    public decimal? Price { get; set; }
     public string Currency { get; set; } = "VND";
     public int MatchScore { get; set; }
     public int MatchPercent { get; set; }

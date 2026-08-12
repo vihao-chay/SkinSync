@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../responsive/responsive.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
 
@@ -9,6 +10,7 @@ class AppScaffold extends StatelessWidget {
     required this.title,
     required this.body,
     this.subtitle,
+    this.leading,
     this.headerTrailing,
     this.onRefresh,
     this.contentMaxWidth = AppSpacing.maxContentWidth,
@@ -16,11 +18,13 @@ class AppScaffold extends StatelessWidget {
     this.compactHeader = false,
     this.showBackButton = false,
     this.onBack,
+    this.backIcon = Icons.arrow_back_rounded,
   });
 
   final String title;
   final Widget body;
   final String? subtitle;
+  final Widget? leading;
   final Widget? headerTrailing;
   final Future<void> Function()? onRefresh;
   final double contentMaxWidth;
@@ -28,14 +32,27 @@ class AppScaffold extends StatelessWidget {
   final bool compactHeader;
   final bool showBackButton;
   final VoidCallback? onBack;
+  final IconData backIcon;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final safeBottom = MediaQuery.paddingOf(context).bottom;
-    final topPadding = compactHeader ? 10.0 : 16.0;
+    final horizontalPadding = Responsive.responsiveHorizontalPadding(context);
+    final topPadding = Responsive.headerTopSpacing(
+      context,
+      compact: compactHeader,
+    );
     final bottomPadding = compactHeader ? 8.0 : 14.0;
-    final effectiveBottomSpacing = safeBottom + 8;
+    final effectiveBottomSpacing = Responsive.contentBottomSpacing(
+      context,
+      extra: 8,
+    );
+    final resolvedMaxWidth = Responsive.maxContentWidth(
+      context,
+      mobile: contentMaxWidth,
+      tablet: contentMaxWidth > 720 ? contentMaxWidth : 720,
+      desktop: contentMaxWidth > 1040 ? contentMaxWidth : 1040,
+    );
     final content = onRefresh == null
         ? body
         : RefreshIndicator(
@@ -47,22 +64,24 @@ class AppScaffold extends StatelessWidget {
     return ColoredBox(
       color: AppColors.pageBackground,
       child: SafeArea(
-        bottom: false,
         child: Center(
           child: ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: contentMaxWidth),
+            constraints: BoxConstraints(maxWidth: resolvedMaxWidth),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Padding(
                   padding: EdgeInsets.fromLTRB(
-                    AppSpacing.pagePadding,
+                    horizontalPadding,
                     topPadding,
-                    AppSpacing.pagePadding,
+                    horizontalPadding,
                     bottomPadding,
                   ),
                   child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    crossAxisAlignment:
+                        subtitle == null || subtitle!.trim().isEmpty
+                        ? CrossAxisAlignment.center
+                        : CrossAxisAlignment.start,
                     children: [
                       if (showBackButton) ...[
                         SizedBox.square(
@@ -70,10 +89,7 @@ class AppScaffold extends StatelessWidget {
                           child: IconButton(
                             tooltip: 'Back',
                             padding: EdgeInsets.zero,
-                            icon: const Icon(
-                              Icons.arrow_back_rounded,
-                              size: 22,
-                            ),
+                            icon: Icon(backIcon, size: 22),
                             color: AppColors.heading,
                             onPressed:
                                 onBack ??
@@ -89,11 +105,25 @@ class AppScaffold extends StatelessWidget {
                             Text(
                               title,
                               maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
+                              overflow: TextOverflow.fade,
                               style: theme.textTheme.displaySmall?.copyWith(
                                 fontWeight: FontWeight.w700,
                                 color: AppColors.heading,
-                                fontSize: compactHeader ? 22 : null,
+                                fontSize: compactHeader
+                                    ? Responsive.responsiveValue<double>(
+                                        context,
+                                        mobileSmall: 20,
+                                        mobile: 22,
+                                        tablet: 24,
+                                        desktop: 28,
+                                      )
+                                    : Responsive.responsiveValue<double>(
+                                        context,
+                                        mobileSmall: 26,
+                                        mobile: 28,
+                                        tablet: 32,
+                                        desktop: 36,
+                                      ),
                                 height: compactHeader ? 1.08 : null,
                               ),
                             ),
@@ -105,7 +135,7 @@ class AppScaffold extends StatelessWidget {
                               Text(
                                 subtitle!,
                                 maxLines: compactHeader ? 2 : 3,
-                                overflow: TextOverflow.ellipsis,
+                                overflow: TextOverflow.fade,
                                 style: theme.textTheme.bodyMedium?.copyWith(
                                   color: AppColors.mutedText,
                                   height: compactHeader ? 1.45 : 1.55,

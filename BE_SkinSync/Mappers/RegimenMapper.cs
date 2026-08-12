@@ -8,51 +8,8 @@ public static class RegimenMapper
 {
     public static CurrentRegimenResponseDto ToCurrentRegimenDto(this UserRegimen regimen)
     {
-        var morning = regimen.Items
-            .Where(i => RoutineScheduleHelper.IsMorning(i.RoutineTime))
-            .OrderBy(i => i.StepOrder)
-            .Select(i => new RegimenProductDto
-            {
-                StepId = i.Id,
-                ProductId = i.ProductId,
-                Name = i.Product.Name,
-                Brand = i.Product.Brand,
-                Category = i.Product.Category,
-                Description = i.Product.Description,
-                Ingredient = i.Product.Ingredient,
-                UsageGuide = i.Product.UsageGuide,
-                Instruction = i.Instruction,
-                Purpose = BuildPurpose(i.Product.Category),
-                Frequency = string.IsNullOrWhiteSpace(i.Frequency) ? "Daily" : i.Frequency,
-                Caution = BuildCaution(i.Product.Ingredient),
-                Price = i.Product.Price,
-                ImageUrl = i.Product.ImageUrl,
-                StepOrder = i.StepOrder
-            })
-            .ToList();
-
-        var evening = regimen.Items
-            .Where(i => RoutineScheduleHelper.IsEvening(i.RoutineTime))
-            .OrderBy(i => i.StepOrder)
-            .Select(i => new RegimenProductDto
-            {
-                StepId = i.Id,
-                ProductId = i.ProductId,
-                Name = i.Product.Name,
-                Brand = i.Product.Brand,
-                Category = i.Product.Category,
-                Description = i.Product.Description,
-                Ingredient = i.Product.Ingredient,
-                UsageGuide = i.Product.UsageGuide,
-                Instruction = i.Instruction,
-                Purpose = BuildPurpose(i.Product.Category),
-                Frequency = string.IsNullOrWhiteSpace(i.Frequency) ? "Daily" : i.Frequency,
-                Caution = BuildCaution(i.Product.Ingredient),
-                Price = i.Product.Price,
-                ImageUrl = i.Product.ImageUrl,
-                StepOrder = i.StepOrder
-            })
-            .ToList();
+        var morning = MapSteps(regimen.Items.Where(i => RoutineScheduleHelper.IsMorning(i.RoutineTime)));
+        var evening = MapSteps(regimen.Items.Where(i => RoutineScheduleHelper.IsEvening(i.RoutineTime)));
 
         return new CurrentRegimenResponseDto
         {
@@ -61,10 +18,78 @@ public static class RegimenMapper
             StartDate = regimen.StartDate,
             EndDate = regimen.EndDate,
             IsCustom = regimen.IsCustom,
-            TotalEstimatedCost = morning.Sum(x => x.Price) + evening.Sum(x => x.Price),
+            TotalEstimatedCost = (morning.Sum(x => x.Price) ?? 0m) + (evening.Sum(x => x.Price) ?? 0m),
             Morning = morning,
             Evening = evening
         };
+    }
+
+    private static List<RegimenProductDto> MapSteps(IEnumerable<RegimenItem> items)
+    {
+        return UniqueItems(items)
+            .OrderBy(i => i.StepOrder)
+            .Select(i => new RegimenProductDto
+            {
+                StepId = i.Id,
+                ProductId = i.ProductId,
+                Name = i.Product.Name,
+                Brand = i.Product.Brand,
+                Category = i.Product.Category,
+                Description = i.Product.Description,
+                Ingredient = i.Product.Ingredient,
+                UsageGuide = i.Product.UsageGuide,
+                Instruction = i.Instruction,
+                Purpose = BuildPurpose(i.Product.Category),
+                Frequency = string.IsNullOrWhiteSpace(i.Frequency) ? "Daily" : i.Frequency,
+                Caution = BuildCaution(i.Product.Ingredient),
+                Price = i.Product.Price,
+                ImageUrl = i.Product.ImageUrl,
+                StepOrder = i.StepOrder
+            })
+            .ToList();
+    }
+
+    private static List<RegimenItem> UniqueItems(IEnumerable<RegimenItem> items)
+    {
+        var seenProductIds = new HashSet<Guid>();
+        var seenProductSignatures = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var unique = new List<RegimenItem>();
+
+        foreach (var item in items.OrderBy(i => i.StepOrder).ThenBy(i => i.CreatedAt))
+        {
+            var productSignature = BuildProductSignature(item);
+            if (!seenProductIds.Add(item.ProductId) ||
+                (!string.IsNullOrWhiteSpace(productSignature) && !seenProductSignatures.Add(productSignature)))
+            {
+                continue;
+            }
+
+            unique.Add(item);
+        }
+
+        return unique;
+    }
+
+    private static string BuildProductSignature(RegimenItem item)
+    {
+        var parts = new[]
+        {
+            NormalizeProductKeyPart(item.Product.Brand),
+            NormalizeProductKeyPart(item.Product.Name),
+            NormalizeProductKeyPart(item.Product.Category)
+        };
+
+        return parts.All(string.IsNullOrWhiteSpace)
+            ? string.Empty
+            : string.Join('|', parts);
+    }
+
+    private static string NormalizeProductKeyPart(string? value)
+    {
+        return string.Join(' ', (value ?? string.Empty)
+            .Trim()
+            .ToLowerInvariant()
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries));
     }
 
     private static string BuildPurpose(string category)

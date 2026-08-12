@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using SkinSync.Base;
 using SkinSync.Data;
+using SkinSync.Helpers;
 using SkinSync.Models.Dtos.Products;
 using SkinSync.Models.Entities;
 
@@ -27,7 +28,9 @@ public class ProductRepository : IProductRepository
     {
         var search = query.Search?.Trim();
         var categoryFilter = query.Category?.Trim();
-        var statusFilter = query.Status?.Trim();
+        var brandFilter = query.Brand?.Trim();
+        var usageTimeFilter = query.UsageTime?.Trim();
+        var sourceFilter = query.Source?.Trim();
 
         var source = _dbContext.Products.AsNoTracking().AsQueryable();
 
@@ -36,7 +39,8 @@ public class ProductRepository : IProductRepository
             source = source.Where(x =>
                 EF.Functions.ILike(x.Name, $"%{search}%") ||
                 EF.Functions.ILike(x.Brand, $"%{search}%") ||
-                EF.Functions.ILike(x.Category, $"%{search}%"));
+                EF.Functions.ILike(x.Category, $"%{search}%") ||
+                (x.Ingredient != null && EF.Functions.ILike(x.Ingredient, $"%{search}%")));
         }
 
         if (!string.IsNullOrWhiteSpace(categoryFilter))
@@ -44,9 +48,50 @@ public class ProductRepository : IProductRepository
             source = source.Where(x => x.Category == categoryFilter);
         }
 
-        if (!string.IsNullOrWhiteSpace(statusFilter))
+        if (!string.IsNullOrWhiteSpace(brandFilter))
         {
-            source = source.Where(x => x.Status == statusFilter);
+            source = source.Where(x => EF.Functions.ILike(x.Brand, $"%{brandFilter}%"));
+        }
+
+        if (!string.IsNullOrWhiteSpace(usageTimeFilter))
+        {
+            source = source.Where(x => x.UsageTime == usageTimeFilter);
+        }
+
+        if (query.IsActive.HasValue)
+        {
+            source = source.Where(x => x.IsActive == query.IsActive.Value);
+        }
+
+        if (query.IsVerified.HasValue)
+        {
+            source = source.Where(x => x.IsVerified == query.IsVerified.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(sourceFilter))
+        {
+            if (string.Equals(sourceFilter, "unknown", StringComparison.OrdinalIgnoreCase))
+            {
+                source = source.Where(x => x.Source == string.Empty);
+            }
+            else
+            {
+                source = source.Where(x => x.Source == sourceFilter);
+            }
+        }
+
+        if (query.HasImage.HasValue)
+        {
+            source = query.HasImage.Value
+                ? source.Where(x => x.ImageUrl != null && x.ImageUrl != string.Empty)
+                : source.Where(x => x.ImageUrl == null || x.ImageUrl == string.Empty);
+        }
+
+        if (query.HasIngredients.HasValue)
+        {
+            source = query.HasIngredients.Value
+                ? source.Where(x => x.Ingredient != null && x.Ingredient != string.Empty)
+                : source.Where(x => x.Ingredient == null || x.Ingredient == string.Empty);
         }
 
         var sortBy = (query.SortBy ?? "createdAt").Trim().ToLowerInvariant();
@@ -63,10 +108,16 @@ public class ProductRepository : IProductRepository
             ("category", true) => source.OrderByDescending(x => x.Category),
             ("price", false) => source.OrderBy(x => x.Price),
             ("price", true) => source.OrderByDescending(x => x.Price),
-            ("rating", false) => source.OrderBy(x => x.Rating),
-            ("rating", true) => source.OrderByDescending(x => x.Rating),
-            ("status", false) => source.OrderBy(x => x.Status),
-            ("status", true) => source.OrderByDescending(x => x.Status),
+            ("usagetime", false) => source.OrderBy(x => x.UsageTime),
+            ("usagetime", true) => source.OrderByDescending(x => x.UsageTime),
+            ("isactive", false) => source.OrderBy(x => x.IsActive),
+            ("isactive", true) => source.OrderByDescending(x => x.IsActive),
+            ("isverified", false) => source.OrderBy(x => x.IsVerified),
+            ("isverified", true) => source.OrderByDescending(x => x.IsVerified),
+            ("source", false) => source.OrderBy(x => x.Source),
+            ("source", true) => source.OrderByDescending(x => x.Source),
+            ("updatedat", false) => source.OrderBy(x => x.UpdatedAt),
+            ("updatedat", true) => source.OrderByDescending(x => x.UpdatedAt),
             ("createdat", false) => source.OrderBy(x => x.CreatedAt),
             _ => source.OrderByDescending(x => x.CreatedAt)
         };
@@ -77,8 +128,11 @@ public class ProductRepository : IProductRepository
             "brand" => "brand",
             "category" => "category",
             "price" => "price",
-            "rating" => "rating",
-            "status" => "status",
+            "usagetime" => "usageTime",
+            "isactive" => "isActive",
+            "isverified" => "isVerified",
+            "source" => "source",
+            "updatedat" => "updatedAt",
             "createdat" => "createdAt",
             _ => "createdAt"
         };
@@ -98,11 +152,30 @@ public class ProductRepository : IProductRepository
             Filters = new Dictionary<string, string?>
             {
                 ["category"] = categoryFilter,
-                ["status"] = statusFilter
+                ["brand"] = brandFilter,
+                ["usageTime"] = usageTimeFilter,
+                ["isActive"] = query.IsActive?.ToString(),
+                ["isVerified"] = query.IsVerified?.ToString(),
+                ["source"] = sourceFilter,
+                ["hasImage"] = query.HasImage?.ToString(),
+                ["hasIngredients"] = query.HasIngredients?.ToString()
             },
             PageIndex = query.PageIndex,
             PageSize = query.PageSize,
             TotalRow = totalRow
+        };
+    }
+
+    public async Task<AdminProductsSummaryDto> GetSummaryAsync(CancellationToken cancellationToken)
+    {
+        var source = _dbContext.Products.AsNoTracking();
+        return new AdminProductsSummaryDto
+        {
+            TotalProducts = await source.CountAsync(cancellationToken),
+            ActiveProducts = await source.CountAsync(x => x.IsActive, cancellationToken),
+            VerifiedProducts = await source.CountAsync(x => x.IsVerified, cancellationToken),
+            ProductsMissingImage = await source.CountAsync(x => x.ImageUrl == null || x.ImageUrl == string.Empty, cancellationToken),
+            ProductsMissingIngredients = await source.CountAsync(x => x.Ingredient == null || x.Ingredient == string.Empty, cancellationToken)
         };
     }
 
@@ -132,9 +205,12 @@ public class ProductRepository : IProductRepository
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task DeleteAsync(Product product, CancellationToken cancellationToken)
+    public async Task SetActiveAsync(Product product, bool isActive, CancellationToken cancellationToken)
     {
-        _dbContext.Products.Remove(product);
+        product.IsActive = isActive;
+        product.Status = ProductCatalogConstants.NormalizeStatusForActiveFlag(product.Status, isActive);
+        product.UpdatedAt = DateTime.UtcNow;
+        _dbContext.Products.Update(product);
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
 }

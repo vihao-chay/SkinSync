@@ -2,6 +2,7 @@ class AppRoutes {
   static const landing = '/';
   static const splash = '/splash';
   static const onboarding = '/onboarding';
+  static const onboardingIntro = '/onboarding/welcome';
   static const login = '/login';
   static const quiz = '/quiz';
   static const upload = '/upload';
@@ -21,6 +22,7 @@ class AppRoutes {
   static const progress = '/progress';
   static const profile = '/profile';
   static const editProfile = '/profile/edit';
+  static const membershipPlans = '/membership/plans';
 
   static const admin = '/admin';
   static const adminUsers = '/admin/users';

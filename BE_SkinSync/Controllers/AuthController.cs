@@ -1,5 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Npgsql;
+using System.IO;
+using System.Net.Sockets;
 using SkinSync.Base;
 using SkinSync.Helpers;
 using SkinSync.Mappers;
@@ -50,7 +54,18 @@ public class AuthController : ControllerBase
             return ResponseEntity<AuthUserResponseDto>.Fail(supabaseResult.ErrorMessage ?? "ÄÄƒng kÃ½ khÃ´ng thÃ nh cÃ´ng.", supabaseResult.StatusCode);
         }
 
-        var user = await _userRepository.GetByEmailAsync(email, cancellationToken);
+        User? user;
+        try
+        {
+            user = await _userRepository.GetByEmailAsync(email, cancellationToken);
+        }
+        catch (Exception ex) when (IsTransientDatabaseException(ex))
+        {
+            return ResponseEntity<AuthUserResponseDto>.Fail(
+                "Database connection is temporarily unavailable. Please try again in a moment.",
+                503);
+        }
+
         if (user is null)
         {
             user = new User
@@ -59,13 +74,23 @@ public class AuthController : ControllerBase
                 FullName = fullName,
                 Email = email,
                 Phone = request.Phone.Trim(),
+                AvatarUrl = "assets/avatars/chibi_01.webp",
                 PasswordHash = string.Empty,
                 Role = "user",
                 Status = UserStatus.Active.ToDbValue(),
                 CreatedAt = DateTime.UtcNow
             };
 
-            await _userRepository.AddAsync(user, cancellationToken);
+            try
+            {
+                await _userRepository.AddAsync(user, cancellationToken);
+            }
+            catch (Exception ex) when (IsTransientDatabaseException(ex))
+            {
+                return ResponseEntity<AuthUserResponseDto>.Fail(
+                    "Database connection is temporarily unavailable. Please try again in a moment.",
+                    503);
+            }
         }
 
         return ResponseEntity<AuthUserResponseDto>.Ok(user.ToAuthUserDto(), "ÄÄƒng kÃ½ thÃ nh cÃ´ng.");
@@ -83,7 +108,18 @@ public class AuthController : ControllerBase
             return ResponseEntity<LoginResponseDto>.Fail(supabaseResult.ErrorMessage ?? "Email hoáº·c máº­t kháº©u khÃ´ng chÃ­nh xÃ¡c.", statusCode);
         }
 
-        var user = await EnsureLocalUserFromSupabaseAsync(supabaseResult.User, cancellationToken);
+        User user;
+        try
+        {
+            user = await EnsureLocalUserFromSupabaseAsync(supabaseResult.User, cancellationToken);
+        }
+        catch (Exception ex) when (IsTransientDatabaseException(ex))
+        {
+            return ResponseEntity<LoginResponseDto>.Fail(
+                "Database connection is temporarily unavailable. Please try again in a moment.",
+                503);
+        }
+
         if (!TryEnsureLoginAllowed(user.Status, out var blockedMessage))
         {
             return ResponseEntity<LoginResponseDto>.Fail(blockedMessage, 403);
@@ -132,7 +168,18 @@ public class AuthController : ControllerBase
             return ResponseEntity<LoginResponseDto>.Fail("MÃ£ xÃ¡c thá»±c Google khÃ´ng há»£p lá»‡.", 401);
         }
 
-        var user = await EnsureLocalUserFromSupabaseAsync(supabaseUser, cancellationToken);
+        User user;
+        try
+        {
+            user = await EnsureLocalUserFromSupabaseAsync(supabaseUser, cancellationToken);
+        }
+        catch (Exception ex) when (IsTransientDatabaseException(ex))
+        {
+            return ResponseEntity<LoginResponseDto>.Fail(
+                "Database connection is temporarily unavailable. Please try again in a moment.",
+                503);
+        }
+
         if (!TryEnsureLoginAllowed(user.Status, out var blockedMessage))
         {
             return ResponseEntity<LoginResponseDto>.Fail(blockedMessage, 403);
@@ -212,7 +259,18 @@ public class AuthController : ControllerBase
     public async Task<ResponseEntity<object>> ForgotPassword([FromBody] ForgotPasswordRequestDto request, CancellationToken cancellationToken)
     {
         var email = request.Email.Trim().ToLowerInvariant();
-        var user = await _userRepository.GetByEmailAsync(email, cancellationToken);
+        User? user;
+        try
+        {
+            user = await _userRepository.GetByEmailAsync(email, cancellationToken);
+        }
+        catch (Exception ex) when (IsTransientDatabaseException(ex))
+        {
+            return ResponseEntity<object>.Fail(
+                "Database connection is temporarily unavailable. Please try again in a moment.",
+                503);
+        }
+
         if (user is null)
         {
             // For security, do not expose whether an email exists or not
@@ -252,6 +310,11 @@ public class AuthController : ControllerBase
     [HttpPost("change-password")]
     public async Task<ResponseEntity<object>> ChangePassword([FromBody] ChangePasswordRequestDto request, CancellationToken cancellationToken)
     {
+        if (HttpContext.TryGetImpersonationContext(out var impersonationContext) && impersonationContext is not null)
+        {
+            return ResponseEntity<object>.Fail("This action is disabled while viewing as user.", 403);
+        }
+
         if (!HttpContext.TryGetUserId(out var id))
         {
             return ResponseEntity<object>.Fail("Thiáº¿u thÃ´ng tin Ä‘á»‹nh danh ngÆ°á»i dÃ¹ng.", 401);
@@ -357,6 +420,40 @@ public class AuthController : ControllerBase
         return ResponseEntity<AuthUserResponseDto>.Ok(user.ToAuthUserDto(), "Cáº­p nháº­t áº£nh Ä‘áº¡i diá»‡n thÃ nh cÃ´ng.");
     }
 
+    [HttpPut("avatar/selection")]
+    public async Task<ResponseEntity<AuthUserResponseDto>> UpdateAvatarSelection(
+        [FromBody] UpdateAvatarSelectionRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        if (!HttpContext.TryGetUserId(out var id))
+        {
+            return ResponseEntity<AuthUserResponseDto>.Fail("Missing user identity.", 401);
+        }
+
+        var avatarUrl = request.AvatarUrl.Trim().Replace('\\', '/');
+        var extension = Path.GetExtension(avatarUrl);
+        var supportedExtensions = new[] { ".webp", ".png", ".jpg", ".jpeg" };
+        if (!avatarUrl.StartsWith("assets/avatars/", StringComparison.Ordinal)
+            || avatarUrl.Contains("..", StringComparison.Ordinal)
+            || !supportedExtensions.Contains(extension, StringComparer.OrdinalIgnoreCase))
+        {
+            return ResponseEntity<AuthUserResponseDto>.Fail("Invalid avatar selection.", 400);
+        }
+
+        var user = await _userRepository.GetByIdAsync(id, cancellationToken);
+        if (user is null)
+        {
+            return ResponseEntity<AuthUserResponseDto>.Fail("User not found.", 404);
+        }
+
+        user.AvatarUrl = avatarUrl;
+        await _userRepository.UpdateAsync(user, cancellationToken);
+
+        return ResponseEntity<AuthUserResponseDto>.Ok(
+            user.ToAuthUserDto(),
+            "Avatar updated successfully.");
+    }
+
     private async Task<User> EnsureLocalUserFromSupabaseAsync(SupabaseUserProfile supabaseUser, CancellationToken cancellationToken)
     {
         var email = supabaseUser.Email.Trim().ToLowerInvariant();
@@ -429,5 +526,22 @@ public class AuthController : ControllerBase
 
         message = string.Empty;
         return true;
+    }
+
+    private static bool IsTransientDatabaseException(Exception exception)
+    {
+        for (Exception? current = exception; current is not null; current = current.InnerException)
+        {
+            if (current is NpgsqlException ||
+                current is TimeoutException ||
+                current is DbUpdateException ||
+                current is IOException ||
+                current is SocketException)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

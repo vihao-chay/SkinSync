@@ -288,9 +288,18 @@ function Navbar() {
           <a href="#experts" className="transition hover:text-skin-gold">Chuyên Gia</a>
         </div>
 
-        <Button asChild className="h-12 rounded-full bg-skin-gold px-6 text-xs font-semibold tracking-[0.16em] text-white shadow-soft-gold hover:bg-skin-goldHover">
-          <a href="#download">TẢI APP NGAY</a>
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button
+            asChild
+            variant="outline"
+            className="hidden h-12 rounded-full border-skin-border bg-skin-surface/90 px-5 text-xs font-semibold tracking-[0.14em] text-skin-textMain shadow-soft-gold hover:bg-[#faf8f3] md:inline-flex"
+          >
+            <Link to="/login">ĐĂNG NHẬP</Link>
+          </Button>
+          <Button asChild className="h-12 rounded-full bg-skin-gold px-6 text-xs font-semibold tracking-[0.16em] text-white shadow-soft-gold hover:bg-skin-goldHover">
+            <a href="#download">TẢI APP NGAY</a>
+          </Button>
+        </div>
       </nav>
     </header>
   );
@@ -317,6 +326,19 @@ function Hero() {
           <p className="mt-7 max-w-xl text-xl font-normal leading-8 text-skin-textMuted">
             Tối ưu ngân sách, Hiểu làn da, Đẹp mỗi ngày
           </p>
+
+          <div className="mt-7 flex flex-wrap items-center gap-3">
+            <Button
+              asChild
+              variant="outline"
+              className="h-12 rounded-full border-skin-border bg-skin-surface/85 px-6 text-sm font-semibold tracking-[0.12em] text-skin-textMain shadow-soft-gold hover:bg-[#faf8f3]"
+            >
+              <Link to="/login">Đăng nhập để tiếp tục</Link>
+            </Button>
+            <Link to="/register" className="text-sm font-medium text-skin-textMuted transition hover:text-skin-gold">
+              Chưa có tài khoản? Tạo tài khoản
+            </Link>
+          </div>
 
           <div id="download" className="mt-10 grid max-w-2xl gap-5 rounded-[2rem] border border-skin-border bg-skin-surface/80 p-5 shadow-soft-gold backdrop-blur-2xl sm:grid-cols-[auto_1fr] scroll-mt-28">
             <div className="flex flex-col items-center gap-3">

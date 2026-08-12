@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/models/app_models.dart';
+import '../../core/l10n/app_locale.dart';
+import '../../core/responsive/responsive.dart';
 import '../../core/routes/app_routes.dart';
 import '../../core/state/app_state.dart';
 import '../../core/theme/app_colors.dart';
@@ -146,7 +148,7 @@ class _AiChatConversationPageState extends State<AiChatConversationPage> {
       }
       final message =
           context.read<AppState>().errorMessage ??
-          'Could not get a reply right now.';
+          AppLocale.of(context, listen: false).tr('ai_chat_error');
       setState(() {
         _messages = [
           ..._messages,
@@ -182,6 +184,7 @@ class _AiChatConversationPageState extends State<AiChatConversationPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: true,
       backgroundColor: AppColors.pageBackground,
       appBar: AppBar(
         title: Text(_title),
@@ -193,131 +196,201 @@ class _AiChatConversationPageState extends State<AiChatConversationPage> {
         top: false,
         child: _loading
             ? const Center(child: CircularProgressIndicator())
-            : Column(
-                children: [
-                  if ((_safetyWarning ?? '').trim().isNotEmpty)
-                    Container(
-                      width: double.infinity,
-                      margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFFF4E8),
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: Text(
-                        _safetyWarning!,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: const Color(0xFF8E4E18),
-                        ),
-                      ),
-                    ),
-                  Expanded(
-                    child: ListView.builder(
-                      controller: _scrollController,
-                      padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
-                      itemCount: _messages.length,
-                      itemBuilder: (context, index) {
-                        final message = _messages[index];
-                        final isUser = message.isUser;
-                        return Align(
-                          alignment: isUser
-                              ? Alignment.centerRight
-                              : Alignment.centerLeft,
-                          child: Container(
-                            constraints: const BoxConstraints(maxWidth: 360),
-                            margin: const EdgeInsets.only(bottom: 10),
-                            padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-                            decoration: BoxDecoration(
-                              color: isUser
-                                  ? AppColors.primaryDark
-                                  : Colors.white.withValues(alpha: 0.96),
-                              borderRadius: BorderRadius.circular(18),
-                            ),
-                            child: Text(
-                              message.content,
-                              style: Theme.of(context).textTheme.bodyMedium
-                                  ?.copyWith(
-                                    color: isUser
-                                        ? Colors.white
-                                        : AppColors.foreground,
-                                    height: 1.35,
-                                  ),
-                            ),
-                          ),
-                        );
-                      },
+            : Center(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxWidth: Responsive.maxContentWidth(
+                      context,
+                      mobile: double.infinity,
+                      tablet: 760,
+                      desktop: 960,
                     ),
                   ),
-                  if (_quickActions.isNotEmpty)
-                    SizedBox(
-                      height: 42,
-                      child: ListView.separated(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        scrollDirection: Axis.horizontal,
-                        itemBuilder: (context, index) {
-                          final action = _quickActions[index];
-                          return ActionChip(
-                            label: Text(action.label),
-                            onPressed: () => _handleAction(action),
-                          );
-                        },
-                        separatorBuilder: (_, _) => const SizedBox(width: 8),
-                        itemCount: _quickActions.length,
-                      ),
-                    ),
-                  Container(
-                    padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.94),
-                      border: Border(
-                        top: BorderSide(
-                          color: AppColors.border.withValues(alpha: 0.35),
+                  child: Column(
+                    children: [
+                      if ((_safetyWarning ?? '').trim().isNotEmpty)
+                        Container(
+                          width: double.infinity,
+                          margin: EdgeInsets.fromLTRB(
+                            Responsive.responsiveHorizontalPadding(context),
+                            8,
+                            Responsive.responsiveHorizontalPadding(context),
+                            0,
+                          ),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFF4E8),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Text(
+                            _safetyWarning!,
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(color: const Color(0xFF8E4E18)),
+                          ),
                         ),
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: _controller,
-                            minLines: 1,
-                            maxLines: 4,
-                            textInputAction: TextInputAction.send,
-                            onSubmitted: (_) => _sendMessage(),
-                            decoration: InputDecoration(
-                              hintText:
-                                  'Ask about your skin, routine, or products...',
-                              filled: true,
-                              fillColor: AppColors.secondary,
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(18),
-                                borderSide: BorderSide.none,
+                      Expanded(
+                        child: ListView.builder(
+                          controller: _scrollController,
+                          keyboardDismissBehavior:
+                              ScrollViewKeyboardDismissBehavior.onDrag,
+                          padding: EdgeInsets.fromLTRB(
+                            Responsive.responsiveHorizontalPadding(context),
+                            14,
+                            Responsive.responsiveHorizontalPadding(context),
+                            12,
+                          ),
+                          itemCount: _messages.length,
+                          itemBuilder: (context, index) {
+                            final message = _messages[index];
+                            final isUser = message.isUser;
+                            final maxBubbleWidth =
+                                Responsive.responsiveValue<double>(
+                                  context,
+                                  mobileSmall:
+                                      MediaQuery.sizeOf(context).width * 0.85,
+                                  mobile:
+                                      MediaQuery.sizeOf(context).width * 0.82,
+                                  tablet: 520,
+                                  desktop: 600,
+                                );
+                            return Align(
+                              alignment: isUser
+                                  ? Alignment.centerRight
+                                  : Alignment.centerLeft,
+                              child: Container(
+                                constraints: BoxConstraints(
+                                  maxWidth: maxBubbleWidth,
+                                ),
+                                margin: const EdgeInsets.only(bottom: 10),
+                                padding: const EdgeInsets.fromLTRB(
+                                  14,
+                                  12,
+                                  14,
+                                  12,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: isUser
+                                      ? AppColors.primaryDark
+                                      : Colors.white.withValues(alpha: 0.96),
+                                  borderRadius: BorderRadius.circular(18),
+                                ),
+                                child: SelectableText(
+                                  message.content,
+                                  style: Theme.of(context).textTheme.bodyMedium
+                                      ?.copyWith(
+                                        color: isUser
+                                            ? Colors.white
+                                            : AppColors.foreground,
+                                        height: 1.35,
+                                      ),
+                                ),
                               ),
+                            );
+                          },
+                        ),
+                      ),
+                      if (_quickActions.isNotEmpty)
+                        SizedBox(
+                          height: 42,
+                          child: ListView.separated(
+                            padding: EdgeInsets.symmetric(
+                              horizontal:
+                                  Responsive.responsiveHorizontalPadding(
+                                    context,
+                                  ),
+                            ),
+                            scrollDirection: Axis.horizontal,
+                            itemBuilder: (context, index) {
+                              final action = _quickActions[index];
+                              return ActionChip(
+                                label: Text(action.label),
+                                onPressed: () => _handleAction(action),
+                              );
+                            },
+                            separatorBuilder: (_, _) =>
+                                const SizedBox(width: 8),
+                            itemCount: _quickActions.length,
+                          ),
+                        ),
+                      Container(
+                        padding: EdgeInsets.fromLTRB(
+                          Responsive.responsiveHorizontalPadding(context),
+                          10,
+                          Responsive.responsiveHorizontalPadding(context),
+                          16,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.94),
+                          border: Border(
+                            top: BorderSide(
+                              color: AppColors.border.withValues(alpha: 0.35),
                             ),
                           ),
                         ),
-                        const SizedBox(width: 10),
-                        FilledButton(
-                          onPressed: _sending ? null : _sendMessage,
-                          style: FilledButton.styleFrom(
-                            backgroundColor: AppColors.primaryDark,
-                            minimumSize: const Size(52, 52),
-                          ),
-                          child: _sending
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white,
+                        child: LayoutBuilder(
+                          builder: (context, constraints) {
+                            final stack = constraints.maxWidth < 360;
+                            final field = TextField(
+                              controller: _controller,
+                              minLines: 1,
+                              maxLines: 4,
+                              textInputAction: TextInputAction.send,
+                              onSubmitted: (_) => _sendMessage(),
+                              decoration: InputDecoration(
+                                hintText:
+                                    'Ask about your skin, routine, or products...',
+                                filled: true,
+                                fillColor: AppColors.secondary,
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(18),
+                                  borderSide: BorderSide.none,
+                                ),
+                              ),
+                            );
+                            final sendButton = FilledButton(
+                              onPressed: _sending ? null : _sendMessage,
+                              style: FilledButton.styleFrom(
+                                backgroundColor: AppColors.primaryDark,
+                                minimumSize: const Size(52, 52),
+                              ),
+                              child: _sending
+                                  ? const SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : const Icon(Icons.send_rounded),
+                            );
+
+                            if (stack) {
+                              return Column(
+                                children: [
+                                  field,
+                                  const SizedBox(height: 10),
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: sendButton,
                                   ),
-                                )
-                              : const Icon(Icons.send_rounded),
+                                ],
+                              );
+                            }
+
+                            return Row(
+                              children: [
+                                Expanded(child: field),
+                                const SizedBox(width: 10),
+                                sendButton,
+                              ],
+                            );
+                          },
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
       ),
     );

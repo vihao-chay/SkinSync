@@ -17,21 +17,19 @@ public class ProductUpsertRequestDto
     public string Category { get; set; } = string.Empty;
 
     public string? Description { get; set; }
-    public string? Ingredient { get; set; }
-    public string? UsageGuide { get; set; }
-    public string Currency { get; set; } = "VND";
+    public string Ingredients { get; set; } = string.Empty;
+    public string? UsageTime { get; set; }
+    public string? HowToUse { get; set; }
+    public string Currency { get; set; } = string.Empty;
 
     [Range(0, 999999)]
-    public decimal Price { get; set; }
+    public decimal? Price { get; set; }
 
-    public IReadOnlyCollection<string> SuitableSkinTypes { get; set; } = Array.Empty<string>();
+    public IReadOnlyCollection<string> SkinTypes { get; set; } = Array.Empty<string>();
     public IReadOnlyCollection<string> SkinConcerns { get; set; } = Array.Empty<string>();
-    public IReadOnlyCollection<string> KeyIngredients { get; set; } = Array.Empty<string>();
     public string? ImageUrl { get; set; }
-
-    [Range(0, 5)]
-    public decimal? Rating { get; set; }
-
-    [MaxLength(20)]
-    public string Status { get; set; } = "active";
+    public bool IsVerified { get; set; }
+    public bool IsActive { get; set; } = true;
+    public string Source { get; set; } = string.Empty;
+    public string? SourceUrl { get; set; }
 }

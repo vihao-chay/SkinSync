@@ -1,30 +1,22 @@
 import 'package:flutter/material.dart';
 
+import '../responsive/responsive.dart';
+
 class ResponsiveLayout {
   const ResponsiveLayout._();
 
   static double screenWidth(BuildContext context) =>
-      MediaQuery.sizeOf(context).width;
+      Responsive.screenWidth(context);
 
-  static bool isCompact(BuildContext context) => screenWidth(context) < 360;
+  static bool isCompact(BuildContext context) =>
+      Responsive.isSmallMobile(context);
 
-  static bool isMedium(BuildContext context) => screenWidth(context) >= 600;
+  static bool isMedium(BuildContext context) => Responsive.isTablet(context);
 
-  static bool isLarge(BuildContext context) => screenWidth(context) >= 960;
+  static bool isLarge(BuildContext context) => Responsive.isDesktop(context);
 
-  static double horizontalPadding(BuildContext context) {
-    final width = screenWidth(context);
-    if (width >= 1280) {
-      return 32;
-    }
-    if (width >= 960) {
-      return 28;
-    }
-    if (width >= 600) {
-      return 24;
-    }
-    return 20;
-  }
+  static double horizontalPadding(BuildContext context) =>
+      Responsive.responsiveHorizontalPadding(context);
 
   static double contentMaxWidth(
     BuildContext context, {
@@ -32,14 +24,12 @@ class ResponsiveLayout {
     double medium = 720,
     double large = 1040,
   }) {
-    final width = screenWidth(context);
-    if (width >= 1280) {
-      return large;
-    }
-    if (width >= 600) {
-      return medium;
-    }
-    return compact;
+    return Responsive.maxContentWidth(
+      context,
+      mobile: compact,
+      tablet: medium,
+      desktop: large,
+    );
   }
 
   static int columns(
@@ -48,14 +38,12 @@ class ResponsiveLayout {
     int medium = 2,
     int large = 3,
   }) {
-    final width = screenWidth(context);
-    if (width >= 960) {
-      return large;
-    }
-    if (width >= 600) {
-      return medium;
-    }
-    return compact;
+    return Responsive.columns(
+      context,
+      mobile: compact,
+      tablet: medium,
+      desktop: large,
+    );
   }
 
   static double itemWidth(
@@ -65,13 +53,12 @@ class ResponsiveLayout {
     int medium = 2,
     int large = 3,
   }) {
-    final width = screenWidth(context);
     final cols = columns(
       context,
       compact: compact,
       medium: medium,
       large: large,
     );
-    return (width - (spacing * (cols - 1))) / cols;
+    return (screenWidth(context) - (spacing * (cols - 1))) / cols;
   }
 }

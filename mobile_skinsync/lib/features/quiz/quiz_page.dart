@@ -4,10 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/l10n/app_locale.dart';
+import '../../core/responsive/responsive.dart';
 import '../../core/routes/app_routes.dart';
 import '../../core/state/app_state.dart';
 import '../../core/theme/app_colors.dart';
-import '../../core/theme/app_spacing.dart';
 import '../../core/widgets/glass_header.dart';
 import '../../core/widgets/gradient_pill_button.dart';
 import '../../core/widgets/responsive_container.dart';
@@ -44,15 +45,48 @@ class _QuizPageState extends State<QuizPage> {
   final selectedConcerns = <String>{};
   File? selectedImage;
 
+  String _translateType(String type, AppLocale locale) {
+    return switch (type) {
+      'Normal' => locale.tr('quiz_type_normal'),
+      'Oily' => locale.tr('quiz_type_oily'),
+      'Dry' => locale.tr('quiz_type_dry'),
+      'Combination' => locale.tr('quiz_type_combination'),
+      'Sensitive' => locale.tr('quiz_type_sensitive'),
+      _ => type,
+    };
+  }
+
+  String _translateConcern(String concern, AppLocale locale) {
+    return switch (concern) {
+      'Acne' => locale.tr('quiz_concern_acne'),
+      'Dark spots' => locale.tr('quiz_concern_dark_spots'),
+      'Dryness' => locale.tr('quiz_concern_dryness'),
+      'Redness' => locale.tr('quiz_concern_redness'),
+      'Large pores' => locale.tr('quiz_concern_large_pores'),
+      'Uneven tone' => locale.tr('quiz_concern_uneven_tone'),
+      _ => concern,
+    };
+  }
+
+  String _translateBudget(String budget, AppLocale locale) {
+    return switch (budget) {
+      'Tiet kiem' => locale.tr('quiz_budget_tiet_kiem'),
+      'Trung binh' => locale.tr('quiz_budget_trung_binh'),
+      'Cao cap' => locale.tr('quiz_budget_cao_cap'),
+      _ => budget,
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
     final appState = context.watch<AppState>();
 
     return Scaffold(
       backgroundColor: AppColors.pageBackground,
-      appBar: const GlassHeader(
+      appBar: GlassHeader(
         currentRoute: AppRoutes.quiz,
-        title: 'Skin Quiz',
+        title: locale.tr('quiz_title'),
       ),
       body: ResponsiveContainer(
         child: SafeArea(
@@ -61,14 +95,23 @@ class _QuizPageState extends State<QuizPage> {
             children: [
               Expanded(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(AppSpacing.pagePadding),
+                  padding: Responsive.responsivePadding(
+                    context,
+                    top: 0,
+                    bottom: 16,
+                  ),
                   child: _buildStep(context),
                 ),
               ),
               SafeArea(
                 top: false,
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                  padding: EdgeInsets.fromLTRB(
+                    Responsive.responsiveHorizontalPadding(context),
+                    12,
+                    Responsive.responsiveHorizontalPadding(context),
+                    8,
+                  ),
                   child: Column(
                     children: [
                       if (appState.errorMessage != null) ...[
@@ -80,7 +123,7 @@ class _QuizPageState extends State<QuizPage> {
                         const SizedBox(height: 8),
                       ],
                       GradientPillButton(
-                        label: step == 3 ? 'Save And Analyze' : 'Continue',
+                        label: step == 3 ? locale.tr('quiz_save_analyze') : locale.tr('common_continue'),
                         isLoading: appState.isBusy,
                         expanded: true,
                         onPressed: _canContinue()
@@ -92,7 +135,7 @@ class _QuizPageState extends State<QuizPage> {
                         onPressed: step == 0
                             ? () => Navigator.of(context).maybePop()
                             : () => setState(() => step -= 1),
-                        child: Text(step == 0 ? 'Back' : 'Previous'),
+                        child: Text(step == 0 ? locale.tr('common_back') : locale.tr('quiz_previous')),
                       ),
                     ],
                   ),
@@ -106,21 +149,21 @@ class _QuizPageState extends State<QuizPage> {
   }
 
   Widget _buildStep(BuildContext context) {
+    final locale = AppLocale.of(context);
     final titleStyle = Theme.of(context).textTheme.headlineMedium;
     switch (step) {
       case 0:
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('What best describes your skin type?', style: titleStyle),
+            Text(locale.tr('quiz_step0_title'), style: titleStyle),
             const SizedBox(height: 16),
             ..._skinTypes.map(
               (type) => Padding(
                 padding: const EdgeInsets.only(bottom: 12),
                 child: SelectableOptionCard(
-                  title: type,
-                  description:
-                      'Used to personalize your AI analysis and routine.',
+                  title: _translateType(type, locale),
+                  description: locale.tr('quiz_step0_desc'),
                   selected: selectedSkinType == type,
                   icon: Icons.spa_outlined,
                   onTap: () => setState(() => selectedSkinType = type),
@@ -133,14 +176,14 @@ class _QuizPageState extends State<QuizPage> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Which concerns matter most?', style: titleStyle),
+            Text(locale.tr('quiz_step1_title'), style: titleStyle),
             const SizedBox(height: 16),
             ..._concerns.map(
               (concern) => Padding(
                 padding: const EdgeInsets.only(bottom: 12),
                 child: SelectableOptionCard(
-                  title: concern,
-                  description: 'Tap to include this in your profile.',
+                  title: _translateConcern(concern, locale),
+                  description: locale.tr('quiz_step1_desc'),
                   selected: selectedConcerns.contains(concern),
                   icon: Icons.check_circle_outline_rounded,
                   onTap: () => setState(() {
@@ -159,15 +202,14 @@ class _QuizPageState extends State<QuizPage> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('What is your skincare budget?', style: titleStyle),
+            Text(locale.tr('quiz_step2_title'), style: titleStyle),
             const SizedBox(height: 16),
             ..._budgets.map(
               (budget) => Padding(
                 padding: const EdgeInsets.only(bottom: 12),
                 child: SelectableOptionCard(
-                  title: budget,
-                  description:
-                      'This helps match routine recommendations to realistic product tiers.',
+                  title: _translateBudget(budget, locale),
+                  description: locale.tr('quiz_step2_desc'),
                   selected: selectedBudget == budget,
                   icon: Icons.sell_outlined,
                   onTap: () => setState(() => selectedBudget = budget),
@@ -180,38 +222,40 @@ class _QuizPageState extends State<QuizPage> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Upload your skin photo', style: titleStyle),
+            Text(locale.tr('quiz_step3_title'), style: titleStyle),
             const SizedBox(height: 12),
             Text(
-              'Use bright lighting, face forward, and avoid heavy filters.',
+              locale.tr('quiz_step3_desc'),
               style: Theme.of(context).textTheme.bodySmall,
             ),
             const SizedBox(height: 16),
-            Container(
-              width: double.infinity,
-              height: 280,
-              decoration: BoxDecoration(
-                color: AppColors.secondary,
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: AppColors.border),
+            AspectRatio(
+              aspectRatio: Responsive.isTablet(context) ? 1.5 : 1.0,
+              child: Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: AppColors.secondary,
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: selectedImage == null
+                    ? Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(
+                            Icons.camera_alt_outlined,
+                            size: 48,
+                            color: AppColors.primaryDark,
+                          ),
+                          const SizedBox(height: 12),
+                          Text(locale.tr('quiz_step3_placeholder')),
+                        ],
+                      )
+                    : ClipRRect(
+                        borderRadius: BorderRadius.circular(24),
+                        child: Image.file(selectedImage!, fit: BoxFit.cover),
+                      ),
               ),
-              child: selectedImage == null
-                  ? const Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.camera_alt_outlined,
-                          size: 48,
-                          color: AppColors.primaryDark,
-                        ),
-                        SizedBox(height: 12),
-                        Text('Select a clear selfie to continue'),
-                      ],
-                    )
-                  : ClipRRect(
-                      borderRadius: BorderRadius.circular(24),
-                      child: Image.file(selectedImage!, fit: BoxFit.cover),
-                    ),
             ),
             const SizedBox(height: 16),
             Row(
@@ -220,7 +264,7 @@ class _QuizPageState extends State<QuizPage> {
                   child: OutlinedButton.icon(
                     onPressed: () => _pickImage(ImageSource.camera),
                     icon: const Icon(Icons.camera_alt_outlined),
-                    label: const Text('Camera'),
+                    label: Text(locale.tr('upload_camera')),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -228,7 +272,7 @@ class _QuizPageState extends State<QuizPage> {
                   child: OutlinedButton.icon(
                     onPressed: () => _pickImage(ImageSource.gallery),
                     icon: const Icon(Icons.photo_library_outlined),
-                    label: const Text('Gallery'),
+                    label: Text(locale.tr('upload_gallery')),
                   ),
                 ),
               ],

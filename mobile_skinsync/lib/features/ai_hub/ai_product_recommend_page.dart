@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/models/app_models.dart';
+import '../../core/responsive/responsive.dart';
 import '../../core/routes/app_routes.dart';
 import '../../core/state/app_state.dart';
 import '../../core/theme/app_colors.dart';
@@ -142,11 +143,11 @@ class _AiProductRecommendPageState extends State<AiProductRecommendPage>
           children: [
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.pagePadding,
+                padding: EdgeInsets.fromLTRB(
+                  Responsive.responsiveHorizontalPadding(context),
                   12,
-                  AppSpacing.pagePadding,
-                  AppSpacing.pageBottomPaddingWithActions,
+                  Responsive.responsiveHorizontalPadding(context),
+                  Responsive.contentBottomSpacing(context, extra: 20),
                 ),
                 children: [
                   AppCard(

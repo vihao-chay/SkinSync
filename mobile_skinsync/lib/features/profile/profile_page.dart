@@ -1,26 +1,27 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/l10n/app_locale.dart';
 import '../../core/models/app_models.dart';
+import '../../core/responsive/responsive.dart';
 import '../../core/routes/app_routes.dart';
 import '../../core/state/app_state.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
-import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_card.dart';
+import '../../core/widgets/avatar_image.dart';
+import '../../core/widgets/avatar_picker.dart';
 import '../../core/widgets/error_state_card.dart';
-import '../../core/widgets/stitch_top_bar.dart';
+import '../../core/widgets/skin_sync_header.dart';
 import '../../core/widgets/status_chip.dart';
-
-const _paymentQrAsset = 'bank.jpg';
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
     final appState = context.watch<AppState>();
     final user = appState.user;
     final profile = appState.profile;
@@ -31,36 +32,45 @@ class ProfilePage extends StatelessWidget {
         bottom: false,
         child: Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 460),
+            constraints: BoxConstraints(
+              maxWidth: Responsive.maxContentWidth(
+                context,
+                mobile: double.infinity,
+                tablet: 760,
+                desktop: 960,
+              ),
+            ),
             child: RefreshIndicator(
               color: AppColors.primaryDark,
               onRefresh: appState.refreshProfileState,
               child: ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.only(
-                  bottom: AppSpacing.pageBottomPaddingWithActions,
-                ),
+                padding: const EdgeInsets.only(bottom: 0),
                 children: [
-                  StitchTopBar(
+                  SkinSyncHeader(
+                    name: appState.profileDisplayName,
                     avatarUrl: user?.avatarUrl,
-                    onTrailingTap: () =>
-                        Navigator.pushNamed(context, AppRoutes.editProfile),
+                    onAvatarTap: () => _showAvatarPicker(context),
                   ),
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                      AppSpacing.pagePadding,
-                      4,
-                      AppSpacing.pagePadding,
-                      0,
+                    padding: EdgeInsets.fromLTRB(
+                      Responsive.responsiveHorizontalPadding(context),
+                      12,
+                      Responsive.responsiveHorizontalPadding(context),
+                      Responsive.floatingNavigationBottomSpacing(
+                        context,
+                        extra: 20,
+                      ),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         _ProfileHero(
                           name: appState.profileDisplayName,
-                          email: _friendlyText(user?.email),
+                          email: _friendlyText(user?.email, locale),
                           avatarUrl: user?.avatarUrl,
-                          skinType: _friendlyText(profile?.skinType),
+                          skinType: _friendlyText(profile?.skinType, locale),
+                          onAvatarTap: () => _showAvatarPicker(context),
                           onEdit: () => Navigator.pushNamed(
                             context,
                             AppRoutes.editProfile,
@@ -71,35 +81,41 @@ class ProfilePage extends StatelessWidget {
                           plans: appState.subscriptionPlans,
                           current: appState.subscription,
                           fallbackPlanCode: user?.planType ?? 'free',
-                          isBusy: appState.isBusy,
                           errorMessage: appState.membershipLoadErrorMessage,
                           onRetry: appState.refreshSubscription,
+                          onManage: () => Navigator.pushNamed(
+                            context,
+                            AppRoutes.membershipPlans,
+                          ),
                         ),
                         const SizedBox(height: AppSpacing.md),
-                        _SectionLabel('Skin Profile'),
+                        _SectionLabel(locale.tr('profile_skin_profile_label')),
                         const SizedBox(height: AppSpacing.sm),
                         _ProfileInfoGrid(
                           items: [
                             _ProfileInfoItem(
-                              label: 'Age Range',
-                              value: _ageRange(profile?.dateOfBirth),
+                              label: locale.tr('profile_age_range'),
+                              value: _ageRange(profile?.dateOfBirth, locale),
                               icon: Icons.cake_outlined,
                             ),
                             _ProfileInfoItem(
-                              label: 'Budget',
-                              value: _friendlyText(profile?.budgetLabel),
+                              label: locale.tr('profile_budget'),
+                              value: _friendlyText(
+                                profile?.budgetLabel,
+                                locale,
+                              ),
                               icon: Icons.payments_outlined,
                             ),
                             _ProfileInfoItem(
-                              label: 'Primary Goal',
-                              value: _primaryGoal(profile),
+                              label: locale.tr('profile_primary_goal'),
+                              value: _primaryGoal(profile, locale),
                               icon: Icons.track_changes_outlined,
                               fullWidth: true,
                             ),
                             _ProfileInfoItem(
-                              label: 'Skin Sensitivity',
+                              label: locale.tr('profile_sensitivity'),
                               value: profile?.sensitivityLevel == null
-                                  ? 'Not provided yet'
+                                  ? locale.tr('profile_not_provided')
                                   : '${profile!.sensitivityLevel}/10',
                               icon: Icons.warning_amber_outlined,
                               fullWidth: true,
@@ -111,12 +127,12 @@ class ProfilePage extends StatelessWidget {
                         ),
                         const SizedBox(height: AppSpacing.md),
                         _ChipSection(
-                          label: 'Active Concerns',
+                          label: locale.tr('profile_active_concerns'),
                           values: profile?.concerns ?? const [],
                         ),
                         const SizedBox(height: AppSpacing.md),
                         _ChipSection(
-                          label: 'Care Preferences',
+                          label: locale.tr('profile_care_preferences'),
                           values: [
                             ...?profile?.allergies,
                             ...?profile?.avoidIngredients,
@@ -143,12 +159,35 @@ class ProfilePage extends StatelessWidget {
   }
 }
 
+Future<void> _showAvatarPicker(BuildContext context) async {
+  final locale = AppLocale.of(context);
+  final appState = context.read<AppState>();
+  final selectedAvatar = await showAvatarPickerSheet(
+    context,
+    selectedAvatar: appState.user?.avatarUrl,
+  );
+
+  if (selectedAvatar == null || !context.mounted) {
+    return;
+  }
+
+  await context.read<AppState>().updateAvatarSelection(selectedAvatar);
+  if (!context.mounted) {
+    return;
+  }
+
+  ScaffoldMessenger.of(
+    context,
+  ).showSnackBar(SnackBar(content: Text(locale.tr('profile_avatar_saved'))));
+}
+
 class _ProfileHero extends StatelessWidget {
   const _ProfileHero({
     required this.name,
     required this.email,
     required this.avatarUrl,
     required this.skinType,
+    required this.onAvatarTap,
     required this.onEdit,
   });
 
@@ -156,51 +195,80 @@ class _ProfileHero extends StatelessWidget {
   final String email;
   final String? avatarUrl;
   final String skinType;
+  final VoidCallback onAvatarTap;
   final VoidCallback onEdit;
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
     final imageUrl = avatarUrl?.trim() ?? '';
     return Column(
       children: [
-        Container(
-          width: 92,
-          height: 92,
-          padding: const EdgeInsets.all(4),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            shape: BoxShape.circle,
-            border: Border.all(color: AppColors.border),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.primaryDark.withValues(alpha: 0.08),
-                blurRadius: 18,
-                offset: const Offset(0, 8),
-              ),
-            ],
-          ),
-          child: ClipOval(
-            child: imageUrl.isEmpty
-                ? Container(
-                    color: AppColors.surfaceStrong,
-                    child: const Icon(
-                      Icons.person_outline_rounded,
-                      color: AppColors.primaryDark,
-                      size: 42,
-                    ),
-                  )
-                : Image.network(
-                    imageUrl,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, _, _) => Container(
-                      color: AppColors.surfaceStrong,
-                      child: const Icon(
-                        Icons.person_outline_rounded,
-                        color: AppColors.primaryDark,
-                        size: 42,
+        Semantics(
+          button: true,
+          label: locale.tr('profile_tap_avatar_hint'),
+          child: GestureDetector(
+            onTap: onAvatarTap,
+            child: SizedBox.square(
+              dimension: 102,
+              child: Stack(
+                children: [
+                  Center(
+                    child: Container(
+                      width: 92,
+                      height: 92,
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.primaryDark.withValues(
+                              alpha: 0.08,
+                            ),
+                            blurRadius: 18,
+                            offset: const Offset(0, 8),
+                          ),
+                        ],
+                      ),
+                      child: ClipOval(
+                        child: AvatarImage(
+                          source: imageUrl,
+                          fit: BoxFit.cover,
+                          fallback: Container(
+                            color: AppColors.surfaceStrong,
+                            child: const Icon(
+                              Icons.person_outline_rounded,
+                              color: AppColors.primaryDark,
+                              size: 42,
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                   ),
+                  Positioned(
+                    right: 6,
+                    bottom: 8,
+                    child: Container(
+                      width: 30,
+                      height: 30,
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryDark,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: AppColors.surface, width: 2),
+                      ),
+                      child: const Icon(
+                        Icons.edit_rounded,
+                        size: 15,
+                        color: AppColors.onPrimary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
         const SizedBox(height: AppSpacing.sm),
@@ -237,28 +305,26 @@ class _SubscriptionSection extends StatelessWidget {
     required this.plans,
     required this.current,
     required this.fallbackPlanCode,
-    required this.isBusy,
     required this.errorMessage,
     required this.onRetry,
+    required this.onManage,
   });
 
   final List<SubscriptionPlan> plans;
   final CurrentSubscription? current;
   final String fallbackPlanCode;
-  final bool isBusy;
   final String? errorMessage;
   final Future<void> Function() onRetry;
+  final VoidCallback onManage;
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
     final currentCode = (current?.plan.code ?? fallbackPlanCode).toLowerCase();
-    final visiblePlans = plans
-        .where((plan) => plan.code == 'plus' || plan.code == 'premium')
-        .toList();
     final currentPlan =
         current?.plan ??
         plans.cast<SubscriptionPlan?>().firstWhere(
-          (plan) => plan?.code == currentCode,
+          (plan) => plan?.code.toLowerCase() == currentCode,
           orElse: () => null,
         );
     final usage = (current?.usage ?? const [])
@@ -271,227 +337,104 @@ class _SubscriptionSection extends StatelessWidget {
       children: [
         if (errorMessage != null) ...[
           ErrorStateCard(
-            title: 'Membership data could not load',
+            title: locale.tr('profile_membership_error'),
             description: errorMessage!,
-            ctaLabel: 'Try again',
+            ctaLabel: locale.tr('common_retry'),
             onCta: onRetry,
           ),
           const SizedBox(height: AppSpacing.md),
         ],
-        AppCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Membership',
-                          style: Theme.of(context).textTheme.labelSmall
-                              ?.copyWith(
-                                color: AppColors.heading,
-                                fontWeight: FontWeight.w900,
-                              ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          _planName(currentPlan, currentCode),
-                          style: Theme.of(context).textTheme.titleMedium
-                              ?.copyWith(fontWeight: FontWeight.w800),
-                        ),
-                      ],
-                    ),
-                  ),
-                  AppButton(
-                    label: currentCode == 'free' ? 'Add' : 'Active',
-                    expand: false,
-                    variant: currentCode == 'free'
-                        ? AppButtonVariant.primary
-                        : AppButtonVariant.secondary,
-                    onPressed: currentCode == 'free' && visiblePlans.isNotEmpty
-                        ? () => _subscribe(context, visiblePlans.first)
-                        : null,
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.md),
-              if (usage.isEmpty)
-                Text(
-                  _planPrice(currentPlan),
-                  style: Theme.of(context).textTheme.bodySmall,
-                )
-              else
-                Row(
-                  children: usage
-                      .map(
-                        (item) => Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.only(right: 8),
-                            child: _UsageMiniTile(usage: item),
-                          ),
-                        ),
-                      )
-                      .toList(),
-                ),
-            ],
-          ),
-        ),
-        if (visiblePlans.isNotEmpty) ...[
-          const SizedBox(height: AppSpacing.sm),
-          ...visiblePlans.map(
-            (plan) => Padding(
-              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-              child: _PlanOption(
-                plan: plan,
-                isCurrent: currentCode == plan.code,
-                isBusy: isBusy,
-                onSubscribe: () => _subscribe(context, plan),
-              ),
+        DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                AppColors.primaryFixed,
+                AppColors.surfaceMuted,
+                Colors.white,
+              ],
+              stops: [0, 0.58, 1],
             ),
+            borderRadius: BorderRadius.circular(AppRadius.card),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.9)),
           ),
-        ],
-        if (currentCode != 'free') ...[
-          AppButton(
-            label: 'Cancel to Free',
-            variant: AppButtonVariant.secondary,
-            icon: const Icon(Icons.close_rounded),
-            isLoading: isBusy,
-            onPressed: isBusy ? null : () => _cancel(context),
-          ),
-        ],
-      ],
-    );
-  }
-
-  Future<void> _subscribe(BuildContext context, SubscriptionPlan plan) async {
-    final shouldActivate = await _showPaymentDialog(context, plan);
-    if (!shouldActivate || !context.mounted) {
-      return;
-    }
-
-    try {
-      await context.read<AppState>().subscribeToPlan(plan.code);
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${_capitalize(plan.code)} activated.')),
-        );
-      }
-    } catch (_) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              context.read<AppState>().errorMessage ??
-                  'Could not update subscription.',
-            ),
-          ),
-        );
-      }
-    }
-  }
-
-  Future<void> _cancel(BuildContext context) async {
-    try {
-      await context.read<AppState>().cancelSubscription();
-      if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Plan changed to Free.')));
-      }
-    } catch (_) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              context.read<AppState>().errorMessage ??
-                  'Could not cancel subscription.',
-            ),
-          ),
-        );
-      }
-    }
-  }
-
-  Future<bool> _showPaymentDialog(
-    BuildContext context,
-    SubscriptionPlan plan,
-  ) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) {
-        final textTheme = Theme.of(dialogContext).textTheme;
-        return AlertDialog(
-          title: Text('Pay for ${plan.name}'),
-          content: SingleChildScrollView(
+          child: AppCard(
+            backgroundColor: Colors.transparent,
+            borderColor: Colors.transparent,
             child: Column(
-              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text(
+                      locale.tr('profile_membership'),
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: AppColors.heading,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const Spacer(),
+                    TextButton.icon(
+                      onPressed: onManage,
+                      iconAlignment: IconAlignment.end,
+                      icon: const Icon(Icons.open_in_new_rounded, size: 14),
+                      label: Text(
+                        currentCode == 'free'
+                            ? locale.tr('profile_upgrade_action')
+                            : locale.tr('profile_manage'),
+                      ),
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        minimumSize: const Size(0, 24),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        visualDensity: VisualDensity.compact,
+                        textStyle: const TextStyle(
+                          fontFamily: 'PlusJakartaSans',
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
                 Text(
-                  _planPrice(plan),
-                  style: textTheme.titleMedium?.copyWith(
-                    color: AppColors.primaryDark,
+                  _brandedPlanName(currentPlan, currentCode),
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontSize: 21,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
                 const SizedBox(height: AppSpacing.md),
-                Center(
-                  child: Container(
-                    constraints: const BoxConstraints(maxWidth: 260),
-                    padding: const EdgeInsets.all(AppSpacing.sm),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(AppRadius.medium),
-                      border: Border.all(color: AppColors.border),
-                    ),
-                    child: AspectRatio(
-                      aspectRatio: 397 / 500,
-                      child: Image.asset(
-                        _paymentQrAsset,
-                        fit: BoxFit.contain,
-                        errorBuilder: (context, error, stackTrace) => Center(
-                          child: Text(
-                            'Payment image unavailable',
-                            textAlign: TextAlign.center,
-                            style: textTheme.bodySmall?.copyWith(
-                              color: AppColors.mutedText,
+                if (usage.isEmpty)
+                  Text(
+                    currentCode == 'free'
+                        ? locale.tr('profile_free_upgrade_prompt')
+                        : locale.tr('profile_premium_active_prompt'),
+                    style: Theme.of(context).textTheme.bodySmall,
+                  )
+                else
+                  Row(
+                    children: usage
+                        .map(
+                          (item) => Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.only(right: 8),
+                              child: _UsageMiniTile(usage: item),
                             ),
                           ),
-                        ),
-                      ),
-                    ),
+                        )
+                        .toList(),
                   ),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                Text(
-                  'Scan this QR and complete the transfer, then confirm below to activate your plan.',
-                  style: textTheme.bodySmall?.copyWith(
-                    color: AppColors.mutedText,
-                    height: 1.35,
-                  ),
-                ),
               ],
             ),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Later'),
-            ),
-            FilledButton.icon(
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              icon: const Icon(Icons.check_circle_rounded),
-              label: const Text('I paid'),
-            ),
-          ],
-        );
-      },
+        ),
+      ],
     );
-
-    return confirmed ?? false;
   }
 }
 
@@ -502,26 +445,28 @@ class _UsageMiniTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: AppColors.surfaceMuted,
-        borderRadius: BorderRadius.circular(AppRadius.medium),
-        border: Border.all(color: AppColors.border.withValues(alpha: 0.7)),
+        borderRadius: BorderRadius.circular(AppRadius.large),
+        border: Border.all(color: Colors.white),
       ),
       child: Column(
         children: [
           Icon(_usageIcon(usage.featureKey), color: AppColors.primaryDark),
           const SizedBox(height: 6),
           Text(
-            '${usage.used}',
+            _usageCount(usage),
             style: Theme.of(context).textTheme.titleSmall?.copyWith(
               fontFamily: 'PlusJakartaSans',
               fontWeight: FontWeight.w900,
             ),
           ),
+          const SizedBox(height: 2),
           Text(
-            usage.displayName,
+            _usageLabel(usage, locale),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
@@ -530,6 +475,22 @@ class _UsageMiniTile extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  String _usageCount(SubscriptionUsage usage) {
+    final limit = usage.isUnlimited
+        ? '∞'
+        : usage.monthlyLimit?.toString() ?? '-';
+    return '${usage.used}/$limit';
+  }
+
+  String _usageLabel(SubscriptionUsage usage, AppLocale locale) {
+    return switch (usage.featureKey) {
+      'skin_analysis' => locale.tr('profile_usage_analyse'),
+      'ai_chat' => locale.tr('profile_usage_chat'),
+      'routine_generation' => locale.tr('profile_usage_routine'),
+      _ => usage.displayName,
+    };
   }
 
   IconData _usageIcon(String key) {
@@ -541,58 +502,6 @@ class _UsageMiniTile extends StatelessWidget {
       'conflict_check' => Icons.warning_amber_outlined,
       _ => Icons.workspace_premium_outlined,
     };
-  }
-}
-
-class _PlanOption extends StatelessWidget {
-  const _PlanOption({
-    required this.plan,
-    required this.isCurrent,
-    required this.isBusy,
-    required this.onSubscribe,
-  });
-
-  final SubscriptionPlan plan;
-  final bool isCurrent;
-  final bool isBusy;
-  final VoidCallback onSubscribe;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppCard(
-      variant: isCurrent ? AppCardVariant.accent : AppCardVariant.metric,
-      padding: const EdgeInsets.all(12),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  plan.name,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w800),
-                ),
-                Text(
-                  _planPrice(plan),
-                  style: Theme.of(context).textTheme.labelSmall,
-                ),
-              ],
-            ),
-          ),
-          AppButton(
-            label: isCurrent ? 'Active' : 'Choose',
-            expand: false,
-            variant: isCurrent
-                ? AppButtonVariant.secondary
-                : AppButtonVariant.primary,
-            isLoading: isBusy && !isCurrent,
-            onPressed: isCurrent || isBusy ? null : onSubscribe,
-          ),
-        ],
-      ),
-    );
   }
 }
 
@@ -611,7 +520,7 @@ class _ProfileInfoGrid extends StatelessWidget {
           children: items
               .map(
                 (item) => SizedBox(
-                  width: item.fullWidth || constraints.maxWidth < 340
+                  width: item.fullWidth
                       ? constraints.maxWidth
                       : (constraints.maxWidth - AppSpacing.sm) / 2,
                   child: AppCard(
@@ -700,6 +609,7 @@ class _ChipSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
     final cleaned = values.where((item) => item.trim().isNotEmpty).toList();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -707,8 +617,8 @@ class _ChipSection extends StatelessWidget {
         _SectionLabel(label),
         const SizedBox(height: AppSpacing.sm),
         if (cleaned.isEmpty)
-          const StatusChip(
-            label: 'Not provided yet',
+          StatusChip(
+            label: locale.tr('profile_not_provided'),
             icon: Icons.info_outline_rounded,
           )
         else
@@ -724,7 +634,7 @@ class _ChipSection extends StatelessWidget {
                 ),
               ),
               StatusChip(
-                label: '+ Add',
+                label: locale.tr('profile_add_concern'),
                 icon: Icons.add_rounded,
                 tone: StatusChipTone.neutral,
               ),
@@ -743,31 +653,104 @@ class _AccountActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
     return AppCard(
       padding: EdgeInsets.zero,
       child: Column(
         children: [
           _ActionRow(
             icon: Icons.edit_outlined,
-            label: 'Edit Profile',
+            label: locale.tr('profile_edit_profile'),
             onTap: onEdit,
           ),
           const Divider(height: 1),
-          const _ActionRow(
-            icon: Icons.notifications_none_rounded,
-            label: 'Notifications',
+          _ActionRow(
+            icon: Icons.language_rounded,
+            label: '${locale.tr('profile_language')}: ${locale.displayName}',
+            onTap: () => _showLanguageDialog(context, locale),
           ),
           const Divider(height: 1),
-          const _ActionRow(
+          _ActionRow(
+            icon: Icons.notifications_none_rounded,
+            label: locale.tr('profile_notifications'),
+          ),
+          const Divider(height: 1),
+          _ActionRow(
             icon: Icons.lock_outline_rounded,
-            label: 'Security & Privacy',
+            label: locale.tr('profile_security_privacy'),
           ),
           const Divider(height: 1),
           _ActionRow(
             icon: Icons.logout_rounded,
-            label: 'Log Out',
+            label: locale.tr('profile_logout'),
             danger: true,
-            onTap: onLogout,
+            onTap: () => _confirmLogout(context, locale),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showLanguageDialog(BuildContext context, AppLocale locale) {
+    showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(locale.tr('profile_language')),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              title: Text(locale.tr('profile_vietnamese')),
+              trailing: locale.locale == 'vi'
+                  ? const Icon(
+                      Icons.check_rounded,
+                      color: AppColors.primaryDark,
+                    )
+                  : null,
+              onTap: () {
+                locale.setLocale('vi');
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              title: Text(locale.tr('profile_english')),
+              trailing: locale.locale == 'en'
+                  ? const Icon(
+                      Icons.check_rounded,
+                      color: AppColors.primaryDark,
+                    )
+                  : null,
+              onTap: () {
+                locale.setLocale('en');
+                Navigator.pop(context);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _confirmLogout(BuildContext context, AppLocale locale) {
+    showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(locale.tr('profile_logout')),
+        content: Text(locale.tr('profile_confirm_logout')),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(locale.tr('profile_cancel')),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              onLogout();
+            },
+            child: Text(
+              locale.tr('profile_logout'),
+              style: const TextStyle(color: AppColors.error),
+            ),
           ),
         ],
       ),
@@ -825,15 +808,15 @@ class _SectionLabel extends StatelessWidget {
   }
 }
 
-String _friendlyText(String? value) {
+String _friendlyText(String? value, AppLocale locale) {
   final trimmed = value?.trim() ?? '';
-  return trimmed.isEmpty ? 'Not provided yet' : trimmed;
+  return trimmed.isEmpty ? locale.tr('profile_not_provided') : trimmed;
 }
 
-String _ageRange(String? dateOfBirth) {
+String _ageRange(String? dateOfBirth, AppLocale locale) {
   final parsed = DateTime.tryParse(dateOfBirth ?? '');
   if (parsed == null) {
-    return 'Not provided yet';
+    return locale.tr('profile_not_provided');
   }
   final now = DateTime.now();
   var age = now.year - parsed.year;
@@ -842,18 +825,18 @@ String _ageRange(String? dateOfBirth) {
     age--;
   }
   if (age < 20) {
-    return 'Under 20';
+    return locale.tr('profile_age_under_20');
   }
   if (age < 30) {
-    return 'Late 20s';
+    return locale.tr('profile_age_late_20s');
   }
   if (age < 40) {
-    return '30s';
+    return locale.tr('profile_age_30s');
   }
-  return '40+';
+  return locale.tr('profile_age_40_plus');
 }
 
-String _primaryGoal(SkinProfile? profile) {
+String _primaryGoal(SkinProfile? profile, AppLocale locale) {
   final values = profile?.goals.isNotEmpty == true
       ? profile!.goals
       : profile?.skinGoals ?? const <String>[];
@@ -862,23 +845,13 @@ String _primaryGoal(SkinProfile? profile) {
       return item;
     }
   }
-  return 'Not provided yet';
+  return locale.tr('profile_not_provided');
 }
 
-String _planName(SubscriptionPlan? plan, String fallbackCode) {
-  if (plan != null && plan.name.trim().isNotEmpty) {
-    return plan.name;
-  }
-  return _capitalize(fallbackCode);
-}
-
-String _planPrice(SubscriptionPlan? plan) {
-  if (plan == null || plan.priceVnd <= 0) {
-    return 'Free';
-  }
-
-  final formatter = NumberFormat.decimalPattern('vi_VN');
-  return '${formatter.format(plan.priceVnd.round())} VND/mo';
+String _brandedPlanName(SubscriptionPlan? plan, String fallbackCode) {
+  return plan != null && plan.name.trim().isNotEmpty
+      ? plan.name.trim()
+      : _capitalize(fallbackCode);
 }
 
 String _capitalize(String value) {

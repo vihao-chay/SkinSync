@@ -372,6 +372,8 @@ class AnalysisResult {
     this.progressEntryId,
     this.photoId,
     this.source,
+    this.createdAt,
+    this.completedAt,
     required this.imageUrl,
     required this.skinType,
     this.overallScore,
@@ -392,6 +394,8 @@ class AnalysisResult {
   final String? progressEntryId;
   final String? photoId;
   final String? source;
+  final DateTime? createdAt;
+  final DateTime? completedAt;
   final String imageUrl;
   final String skinType;
   final int? overallScore;
@@ -405,6 +409,8 @@ class AnalysisResult {
   final List<AnalysisIssue> issues;
   final List<AnalysisRecommendation> recommendations;
   final bool canGenerateProducts;
+
+  DateTime? get lastScanAt => completedAt ?? createdAt;
 
   int? get displaySkinHealthScore =>
       skinHealthScore ??
@@ -450,6 +456,8 @@ class AnalysisResult {
     progressEntryId: json['progressEntryId']?.toString(),
     photoId: json['photoId']?.toString(),
     source: json['source']?.toString(),
+    createdAt: _tryParseDateTime(json['createdAt'] ?? json['CreatedAt']),
+    completedAt: _tryParseDateTime(json['completedAt'] ?? json['CompletedAt']),
     imageUrl: (json['imageUrl'] ?? '') as String,
     skinType:
         ((json['skinType'] ?? json['skinTypeEstimate']) ?? 'Unknown') as String,
@@ -457,8 +465,7 @@ class AnalysisResult {
         ((json['overallScore'] as num?) ?? (json['skinScore'] as num?))
             ?.round(),
     skinHealthScore:
-        ((json['skinHealthScore'] as num?) ??
-                (json['skinHealth'] as num?))
+        ((json['skinHealthScore'] as num?) ?? (json['skinHealth'] as num?))
             ?.round(),
     overallConcernSeverity:
         ((json['overallConcernSeverity'] as num?) ??
@@ -475,7 +482,8 @@ class AnalysisResult {
             moisture: (json['hydrationLevel'] as num?)?.round(),
             texture: (json['textureLevel'] as num?)?.round(),
           ),
-    overview: (json['overview'] ?? json['summary'] ?? json['skinSummary']) as String?,
+    overview:
+        (json['overview'] ?? json['summary'] ?? json['skinSummary']) as String?,
     disclaimer: json['disclaimer'] as String?,
     warnings:
         (((json['warnings'] as List?) ??
@@ -577,15 +585,53 @@ class CurrentRegimen {
   factory CurrentRegimen.fromJson(Map<String, dynamic> json) => CurrentRegimen(
     regimenId: json['regimenId'].toString(),
     name: (json['name'] ?? '') as String,
-    morning: ((json['morning'] as List?) ?? const [])
-        .whereType<Map<String, dynamic>>()
-        .map(RegimenStep.fromJson)
-        .toList(),
-    evening: ((json['evening'] as List?) ?? const [])
-        .whereType<Map<String, dynamic>>()
-        .map(RegimenStep.fromJson)
-        .toList(),
+    morning: _parseUniqueSteps(json['morning']),
+    evening: _parseUniqueSteps(json['evening']),
   );
+
+  static List<RegimenStep> _parseUniqueSteps(Object? value) {
+    final steps =
+        ((value as List?) ?? const [])
+            .whereType<Map<String, dynamic>>()
+            .map(RegimenStep.fromJson)
+            .toList()
+          ..sort((a, b) => a.stepOrder.compareTo(b.stepOrder));
+    final seenStepIds = <String>{};
+    final seenProductIds = <String>{};
+    final seenProductSignatures = <String>{};
+    final uniqueSteps = <RegimenStep>[];
+
+    for (final step in steps) {
+      final stepKey = step.stepId.trim().toLowerCase();
+      final productKey = step.productId.trim().toLowerCase();
+      final signatureParts = [
+        step.brand,
+        step.name,
+        step.category,
+      ].map(_normalizeRoutineStepKeyPart).toList();
+      final signature = signatureParts.every((part) => part.isEmpty)
+          ? ''
+          : signatureParts.join('|');
+
+      if (stepKey.isNotEmpty && !seenStepIds.add(stepKey)) {
+        continue;
+      }
+      if (productKey.isNotEmpty && !seenProductIds.add(productKey)) {
+        continue;
+      }
+      if (signature.trim().isNotEmpty &&
+          !seenProductSignatures.add(signature)) {
+        continue;
+      }
+      uniqueSteps.add(step);
+    }
+
+    return uniqueSteps;
+  }
+
+  static String _normalizeRoutineStepKeyPart(String value) {
+    return value.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
+  }
 }
 
 class RoutineTrackingToday {
@@ -1163,10 +1209,13 @@ class ProductDetail {
         .map((e) => e.toString())
         .where((e) => e.trim().isNotEmpty)
         .toList(),
-    skinTypes: ((json['suitableSkinTypes'] as List?) ?? const [])
-        .map((e) => e.toString())
-        .where((e) => e.trim().isNotEmpty)
-        .toList(),
+    skinTypes:
+        ((json['suitableSkinTypes'] as List?) ??
+                (json['skinTypes'] as List?) ??
+                const [])
+            .map((e) => e.toString())
+            .where((e) => e.trim().isNotEmpty)
+            .toList(),
     skinConcerns: ((json['skinConcerns'] as List?) ?? const [])
         .map((e) => e.toString())
         .where((e) => e.trim().isNotEmpty)
@@ -1226,30 +1275,39 @@ class ProductDetail {
       description: description?.trim().isNotEmpty == true
           ? description
           : recommendation.description,
-      imageUrl: imageUrl?.trim().isNotEmpty == true ? imageUrl : recommendation.imageUrl,
-      howToUse: howToUse?.trim().isNotEmpty == true ? howToUse : recommendation.usageGuide,
+      imageUrl: imageUrl?.trim().isNotEmpty == true
+          ? imageUrl
+          : recommendation.imageUrl,
+      howToUse: howToUse?.trim().isNotEmpty == true
+          ? howToUse
+          : recommendation.usageGuide,
       usageTime: usageTime,
       ingredients: ingredients.isNotEmpty
           ? ingredients
           : ((recommendation.ingredientsText?.trim().isNotEmpty ?? false)
                 ? recommendation.ingredientsText!
-                    .split(',')
-                    .map((e) => e.trim())
-                    .where((e) => e.isNotEmpty)
-                    .toList()
+                      .split(',')
+                      .map((e) => e.trim())
+                      .where((e) => e.isNotEmpty)
+                      .toList()
                 : const <String>[]),
       skinTypes: skinTypes,
       skinConcerns: skinConcerns,
       keyIngredients: keyIngredients,
       cautions: cautions.isNotEmpty ? cautions : recommendation.cautions,
       conflicts: conflicts,
-      matchPercent: matchPercent ?? recommendation.matchPercent ?? recommendation.matchScore,
+      matchPercent:
+          matchPercent ??
+          recommendation.matchPercent ??
+          recommendation.matchScore,
       whyRecommended: whyRecommended?.trim().isNotEmpty == true
           ? whyRecommended
           : (recommendation.whyRecommended?.trim().isNotEmpty == true
-              ? recommendation.whyRecommended
-              : recommendation.aiReason),
-      alreadyInRoutine: alreadyInRoutineOverride ?? (alreadyInRoutine || recommendation.alreadyInRoutine),
+                ? recommendation.whyRecommended
+                : recommendation.aiReason),
+      alreadyInRoutine:
+          alreadyInRoutineOverride ??
+          (alreadyInRoutine || recommendation.alreadyInRoutine),
     );
   }
 }
@@ -1316,14 +1374,15 @@ class AnalysisMetrics {
     ),
   ];
 
-  factory AnalysisMetrics.fromJson(Map<String, dynamic> json) => AnalysisMetrics(
-    acne: (json['acne'] as num?)?.round(),
-    redness: (json['redness'] as num?)?.round(),
-    oiliness: (json['oiliness'] as num?)?.round(),
-    dryness: (json['dryness'] as num?)?.round(),
-    moisture: (json['moisture'] as num?)?.round(),
-    texture: (json['texture'] as num?)?.round(),
-  );
+  factory AnalysisMetrics.fromJson(Map<String, dynamic> json) =>
+      AnalysisMetrics(
+        acne: (json['acne'] as num?)?.round(),
+        redness: (json['redness'] as num?)?.round(),
+        oiliness: (json['oiliness'] as num?)?.round(),
+        dryness: (json['dryness'] as num?)?.round(),
+        moisture: (json['moisture'] as num?)?.round(),
+        texture: (json['texture'] as num?)?.round(),
+      );
 }
 
 enum AnalysisMetricTone { concern, wellness }
@@ -1538,21 +1597,20 @@ class ProductsPageArgs {
   final String? referenceId;
   final ProductsEntryPoint entryPoint;
 
-  bool get showGeneratePrompt => entryPoint == ProductsEntryPoint.analysisResult;
+  bool get showGeneratePrompt =>
+      entryPoint == ProductsEntryPoint.analysisResult;
 
   String get cacheKey => [
-        entryPoint.name,
-        initialCategory ?? '',
-        initialConcern ?? '',
-        initialBudget?.toString() ?? '',
-        referenceId ?? '',
-      ].join('|');
+    entryPoint.name,
+    initialCategory ?? '',
+    initialConcern ?? '',
+    initialBudget?.toString() ?? '',
+    referenceId ?? '',
+  ].join('|');
 }
 
 class RoutinePageArgs {
-  const RoutinePageArgs({
-    this.entryPoint = RoutineEntryPoint.bottomNav,
-  });
+  const RoutinePageArgs({this.entryPoint = RoutineEntryPoint.bottomNav});
 
   final RoutineEntryPoint entryPoint;
 
@@ -1560,9 +1618,7 @@ class RoutinePageArgs {
 }
 
 class ProgressPageArgs {
-  const ProgressPageArgs({
-    this.entryPoint = ProgressEntryPoint.bottomNav,
-  });
+  const ProgressPageArgs({this.entryPoint = ProgressEntryPoint.bottomNav});
 
   final ProgressEntryPoint entryPoint;
 
@@ -1584,9 +1640,7 @@ class ProductDetailPageArgs {
 }
 
 class ProductDetailActionResult {
-  const ProductDetailActionResult({
-    required this.addedToRoutine,
-  });
+  const ProductDetailActionResult({required this.addedToRoutine});
 
   final bool addedToRoutine;
 }
@@ -1823,5 +1877,34 @@ class AiReportGenerateResponse {
         warnings: ((json['warnings'] as List?) ?? const [])
             .map((e) => e.toString())
             .toList(),
+      );
+}
+
+class PaymentLinkResponse {
+  const PaymentLinkResponse({
+    required this.checkoutUrl,
+    required this.orderCode,
+  });
+
+  final String checkoutUrl;
+  final int orderCode;
+
+  factory PaymentLinkResponse.fromJson(Map<String, dynamic> json) =>
+      PaymentLinkResponse(
+        checkoutUrl: (json['checkoutUrl'] ?? '').toString(),
+        orderCode: (json['orderCode'] as num?)?.toInt() ?? 0,
+      );
+}
+
+class VerifyPaymentResponse {
+  const VerifyPaymentResponse({required this.status, required this.planCode});
+
+  final String status;
+  final String planCode;
+
+  factory VerifyPaymentResponse.fromJson(Map<String, dynamic> json) =>
+      VerifyPaymentResponse(
+        status: (json['status'] ?? 'pending').toString(),
+        planCode: (json['planCode'] ?? '').toString(),
       );
 }

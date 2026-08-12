@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Minus, SendHorizontal, X } from "lucide-react";
-import { BrandMark } from "./BrandMark";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { sendSkinChatMessage } from "../services/skinChatService";
+import { BrandMark } from "./BrandMark";
 
 type ChatRole = "assistant" | "user";
 
@@ -12,17 +12,17 @@ interface ChatMessage {
 }
 
 const quickPrompts = [
-  "Phân tích da",
-  "Xây dựng lộ trình",
-  "Gợi ý sản phẩm",
-  "Kiểm tra thành phần",
+  "Analyze my skin",
+  "Build a routine",
+  "Recommend products",
+  "Check ingredients",
 ];
 
 const welcomeMessage =
-  "Xin chào! Tôi là SkinAsync AI. Tôi có thể giúp bạn phân tích da, gợi ý lộ trình chăm sóc, giải thích thành phần và trả lời các câu hỏi về da mặt.";
+  "Hello! I am SkinSync AI. I can help you analyze skin concerns, suggest routines, explain ingredients, and answer skincare questions.";
 
 const outOfScopeMessage =
-  "Mình chỉ hỗ trợ các câu hỏi liên quan đến da mặt và chăm sóc da. Bạn có thể hỏi về mụn, da dầu, da khô, routine, sản phẩm hoặc thành phần skincare.";
+  "I can only help with skincare and facial skin questions. Try asking about acne, oiliness, dryness, irritation, routines, products, or ingredients.";
 
 function buildMessage(text: string, role: ChatRole): ChatMessage {
   return {
@@ -87,9 +87,7 @@ export function SkinAiChatBox() {
   const [isMinimized, setIsMinimized] = useState(false);
   const [input, setInput] = useState("");
   const [isSending, setIsSending] = useState(false);
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    buildMessage(welcomeMessage, "assistant"),
-  ]);
+  const [messages, setMessages] = useState<ChatMessage[]>([buildMessage(welcomeMessage, "assistant")]);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -101,9 +99,7 @@ export function SkinAiChatBox() {
 
   async function sendMessage(nextText: string) {
     const trimmed = nextText.trim();
-    if (!trimmed || isSending) {
-      return;
-    }
+    if (!trimmed || isSending) return;
 
     setInput("");
     setMessages((current) => [...current, buildMessage(trimmed, "user")]);
@@ -120,7 +116,7 @@ export function SkinAiChatBox() {
     if (!result.success || !result.content?.response) {
       setMessages((current) => [
         ...current,
-        buildMessage(result.message || "SkinAsync AI chưa thể phản hồi lúc này. Vui lòng thử lại sau.", "assistant"),
+        buildMessage(result.message || "SkinSync AI cannot respond right now. Please try again later.", "assistant"),
       ]);
       return;
     }
@@ -141,11 +137,11 @@ export function SkinAiChatBox() {
           setIsVisible(true);
           setIsMinimized(false);
         }}
-        className="fixed bottom-6 right-6 z-[60] flex items-center gap-2 rounded-full bg-white px-3 py-2 shadow-2xl shadow-[#8c6e52]/20 border border-[#eadfce] text-[#8c6e52]"
-        aria-label="Mở SkinAsync AI"
+        className="fixed bottom-6 right-6 z-[60] flex items-center gap-2 rounded-full border border-border bg-card px-3 py-2 text-primary shadow-2xl shadow-black/10"
+        aria-label="Open SkinSync AI"
       >
-        <BrandMark className="w-9 h-9 rounded-full ring-1 ring-[#eadfce]" />
-        <span className="pr-1 text-sm" style={{ fontWeight: 600 }}>SkinAsync AI</span>
+        <BrandMark className="h-9 w-9 rounded-full ring-1 ring-border" />
+        <span className="pr-1 text-sm" style={{ fontWeight: 600 }}>SkinSync AI</span>
       </button>
     );
   }
@@ -155,65 +151,65 @@ export function SkinAiChatBox() {
       <button
         type="button"
         onClick={() => setIsMinimized(false)}
-        className="fixed bottom-6 right-6 z-[60] flex items-center gap-2 rounded-full bg-white px-3 py-2 shadow-2xl shadow-[#8c6e52]/20 border border-[#eadfce] text-[#8c6e52]"
-        aria-label="Mở rộng SkinAsync AI"
+        className="fixed bottom-6 right-6 z-[60] flex items-center gap-2 rounded-full border border-border bg-card px-3 py-2 text-primary shadow-2xl shadow-black/10"
+        aria-label="Expand SkinSync AI"
       >
-        <BrandMark className="w-9 h-9 rounded-full ring-1 ring-[#eadfce]" />
-        <span className="pr-1 text-sm" style={{ fontWeight: 600 }}>SkinAsync AI</span>
+        <BrandMark className="h-9 w-9 rounded-full ring-1 ring-border" />
+        <span className="pr-1 text-sm" style={{ fontWeight: 600 }}>SkinSync AI</span>
       </button>
     );
   }
 
   return (
-    <section className="fixed bottom-6 right-6 z-[60] w-[316px] max-w-[calc(100vw-24px)] overflow-hidden rounded-[20px] bg-white shadow-2xl shadow-[#8c6e52]/18 border border-[#eadfce]">
-      <header className="flex items-center justify-between px-4 py-3 border-b border-[#f0e6d8]">
-        <div className="flex items-center gap-3 min-w-0">
-          <BrandMark className="w-9 h-9 rounded-full ring-1 ring-[#eadfce]" />
+    <section className="fixed bottom-6 right-6 z-[60] w-[316px] max-w-[calc(100vw-24px)] overflow-hidden rounded-[20px] border border-border bg-card shadow-2xl shadow-black/10">
+      <header className="flex items-center justify-between border-b border-border/70 px-4 py-3">
+        <div className="min-w-0 flex items-center gap-3">
+          <BrandMark className="h-9 w-9 rounded-full ring-1 ring-border" />
           <div className="min-w-0">
-            <h2 className="text-[15px] text-[#8c6e52] truncate" style={{ fontWeight: 700 }}>
-              SkinAsync AI
+            <h2 className="truncate text-[15px] text-primary" style={{ fontWeight: 700 }}>
+              SkinSync AI
             </h2>
-            <div className="flex items-center gap-1.5 text-[11px] text-[#9c8065]">
-              <span className="w-2 h-2 rounded-full bg-emerald-500" />
-              Đang trực tuyến
+            <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+              <span className="h-2 w-2 rounded-full bg-emerald-500" />
+              Online
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-1 text-[#a98768]">
+        <div className="flex items-center gap-1 text-muted-foreground">
           <button
             type="button"
             onClick={() => setIsMinimized(true)}
-            className="w-7 h-7 rounded-full hover:bg-[#f7f0e7] flex items-center justify-center transition-colors"
-            aria-label="Thu nhỏ chat"
+            className="flex h-7 w-7 items-center justify-center rounded-full transition-colors hover:bg-skin-primarySoft hover:text-primary"
+            aria-label="Minimize chat"
           >
-            <Minus className="w-4 h-4" />
+            <Minus className="h-4 w-4" />
           </button>
           <button
             type="button"
             onClick={() => setIsVisible(false)}
-            className="w-7 h-7 rounded-full hover:bg-[#f7f0e7] flex items-center justify-center transition-colors"
-            aria-label="Đóng chat"
+            className="flex h-7 w-7 items-center justify-center rounded-full transition-colors hover:bg-skin-primarySoft hover:text-primary"
+            aria-label="Close chat"
           >
-            <X className="w-4 h-4" />
+            <X className="h-4 w-4" />
           </button>
         </div>
       </header>
 
-      <div ref={scrollRef} className="h-[360px] overflow-y-auto px-4 py-5 bg-white">
+      <div ref={scrollRef} className="h-[360px] overflow-y-auto bg-card px-4 py-5">
         <div className="space-y-4">
           {messages.map((message) => (
             <div
               key={message.id}
               className={`flex items-end gap-2 ${message.role === "user" ? "justify-end" : "justify-start"}`}
             >
-              {message.role === "assistant" && (
-                <BrandMark className="w-7 h-7 rounded-full ring-1 ring-[#eadfce] flex-shrink-0" />
-              )}
+              {message.role === "assistant" ? (
+                <BrandMark className="h-7 w-7 flex-shrink-0 rounded-full ring-1 ring-border" />
+              ) : null}
               <div
-                className={`max-w-[235px] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed whitespace-pre-wrap ${
+                className={`max-w-[235px] whitespace-pre-wrap rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
                   message.role === "user"
-                    ? "bg-[#c6a77e] text-white rounded-br-sm"
-                    : "bg-[#f6efe6] text-[#5b4632] border border-[#efe2d1] rounded-bl-sm"
+                    ? "rounded-br-sm bg-primary text-primary-foreground"
+                    : "rounded-bl-sm border border-border/60 bg-muted text-foreground"
                 }`}
               >
                 {message.text}
@@ -221,7 +217,7 @@ export function SkinAiChatBox() {
             </div>
           ))}
 
-          {messages.length === 1 && (
+          {messages.length === 1 ? (
             <div className="flex flex-wrap gap-2 pl-9">
               {quickPrompts.map((prompt) => (
                 <button
@@ -229,51 +225,51 @@ export function SkinAiChatBox() {
                   type="button"
                   onClick={() => void sendMessage(prompt)}
                   disabled={isSending}
-                  className="px-3 py-1.5 rounded-full border border-[#d9b98e] text-[#b48c60] bg-white text-[11px] hover:bg-[#faf5ee] disabled:opacity-60 transition-colors"
+                  className="rounded-full border border-border bg-card px-3 py-1.5 text-[11px] text-primary transition-colors hover:bg-skin-primarySoft disabled:opacity-60"
                 >
                   {prompt}
                 </button>
               ))}
             </div>
-          )}
+          ) : null}
 
-          {isSending && (
-            <div className="flex items-end gap-2 justify-start">
-              <BrandMark className="w-7 h-7 rounded-full ring-1 ring-[#eadfce] flex-shrink-0" />
-              <div className="rounded-2xl rounded-bl-sm bg-[#f6efe6] border border-[#efe2d1] px-4 py-3">
+          {isSending ? (
+            <div className="flex justify-start gap-2">
+              <BrandMark className="h-7 w-7 flex-shrink-0 rounded-full ring-1 ring-border" />
+              <div className="rounded-2xl rounded-bl-sm border border-border/60 bg-muted px-4 py-3">
                 <div className="flex gap-1.5">
                   {[0, 1, 2].map((dot) => (
                     <span
                       key={dot}
-                      className="w-1.5 h-1.5 rounded-full bg-[#c2a27b] animate-pulse"
+                      className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse"
                       style={{ animationDelay: `${dot * 120}ms` }}
                     />
                   ))}
                 </div>
               </div>
             </div>
-          )}
+          ) : null}
         </div>
       </div>
 
-      <div className="p-3 bg-white">
+      <div className="bg-card p-3">
         <form
           onSubmit={handleSubmit}
-          className="flex items-center gap-2 rounded-xl bg-[#f8f1e8] border border-[#eadfce] px-3 py-2"
+          className="flex items-center gap-2 rounded-xl border border-border bg-skin-surfaceMuted px-3 py-2"
         >
           <input
             value={input}
             onChange={(event) => setInput(event.target.value)}
-            placeholder="Nhập tin nhắn..."
-            className="min-w-0 flex-1 bg-transparent text-sm text-[#5b4632] placeholder:text-[#b8a797] outline-none"
+            placeholder="Type your message..."
+            className="min-w-0 flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none"
           />
           <button
             type="submit"
             disabled={!input.trim() || isSending}
-            className="w-9 h-9 rounded-lg bg-[#c6a77e] text-white flex items-center justify-center disabled:opacity-50 hover:bg-[#b8956e] transition-colors"
-            aria-label="Gửi tin nhắn"
+            className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+            aria-label="Send message"
           >
-            <SendHorizontal className="w-4 h-4" />
+            <SendHorizontal className="h-4 w-4" />
           </button>
         </form>
       </div>

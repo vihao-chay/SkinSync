@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using SkinSync.Data;
+using SkinSync.Helpers;
 using SkinSync.Mappers;
 using SkinSync.Models.Dtos.AI;
 using SkinSync.Models.Entities;
@@ -78,7 +79,7 @@ public class SkinProgressService : ISkinProgressService
                 ThumbnailUrl = imageUrl,
                 Source = NormalizeSource(request.Source),
                 ImageMetadataJson = request.Image is null ? null : metadataJson,
-                PhotoDate = request.PhotoDate ?? DateOnly.FromDateTime(DateTime.UtcNow.Date),
+                PhotoDate = request.PhotoDate ?? AppClock.Today,
                 TimeOfDay = NormalizeEnum(request.TimeOfDay, "unknown"),
                 LightingCondition = NormalizeEnum(request.LightingCondition, "unknown"),
                 FaceAngle = NormalizeEnum(request.FaceAngle, "unknown"),
@@ -426,7 +427,7 @@ public class SkinProgressService : ISkinProgressService
     private static (string PeriodType, DateOnly PeriodStart, DateOnly PeriodEnd, string PeriodLabel) ResolvePeriod(SkinProgressDashboardQueryDto query)
     {
         var periodType = query.PeriodType.Trim().ToLowerInvariant();
-        var today = DateOnly.FromDateTime(DateTime.UtcNow.Date);
+        var today = AppClock.Today;
 
         if (periodType == "weekly")
         {

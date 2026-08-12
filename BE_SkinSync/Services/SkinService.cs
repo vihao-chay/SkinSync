@@ -124,7 +124,7 @@ public class SkinService : ISkinService
 
         // 2. Fetch Active Products from database
         var dbProducts = await _productRepository.GetAllAsync(cancellationToken);
-        var activeProducts = dbProducts.Where(p => string.Equals(p.Status, "active", StringComparison.OrdinalIgnoreCase)).ToList();
+        var activeProducts = dbProducts.Where(p => p.IsActive).ToList();
 
         var sbProducts = new StringBuilder();
         foreach (var p in activeProducts)

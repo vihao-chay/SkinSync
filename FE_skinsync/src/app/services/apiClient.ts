@@ -4,6 +4,7 @@ import {
   getAccessToken,
   refreshSession,
 } from "./authService";
+import { clearImpersonationSession, getImpersonationToken } from "./impersonationService";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "/api";
 
@@ -42,9 +43,14 @@ async function parseApiResponse<T>(response: Response): Promise<ApiResponse<T>> 
 function getAuthHeaders(baseHeaders?: HeadersInit): Headers {
   const headers = new Headers(baseHeaders ?? {});
   const token = getAccessToken();
+  const impersonationToken = getImpersonationToken();
 
   if (token) {
     headers.set("Authorization", `Bearer ${token}`);
+  }
+
+  if (impersonationToken) {
+    headers.set("X-Impersonation-Token", impersonationToken);
   }
 
   return headers;
@@ -66,6 +72,7 @@ export async function apiRequest<T>(
     });
 
     if (requiresAuth && response.status === 401 && retryOnUnauthorized) {
+      clearImpersonationSession();
       const refreshed = await refreshSession();
       if (refreshed) {
         return apiRequest<T>(path, init, { requiresAuth: true, retryOnUnauthorized: false });

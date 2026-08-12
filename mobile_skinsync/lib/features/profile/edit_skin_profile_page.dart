@@ -2,13 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/l10n/app_locale.dart';
+import '../../core/responsive/responsive.dart';
 import '../../core/routes/app_routes.dart';
 import '../../core/state/app_state.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/app_scaffold.dart';
+import '../../core/widgets/avatar_image.dart';
+import '../../core/widgets/avatar_picker.dart';
 import '../onboarding/onboarding_state.dart';
 
 class EditSkinProfilePage extends StatefulWidget {
@@ -63,6 +68,7 @@ class _EditSkinProfilePageState extends State<EditSkinProfilePage> {
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
     final appState = context.watch<AppState>();
     final profile = appState.profile;
     final textTheme = Theme.of(context).textTheme;
@@ -73,40 +79,45 @@ class _EditSkinProfilePageState extends State<EditSkinProfilePage> {
     final goalOptions = _mergedOptions(OnboardingState.goalOptions, _goals);
 
     return AppScaffold(
-      title: 'Edit profile',
-      subtitle:
-          'Update the details that shape your routine and recommendations.',
+      title: locale.tr('edit_profile_title'),
       onRefresh: appState.refreshProfileState,
       compactHeader: true,
       showBackButton: true,
+      backIcon: Icons.chevron_left_rounded,
+      headerBottomSpacing: AppSpacing.sm,
       body: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.pagePadding,
+        padding: EdgeInsets.fromLTRB(
+          Responsive.responsiveHorizontalPadding(context),
           0,
-          AppSpacing.pagePadding,
-          AppSpacing.pageBottomPaddingWithActions,
+          Responsive.responsiveHorizontalPadding(context),
+          Responsive.contentBottomSpacing(context, extra: 20),
         ),
         children: [
+          _EditProfileIdentity(
+            avatarUrl: appState.user?.avatarUrl,
+            onTap: () => _changeAvatar(context),
+          ),
+          const SizedBox(height: AppSpacing.md),
           AppCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Skin basics',
-                  style: textTheme.titleLarge?.copyWith(
+                  locale.tr('edit_profile_skin_basics'),
+                  style: textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
                 ),
                 const SizedBox(height: AppSpacing.sm),
-                _TwoColumnWrap(
+                _FieldColumn(
                   children: [
                     _SelectionField(
-                      label: 'Skin type',
-                      value: _friendlyText(_skinType),
+                      label: locale.tr('profile_skin_type'),
+                      value: _friendlyText(_skinType, locale),
                       onTap: () => _showChoiceSheet(
                         context,
-                        title: 'Skin type',
+                        title: locale.tr('profile_skin_type'),
                         options: _mergedOptions(
                           OnboardingState.skinTypeOptions,
                           _skinType == null ? const <String>[] : [_skinType!],
@@ -117,35 +128,37 @@ class _EditSkinProfilePageState extends State<EditSkinProfilePage> {
                       ),
                     ),
                     _SelectionField(
-                      label: 'Gender',
-                      value: _genderLabel(_gender),
+                      label: locale.tr('profile_gender'),
+                      value: _genderLabel(_gender, locale),
                       onTap: () => _showChoiceSheet(
                         context,
-                        title: 'Gender',
-                        options: const [
-                          'Male',
-                          'Female',
-                          'Other',
-                          'Prefer not to say',
+                        title: locale.tr('profile_gender'),
+                        options: [
+                          locale.tr('edit_profile_gender_male'),
+                          locale.tr('edit_profile_gender_female'),
+                          locale.tr('edit_profile_gender_other'),
+                          locale.tr('edit_profile_gender_prefer_not_to_say'),
                         ],
-                        selected: _genderLabel(_gender),
-                        onSelected: (value) =>
-                            setState(() => _gender = _genderFromLabel(value)),
+                        selected: _genderLabel(_gender, locale),
+                        onSelected: (value) => setState(
+                          () => _gender = _genderFromLabel(value, locale),
+                        ),
                       ),
                     ),
                     _SelectionField(
-                      label: 'Date of birth',
+                      label: locale.tr('edit_profile_date_of_birth'),
                       value: _dateOfBirth == null
-                          ? 'Not provided yet'
+                          ? locale.tr('profile_not_provided')
                           : DateFormat('dd/MM/yyyy').format(_dateOfBirth!),
                       onTap: _pickDateOfBirth,
+                      trailingIcon: Icons.calendar_today_outlined,
                     ),
                     _SelectionField(
-                      label: 'Budget',
-                      value: _friendlyText(_budgetLabel),
+                      label: locale.tr('profile_budget'),
+                      value: _friendlyText(_budgetLabel, locale),
                       onTap: () => _showChoiceSheet(
                         context,
-                        title: 'Budget',
+                        title: locale.tr('profile_budget'),
                         options: _mergedOptions(
                           OnboardingState.budgetOptions.keys,
                           _budgetLabel == null
@@ -162,26 +175,26 @@ class _EditSkinProfilePageState extends State<EditSkinProfilePage> {
               ],
             ),
           ),
-          const SizedBox(height: AppSpacing.sectionGap),
+          const SizedBox(height: AppSpacing.sm),
           AppCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Preferences',
-                  style: textTheme.titleLarge?.copyWith(
+                  locale.tr('edit_profile_preferences'),
+                  style: textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
                 ),
                 const SizedBox(height: AppSpacing.sm),
-                _TwoColumnWrap(
+                _FieldColumn(
                   children: [
                     _SelectionField(
-                      label: 'Routine level',
-                      value: _friendlyText(_routinePreference),
+                      label: locale.tr('edit_profile_routine_level'),
+                      value: _friendlyText(_routinePreference, locale),
                       onTap: () => _showChoiceSheet(
                         context,
-                        title: 'Routine preference',
+                        title: locale.tr('edit_profile_routine_level'),
                         options: _mergedOptions(
                           OnboardingState.routineOptions,
                           _routinePreference == null
@@ -194,10 +207,10 @@ class _EditSkinProfilePageState extends State<EditSkinProfilePage> {
                       ),
                     ),
                     _SelectionField(
-                      label: 'Sensitivity',
+                      label: locale.tr('profile_sensitivity'),
                       value: _hasSensitivity
                           ? '${_sensitivity.round()}/10'
-                          : 'Not provided yet',
+                          : locale.tr('profile_not_provided'),
                       onTap: () => setState(() => _hasSensitivity = true),
                     ),
                   ],
@@ -207,14 +220,16 @@ class _EditSkinProfilePageState extends State<EditSkinProfilePage> {
                   children: [
                     Expanded(
                       child: Text(
-                        'Sensitivity level',
+                        locale.tr('edit_profile_sensitivity_level'),
                         style: textTheme.labelLarge?.copyWith(
                           color: AppColors.primaryDark,
                         ),
                       ),
                     ),
                     Text(
-                      _hasSensitivity ? '${_sensitivity.round()}/10' : 'Off',
+                      _hasSensitivity
+                          ? '${_sensitivity.round()}/10'
+                          : locale.tr('edit_profile_sensitivity_off'),
                       style: textTheme.labelLarge,
                     ),
                   ],
@@ -241,20 +256,20 @@ class _EditSkinProfilePageState extends State<EditSkinProfilePage> {
               ],
             ),
           ),
-          const SizedBox(height: AppSpacing.sectionGap),
+          const SizedBox(height: AppSpacing.sm),
           AppCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Concerns',
-                  style: textTheme.titleLarge?.copyWith(
+                  locale.tr('edit_profile_concerns'),
+                  style: textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 Text(
-                  'Pick the concerns you want SkinSync to prioritize right now.',
+                  locale.tr('edit_profile_concerns_subtitle'),
                   style: textTheme.bodySmall?.copyWith(
                     color: AppColors.mutedText,
                   ),
@@ -282,20 +297,20 @@ class _EditSkinProfilePageState extends State<EditSkinProfilePage> {
               ],
             ),
           ),
-          const SizedBox(height: AppSpacing.sectionGap),
+          const SizedBox(height: AppSpacing.sm),
           AppCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Goals',
-                  style: textTheme.titleLarge?.copyWith(
+                  locale.tr('edit_profile_goals'),
+                  style: textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 Text(
-                  'These guide what SkinSync optimizes for in routine and product suggestions.',
+                  locale.tr('edit_profile_goals_subtitle'),
                   style: textTheme.bodySmall?.copyWith(
                     color: AppColors.mutedText,
                   ),
@@ -323,53 +338,66 @@ class _EditSkinProfilePageState extends State<EditSkinProfilePage> {
               ],
             ),
           ),
-          const SizedBox(height: AppSpacing.sectionGap),
-          AppCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Save changes',
-                  style: textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                Text(
-                  'Profile changes refresh your summary immediately. If your routine should adapt too, use the AI refresh action.',
-                  style: textTheme.bodySmall?.copyWith(
-                    color: AppColors.mutedText,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                AppButton(
-                  label: 'Save profile',
-                  icon: const Icon(Icons.check_rounded),
-                  isLoading: appState.isBusy,
-                  onPressed: () => _saveProfile(context, refreshRoutine: false),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                AppButton(
-                  label: 'Save & refresh AI routine',
-                  variant: AppButtonVariant.secondary,
-                  icon: const Icon(Icons.auto_awesome_rounded),
-                  isLoading: appState.isBusy,
-                  onPressed: () => _saveProfile(context, refreshRoutine: true),
-                ),
-              ],
-            ),
+          const SizedBox(height: AppSpacing.sm),
+          AppButton(
+            label: locale.tr('profile_save'),
+            icon: const Icon(Icons.check_rounded),
+            isLoading: appState.isBusy,
+            onPressed: () => _saveProfile(context, refreshRoutine: false),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          AppButton(
+            label: locale.tr('edit_profile_save_refresh_ai'),
+            variant: AppButtonVariant.secondary,
+            icon: const Icon(Icons.auto_awesome_rounded),
+            isLoading: appState.isBusy,
+            onPressed: () => _saveProfile(context, refreshRoutine: true),
           ),
           if (profile == null) ...[
             const SizedBox(height: AppSpacing.sm),
             TextButton(
               onPressed: () =>
                   Navigator.pushReplacementNamed(context, AppRoutes.onboarding),
-              child: const Text('Complete onboarding instead'),
+              child: Text(locale.tr('edit_profile_complete_onboarding')),
             ),
           ],
         ],
       ),
     );
+  }
+
+  Future<void> _changeAvatar(BuildContext context) async {
+    final appState = context.read<AppState>();
+    final selectedAvatar = await showAvatarPickerSheet(
+      context,
+      selectedAvatar: appState.user?.avatarUrl,
+    );
+    if (selectedAvatar == null || !context.mounted) {
+      return;
+    }
+
+    try {
+      await appState.updateAvatarSelection(selectedAvatar);
+      if (!context.mounted) {
+        return;
+      }
+      final locale = AppLocale.of(context, listen: false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(locale.tr('profile_avatar_saved'))),
+      );
+    } catch (_) {
+      if (!context.mounted) {
+        return;
+      }
+      final locale = AppLocale.of(context, listen: false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            appState.errorMessage ?? locale.tr('edit_profile_error_save'),
+          ),
+        ),
+      );
+    }
   }
 
   Future<void> _pickDateOfBirth() async {
@@ -421,12 +449,13 @@ class _EditSkinProfilePageState extends State<EditSkinProfilePage> {
       if (!context.mounted) {
         return;
       }
+      final locale = AppLocale.of(context, listen: false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
             refreshRoutine
-                ? 'Profile saved and AI routine refreshed.'
-                : 'Profile saved.',
+                ? locale.tr('edit_profile_saved_refreshed')
+                : locale.tr('profile_saved_success'),
           ),
         ),
       );
@@ -435,10 +464,11 @@ class _EditSkinProfilePageState extends State<EditSkinProfilePage> {
       if (!context.mounted) {
         return;
       }
+      final locale = AppLocale.of(context, listen: false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            appState.errorMessage ?? 'Could not save your profile right now.',
+            appState.errorMessage ?? locale.tr('edit_profile_error_save'),
           ),
         ),
       );
@@ -446,42 +476,102 @@ class _EditSkinProfilePageState extends State<EditSkinProfilePage> {
   }
 }
 
-class _TwoColumnWrap extends StatelessWidget {
-  const _TwoColumnWrap({required this.children});
+class _EditProfileIdentity extends StatelessWidget {
+  const _EditProfileIdentity({required this.avatarUrl, required this.onTap});
+
+  final String? avatarUrl;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
+    return Center(
+      child: Semantics(
+        button: true,
+        label: locale.tr('profile_tap_avatar_hint'),
+        child: GestureDetector(
+          onTap: onTap,
+          child: SizedBox.square(
+            dimension: 84,
+            child: Stack(
+              children: [
+                Center(
+                  child: Container(
+                    width: 76,
+                    height: 76,
+                    padding: const EdgeInsets.all(3),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.foreground.withValues(alpha: 0.08),
+                          blurRadius: 16,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
+                    ),
+                    child: ClipOval(
+                      child: AvatarImage(
+                        source: avatarUrl,
+                        fit: BoxFit.cover,
+                        fallback: const ColoredBox(
+                          color: AppColors.surfaceStrong,
+                          child: Icon(
+                            Icons.person_outline_rounded,
+                            color: AppColors.primaryDark,
+                            size: 34,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  right: 0,
+                  bottom: 2,
+                  child: Container(
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryDark,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: AppColors.surface, width: 2),
+                    ),
+                    child: const Icon(
+                      Icons.edit_rounded,
+                      size: 14,
+                      color: AppColors.onPrimary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FieldColumn extends StatelessWidget {
+  const _FieldColumn({required this.children});
 
   final List<Widget> children;
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final useSingleColumn = constraints.maxWidth < 360;
-        if (useSingleColumn) {
-          return Column(
-            children: children
-                .map(
-                  (child) => Padding(
-                    padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                    child: child,
-                  ),
-                )
-                .toList(),
-          );
-        }
-
-        return Wrap(
-          spacing: AppSpacing.sm,
-          runSpacing: AppSpacing.sm,
-          children: children
-              .map(
-                (child) => SizedBox(
-                  width: (constraints.maxWidth - AppSpacing.sm) / 2,
-                  child: child,
-                ),
-              )
-              .toList(),
-        );
-      },
+    return Column(
+      children: List.generate(
+        children.length,
+        (index) => Padding(
+          padding: EdgeInsets.only(
+            bottom: index == children.length - 1 ? 0 : AppSpacing.sm,
+          ),
+          child: children[index],
+        ),
+      ),
     );
   }
 }
@@ -491,11 +581,13 @@ class _SelectionField extends StatelessWidget {
     required this.label,
     required this.value,
     required this.onTap,
+    this.trailingIcon = Icons.keyboard_arrow_down_rounded,
   });
 
   final String label;
   final String value;
   final VoidCallback onTap;
+  final IconData trailingIcon;
 
   @override
   Widget build(BuildContext context) {
@@ -503,22 +595,24 @@ class _SelectionField extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(AppRadius.medium),
         child: Ink(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
-            color: AppColors.surfaceMuted,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: AppColors.border),
+            color: AppColors.surfaceStrong,
+            borderRadius: BorderRadius.circular(AppRadius.medium),
+            border: Border.all(color: Colors.white),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 label,
-                style: Theme.of(
-                  context,
-                ).textTheme.labelMedium?.copyWith(color: AppColors.primaryDark),
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: AppColors.heading,
+                  fontSize: 9,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
               const SizedBox(height: AppSpacing.xs),
               Row(
@@ -528,14 +622,14 @@ class _SelectionField extends StatelessWidget {
                       value,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodyMedium,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AppColors.heading,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                   const SizedBox(width: AppSpacing.xs),
-                  const Icon(
-                    Icons.keyboard_arrow_down_rounded,
-                    color: AppColors.primaryDark,
-                  ),
+                  Icon(trailingIcon, size: 18, color: AppColors.heading),
                 ],
               ),
             ],
@@ -567,17 +661,19 @@ class _ChoiceChipCard extends StatelessWidget {
         child: Ink(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(
-            color: selected ? AppColors.secondary : AppColors.surfaceMuted,
+            color: selected ? AppColors.primaryFixed : AppColors.surface,
             borderRadius: BorderRadius.circular(999),
             border: Border.all(
-              color: selected ? AppColors.primary : AppColors.border,
+              color: selected
+                  ? AppColors.primary
+                  : AppColors.heading.withValues(alpha: 0.55),
             ),
           ),
           child: Text(
             label,
-            style: Theme.of(
-              context,
-            ).textTheme.labelLarge?.copyWith(color: AppColors.primaryDark),
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+              color: selected ? AppColors.primaryDark : AppColors.heading,
+            ),
           ),
         ),
       ),
@@ -615,12 +711,14 @@ Future<void> _showChoiceSheet(
                 (option) => ListTile(
                   contentPadding: EdgeInsets.zero,
                   title: Text(option),
-                  trailing: selected == option
-                      ? const Icon(
-                          Icons.check_circle_rounded,
-                          color: AppColors.primaryDark,
-                        )
-                      : null,
+                  trailing: Icon(
+                    selected == option
+                        ? Icons.radio_button_checked_rounded
+                        : Icons.radio_button_unchecked_rounded,
+                    color: selected == option
+                        ? AppColors.primary
+                        : AppColors.heading,
+                  ),
                   onTap: () {
                     onSelected(option);
                     Navigator.of(context).pop();
@@ -661,23 +759,23 @@ DateTime? _tryParseDate(String? value) {
   return DateTime.tryParse(value);
 }
 
-String _friendlyText(String? value) {
+String _friendlyText(String? value, AppLocale locale) {
   final trimmed = value?.trim() ?? '';
-  return trimmed.isEmpty ? 'Not provided yet' : trimmed;
+  return trimmed.isEmpty ? locale.tr('profile_not_provided') : trimmed;
 }
 
-String _genderLabel(OnboardingGender? gender) {
+String _genderLabel(OnboardingGender? gender, AppLocale locale) {
   switch (gender) {
     case OnboardingGender.male:
-      return 'Male';
+      return locale.tr('edit_profile_gender_male');
     case OnboardingGender.female:
-      return 'Female';
+      return locale.tr('edit_profile_gender_female');
     case OnboardingGender.other:
-      return 'Other';
+      return locale.tr('edit_profile_gender_other');
     case OnboardingGender.preferNotToSay:
-      return 'Prefer not to say';
+      return locale.tr('edit_profile_gender_prefer_not_to_say');
     case null:
-      return 'Not provided yet';
+      return locale.tr('profile_not_provided');
   }
 }
 
@@ -698,19 +796,21 @@ OnboardingGender? _parseGender(String? value) {
   }
 }
 
-OnboardingGender? _genderFromLabel(String value) {
-  switch (value.trim().toLowerCase()) {
-    case 'male':
-      return OnboardingGender.male;
-    case 'female':
-      return OnboardingGender.female;
-    case 'other':
-      return OnboardingGender.other;
-    case 'prefer not to say':
-      return OnboardingGender.preferNotToSay;
-    default:
-      return null;
+OnboardingGender? _genderFromLabel(String value, AppLocale locale) {
+  final val = value.trim();
+  if (val == locale.tr('edit_profile_gender_male')) {
+    return OnboardingGender.male;
   }
+  if (val == locale.tr('edit_profile_gender_female')) {
+    return OnboardingGender.female;
+  }
+  if (val == locale.tr('edit_profile_gender_other')) {
+    return OnboardingGender.other;
+  }
+  if (val == locale.tr('edit_profile_gender_prefer_not_to_say')) {
+    return OnboardingGender.preferNotToSay;
+  }
+  return null;
 }
 
 String? _enumGenderValue(OnboardingGender? gender) {

@@ -36,7 +36,7 @@ public class DiaryController : ControllerBase
             return ResponseEntity<DiaryCheckInResponseDto>.Fail("Thiáº¿u thÃ´ng tin ngÆ°á»i dÃ¹ng.", 401);
         }
 
-        var date = DateOnly.FromDateTime(DateTime.UtcNow.Date);
+        var date = AppClock.Today;
         var log = await _diaryRepository.GetByUserAndDateAsync(id, date, cancellationToken);
         if (log is null)
         {
@@ -74,7 +74,7 @@ public class DiaryController : ControllerBase
             return ResponseEntity<DiaryCheckInResponseDto>.Fail("Thiáº¿u thÃ´ng tin ngÆ°á»i dÃ¹ng.", 401);
         }
 
-        var date = request.Date ?? DateOnly.FromDateTime(DateTime.UtcNow.Date);
+        var date = request.Date ?? AppClock.Today;
         var existing = await _diaryRepository.GetByUserAndDateAsync(id, date, cancellationToken);
         var completedStepIds = ParseCompletedStepIds(request.CompletedStepIdsJson);
         await SyncRoutineTrackingsAsync(id, date, completedStepIds, cancellationToken);
@@ -145,7 +145,7 @@ public class DiaryController : ControllerBase
             return ResponseEntity<PagingResult<MonthlyDiaryDayDto>>.Fail("Missing authenticated user.", 401);
         }
 
-        var now = DateTime.UtcNow;
+        var now = AppClock.LocalNow;
         var selectedYear = query.Year ?? now.Year;
         var selectedMonth = query.Month ?? now.Month;
 

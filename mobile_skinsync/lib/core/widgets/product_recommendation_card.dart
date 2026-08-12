@@ -5,7 +5,6 @@ import '../models/app_models.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_radius.dart';
 import '../theme/app_spacing.dart';
-import 'app_button.dart';
 import 'app_card.dart';
 import 'status_chip.dart';
 
@@ -13,15 +12,11 @@ class ProductRecommendationCard extends StatelessWidget {
   const ProductRecommendationCard({
     super.key,
     required this.item,
-    required this.onViewDetails,
     required this.onAddToRoutine,
-    required this.onCheckIngredients,
   });
 
   final AiRecommendedProduct item;
-  final VoidCallback onViewDetails;
   final VoidCallback onAddToRoutine;
-  final VoidCallback onCheckIngredients;
 
   @override
   Widget build(BuildContext context) {
@@ -101,10 +96,8 @@ class ProductRecommendationCard extends StatelessWidget {
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: AppColors.surfaceMuted,
-              borderRadius: BorderRadius.circular(AppRadius.medium),
-              border: Border.all(
-                color: AppColors.border.withValues(alpha: 0.7),
-              ),
+              borderRadius: BorderRadius.circular(AppRadius.large),
+              border: Border.all(color: Colors.white),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -148,26 +141,9 @@ class ProductRecommendationCard extends StatelessWidget {
             ),
           ],
           const SizedBox(height: AppSpacing.sm),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: onViewDetails,
-                  child: const Text('Details'),
-                ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: onCheckIngredients,
-                  child: const Text('Ingredients'),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          AppButton(
+          _RoutineActionButton(
             label: item.alreadyInRoutine ? 'View in Routine' : 'Add to Routine',
+            inRoutine: item.alreadyInRoutine,
             onPressed: onAddToRoutine,
           ),
         ],
@@ -188,6 +164,102 @@ class ProductRecommendationCard extends StatelessWidget {
   }
 }
 
+class _RoutineActionButton extends StatefulWidget {
+  const _RoutineActionButton({
+    required this.label,
+    required this.inRoutine,
+    required this.onPressed,
+  });
+
+  final String label;
+  final bool inRoutine;
+  final VoidCallback onPressed;
+
+  @override
+  State<_RoutineActionButton> createState() => _RoutineActionButtonState();
+}
+
+class _RoutineActionButtonState extends State<_RoutineActionButton> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final foreground = widget.inRoutine
+        ? AppColors.heading
+        : AppColors.primaryDark;
+    final highlighted = widget.inRoutine && _hovered;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppRadius.pill),
+        mouseCursor: SystemMouseCursors.click,
+        onHover: (value) => setState(() => _hovered = value),
+        onTap: widget.onPressed,
+        child: AnimatedScale(
+          scale: highlighted ? 1.015 : 1,
+          duration: const Duration(milliseconds: 160),
+          curve: Curves.easeOut,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 160),
+            curve: Curves.easeOut,
+            width: double.infinity,
+            constraints: const BoxConstraints(minHeight: 52),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
+            decoration: BoxDecoration(
+              color: widget.inRoutine
+                  ? highlighted
+                        ? const Color(0xFFE1DED8)
+                        : const Color(0xFFE8E6E1)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(AppRadius.pill),
+              border: widget.inRoutine
+                  ? null
+                  : Border.all(color: AppColors.primaryDark, width: 1.4),
+              boxShadow: highlighted
+                  ? [
+                      BoxShadow(
+                        color: AppColors.foreground.withValues(alpha: 0.1),
+                        blurRadius: 14,
+                        offset: const Offset(0, 5),
+                      ),
+                    ]
+                  : const [],
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (widget.inRoutine) ...[
+                  Icon(
+                    Icons.calendar_month_outlined,
+                    color: foreground,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 10),
+                ],
+                Flexible(
+                  child: Text(
+                    widget.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: foreground,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _ProductThumb extends StatelessWidget {
   const _ProductThumb({required this.item});
 
@@ -201,7 +273,7 @@ class _ProductThumb extends StatelessWidget {
         : (raw.startsWith('http') ? raw : '${AppConfig.apiBaseUrl}$raw');
 
     return ClipRRect(
-      borderRadius: BorderRadius.circular(AppRadius.medium),
+      borderRadius: BorderRadius.circular(AppRadius.large),
       child: Container(
         width: double.infinity,
         height: 190,
@@ -238,7 +310,7 @@ class _ConfidenceBadge extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.secondary.withValues(alpha: 0.94),
         borderRadius: BorderRadius.circular(AppRadius.pill),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: Colors.white),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

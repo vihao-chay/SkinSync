@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/config/app_config.dart';
+import '../../core/l10n/app_locale.dart';
 import '../../core/models/app_models.dart';
 import '../../core/routes/app_routes.dart';
+import '../../core/responsive/responsive.dart';
 import '../../core/state/app_state.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_radius.dart';
@@ -12,8 +14,7 @@ import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/circular_score.dart';
 import '../../core/widgets/main_shell.dart';
-import '../../core/widgets/responsive_layout.dart';
-import '../../core/widgets/stitch_top_bar.dart';
+import '../../core/widgets/skin_sync_header.dart';
 import '../../core/widgets/status_chip.dart';
 
 class DashboardPage extends StatefulWidget {
@@ -69,30 +70,31 @@ class _DashboardPageState extends State<DashboardPage> {
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
     final appState = context.watch<AppState>();
     final latestAnalysis = appState.latestAnalysis;
     final regimen = appState.regimen;
     final tracking = appState.trackingToday;
-    final progress = appState.progress;
+    final scanUsage = _findUsage(
+      appState.subscription?.usage ?? const <SubscriptionUsage>[],
+      'skin_analysis',
+    );
     final totalSteps = tracking?.totalSteps ?? 0;
     final completedSteps = tracking?.completedSteps ?? 0;
     final routineProgress = totalSteps == 0 ? 0.0 : completedSteps / totalSteps;
-    final routineSteps = [
-      ...?regimen?.morning,
-      ...?regimen?.evening,
-    ].take(3).toList();
+    final routineSteps = _routinePreviewItems(regimen, locale);
     final products =
         (_latestRecommendation?.products ?? const <AiRecommendedProduct>[])
             .where((item) => item.name.trim().isNotEmpty)
-            .take(2)
+            .take(3)
             .toList();
-    final contentMaxWidth = ResponsiveLayout.contentMaxWidth(
+    final contentMaxWidth = Responsive.maxContentWidth(
       context,
-      compact: 460,
-      medium: 760,
-      large: 1040,
+      mobile: double.infinity,
+      tablet: 760,
+      desktop: 1040,
     );
-    final horizontalPadding = ResponsiveLayout.horizontalPadding(context);
+    final horizontalPadding = Responsive.responsiveHorizontalPadding(context);
 
     return ColoredBox(
       color: AppColors.pageBackground,
@@ -106,43 +108,42 @@ class _DashboardPageState extends State<DashboardPage> {
               onRefresh: _refreshAll,
               child: ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.only(
-                  bottom: AppSpacing.pageBottomPaddingWithActions,
-                ),
+                padding: const EdgeInsets.only(bottom: 0),
                 children: [
-                  StitchTopBar(
+                  SkinSyncHeader(
+                    name: appState.profileDisplayName,
                     avatarUrl: appState.user?.avatarUrl,
-                    onLeadingTap: () =>
+                    onAvatarTap: () =>
                         MainShell.navigateToTab(context, AppRoutes.profile),
-                    onTrailingTap: () =>
-                        MainShell.navigateToTab(context, AppRoutes.progress),
                   ),
                   Padding(
                     padding: EdgeInsets.fromLTRB(
                       horizontalPadding,
-                      4,
+                      12,
                       horizontalPadding,
-                      0,
+                      Responsive.floatingNavigationBottomSpacing(
+                        context,
+                        extra: 20,
+                      ),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _Greeting(
-                          name: _firstName(appState.profileDisplayName),
-                          hasRoutine: regimen != null,
-                          hasAnalysis: latestAnalysis != null,
-                        ),
-                        const SizedBox(height: AppSpacing.md),
                         _SkinHealthCard(
-                          score: latestAnalysis?.overallScore,
-                          insight: progress?.progressInsight,
-                          onScan: () =>
-                              Navigator.pushNamed(context, AppRoutes.upload),
+                          score:
+                              latestAnalysis?.displaySkinHealthScore ??
+                              latestAnalysis?.overallScore,
+                          lastScanAt: latestAnalysis?.lastScanAt,
+                          scanUsage: scanUsage,
+                          onUpgrade: () => Navigator.pushNamed(
+                            context,
+                            AppRoutes.membershipPlans,
+                          ),
                         ),
                         const SizedBox(height: AppSpacing.md),
                         _SectionTitle(
-                          title: 'Key Metrics',
-                          actionLabel: 'Details',
+                          title: locale.tr('dashboard_key_metrics'),
+                          actionLabel: locale.tr('dashboard_details'),
                           onAction: () => MainShell.navigateToTab(
                             context,
                             AppRoutes.progress,
@@ -152,7 +153,7 @@ class _DashboardPageState extends State<DashboardPage> {
                         _MetricGrid(
                           acne: _issueScore(latestAnalysis, 'acne'),
                           redness: _issueScore(latestAnalysis, 'redness'),
-                          hydration: _hydrationLabel(appState.todayLog),
+                          hydration: _hydrationLabel(appState.todayLog, locale),
                           routinePercent: routineProgress,
                         ),
                         const SizedBox(height: AppSpacing.md),
@@ -214,14 +215,6 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  String _firstName(String value) {
-    final trimmed = value.trim();
-    if (trimmed.isEmpty || trimmed == 'You') {
-      return '';
-    }
-    return trimmed.split(' ').first.trim();
-  }
-
   int? _issueScore(AnalysisResult? result, String contains) {
     if (result == null) {
       return null;
@@ -235,120 +228,290 @@ class _DashboardPageState extends State<DashboardPage> {
     return null;
   }
 
-  String _hydrationLabel(DailyLog? log) {
+  String _hydrationLabel(DailyLog? log, AppLocale locale) {
     final hydration = log?.hydrationLevel;
     if (hydration == null) {
-      return 'Optimal';
+      return locale.tr('hydration_optimal');
     }
     if (hydration >= 7) {
-      return 'Optimal';
+      return locale.tr('hydration_optimal');
     }
     if (hydration >= 4) {
-      return 'Balanced';
+      return locale.tr('hydration_balanced');
     }
-    return 'Low';
-  }
-}
-
-class _Greeting extends StatelessWidget {
-  const _Greeting({
-    required this.name,
-    required this.hasRoutine,
-    required this.hasAnalysis,
-  });
-
-  final String name;
-  final bool hasRoutine;
-  final bool hasAnalysis;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          name.isEmpty ? 'Hello' : 'Hello, $name',
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-            fontWeight: FontWeight.w800,
-            color: AppColors.heading,
-          ),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          hasRoutine
-              ? 'Your skincare day is ready.'
-              : hasAnalysis
-              ? 'Your skin insights are ready.'
-              : 'Start with a quick AI skin scan today.',
-          style: Theme.of(
-            context,
-          ).textTheme.labelSmall?.copyWith(color: AppColors.foreground),
-        ),
-      ],
-    );
+    return locale.tr('hydration_low');
   }
 }
 
 class _SkinHealthCard extends StatelessWidget {
   const _SkinHealthCard({
     required this.score,
-    required this.insight,
-    required this.onScan,
+    required this.lastScanAt,
+    required this.scanUsage,
+    required this.onUpgrade,
   });
 
   final int? score;
-  final String? insight;
-  final VoidCallback onScan;
+  final DateTime? lastScanAt;
+  final SubscriptionUsage? scanUsage;
+  final VoidCallback onUpgrade;
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
     final resolvedScore = score ?? 0;
-    return AppCard(
-      padding: const EdgeInsets.fromLTRB(18, 16, 18, 14),
-      child: Column(
-        children: [
-          Text(
-            'Your Skin Health',
-            style: Theme.of(
-              context,
-            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 12),
-          CircularScore(
-            score: resolvedScore,
-            size: 136,
-            label: score == null ? 'No scan' : 'Balanced',
-            progressColor: AppColors.primary,
-          ),
-          const SizedBox(height: 10),
-          Text(
-            score == null
-                ? 'Scan your skin to unlock today\'s baseline.'
-                : insight?.trim().isNotEmpty == true
-                ? insight!
-                : 'Baseline saved from your latest analysis.',
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            height: 34,
-            child: OutlinedButton.icon(
-              onPressed: onScan,
-              icon: const Icon(Icons.camera_alt_outlined, size: 15),
-              label: const Text('Skin scan today'),
-              style: OutlinedButton.styleFrom(
-                minimumSize: const Size(0, 34),
-                padding: const EdgeInsets.symmetric(horizontal: 14),
+    final limit = scanUsage?.monthlyLimit;
+    final used = scanUsage?.used ?? 0;
+    final unlimited = scanUsage?.isUnlimited ?? false;
+    final exhausted = !unlimited && limit != null && limit > 0 && used >= limit;
+    final usageProgress = unlimited
+        ? 1.0
+        : limit == null || limit <= 0
+        ? 0.0
+        : (used / limit).clamp(0.0, 1.0);
+
+    final usageLabel = scanUsage == null
+        ? null
+        : unlimited
+        ? locale.tr('dashboard_unlimited_scans')
+        : limit == null
+        ? '$used ${locale.tr('plan_scans')}'
+        : '$used/$limit ${locale.tr('plan_scans')}';
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final cardWidth = constraints.maxWidth.isFinite
+            ? constraints.maxWidth
+            : MediaQuery.sizeOf(context).width;
+        final cardHeight = (cardWidth * (exhausted ? 0.9 : 0.82))
+            .clamp(exhausted ? 324.0 : 294.0, exhausted ? 354.0 : 326.0)
+            .toDouble();
+        final scoreSize = (cardWidth * 0.34).clamp(118.0, 132.0).toDouble();
+        final usageRailWidth = (cardWidth * 0.64)
+            .clamp(218.0, 252.0)
+            .toDouble();
+        const pairedGap = 12.0;
+
+        return SizedBox(
+          height: cardHeight,
+          child: Container(
+            width: double.infinity,
+            clipBehavior: Clip.antiAlias,
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(AppRadius.card),
+              border: Border.all(color: Colors.white),
+              image: const DecorationImage(
+                image: AssetImage('img/logo_home_perfect.png'),
+                fit: BoxFit.cover,
+                filterQuality: FilterQuality.high,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.foreground.withValues(alpha: 0.08),
+                  blurRadius: 20,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: AppColors.surface.withValues(alpha: 0.08),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(18, 16, 18, 14),
+                child: Column(
+                  children: [
+                    Text(
+                      locale.tr('dashboard_skin_health_title'),
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontFamily: 'PlayfairDisplay',
+                        color: AppColors.heading,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        height: 1.05,
+                      ),
+                    ),
+                    const SizedBox(height: pairedGap),
+                    CircularScore(
+                      score: resolvedScore,
+                      size: scoreSize,
+                      label: score == null
+                          ? locale.tr('dashboard_no_scan')
+                          : locale.tr('dashboard_skin_balanced'),
+                      suffix: score == null ? '' : '%',
+                      progressColor: AppColors.primaryDark,
+                      scoreFontSize: 30,
+                      labelFontSize: 10,
+                      scoreColor: AppColors.heading,
+                      labelColor: AppColors.heading,
+                    ),
+                    const SizedBox(height: 22),
+                    if (lastScanAt != null) ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 7,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.surface.withValues(alpha: 0.9),
+                          borderRadius: BorderRadius.circular(AppRadius.pill),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.history_rounded,
+                              size: 14,
+                              color: AppColors.primaryDark,
+                            ),
+                            const SizedBox(width: 6),
+                            Flexible(
+                              child: Text(
+                                locale
+                                    .tr('dashboard_last_scan_format')
+                                    .replaceAll(
+                                      '{time}',
+                                      _relativeScanTime(lastScanAt!, locale),
+                                    ),
+                                overflow: TextOverflow.ellipsis,
+                                style: Theme.of(context).textTheme.labelSmall
+                                    ?.copyWith(
+                                      color: AppColors.heading,
+                                      fontSize: 10.5,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                    if (usageLabel != null) ...[
+                      const SizedBox(height: pairedGap),
+                      SizedBox(
+                        width: usageRailWidth,
+                        child: Column(
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    locale.tr('dashboard_usage'),
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelSmall
+                                        ?.copyWith(
+                                          color: AppColors.heading,
+                                          fontSize: 10.5,
+                                          fontWeight: FontWeight.w900,
+                                        ),
+                                  ),
+                                ),
+                                Text(
+                                  usageLabel,
+                                  style: Theme.of(context).textTheme.labelSmall
+                                      ?.copyWith(
+                                        color: AppColors.heading,
+                                        fontSize: 10.5,
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(
+                                AppRadius.pill,
+                              ),
+                              child: LinearProgressIndicator(
+                                value: usageProgress,
+                                minHeight: 5,
+                                backgroundColor: AppColors.surface.withValues(
+                                  alpha: 0.82,
+                                ),
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  exhausted
+                                      ? AppColors.error
+                                      : AppColors.primaryDark,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (exhausted) ...[
+                        const SizedBox(height: 5),
+                        TextButton.icon(
+                          onPressed: onUpgrade,
+                          iconAlignment: IconAlignment.end,
+                          icon: const Icon(
+                            Icons.arrow_forward_rounded,
+                            size: 14,
+                          ),
+                          label: Text(
+                            locale.tr('dashboard_upgrade_unlimited_scans'),
+                          ),
+                          style: TextButton.styleFrom(
+                            foregroundColor: AppColors.primaryDark,
+                            textStyle: Theme.of(context).textTheme.labelSmall
+                                ?.copyWith(
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                            minimumSize: const Size.fromHeight(26),
+                            padding: EdgeInsets.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ],
+                ),
               ),
             ),
           ),
-        ],
-      ),
+        );
+      },
     );
   }
+}
+
+String _relativeScanTime(DateTime value, AppLocale locale) {
+  final localValue = value.toLocal();
+  var difference = DateTime.now().difference(localValue);
+  if (difference.isNegative) {
+    difference = Duration.zero;
+  }
+
+  if (difference.inMinutes < 1) {
+    return locale.tr('dashboard_scan_just_now');
+  }
+  if (difference.inMinutes < 60) {
+    final minutes = difference.inMinutes;
+    final key = minutes == 1
+        ? 'dashboard_scan_minute_ago'
+        : 'dashboard_scan_minutes_ago';
+    return locale.tr(key).replaceAll('{count}', '$minutes');
+  }
+  if (difference.inHours < 24) {
+    final hours = difference.inHours;
+    final key = hours == 1
+        ? 'dashboard_scan_hour_ago'
+        : 'dashboard_scan_hours_ago';
+    return locale.tr(key).replaceAll('{count}', '$hours');
+  }
+  if (difference.inDays < 30) {
+    final days = difference.inDays;
+    final key = days == 1
+        ? 'dashboard_scan_day_ago'
+        : 'dashboard_scan_days_ago';
+    return locale.tr(key).replaceAll('{count}', '$days');
+  }
+
+  final day = localValue.day.toString().padLeft(2, '0');
+  final month = localValue.month.toString().padLeft(2, '0');
+  return '$day/$month/${localValue.year}';
 }
 
 class _SectionTitle extends StatelessWidget {
@@ -392,6 +555,7 @@ class _MetricGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
     return LayoutBuilder(
       builder: (context, constraints) {
         if (constraints.maxWidth >= 820) {
@@ -403,23 +567,23 @@ class _MetricGrid extends StatelessWidget {
               SizedBox(
                 width: itemWidth,
                 child: _MetricMiniCard(
-                  label: 'Acne',
-                  value: _scoreLabel(acne),
+                  label: locale.tr('metric_acne'),
+                  value: _scoreLabel(acne, locale),
                   tone: _scoreTone(acne),
                 ),
               ),
               SizedBox(
                 width: itemWidth,
                 child: _MetricMiniCard(
-                  label: 'Redness',
-                  value: _scoreLabel(redness),
+                  label: locale.tr('metric_redness'),
+                  value: _scoreLabel(redness, locale),
                   tone: _scoreTone(redness),
                 ),
               ),
               SizedBox(
                 width: itemWidth,
                 child: _MetricMiniCard(
-                  label: 'Hydration',
+                  label: locale.tr('metric_hydration'),
                   value: hydration,
                   tone: StatusChipTone.success,
                 ),
@@ -427,7 +591,7 @@ class _MetricGrid extends StatelessWidget {
               SizedBox(
                 width: itemWidth,
                 child: _MetricMiniCard(
-                  label: 'Routine',
+                  label: locale.tr('metric_routine'),
                   value: '${(routinePercent * 100).round()}%',
                   tone: StatusChipTone.accent,
                 ),
@@ -442,16 +606,16 @@ class _MetricGrid extends StatelessWidget {
               children: [
                 Expanded(
                   child: _MetricMiniCard(
-                    label: 'Acne',
-                    value: _scoreLabel(acne),
+                    label: locale.tr('metric_acne'),
+                    value: _scoreLabel(acne, locale),
                     tone: _scoreTone(acne),
                   ),
                 ),
                 const SizedBox(width: AppSpacing.sm),
                 Expanded(
                   child: _MetricMiniCard(
-                    label: 'Redness',
-                    value: _scoreLabel(redness),
+                    label: locale.tr('metric_redness'),
+                    value: _scoreLabel(redness, locale),
                     tone: _scoreTone(redness),
                   ),
                 ),
@@ -459,7 +623,7 @@ class _MetricGrid extends StatelessWidget {
             ),
             const SizedBox(height: AppSpacing.sm),
             _MetricMiniCard(
-              label: 'Hydration',
+              label: locale.tr('metric_hydration'),
               value: hydration,
               trailing: '${(routinePercent * 100).round()}%',
               tone: StatusChipTone.success,
@@ -470,17 +634,17 @@ class _MetricGrid extends StatelessWidget {
     );
   }
 
-  String _scoreLabel(int? value) {
+  String _scoreLabel(int? value, AppLocale locale) {
     if (value == null) {
-      return 'Low';
+      return locale.tr('metric_severity_low');
     }
     if (value >= 70) {
-      return 'High';
+      return locale.tr('metric_severity_high');
     }
     if (value >= 40) {
-      return 'Mild';
+      return locale.tr('metric_severity_mild');
     }
-    return 'Low';
+    return locale.tr('metric_severity_low');
   }
 
   StatusChipTone _scoreTone(int? value) {
@@ -596,11 +760,12 @@ class _RoutinePreviewCard extends StatelessWidget {
   final int completedSteps;
   final int totalSteps;
   final double progress;
-  final List<RegimenStep> steps;
+  final List<_RoutinePreviewItem> steps;
   final VoidCallback onOpen;
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
     return AppCard(
       onTap: onOpen,
       child: Column(
@@ -610,7 +775,7 @@ class _RoutinePreviewCard extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  'Today\'s Routine',
+                  locale.tr('dashboard_today_routine'),
                   style: Theme.of(
                     context,
                   ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
@@ -618,8 +783,8 @@ class _RoutinePreviewCard extends StatelessWidget {
               ),
               StatusChip(
                 label: totalSteps == 0
-                    ? 'Not set'
-                    : '$completedSteps/$totalSteps steps',
+                    ? locale.tr('routine_not_set')
+                    : '$completedSteps/$totalSteps ${locale.tr('dashboard_steps')}',
                 tone: StatusChipTone.accent,
               ),
             ],
@@ -639,18 +804,37 @@ class _RoutinePreviewCard extends StatelessWidget {
           const SizedBox(height: AppSpacing.md),
           if (steps.isEmpty)
             Text(
-              'Build your first routine from AI product recommendations.',
+              locale.tr('routine_empty_prompt'),
               style: Theme.of(context).textTheme.bodySmall,
             )
           else
             SizedBox(
-              height: 92,
+              height: 116,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 itemCount: steps.length,
-                separatorBuilder: (_, _) => const SizedBox(width: 12),
+                separatorBuilder: (_, index) {
+                  final changesPeriod =
+                      steps[index].periodLabel != steps[index + 1].periodLabel;
+                  if (!changesPeriod) {
+                    return const SizedBox(width: 12);
+                  }
+                  return SizedBox(
+                    width: 24,
+                    child: Center(
+                      child: Container(
+                        width: 1.5,
+                        height: 86,
+                        decoration: BoxDecoration(
+                          color: AppColors.outline.withValues(alpha: 0.9),
+                          borderRadius: BorderRadius.circular(AppRadius.pill),
+                        ),
+                      ),
+                    ),
+                  );
+                },
                 itemBuilder: (context, index) =>
-                    _RoutineBubble(step: steps[index]),
+                    _RoutineBubble(item: steps[index]),
               ),
             ),
         ],
@@ -660,34 +844,28 @@ class _RoutinePreviewCard extends StatelessWidget {
 }
 
 class _RoutineBubble extends StatelessWidget {
-  const _RoutineBubble({required this.step});
+  const _RoutineBubble({required this.item});
 
-  final RegimenStep step;
+  final _RoutinePreviewItem item;
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
+    final step = item.step;
+    final category = step.category.trim().isEmpty
+        ? locale.tr('product_default_brand')
+        : step.category.trim();
+    final stepLabel = locale
+        .tr('dashboard_step_number')
+        .replaceAll('{number}', '${item.sequence}');
     return SizedBox(
-      width: 78,
+      width: 96,
       child: Column(
         children: [
-          Container(
-            width: 54,
-            height: 54,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: AppColors.surfaceStrong,
-              shape: BoxShape.circle,
-              border: Border.all(color: AppColors.border),
-            ),
-            child: Icon(
-              _categoryIcon(step.category),
-              color: AppColors.primaryDark,
-              size: 22,
-            ),
-          ),
+          _RoutineProductImage(step: step),
           const SizedBox(height: 7),
           Text(
-            step.category,
+            category,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
@@ -696,28 +874,140 @@ class _RoutineBubble extends StatelessWidget {
               color: AppColors.heading,
             ),
           ),
+          const SizedBox(height: 3),
           Text(
-            step.name,
+            item.periodLabel,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.labelSmall,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: AppColors.primaryDark,
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            stepLabel,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: AppColors.primaryDark,
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ],
       ),
     );
   }
+}
 
-  IconData _categoryIcon(String category) {
-    return switch (category.trim().toLowerCase()) {
-      'cleanser' => Icons.soap_outlined,
-      'toner' => Icons.opacity_outlined,
-      'serum' => Icons.science_outlined,
-      'moisturizer' => Icons.spa_outlined,
-      'sunscreen' => Icons.wb_sunny_outlined,
-      _ => Icons.local_florist_outlined,
-    };
+class _RoutineProductImage extends StatelessWidget {
+  const _RoutineProductImage({required this.step});
+
+  final RegimenStep step;
+
+  @override
+  Widget build(BuildContext context) {
+    final raw = step.imageUrl?.trim() ?? '';
+    final url = raw.isEmpty
+        ? ''
+        : raw.startsWith('http')
+        ? raw
+        : '${AppConfig.apiBaseUrl}$raw';
+
+    return Container(
+      width: 58,
+      height: 58,
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceStrong,
+        shape: BoxShape.circle,
+        border: Border.all(color: Colors.white, width: 1.4),
+      ),
+      child: ClipOval(
+        child: url.isEmpty
+            ? _RoutineImageFallback(category: step.category)
+            : Image.network(
+                url,
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) =>
+                    _RoutineImageFallback(category: step.category),
+              ),
+      ),
+    );
   }
+}
+
+class _RoutineImageFallback extends StatelessWidget {
+  const _RoutineImageFallback({required this.category});
+
+  final String category;
+
+  @override
+  Widget build(BuildContext context) {
+    return ColoredBox(
+      color: AppColors.surfaceStrong,
+      child: Icon(
+        _categoryIcon(category),
+        color: AppColors.primaryDark,
+        size: 22,
+      ),
+    );
+  }
+}
+
+class _RoutinePreviewItem {
+  const _RoutinePreviewItem({
+    required this.step,
+    required this.periodLabel,
+    required this.sequence,
+  });
+
+  final RegimenStep step;
+  final String periodLabel;
+  final int sequence;
+}
+
+List<_RoutinePreviewItem> _routinePreviewItems(
+  CurrentRegimen? regimen,
+  AppLocale locale,
+) {
+  if (regimen == null) {
+    return const [];
+  }
+
+  _RoutinePreviewItem buildItem(
+    RegimenStep step,
+    int index,
+    String periodLabel,
+  ) {
+    return _RoutinePreviewItem(
+      step: step,
+      periodLabel: periodLabel,
+      sequence: step.stepOrder > 0 ? step.stepOrder : index + 1,
+    );
+  }
+
+  return [
+    for (var i = 0; i < regimen.morning.length; i++)
+      buildItem(regimen.morning[i], i, locale.tr('dashboard_morning')),
+    for (var i = 0; i < regimen.evening.length; i++)
+      buildItem(regimen.evening[i], i, locale.tr('dashboard_evening')),
+  ];
+}
+
+IconData _categoryIcon(String category) {
+  return switch (category.trim().toLowerCase()) {
+    'cleanser' => Icons.soap_outlined,
+    'toner' => Icons.opacity_outlined,
+    'serum' => Icons.science_outlined,
+    'moisturizer' => Icons.spa_outlined,
+    'sunscreen' => Icons.wb_sunny_outlined,
+    _ => Icons.local_florist_outlined,
+  };
 }
 
 class _ForYouSection extends StatelessWidget {
@@ -735,6 +1025,7 @@ class _ForYouSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
     if (loading) {
       return const _ForYouLoading();
     }
@@ -743,8 +1034,8 @@ class _ForYouSection extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const StatusChip(
-              label: 'No recommendations yet',
+            StatusChip(
+              label: locale.tr('recommendation_empty_title'),
               icon: Icons.auto_awesome_rounded,
               tone: StatusChipTone.accent,
             ),
@@ -752,12 +1043,12 @@ class _ForYouSection extends StatelessWidget {
             Text(
               errorMessage?.trim().isNotEmpty == true
                   ? errorMessage!
-                  : 'Scan with AI, then generate product recommendations.',
+                  : locale.tr('recommendation_empty_prompt'),
               style: Theme.of(context).textTheme.bodySmall,
             ),
             const SizedBox(height: AppSpacing.sm),
             AppButton(
-              label: 'Open Shop',
+              label: locale.tr('recommendation_open_shop'),
               variant: AppButtonVariant.secondary,
               onPressed: onOpenProducts,
             ),
@@ -770,8 +1061,8 @@ class _ForYouSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _SectionTitle(
-          title: 'For You',
-          actionLabel: 'Shop',
+          title: locale.tr('recommendation_for_you'),
+          actionLabel: locale.tr('recommendation_shop'),
           onAction: onOpenProducts,
         ),
         const SizedBox(height: AppSpacing.sm),
@@ -799,6 +1090,8 @@ class _ForYouLoading extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: const [
+        Expanded(child: _LoadingBlock()),
+        SizedBox(width: AppSpacing.sm),
         Expanded(child: _LoadingBlock()),
         SizedBox(width: AppSpacing.sm),
         Expanded(child: _LoadingBlock()),
@@ -834,6 +1127,7 @@ class _ProductPreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
     return AppCard(
       padding: const EdgeInsets.all(10),
       child: Column(
@@ -842,7 +1136,9 @@ class _ProductPreview extends StatelessWidget {
           Expanded(child: _ProductImage(product: product)),
           const SizedBox(height: 8),
           Text(
-            product.brand.trim().isEmpty ? 'Product' : product.brand,
+            product.brand.trim().isEmpty
+                ? locale.tr('product_default_brand')
+                : product.brand,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
@@ -860,7 +1156,7 @@ class _ProductPreview extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            '${product.matchPercent ?? product.matchScore}% match',
+            '${product.matchPercent ?? product.matchScore}% ${locale.tr('product_match_percent')}',
             style: Theme.of(context).textTheme.labelSmall,
           ),
         ],
@@ -884,7 +1180,7 @@ class _ProductImage extends StatelessWidget {
         : '${AppConfig.apiBaseUrl}$raw';
 
     return ClipRRect(
-      borderRadius: BorderRadius.circular(AppRadius.medium),
+      borderRadius: BorderRadius.circular(AppRadius.large),
       child: Container(
         width: double.infinity,
         color: AppColors.surfaceStrong,
@@ -911,6 +1207,7 @@ class _QuickActionGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
     return LayoutBuilder(
       builder: (context, constraints) {
         final twoColumns = constraints.maxWidth >= 700;
@@ -926,7 +1223,7 @@ class _QuickActionGrid extends StatelessWidget {
               child: _SecondaryActionCard(
                 onPressed: onChat,
                 icon: Icons.chat_bubble_outline_rounded,
-                label: 'AI Chat',
+                label: locale.tr('dashboard_ai_chat'),
               ),
             ),
             SizedBox(
@@ -934,7 +1231,7 @@ class _QuickActionGrid extends StatelessWidget {
               child: _SecondaryActionCard(
                 onPressed: onProgress,
                 icon: Icons.trending_up_rounded,
-                label: 'View Progress',
+                label: locale.tr('dashboard_view_progress'),
               ),
             ),
           ],
@@ -951,6 +1248,7 @@ class _PrimaryScanAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocale.of(context);
     return Material(
       color: AppColors.primary,
       borderRadius: BorderRadius.circular(AppRadius.large),
@@ -970,7 +1268,7 @@ class _PrimaryScanAction extends StatelessWidget {
               ),
               const SizedBox(height: 7),
               Text(
-                'Scan with AI',
+                locale.tr('dashboard_scan_with_ai'),
                 style: Theme.of(context).textTheme.labelLarge?.copyWith(
                   color: AppColors.onPrimary,
                   fontFamily: 'PlusJakartaSans',
@@ -1004,7 +1302,7 @@ class _SecondaryActionCard extends StatelessWidget {
       color: AppColors.surface,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppRadius.large),
-        side: BorderSide(color: AppColors.border.withValues(alpha: 0.88)),
+        side: const BorderSide(color: Colors.white),
       ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -1035,4 +1333,17 @@ class _SecondaryActionCard extends StatelessWidget {
       ),
     );
   }
+}
+
+SubscriptionUsage? _findUsage(
+  List<SubscriptionUsage> usage,
+  String featureKey,
+) {
+  final normalizedKey = featureKey.trim().toLowerCase();
+  for (final item in usage) {
+    if (item.featureKey.trim().toLowerCase() == normalizedKey) {
+      return item;
+    }
+  }
+  return null;
 }
