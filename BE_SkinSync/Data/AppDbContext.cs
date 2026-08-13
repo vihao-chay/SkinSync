@@ -33,9 +33,23 @@ public class AppDbContext : DbContext
     public DbSet<SubscriptionPlanFeature> SubscriptionPlanFeatures => Set<SubscriptionPlanFeature>();
     public DbSet<UserSubscription> UserSubscriptions => Set<UserSubscription>();
     public DbSet<PaymentOrder> PaymentOrders => Set<PaymentOrder>();
+    public DbSet<AppInstallEvent> AppInstallEvents => Set<AppInstallEvent>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.Entity<AppInstallEvent>(entity =>
+        {
+            entity.ToTable("app_install_events");
+            entity.HasKey(x => x.Id);
+            entity.HasIndex(x => x.InstallationId).IsUnique();
+            entity.HasIndex(x => x.FirstSeenAt);
+            entity.Property(x => x.InstallationId).HasMaxLength(80).IsRequired();
+            entity.Property(x => x.Platform).HasMaxLength(40).HasDefaultValue("unknown").IsRequired();
+            entity.Property(x => x.AppVersion).HasMaxLength(40);
+            entity.Property(x => x.FirstSeenAt).HasColumnType("timestamp with time zone").HasDefaultValueSql("timezone('utc', now())");
+            entity.Property(x => x.LastSeenAt).HasColumnType("timestamp with time zone").HasDefaultValueSql("timezone('utc', now())");
+        });
+
         modelBuilder.Entity<User>(entity =>
         {
             entity.ToTable("users", table =>

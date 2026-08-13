@@ -8,6 +8,8 @@ class SessionStore {
   static const _sessionKey = 'skinsync_session';
   static const _pendingOnboardingUsersKey = 'skinsync_pending_onboarding_users';
   static const _selectedAvatarKeyPrefix = 'skinsync_selected_avatar_';
+  static const _installationIdKey = 'skinsync_installation_id';
+  static const _appInstallRecordedKey = 'skinsync_app_install_recorded';
 
   Future<AuthSession?> read() async {
     final prefs = await SharedPreferences.getInstance();
@@ -27,6 +29,32 @@ class SessionStore {
   Future<void> clear() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_sessionKey);
+  }
+
+  Future<String?> readInstallationId() async {
+    final prefs = await SharedPreferences.getInstance();
+    final installationId = prefs.getString(_installationIdKey)?.trim() ?? '';
+    return installationId.isEmpty ? null : installationId;
+  }
+
+  Future<void> saveInstallationId(String installationId) async {
+    final normalized = installationId.trim();
+    if (normalized.isEmpty) {
+      return;
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_installationIdKey, normalized);
+  }
+
+  Future<bool> isAppInstallRecorded() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_appInstallRecordedKey) ?? false;
+  }
+
+  Future<void> markAppInstallRecorded() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_appInstallRecordedKey, true);
   }
 
   Future<String?> selectedAvatarFor(String userId) async {

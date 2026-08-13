@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -126,6 +127,7 @@ class AppState extends ChangeNotifier {
     notifyListeners();
 
     try {
+      unawaited(_recordFirstAppOpen());
       profile = null;
       latestAnalysis = null;
       regimen = null;
@@ -163,6 +165,39 @@ class AppState extends ChangeNotifier {
       isBootstrapping = false;
       notifyListeners();
     }
+  }
+
+  Future<void> _recordFirstAppOpen() async {
+    try {
+      if (await _sessionStore.isAppInstallRecorded()) {
+        return;
+      }
+
+      var installationId = await _sessionStore.readInstallationId();
+      if (installationId == null || installationId.isEmpty) {
+        installationId = _createInstallationId();
+        await _sessionStore.saveInstallationId(installationId);
+      }
+
+      await _apiClient.postWithoutRefresh(
+        '/api/app-installs/record',
+        body: {
+          'installationId': installationId,
+          'platform': Platform.operatingSystem,
+          'appVersion': AppConfig.appVersion,
+        },
+      );
+      await _sessionStore.markAppInstallRecorded();
+    } catch (error) {
+      debugPrint('[SkinSync] app install record skipped: $error');
+    }
+  }
+
+  String _createInstallationId() {
+    final random = math.Random.secure();
+    final bytes = List<int>.generate(16, (_) => random.nextInt(256));
+    final token = base64UrlEncode(bytes).replaceAll('=', '');
+    return '${DateTime.now().microsecondsSinceEpoch}-$token';
   }
 
   Future<void> login(String email, String password) async {
@@ -1367,13 +1402,10 @@ class AppState extends ChangeNotifier {
     );
   }
 
-  Map<String, dynamic>? _buildRecommendationRequest({
-    String? concernOverride,
-  }) {
-    final skinType =
-        profile?.skinType?.trim().isNotEmpty == true
-            ? profile!.skinType!.trim()
-            : latestAnalysis?.skinType.trim();
+  Map<String, dynamic>? _buildRecommendationRequest({String? concernOverride}) {
+    final skinType = profile?.skinType?.trim().isNotEmpty == true
+        ? profile!.skinType!.trim()
+        : latestAnalysis?.skinType.trim();
     if (skinType == null || skinType.isEmpty) {
       return null;
     }
@@ -1406,12 +1438,14 @@ class AppState extends ChangeNotifier {
     Map<String, dynamic> json, {
     String? categoryOverride,
   }) {
-    final generatedAt = DateTime.tryParse(json['generatedAt']?.toString() ?? '');
-    final compatibility = (json['overallCompatibilityScore'] as num?)?.round() ?? 0;
-    final skinSummary =
-        json['skinSummary'] is Map<String, dynamic>
-            ? json['skinSummary'] as Map<String, dynamic>
-            : const <String, dynamic>{};
+    final generatedAt = DateTime.tryParse(
+      json['generatedAt']?.toString() ?? '',
+    );
+    final compatibility =
+        (json['overallCompatibilityScore'] as num?)?.round() ?? 0;
+    final skinSummary = json['skinSummary'] is Map<String, dynamic>
+        ? json['skinSummary'] as Map<String, dynamic>
+        : const <String, dynamic>{};
 
     final morning = ((json['morningRoutine'] as List?) ?? const [])
         .whereType<Map<String, dynamic>>()
@@ -1433,14 +1467,16 @@ class AppState extends ChangeNotifier {
     final normalizedCategory = categoryOverride?.trim().toLowerCase();
     final visibleCategories =
         normalizedCategory == null || normalizedCategory.isEmpty
-            ? categories
-            : categories.where((category) {
-                final key = category.key.trim().toLowerCase();
-                final label = category.label.trim().toLowerCase();
-                return key == normalizedCategory || label == normalizedCategory;
-              }).toList();
+        ? categories
+        : categories.where((category) {
+            final key = category.key.trim().toLowerCase();
+            final label = category.label.trim().toLowerCase();
+            return key == normalizedCategory || label == normalizedCategory;
+          }).toList();
 
-    final products = visibleCategories.expand((category) => category.items).toList();
+    final products = visibleCategories
+        .expand((category) => category.items)
+        .toList();
     final warnings = ((json['warnings'] as List?) ?? const [])
         .map((item) => item.toString().trim())
         .where((item) => item.isNotEmpty)
@@ -1458,16 +1494,22 @@ class AppState extends ChangeNotifier {
           AiProductRecommendationCategory(
             key: 'all',
             label: 'All',
-            reason: 'Combined morning, night, and alternative product suggestions.',
+            reason:
+                'Combined morning, night, and alternative product suggestions.',
             items: products,
           ),
         ...visibleCategories,
       ],
       profileSummary: AiProductRecommendationProfileSummary(
-        skinType: (skinSummary['skinType'] ?? profile?.skinType ?? 'Not provided yet').toString(),
-        concerns: ((skinSummary['concerns'] as List?) ?? profile?.concerns ?? const <String>[])
-            .map((item) => item.toString())
-            .toList(),
+        skinType:
+            (skinSummary['skinType'] ?? profile?.skinType ?? 'Not provided yet')
+                .toString(),
+        concerns:
+            ((skinSummary['concerns'] as List?) ??
+                    profile?.concerns ??
+                    const <String>[])
+                .map((item) => item.toString())
+                .toList(),
         budget: profile?.budgetLabel?.trim().isNotEmpty == true
             ? profile!.budgetLabel!.trim()
             : profile?.monthlyBudget != null
@@ -1477,7 +1519,9 @@ class AppState extends ChangeNotifier {
       message: products.isNotEmpty
           ? (warnings.isEmpty ? null : warnings.first)
           : 'No compatible recommendations were available from the current product catalog.',
-      note: warnings.skip(1).join('\n').trim().isEmpty ? null : warnings.skip(1).join('\n').trim(),
+      note: warnings.skip(1).join('\n').trim().isEmpty
+          ? null
+          : warnings.skip(1).join('\n').trim(),
       generatedAt: generatedAt,
     );
   }
@@ -1507,11 +1551,15 @@ class AppState extends ChangeNotifier {
       matchScore: (json['score'] as num?)?.round() ?? 0,
       matchPercent: (json['score'] as num?)?.round(),
       aiReason: reasons.isNotEmpty ? reasons.join(' ') : reason,
-      whyRecommended: reason.isNotEmpty ? reason : (reasons.isEmpty ? null : reasons.join(' ')),
+      whyRecommended: reason.isNotEmpty
+          ? reason
+          : (reasons.isEmpty ? null : reasons.join(' ')),
       warnings: cautions,
       cautions: cautions,
       imageUrl: json['imageUrl'] as String?,
-      description: (json['reasons'] as List?) != null && reasons.isNotEmpty ? reasons.join(' ') : null,
+      description: (json['reasons'] as List?) != null && reasons.isNotEmpty
+          ? reasons.join(' ')
+          : null,
       ingredientsText: ingredients.join(', '),
       usageGuide: null,
     );
@@ -1550,7 +1598,8 @@ class AppState extends ChangeNotifier {
           (entry) => AiProductRecommendationCategory(
             key: entry.key,
             label: _titleCase(entry.key),
-            reason: 'Recommended products for ${_titleCase(entry.key).toLowerCase()}.',
+            reason:
+                'Recommended products for ${_titleCase(entry.key).toLowerCase()}.',
             items: entry.value,
           ),
         )
@@ -1599,9 +1648,7 @@ class AppState extends ChangeNotifier {
     return value
         .split(RegExp(r'[_\s]+'))
         .where((part) => part.isNotEmpty)
-        .map(
-          (part) => part[0].toUpperCase() + part.substring(1).toLowerCase(),
-        )
+        .map((part) => part[0].toUpperCase() + part.substring(1).toLowerCase())
         .join(' ');
   }
 

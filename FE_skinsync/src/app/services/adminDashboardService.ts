@@ -3,6 +3,7 @@ import type { ApiResponse } from "./authService";
 
 export interface AdminDashboardData {
   totalUsers: number;
+  totalDownloads: number;
   totalAnalyses: number;
   activeUsers: number;
   skinTypeDistribution: Record<string, number>;
