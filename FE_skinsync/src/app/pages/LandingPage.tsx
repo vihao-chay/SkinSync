@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { motion } from "motion/react";
 import {
@@ -12,11 +13,13 @@ import {
   Sparkles,
   Star,
   TrendingUp,
+  UsersRound,
   WalletCards,
 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Card, CardContent } from "../components/ui/card";
 import { Footer } from "../components/SiteFooter";
+import { getAppInstallSummaryApi } from "../services/appInstallService";
 
 // [CẬP NHẬT]: Cấu hình menu "Về ứng dụng" để render dropdown con trong navbar.
 const aboutAppLinks = [
@@ -108,18 +111,26 @@ function QrCode() {
   });
 
   return (
-    <div className="w-32 h-32 rounded-[1.4rem] bg-skin-surface p-3 shadow-soft-gold ring-1 ring-skin-border">
+    <div className="h-28 w-28 rounded-[1.35rem] bg-skin-surface p-3 shadow-soft-gold ring-1 ring-skin-border">
       <div className="grid h-full w-full grid-cols-11 gap-1">{cells}</div>
     </div>
   );
 }
 
 // [CẬP NHẬT]: Thay CTA download khối vuông bằng badge chuẩn App Store để hero trông cao cấp hơn.
+function formatUsageCount(value: number | null) {
+  if (value === null) {
+    return "--";
+  }
+
+  return new Intl.NumberFormat("vi-VN").format(value);
+}
+
 function AppStoreBadge() {
   return (
     <a
       href="#download"
-      className="flex min-w-[200px] items-center gap-3 rounded-2xl bg-skin-textMain px-4 py-3.5 text-white shadow-soft-gold transition hover:-translate-y-0.5 hover:bg-[#413a33]"
+      className="flex h-16 w-full items-center gap-3 rounded-[1.35rem] bg-skin-textMain px-4 text-white shadow-soft-gold transition hover:-translate-y-0.5 hover:bg-[#413a33]"
     >
       <svg viewBox="0 0 24 24" className="h-8 w-8 shrink-0 fill-current" aria-hidden="true">
         <path d="M16.365 1.43c0 1.14-.45 2.2-1.17 3.02-.84.97-2.2 1.72-3.54 1.62-.17-1.12.4-2.28 1.1-3.03.83-.91 2.26-1.57 3.61-1.61zM20.54 17.5c-.54 1.2-.81 1.74-1.51 2.83-.97 1.48-2.34 3.32-4.03 3.34-1.5.02-1.88-.99-3.9-.98-2.02.01-2.44 1-3.94.98-1.68-.02-2.97-1.66-3.94-3.14C1.82 17.97.82 14.46 2.35 11.94c1.06-1.74 2.98-2.84 5.07-2.87 1.58-.03 3.07 1.08 3.9 1.08.82 0 2.58-1.34 4.36-1.14.74.03 2.81.3 4.14 2.26-.11.07-2.47 1.45-2.45 4.23.03 3.32 2.91 4.42 2.17 5.99z" />
@@ -137,7 +148,7 @@ function GooglePlayBadge() {
   return (
     <a
       href="#download"
-      className="flex min-w-[200px] items-center gap-3 rounded-2xl bg-skin-surface px-4 py-3.5 text-skin-textMain shadow-soft-gold ring-1 ring-skin-border transition hover:-translate-y-0.5 hover:bg-[#faf8f3]"
+      className="flex h-16 w-full items-center gap-3 rounded-[1.35rem] bg-skin-surface px-4 text-skin-textMain shadow-soft-gold ring-1 ring-skin-border transition hover:-translate-y-0.5 hover:bg-[#faf8f3]"
     >
       <svg viewBox="0 0 24 24" className="h-8 w-8 shrink-0" aria-hidden="true">
         <defs>
@@ -307,6 +318,30 @@ function Navbar() {
 
 // [CẬP NHẬT]: Tách hero thành component riêng, thay CTA cũ bằng badge App Store/Google Play và giữ QR download area.
 function Hero() {
+  const [usageCount, setUsageCount] = useState<number | null>(null);
+  const [usageLoaded, setUsageLoaded] = useState(false);
+  const hasUsageCount = usageCount !== null;
+
+  useEffect(() => {
+    let isMounted = true;
+
+    getAppInstallSummaryApi().then((result) => {
+      if (!isMounted) {
+        return;
+      }
+
+      if (result.success && result.content) {
+        setUsageCount(result.content.totalDownloads);
+      }
+
+      setUsageLoaded(true);
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   return (
     <section className="relative min-h-screen bg-skin-base">
       <div className="mx-auto grid max-w-7xl gap-12 px-5 pb-20 pt-32 lg:grid-cols-[1.04fr_0.96fr] lg:px-8 lg:pb-24 lg:pt-36">
@@ -340,19 +375,55 @@ function Hero() {
             </Link>
           </div>
 
-          <div id="download" className="mt-10 grid max-w-2xl gap-5 rounded-[2rem] border border-skin-border bg-skin-surface/80 p-5 shadow-soft-gold backdrop-blur-2xl sm:grid-cols-[auto_1fr] scroll-mt-28">
-            <div className="flex flex-col items-center gap-3">
-              <QrCode />
-              <span className="text-sm font-medium text-skin-textMuted">Quét mã để tải</span>
-            </div>
-            <div className="flex flex-col justify-center gap-3">
-              <div className="flex flex-wrap gap-3">
-                <AppStoreBadge />
-                <GooglePlayBadge />
+          <div
+            id="download"
+            className="relative mt-8 max-w-xl scroll-mt-28 overflow-hidden rounded-[2.25rem] border border-skin-border bg-[#fffaf3] p-2.5 shadow-[0_28px_80px_rgba(86,59,39,0.18)] backdrop-blur-2xl"
+          >
+            <div className="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-skin-gold/50 to-transparent" />
+            <div className="rounded-[1.85rem] bg-[linear-gradient(135deg,#ffffff_0%,#f7efe2_100%)] p-4">
+              <div className="mb-4 flex items-center gap-3 rounded-[1.55rem] bg-skin-textMain px-4 py-3 text-white shadow-[0_18px_40px_rgba(58,42,26,0.22)]">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-skin-gold text-white">
+                  <UsersRound className="h-5 w-5" />
+                </span>
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                    <span className={hasUsageCount ? "font-serif text-3xl font-semibold leading-none" : "text-sm font-semibold"}>
+                      {hasUsageCount ? formatUsageCount(usageCount) : "Đang cập nhật"}
+                    </span>
+                    {hasUsageCount ? (
+                      <span className="text-sm font-medium text-white/76">người đã dùng app</span>
+                    ) : null}
+                  </div>
+                  <p className="mt-1 text-xs leading-5 text-white/62">
+                    {usageLoaded ? "Số người đã dùng app" : "Đang đồng bộ dữ liệu sử dụng."}
+                  </p>
+                </div>
+                <span className="ml-auto hidden rounded-full border border-white/18 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/72 sm:inline-flex">
+                  Live
+                </span>
               </div>
-              <p className="max-w-md text-sm leading-6 text-skin-textMuted">
-                Trải nghiệm ứng dụng AI skincare cá nhân hóa với giao diện mobile mượt, phân tích tức thì và lộ trình được đồng bộ mỗi ngày.
-              </p>
+
+              <div className="grid items-center gap-4 sm:grid-cols-[124px_1fr]">
+                <div className="flex flex-col items-center gap-2 rounded-[1.45rem] border border-skin-border bg-white/82 p-3">
+                  <QrCode />
+                  <span className="text-center text-xs font-medium text-skin-textMuted">Quét mã để tải</span>
+                </div>
+
+                <div className="min-w-0">
+                  <p className="mb-3 max-w-md text-sm leading-6 text-skin-textMuted">
+                    Trải nghiệm AI skincare cá nhân hóa với giao diện mobile mượt, phân tích tức thì và lộ trình được đồng bộ mỗi ngày.
+                  </p>
+                  <div className="grid max-w-md grid-cols-1 gap-2 sm:grid-cols-2">
+                    <AppStoreBadge />
+                    <GooglePlayBadge />
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-skin-textMuted">
+                    <span className="rounded-full bg-white/80 px-3 py-1.5 shadow-[inset_0_0_0_1px_rgba(194,166,125,0.22)]">AI routine</span>
+                    <span className="rounded-full bg-white/80 px-3 py-1.5 shadow-[inset_0_0_0_1px_rgba(194,166,125,0.22)]">Scan da</span>
+                    <span className="rounded-full bg-white/80 px-3 py-1.5 shadow-[inset_0_0_0_1px_rgba(194,166,125,0.22)]">Theo dõi da</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </motion.div>

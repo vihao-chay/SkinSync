@@ -57,6 +57,7 @@ public class AdminController : ControllerBase
     public async Task<IActionResult> Dashboard(CancellationToken cancellationToken)
     {
         var totalUsers = await _dbContext.Users.CountAsync(cancellationToken);
+        var totalDownloads = await _dbContext.AppInstallEvents.CountAsync(cancellationToken);
         var activeUsers = await _dbContext.Users.CountAsync(x => x.Status == "active", cancellationToken);
         var totalAnalyses = await _dbContext.SkinProgressAnalyses.CountAsync(cancellationToken);
 
@@ -69,6 +70,7 @@ public class AdminController : ControllerBase
         return Ok(new AdminDashboardResponseDto
         {
             TotalUsers = totalUsers,
+            TotalDownloads = totalDownloads,
             ActiveUsers = activeUsers,
             TotalAnalyses = totalAnalyses,
             SkinTypeDistribution = skinTypes.ToDictionary(x => x.SkinType ?? "unknown", x => x.Count)

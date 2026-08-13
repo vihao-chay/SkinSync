@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 
 class AppConfig {
+  static const appVersion = '1.0.0+1';
+
   static const _envApiBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
     defaultValue: '',
