@@ -13,6 +13,8 @@ namespace SkinSync.Controllers;
 [Route("api/app-installs")]
 public class AppInstallsController : ControllerBase
 {
+    private static readonly SemaphoreSlim SchemaEnsureLock = new(1, 1);
+    private static bool _schemaEnsured;
     private readonly AppDbContext _dbContext;
 
     public AppInstallsController(AppDbContext dbContext)
@@ -24,12 +26,26 @@ public class AppInstallsController : ControllerBase
     [AllowAnonymous]
     public async Task<ResponseEntity<AppInstallSummaryResponseDto>> Summary(CancellationToken cancellationToken)
     {
-        var totalDownloads = await _dbContext.AppInstallEvents.CountAsync(cancellationToken);
-        return ResponseEntity<AppInstallSummaryResponseDto>.Ok(
-            new AppInstallSummaryResponseDto
-            {
-                TotalDownloads = totalDownloads
-            });
+        try
+        {
+            await EnsureSchemaAsync(cancellationToken);
+
+            var totalDownloads = await _dbContext.AppInstallEvents.CountAsync(cancellationToken);
+            return ResponseEntity<AppInstallSummaryResponseDto>.Ok(
+                new AppInstallSummaryResponseDto
+                {
+                    TotalDownloads = totalDownloads
+                });
+        }
+        catch (PostgresException ex) when (ex.SqlState is "42P01" or "42501")
+        {
+            return ResponseEntity<AppInstallSummaryResponseDto>.Ok(
+                new AppInstallSummaryResponseDto
+                {
+                    TotalDownloads = 0
+                },
+                "App install summary is not initialized.");
+        }
     }
 
     [HttpPost("record")]
@@ -53,6 +69,8 @@ public class AppInstallsController : ControllerBase
         {
             installationId = installationId[..80];
         }
+
+        await EnsureSchemaAsync(cancellationToken);
 
         var now = DateTime.UtcNow;
         var existing = await _dbContext.AppInstallEvents
@@ -103,6 +121,49 @@ public class AppInstallsController : ControllerBase
     {
         var normalized = string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
         return normalized.Length <= maxLength ? normalized : normalized[..maxLength];
+    }
+
+    private async Task EnsureSchemaAsync(CancellationToken cancellationToken)
+    {
+        if (_schemaEnsured)
+        {
+            return;
+        }
+
+        await SchemaEnsureLock.WaitAsync(cancellationToken);
+        try
+        {
+            if (_schemaEnsured)
+            {
+                return;
+            }
+
+            await _dbContext.Database.ExecuteSqlRawAsync(
+                """
+                CREATE TABLE IF NOT EXISTS app_install_events (
+                    "Id" uuid NOT NULL,
+                    "InstallationId" character varying(80) NOT NULL,
+                    "Platform" character varying(40) NOT NULL DEFAULT 'unknown',
+                    "AppVersion" character varying(40) NULL,
+                    "FirstSeenAt" timestamp with time zone NOT NULL DEFAULT timezone('utc', now()),
+                    "LastSeenAt" timestamp with time zone NOT NULL DEFAULT timezone('utc', now()),
+                    CONSTRAINT "PK_app_install_events" PRIMARY KEY ("Id")
+                );
+
+                CREATE INDEX IF NOT EXISTS "IX_app_install_events_FirstSeenAt"
+                ON app_install_events ("FirstSeenAt");
+
+                CREATE UNIQUE INDEX IF NOT EXISTS "IX_app_install_events_InstallationId"
+                ON app_install_events ("InstallationId");
+                """,
+                cancellationToken);
+
+            _schemaEnsured = true;
+        }
+        finally
+        {
+            SchemaEnsureLock.Release();
+        }
     }
 
     private static string? NormalizeNullableValue(string? value, int maxLength)
