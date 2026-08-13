@@ -235,7 +235,11 @@ var aspNetCoreUrls = builder.Configuration["ASPNETCORE_URLS"] ?? Environment.Get
 var shouldUseHttpsRedirection = aspNetCoreUrls
     .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
     .Any(url => url.StartsWith("https://", StringComparison.OrdinalIgnoreCase));
-if (app.Environment.IsDevelopment() || shouldSeedOnStartup)
+if (app.Environment.IsDevelopment() ||
+    shouldApplyMigrationsOnStartup ||
+    shouldSeedOnStartup ||
+    shouldSeedDemoData ||
+    shouldImportProductsOnStartup)
 {
     using var scope = app.Services.CreateScope();
     var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();

@@ -5,6 +5,7 @@ import {
   ArrowRight,
   Camera,
   Check,
+  Download,
   FlaskConical,
   MessageCircle,
   Microscope,
@@ -20,6 +21,8 @@ import { Button } from "../components/ui/button";
 import { Card, CardContent } from "../components/ui/card";
 import { Footer } from "../components/SiteFooter";
 import { getAppInstallSummaryApi } from "../services/appInstallService";
+
+const APK_DOWNLOAD_PATH = "/SkinSync.apk";
 
 // [CẬP NHẬT]: Cấu hình menu "Về ứng dụng" để render dropdown con trong navbar.
 const aboutAppLinks = [
@@ -98,22 +101,20 @@ const testimonials = [
   },
 ];
 
-function QrCode() {
-  const cells = Array.from({ length: 121 }, (_, index) => {
-    const row = Math.floor(index / 11);
-    const col = index % 11;
-    const finder =
-      (row < 3 && col < 3) ||
-      (row < 3 && col > 7) ||
-      (row > 7 && col < 3);
-    const active = finder || (row * 7 + col * 5 + row * col) % 4 === 0;
-    return <span key={index} className={active ? "bg-skin-gold" : "bg-transparent"} />;
-  });
-
+function QrCode({ value }: { value: string }) {
   return (
-    <div className="h-28 w-28 rounded-[1.35rem] bg-skin-surface p-3 shadow-soft-gold ring-1 ring-skin-border">
-      <div className="grid h-full w-full grid-cols-11 gap-1">{cells}</div>
-    </div>
+    <a
+      href={APK_DOWNLOAD_PATH}
+      download
+      className="block h-28 w-28 rounded-[1.35rem] bg-skin-surface p-3 shadow-soft-gold ring-1 ring-skin-border transition hover:-translate-y-0.5"
+      aria-label="Tải file APK SkinSync"
+    >
+      <img
+        src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=8&data=${encodeURIComponent(value)}`}
+        alt="QR tải file APK SkinSync"
+        className="h-full w-full rounded-xl object-contain"
+      />
+    </a>
   );
 }
 
@@ -126,18 +127,16 @@ function formatUsageCount(value: number | null) {
   return new Intl.NumberFormat("vi-VN").format(value);
 }
 
-function AppStoreBadge() {
+function ApkDownloadBadge() {
   return (
     <a
-      href="#download"
+      href={APK_DOWNLOAD_PATH}
+      download
       className="flex h-16 w-full items-center gap-3 rounded-[1.35rem] bg-skin-textMain px-4 text-white shadow-soft-gold transition hover:-translate-y-0.5 hover:bg-[#413a33]"
     >
-      <svg viewBox="0 0 24 24" className="h-8 w-8 shrink-0 fill-current" aria-hidden="true">
-        <path d="M16.365 1.43c0 1.14-.45 2.2-1.17 3.02-.84.97-2.2 1.72-3.54 1.62-.17-1.12.4-2.28 1.1-3.03.83-.91 2.26-1.57 3.61-1.61zM20.54 17.5c-.54 1.2-.81 1.74-1.51 2.83-.97 1.48-2.34 3.32-4.03 3.34-1.5.02-1.88-.99-3.9-.98-2.02.01-2.44 1-3.94.98-1.68-.02-2.97-1.66-3.94-3.14C1.82 17.97.82 14.46 2.35 11.94c1.06-1.74 2.98-2.84 5.07-2.87 1.58-.03 3.07 1.08 3.9 1.08.82 0 2.58-1.34 4.36-1.14.74.03 2.81.3 4.14 2.26-.11.07-2.47 1.45-2.45 4.23.03 3.32 2.91 4.42 2.17 5.99z" />
-      </svg>
+      <Download className="h-8 w-8 shrink-0" aria-hidden="true" />
       <span className="leading-tight">
-        <span className="block text-[10px] font-semibold uppercase tracking-[0.18em] text-white/60">Download on the</span>
-        <span className="block text-sm font-semibold">App Store</span>
+        <span className="block text-sm font-semibold">Download file APK</span>
       </span>
     </a>
   );
@@ -319,8 +318,11 @@ function Navbar() {
 // [CẬP NHẬT]: Tách hero thành component riêng, thay CTA cũ bằng badge App Store/Google Play và giữ QR download area.
 function Hero() {
   const [usageCount, setUsageCount] = useState<number | null>(null);
-  const [usageLoaded, setUsageLoaded] = useState(false);
   const hasUsageCount = usageCount !== null;
+  const apkDownloadUrl =
+    typeof window === "undefined"
+      ? APK_DOWNLOAD_PATH
+      : new URL(APK_DOWNLOAD_PATH, window.location.origin).toString();
 
   useEffect(() => {
     let isMounted = true;
@@ -333,8 +335,6 @@ function Hero() {
       if (result.success && result.content) {
         setUsageCount(result.content.totalDownloads);
       }
-
-      setUsageLoaded(true);
     });
 
     return () => {
@@ -385,18 +385,15 @@ function Hero() {
                 <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-skin-gold text-white">
                   <UsersRound className="h-5 w-5" />
                 </span>
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                    <span className={hasUsageCount ? "font-serif text-3xl font-semibold leading-none" : "text-sm font-semibold"}>
+                <div className="flex min-w-0 flex-1 items-center">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 leading-none">
+                    <span className={hasUsageCount ? "inline-flex translate-y-px items-center text-2xl font-semibold leading-none" : "inline-flex items-center text-sm font-semibold leading-none"}>
                       {hasUsageCount ? formatUsageCount(usageCount) : "Đang cập nhật"}
                     </span>
                     {hasUsageCount ? (
-                      <span className="text-sm font-medium text-white/76">người đã dùng app</span>
+                      <span className="text-sm font-medium leading-none text-white/76">người đã dùng app</span>
                     ) : null}
                   </div>
-                  <p className="mt-1 text-xs leading-5 text-white/62">
-                    {usageLoaded ? "Số người đã dùng app" : "Đang đồng bộ dữ liệu sử dụng."}
-                  </p>
                 </div>
                 <span className="ml-auto hidden rounded-full border border-white/18 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/72 sm:inline-flex">
                   Live
@@ -405,7 +402,7 @@ function Hero() {
 
               <div className="grid items-center gap-4 sm:grid-cols-[124px_1fr]">
                 <div className="flex flex-col items-center gap-2 rounded-[1.45rem] border border-skin-border bg-white/82 p-3">
-                  <QrCode />
+                  <QrCode value={apkDownloadUrl} />
                   <span className="text-center text-xs font-medium text-skin-textMuted">Quét mã để tải</span>
                 </div>
 
@@ -414,7 +411,7 @@ function Hero() {
                     Trải nghiệm AI skincare cá nhân hóa với giao diện mobile mượt, phân tích tức thì và lộ trình được đồng bộ mỗi ngày.
                   </p>
                   <div className="grid max-w-md grid-cols-1 gap-2 sm:grid-cols-2">
-                    <AppStoreBadge />
+                    <ApkDownloadBadge />
                     <GooglePlayBadge />
                   </div>
                   <div className="mt-3 flex flex-wrap gap-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-skin-textMuted">
